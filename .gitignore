@@ -1,0 +1,10 @@
+.idea/
+
+build/
+dist/
+mautrix_appservice.egg-info
+
+.venv
+pip-selfcheck.json
+*.pyc
+__pycache__
