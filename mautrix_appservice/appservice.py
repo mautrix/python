@@ -17,18 +17,24 @@
 #
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
 from contextlib import contextmanager
+from typing import Optional, Callable, Awaitable
 from aiohttp import web
 import aiohttp
 import asyncio
 import logging
 
-from .intent_api import HTTPAPI
+from .intent_api import HTTPAPI, IntentAPI
 from .state_store import StateStore
+
+QueryFunc = Callable[[web.Request], Awaitable[Optional[web.Response]]]
+HandlerFunc = Callable[[dict], Awaitable]
 
 
 class AppService:
-    def __init__(self, server, domain, as_token, hs_token, bot_localpart, loop=None, log=None,
-                 verify_ssl=True, query_user=None, query_alias=None):
+    def __init__(self, server: str, domain: str, as_token: str, hs_token: str, bot_localpart: str,
+                 loop: Optional[asyncio.AbstractEventLoop] = None,
+                 log: Optional[logging.Logger] = None, verify_ssl: bool = True,
+                 query_user: QueryFunc = None, query_alias: QueryFunc = None):
         self.server = server
         self.domain = domain
         self.verify_ssl = verify_ssl
@@ -64,7 +70,7 @@ class AppService:
         self.matrix_event_handler(self.update_state_store)
 
     @property
-    def http_session(self):
+    def http_session(self) -> aiohttp.ClientSession:
         if self._http_session is None:
             raise AttributeError("the http_session attribute can only be used "
                                  "from within the `AppService.run` context manager")
@@ -72,7 +78,7 @@ class AppService:
             return self._http_session
 
     @property
-    def intent(self):
+    def intent(self) -> IntentAPI:
         if self._intent is None:
             raise AttributeError("the intent attribute can only be used from "
                                  "within the `AppService.run` context manager")
@@ -80,7 +86,7 @@ class AppService:
             return self._intent
 
     @contextmanager
-    def run(self, host="127.0.0.1", port=8080):
+    def run(self, host: str = "127.0.0.1", port: int = 8080):
         connector = None
         if self.server.startswith("https://") and not self.verify_ssl:
             connector = aiohttp.TCPConnector(verify_ssl=False)
@@ -95,7 +101,7 @@ class AppService:
         self._http_session.close()
         self._http_session = None
 
-    def _check_token(self, request):
+    def _check_token(self, request: web.Request) -> bool:
         try:
             token = request.rel_url.query["access_token"]
         except KeyError:
@@ -106,7 +112,7 @@ class AppService:
 
         return True
 
-    async def _http_query_user(self, request):
+    async def _http_query_user(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
             return web.Response(status=401)
 
@@ -122,7 +128,7 @@ class AppService:
             return web.Response(status=404)
         return web.json_response(response)
 
-    async def _http_query_alias(self, request):
+    async def _http_query_alias(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
             return web.Response(status=401)
 
@@ -138,7 +144,7 @@ class AppService:
             return web.Response(status=404)
         return web.json_response(response)
 
-    async def _http_handle_transaction(self, request):
+    async def _http_handle_transaction(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
             return web.Response(status=401)
 
@@ -160,7 +166,7 @@ class AppService:
 
         return web.json_response({})
 
-    async def update_state_store(self, event):
+    async def update_state_store(self, event: dict):
         event_type = event["type"]
         if event_type == "m.room.power_levels":
             self.state_store.set_power_levels(event["room_id"], event["content"])
@@ -168,16 +174,16 @@ class AppService:
             self.state_store.set_membership(event["room_id"], event["state_key"],
                                             event["content"]["membership"])
 
-    def handle_matrix_event(self, event):
-        async def try_handle(handler):
+    def handle_matrix_event(self, event: dict):
+        async def try_handle(handler_func: HandlerFunc):
             try:
-                await handler(event)
+                await handler_func(event)
             except Exception:
                 self.log.exception("Exception in Matrix event handler")
 
         for handler in self.event_handlers:
             asyncio.ensure_future(try_handle(handler), loop=self.loop)
 
-    def matrix_event_handler(self, func):
+    def matrix_event_handler(self, func: HandlerFunc) -> HandlerFunc:
         self.event_handlers.append(func)
         return func

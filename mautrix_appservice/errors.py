@@ -14,6 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from typing import Optional
 
 
 class MatrixError(Exception):
@@ -22,7 +23,7 @@ class MatrixError(Exception):
 
 
 class IntentError(MatrixError):
-    def __init__(self, message, source):
+    def __init__(self, message: str, source: Exception):
         super().__init__(message)
         self.source = source
 
@@ -30,7 +31,8 @@ class IntentError(MatrixError):
 class MatrixRequestError(MatrixError):
     """ The home server returned an error response. """
 
-    def __init__(self, code=0, text="", errcode=None, message=None):
+    def __init__(self, code: int = 0, text: str = "", errcode: Optional[str] = None,
+                 message: Optional[str] = None):
         super().__init__(f"{code}: {text}")
         self.code = code
         self.text = text
