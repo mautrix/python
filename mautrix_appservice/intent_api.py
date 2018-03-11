@@ -333,8 +333,9 @@ class IntentAPI:
         if "events" not in content:
             content["events"] = {}
         response = await self.send_state_event(room_id, "m.room.power_levels", content)
-        self.state_store.set_power_levels(room_id, content)
-        return response
+        if response:
+            self.state_store.set_power_levels(room_id, content)
+            return response
 
     async def get_pinned_messages(self, room_id: str) -> List[str]:
         await self.ensure_joined(room_id)
@@ -513,9 +514,10 @@ class IntentAPI:
         elif not event_type:
             raise ValueError("Event type not given")
         await self.ensure_joined(room_id)
-        await self._ensure_has_power_level_for(room_id, event_type, is_state_event=True)
-        url = self._get_state_url(room_id, event_type, state_key)
-        return await self.client.request("PUT", url, content)
+        has_pl = await self._ensure_has_power_level_for(room_id, event_type, is_state_event=True)
+        if has_pl:
+            url = self._get_state_url(room_id, event_type, state_key)
+            return await self.client.request("PUT", url, content)
 
     async def get_state_event(self, room_id: str, event_type: str, state_key: Optional[str] = ""
                               ) -> dict:
@@ -614,13 +616,13 @@ class IntentAPI:
             await self.get_power_levels(room_id)
         if self.state_store.has_power_level(room_id, self.mxid, event_type,
                                             is_state_event=is_state_event):
-            return
+            return True
         elif not self.bot:
             self.log.warning(
                 f"Power level of {self.mxid} is not enough for {event_type} in {room_id}")
             # raise IntentError(f"Power level of {self.mxid} is not enough"
             #                   f"for {event_type} in {room_id}")
-            return
+        return False
         # TODO implement
 
     # endregion
