@@ -3,13 +3,13 @@ import setuptools
 setuptools.setup(
     name="mautrix-appservice",
     version="0.1.0",
-    url="https://github.com/tulir/mautrix-appservice",
+    url="https://github.com/tulir/mautrix-appservice-python",
 
     author="Tulir Asokan",
     author_email="tulir@maunium.net",
 
     description="A Python 3 asyncio-based Matrix application service framework.",
-    long_description=open("README.md").read(),
+    long_description=open("README.rst").read(),
 
     packages=setuptools.find_packages(),
 
