@@ -116,7 +116,10 @@ class AppService:
         if not self._check_token(request):
             return web.Response(status=401)
 
-        user_id = request.match_info["userId"]
+        try:
+            user_id = request.match_info["userId"]
+        except KeyError:
+            return web.Response(status=400)
 
         try:
             response = await self.query_user(user_id)
@@ -132,7 +135,10 @@ class AppService:
         if not self._check_token(request):
             return web.Response(status=401)
 
-        alias = request.match_info["alias"]
+        try:
+            alias = request.match_info["alias"]
+        except KeyError:
+            return web.Response(status=400)
 
         try:
             response = await self.query_alias(alias)
