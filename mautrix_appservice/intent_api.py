@@ -19,7 +19,7 @@ from time import time
 from json.decoder import JSONDecodeError
 from typing import Optional, Dict, Awaitable, List, Union, Tuple, Any
 from logging import Logger
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 import json
 import asyncio
@@ -115,7 +115,7 @@ class HTTPAPI:
 
         if timestamp is not None:
             if isinstance(timestamp, datetime):
-                timestamp = int(timestamp.timestamp() * 1000)
+                timestamp = int(timestamp.replace(tzinfo=timezone.utc).timestamp() * 1000)
             query_params["ts"] = timestamp
         if external_url is not None:
             content["external_url"] = external_url
