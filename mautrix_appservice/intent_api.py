@@ -17,8 +17,9 @@
 from urllib.parse import quote
 from time import time
 from json.decoder import JSONDecodeError
-from typing import Optional, Dict, Awaitable, List, Union, Tuple
+from typing import Optional, Dict, Awaitable, List, Union, Tuple, Any
 from logging import Logger
+from datetime import datetime
 import re
 import json
 import asyncio
@@ -77,7 +78,6 @@ class HTTPAPI:
 
     async def _send(self, method, endpoint, content, query_params, headers):
         while True:
-            query_params["access_token"] = self.token
             request = self.session.request(method, endpoint, params=query_params,
                                            data=content, headers=headers)
             async with request as response:
@@ -104,12 +104,21 @@ class HTTPAPI:
         self.log.debug("%s %s %s as user %s", method, path, log_content, query_identity)
 
     def request(self, method: str, path: str, content: Optional[Union[dict, bytes, str]] = None,
-                query_params: Optional[Dict[str, str]] = None,
+                timestamp: Optional[int] = None, external_url: Optional[str] = None,
                 headers: Optional[Dict[str, str]] = None,
+                query_params: Optional[Dict[str, Any]] = None,
                 api_path: str = "/_matrix/client/r0") -> Awaitable[dict]:
         content = content or {}
-        query_params = query_params or {}
         headers = headers or {}
+        query_params = query_params or {}
+        query_params["access_token"] = self.token
+
+        if timestamp is not None:
+            if isinstance(timestamp, datetime):
+                timestamp = int(timestamp.timestamp() * 1000)
+            query_params["ts"] = timestamp
+        if external_url is not None:
+            content["external_url"] = external_url
 
         method = method.upper()
         if method not in ["GET", "PUT", "DELETE", "POST"]:
@@ -271,8 +280,8 @@ class IntentAPI:
         content = {"user_id": user_id}
         return self.client.request("POST", "/rooms/" + room_id + "/invite", content)
 
-    async def invite(self, room_id: str, user_id: str, check_cache: bool = False) -> Optional[
-        dict]:
+    async def invite(self, room_id: str, user_id: str, check_cache: bool = False
+                     ) -> Optional[dict]:
         await self.ensure_joined(room_id)
         try:
             ok_states = {"invite", "join"}
@@ -288,14 +297,14 @@ class IntentAPI:
             if "is already in the room" in e.message:
                 self.state_store.joined(room_id, user_id)
 
-    def set_room_avatar(self, room_id: str, avatar_url: str, info: Optional[dict] = None
+    def set_room_avatar(self, room_id: str, avatar_url: str, info: Optional[dict] = None, **kwargs
                         ) -> Awaitable[dict]:
         content = {
-            "url": avatar_url,
+            "url": avatar_url
         }
         if info:
             content["info"] = info
-        return self.send_state_event(room_id, "m.room.avatar", content)
+        return self.send_state_event(room_id, "m.room.avatar", content, **kwargs)
 
     async def add_room_alias(self, room_id: str, localpart: str, override: bool = True
                              ) -> Optional[dict]:
@@ -313,9 +322,9 @@ class IntentAPI:
         alias = f"#{localpart}:{self.client.domain}"
         return self.client.request("DELETE", f"/directory/room/{quote(alias)}")
 
-    def set_room_name(self, room_id: str, name: str) -> Awaitable[dict]:
+    def set_room_name(self, room_id: str, name: str, **kwargs) -> Awaitable[dict]:
         body = {"name": name}
-        return self.send_state_event(room_id, "m.room.name", body)
+        return self.send_state_event(room_id, "m.room.name", body, **kwargs)
 
     async def get_power_levels(self, room_id: str, ignore_cache: bool = False) -> dict:
         await self.ensure_joined(room_id)
@@ -329,10 +338,10 @@ class IntentAPI:
         self.state_store.set_power_levels(room_id, levels)
         return levels
 
-    async def set_power_levels(self, room_id: str, content: dict) -> dict:
+    async def set_power_levels(self, room_id: str, content: dict, **kwargs) -> dict:
         if "events" not in content:
             content["events"] = {}
-        response = await self.send_state_event(room_id, "m.room.power_levels", content)
+        response = await self.send_state_event(room_id, "m.room.power_levels", content, **kwargs)
         if response:
             self.state_store.set_power_levels(room_id, content)
             return response
@@ -342,10 +351,10 @@ class IntentAPI:
         response = await self.client.request("GET", f"/rooms/{room_id}/state/m.room.pinned_events")
         return response["content"]["pinned"]
 
-    def set_pinned_messages(self, room_id: str, events: List[str]) -> Awaitable[dict]:
+    def set_pinned_messages(self, room_id: str, events: List[str], **kwargs) -> Awaitable[dict]:
         return self.send_state_event(room_id, "m.room.pinned_events", {
             "pinned": events
-        })
+        }, **kwargs)
 
     async def pin_message(self, room_id: str, event_id: str):
         events = await self.get_pinned_messages(room_id)
@@ -359,12 +368,12 @@ class IntentAPI:
             events.remove(event_id)
             await self.set_pinned_messages(room_id, events)
 
-    async def set_join_rule(self, room_id: str, join_rule: str):
+    async def set_join_rule(self, room_id: str, join_rule: str, **kwargs):
         if join_rule not in ("public", "knock", "invite", "private"):
             raise ValueError(f"Invalid join rule \"{join_rule}\"")
         await self.send_state_event(room_id, "m.room.join_rules", {
             "join_rule": join_rule,
-        })
+        }, **kwargs)
 
     async def get_event(self, room_id: str, event_id: str) -> dict:
         await self.ensure_joined(room_id)
@@ -390,29 +399,31 @@ class IntentAPI:
                                          content={})
 
     def send_notice(self, room_id: str, text: str, html: Optional[str] = None,
-                    relates_to: Optional[dict] = None) -> Awaitable[dict]:
-        return self.send_text(room_id, text, html, "m.notice", relates_to)
+                    relates_to: Optional[dict] = None, **kwargs) -> Awaitable[dict]:
+        return self.send_text(room_id, text, html, "m.notice", relates_to, **kwargs)
 
     def send_emote(self, room_id: str, text: str, html: Optional[str] = None,
-                   relates_to: Optional[dict] = None) -> Awaitable[dict]:
-        return self.send_text(room_id, text, html, "m.emote", relates_to)
+                   relates_to: Optional[dict] = None, **kwargs) -> Awaitable[dict]:
+        return self.send_text(room_id, text, html, "m.emote", relates_to, **kwargs)
 
     def send_image(self, room_id: str, url: str, info: Optional[dict] = None, text: str = None,
-                   relates_to: Optional[dict] = None) -> Awaitable[dict]:
-        return self.send_file(room_id, url, info or {}, text, "m.image", relates_to)
+                   relates_to: Optional[dict] = None, **kwargs) -> Awaitable[dict]:
+        return self.send_file(room_id, url, info or {}, text, "m.image", relates_to, **kwargs)
 
     def send_file(self, room_id: str, url: str, info: Optional[dict] = None, text: str = None,
-                  file_type: str = "m.file", relates_to: Optional[dict] = None) -> Awaitable[dict]:
+                  file_type: str = "m.file", relates_to: Optional[dict] = None, **kwargs
+                  ) -> Awaitable[dict]:
         return self.send_message(room_id, {
             "msgtype": file_type,
             "url": url,
             "body": text or "Uploaded file",
             "info": info or {},
             "m.relates_to": relates_to or None,
-        })
+        }, **kwargs)
 
     def send_text(self, room_id: str, text: str, html: Optional[str] = None,
-                  msgtype: str = "m.text", relates_to: Optional[str] = None) -> Awaitable[dict]:
+                  msgtype: str = "m.text", relates_to: Optional[str] = None, **kwargs
+                  ) -> Awaitable[dict]:
         if html:
             if not text:
                 text = html
@@ -422,16 +433,16 @@ class IntentAPI:
                 "format": "org.matrix.custom.html",
                 "formatted_body": html or text,
                 "m.relates_to": relates_to or None,
-            })
+            }, **kwargs)
         else:
             return self.send_message(room_id, {
                 "body": text,
                 "msgtype": msgtype,
                 "m.relates_to": relates_to or None,
-            })
+            }, **kwargs)
 
-    def send_message(self, room_id: str, body: dict) -> Awaitable[dict]:
-        return self.send_event(room_id, "m.room.message", body)
+    def send_message(self, room_id: str, body: dict, **kwargs) -> Awaitable[dict]:
+        return self.send_event(room_id, "m.room.message", body, **kwargs)
 
     async def error_and_leave(self, room_id: str, text: str, html: Optional[str] = None):
         await self.ensure_joined(room_id)
@@ -445,7 +456,7 @@ class IntentAPI:
         return self.get_state_event(room_id, "m.room.member", state_key=user_id)
 
     def set_membership(self, room_id: str, user_id: str, membership: str,
-                       reason: Optional[str] = "", profile: Optional[dict] = None
+                       reason: Optional[str] = "", profile: Optional[dict] = None, **kwargs
                        ) -> Awaitable[dict]:
         body = {
             "membership": membership,
@@ -457,10 +468,10 @@ class IntentAPI:
         if "avatar_url" in profile:
             body["avatar_url"] = profile["avatar_url"]
 
-        return self.send_state_event(room_id, "m.room.member", body, state_key=user_id)
+        return self.send_state_event(room_id, "m.room.member", body, state_key=user_id, **kwargs)
 
     def redact(self, room_id: str, event_id: str, reason: Optional[str] = None,
-               txn_id: Optional[int] = None) -> Awaitable[dict]:
+               txn_id: Optional[int] = None, timestamp: Optional[int] = None) -> Awaitable[dict]:
         txn_id = txn_id or str(self.client.txn_id) + str(int(time() * 1000))
         self.client.txn_id += 1
         content = {}
@@ -468,7 +479,7 @@ class IntentAPI:
             content["reason"] = reason
         return self.client.request("PUT",
                                    f"/rooms/{quote(room_id)}/redact/{quote(event_id)}/{txn_id}",
-                                   content)
+                                   content, timestamp=timestamp)
 
     @staticmethod
     def _get_event_url(room_id: str, event_type: str, txn_id: int) -> str:
@@ -481,7 +492,7 @@ class IntentAPI:
         return f"/rooms/{quote(room_id)}/send/{quote(event_type)}/{quote(txn_id)}"
 
     async def send_event(self, room_id: str, event_type: str, content: dict,
-                         txn_id: Optional[int] = None) -> dict:
+                         txn_id: Optional[int] = None, **kwargs) -> dict:
         if not room_id:
             raise ValueError("Room ID not given")
         elif not event_type:
@@ -494,7 +505,7 @@ class IntentAPI:
 
         url = self._get_event_url(room_id, event_type, txn_id)
 
-        return await self.client.request("PUT", url, content)
+        return await self.client.request("PUT", url, content, **kwargs)
 
     @staticmethod
     def _get_state_url(room_id: str, event_type: str, state_key: Optional[str] = "") -> str:
@@ -508,7 +519,7 @@ class IntentAPI:
         return url
 
     async def send_state_event(self, room_id: str, event_type: str, content: dict,
-                               state_key: Optional[str] = "") -> dict:
+                               state_key: Optional[str] = "", **kwargs) -> dict:
         if not room_id:
             raise ValueError("Room ID not given")
         elif not event_type:
@@ -517,7 +528,7 @@ class IntentAPI:
         has_pl = await self._ensure_has_power_level_for(room_id, event_type, is_state_event=True)
         if has_pl:
             url = self._get_state_url(room_id, event_type, state_key)
-            return await self.client.request("PUT", url, content)
+            return await self.client.request("PUT", url, content, **kwargs)
 
     async def get_state_event(self, room_id: str, event_type: str, state_key: Optional[str] = ""
                               ) -> dict:
@@ -591,7 +602,7 @@ class IntentAPI:
     def _register(self) -> Awaitable[dict]:
         content = {"username": self.localpart}
         query_params = {"kind": "user"}
-        return self.client.request("POST", "/register", content, query_params)
+        return self.client.request("POST", "/register", content, query_params=query_params)
 
     async def ensure_registered(self):
         if self.state_store.is_registered(self.mxid):
