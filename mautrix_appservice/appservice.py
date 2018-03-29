@@ -17,7 +17,7 @@
 #
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
 from contextlib import contextmanager
-from typing import Optional, Callable, Awaitable
+from typing import Optional, Callable, Awaitable, Union
 from aiohttp import web
 import aiohttp
 import asyncio
@@ -33,7 +33,7 @@ HandlerFunc = Callable[[dict], Awaitable]
 class AppService:
     def __init__(self, server: str, domain: str, as_token: str, hs_token: str, bot_localpart: str,
                  loop: Optional[asyncio.AbstractEventLoop] = None,
-                 log: Optional[logging.Logger] = None, verify_ssl: bool = True,
+                 log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None):
         self.server = server
         self.domain = domain
