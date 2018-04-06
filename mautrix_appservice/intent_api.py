@@ -421,6 +421,15 @@ class IntentAPI:
             "m.relates_to": relates_to or None,
         }, **kwargs)
 
+    def send_sticker(self, room_id: str, url: str, info: Optional[dict] = None, text: str = None,
+                     relates_to: Optional[dict] = None, **kwargs) -> Awaitable[dict]:
+        return self.send_event(room_id, "m.sticker", {
+            "url": url,
+            "body": text or "",
+            "info": info or {},
+            "m.relates_to": relates_to or None,
+        }, **kwargs)
+
     def send_text(self, room_id: str, text: str, html: Optional[str] = None,
                   msgtype: str = "m.text", relates_to: Optional[str] = None, **kwargs
                   ) -> Awaitable[dict]:
