@@ -299,9 +299,9 @@ class IntentAPI:
 
     def set_room_avatar(self, room_id: str, avatar_url: str, info: Optional[dict] = None, **kwargs
                         ) -> Awaitable[dict]:
-        content = {
-            "url": avatar_url
-        }
+        content = {}
+        if avatar_url:
+            content["url"] = avatar_url
         if info:
             content["info"] = info
         return self.send_state_event(room_id, "m.room.avatar", content, **kwargs)
