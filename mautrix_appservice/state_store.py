@@ -10,7 +10,7 @@ class StateStore:
 
         # Persistent storage
         self.registrations = set()
-        self.memberships = {}
+        self.members = {}
         self.power_levels = {}
 
         # Non-persistent storage
@@ -25,7 +25,7 @@ class StateStore:
 
         json.dump({
             "registrations": list(self.registrations),
-            "memberships": self.memberships,
+            "members": self.members,
             "power_levels": self.power_levels,
         }, output)
 
@@ -44,8 +44,8 @@ class StateStore:
         data = json.load(input_source)
         if "registrations" in data:
             self.registrations = set(data["registrations"])
-        if "memberships" in data:
-            self.memberships = data["memberships"]
+        if "members" in data:
+            self.members = data["members"]
         if "power_levels" in data:
             self.power_levels = data["power_levels"]
 
@@ -86,17 +86,41 @@ class StateStore:
         self.registrations.add(user)
         self._autosave()
 
+    def update_state(self, event: dict):
+        event_type = event["type"]
+        if event_type == "m.room.power_levels":
+            self.set_power_levels(event["room_id"], event["content"])
+        elif event_type == "m.room.member":
+            self.set_member(event["room_id"], event["state_key"], event["content"])
+
+    def get_member(self, room: str, user: str) -> dict:
+        return self.members.get(room, {}).get(user, {})
+
+    def set_member(self, room: str, user: str, member: dict):
+        if room not in self.members:
+            self.members[room] = {}
+        self.members[room][user] = member
+        self._autosave()
+
+    def set_membership(self, room: str, user: str, membership: str):
+        if room not in self.members:
+            self.members[room] = {
+                user: {
+                    "membership": membership
+                }
+            }
+        elif user not in self.members[room]:
+            self.members[room][user] = {
+                "membership": membership
+            }
+        else:
+            self.members[room][user]["membership"] = membership
+
     def get_membership(self, room: str, user: str) -> str:
-        return self.memberships.get(room, {}).get(user, "left")
+        return self.get_member(room, user).get("membership", "left")
 
     def is_joined(self, room: str, user: str) -> bool:
         return self.get_membership(room, user) == "join"
-
-    def set_membership(self, room: str, user: str, membership: str):
-        if room not in self.memberships:
-            self.memberships[room] = {}
-        self.memberships[room][user] = membership
-        self._autosave()
 
     def joined(self, room: str, user: str):
         return self.set_membership(room, user, "join")

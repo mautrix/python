@@ -360,6 +360,19 @@ class IntentAPI:
             "join_rule": join_rule,
         }, **kwargs)
 
+    async def get_displayname(self, room_id: str, user_id: str, ignore_cache=False) -> str:
+        return (await self.get_member_info(room_id, user_id, ignore_cache)).get("displayname", None)
+
+    async def get_avatar_url(self, room_id: str, user_id: str, ignore_cache=False) -> str:
+        return (await self.get_member_info(room_id, user_id, ignore_cache)).get("avatar_url", None)
+
+    async def get_member_info(self, room_id: str, user_id: str, ignore_cache=False) -> dict:
+        member = self.state_store.get_member(room_id, user_id)
+        if len(member) == 0 or ignore_cache:
+            event = await self.get_state_event(room_id, "m.room.member", user_id)
+            member = event.get("content", {})
+        return member
+
     async def get_event(self, room_id: str, event_id: str) -> dict:
         await self.ensure_joined(room_id)
         return await self.client.request("GET", f"/rooms/{room_id}/event/{event_id}")
@@ -532,7 +545,14 @@ class IntentAPI:
             raise ValueError("Event type not given")
         await self.ensure_joined(room_id)
         url = self._get_state_url(room_id, event_type, state_key)
-        return await self.client.request("GET", url)
+        content = await self.client.request("GET", url)
+        self.state_store.update_state({
+            "type": event_type,
+            "room_id": room_id,
+            "state_key": state_key,
+            "content": content,
+        })
+        return content
 
     def join_room(self, room_id: str):
         if not room_id:
