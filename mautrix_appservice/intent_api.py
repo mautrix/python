@@ -18,7 +18,7 @@ except ImportError:
     magic = None
 
 from .state_store import StateStore
-from .errors import MatrixError, MatrixRequestError, IntentError
+from .errors import MatrixError, MatrixRequestError, MatrixResponseError, IntentError
 
 
 class HTTPAPI:
@@ -45,6 +45,15 @@ class HTTPAPI:
             self.children = {}
 
     def user(self, user: str) -> "ChildHTTPAPI":
+        """
+        Get a child HTTPAPI instance.
+
+        Args:
+            user: The Matrix ID of the user whose API to get.
+
+        Returns:
+            A HTTPAPI instance that always uses the given Matrix ID.
+        """
         try:
             return self.children[user]
         except KeyError:
@@ -53,11 +62,26 @@ class HTTPAPI:
             return child
 
     def bot_intent(self) -> "IntentAPI":
+        """
+        Get the intent API for the appservice bot.
+
+        Returns:
+            The IntentAPI for the appservice bot.
+        """
         if self._bot_intent:
             return self._bot_intent
         return IntentAPI(self.bot_mxid, self, state_store=self.state_store, log=self.intent_log)
 
     def intent(self, user: str) -> "IntentAPI":
+        """
+        Get the intent API for a specific user.
+
+        Args:
+            user: The Matrix ID of the user whose intent API to get.
+
+        Returns:
+            The IntentAPI for the given user.
+        """
         return IntentAPI(user, self.user(user), self.bot_intent(), self.state_store,
                          self.intent_log)
 
@@ -93,6 +117,23 @@ class HTTPAPI:
                 headers: Optional[Dict[str, str]] = None,
                 query_params: Optional[Dict[str, Any]] = None,
                 api_path: str = "/_matrix/client/r0") -> Awaitable[dict]:
+        """
+        Make a raw HTTP request.
+
+        Args:
+            method: The HTTP method to use.
+            path: The API endpoint to call. Does not include the base path (e.g. /_matrix/client/r0).
+            content: The content to post as a dict (json) or bytes/str (raw).
+            timestamp: The timestamp query param used for timestamp massaging.
+            external_url: The external_url field to send in the content
+                (only applicable if content is dict).
+            headers: The dict of HTTP headers to send.
+            query_params: The dict of query parameters to send.
+            api_path: The base API path.
+
+        Returns:
+            The response as a dict.
+        """
         content = content or {}
         headers = headers or {}
         query_params = query_params or {}
@@ -102,7 +143,7 @@ class HTTPAPI:
             if isinstance(timestamp, datetime):
                 timestamp = int(timestamp.replace(tzinfo=timezone.utc).timestamp() * 1000)
             query_params["ts"] = timestamp
-        if external_url is not None:
+        if isinstance(content, dict) and external_url is not None:
             content["external_url"] = external_url
 
         method = method.upper()
@@ -122,36 +163,28 @@ class HTTPAPI:
         endpoint = self.base_url + api_path + path
         return self._send(method, endpoint, content, query_params, headers or {})
 
-    def get_download_url(self, mxcurl: str) -> str:
-        if mxcurl.startswith('mxc://'):
-            return f"{self.base_url}/_matrix/media/r0/download/{mxcurl[6:]}"
+    def get_download_url(self, mxc_uri: str) -> str:
+        """
+        Get the full URL to download a mxc:// URI.
+
+        Args:
+            mxc_uri: The MXC URI whose full URL to get.
+
+        Returns:
+            The full URL.
+
+        Raises:
+            ValueError: If `mxc_uri` doesn't begin with mxc://
+        """
+        if mxc_uri.startswith('mxc://'):
+            return f"{self.base_url}/_matrix/media/r0/download/{mxc_uri[6:]}"
         else:
-            raise ValueError("MXC URL did not begin with 'mxc://'")
-
-    async def get_display_name(self, user_id: str) -> Optional[str]:
-        content = await self.request("GET", f"/profile/{user_id}/displayname")
-        return content.get('displayname', None)
-
-    async def get_avatar_url(self, user_id: str) -> Optional[str]:
-        content = await self.request("GET", f"/profile/{user_id}/avatar_url")
-        return content.get('avatar_url', None)
-
-    async def get_room_id(self, room_alias: str) -> Optional[str]:
-        content = await self.request("GET", f"/directory/room/{quote(room_alias)}")
-        return content.get("room_id", None)
-
-    def set_typing(self, room_id: str, is_typing: bool = True, timeout: int = 5000,
-                   user: str = None) -> Awaitable[dict]:
-        content = {
-            "typing": is_typing
-        }
-        if is_typing:
-            content["timeout"] = timeout
-        user = user or self.identity
-        return self.request("PUT", f"/rooms/{room_id}/typing/{user}", content)
+            raise ValueError("MXC URI did not begin with 'mxc://'")
 
 
 class ChildHTTPAPI(HTTPAPI):
+    """ChildHTTPAPI is a simple proxy to a HTTPAPI that always uses a specific user."""
+
     def __init__(self, user: str, parent: HTTPAPI):
         super().__init__(parent.base_url, parent.domain, parent.bot_mxid, parent.token, user,
                          parent.log, parent.state_store, parent.session, child=True)
@@ -167,6 +200,11 @@ class ChildHTTPAPI(HTTPAPI):
 
 
 class IntentAPI:
+    """
+    IntentAPI is a high-level wrapper around the HTTPAPI that provides many easy-to-use functions
+    for accessing the client-server API.
+    """
+
     mxid_regex = re.compile("@(.+):(.+)")
 
     def __init__(self, mxid: str, client: HTTPAPI, bot: "IntentAPI" = None,
@@ -184,6 +222,18 @@ class IntentAPI:
         self.state_store = state_store
 
     def user(self, user: str) -> "IntentAPI":
+        """
+        Get the intent API for a specific user. This is just a proxy to :func:`~HTTPAPI.intent`.
+
+        You should only call this method for the bot user. Calling it with child intent APIs will
+        result in a warning log.
+
+        Args:
+            user: The Matrix ID of the user whose intent API to get.
+
+        Returns:
+            The IntentAPI for the given user.
+        """
         if not self.bot:
             return self.client.intent(user)
         else:
@@ -193,41 +243,110 @@ class IntentAPI:
     # region User actions
 
     async def get_joined_rooms(self) -> List[str]:
+        """
+        Get the list of rooms the user is in. See also: `API reference`_
+
+        Returns:
+            The list of room IDs the user is in.
+
+        .. _API reference:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#get-matrix-client-r0-joined-rooms
+        """
         await self.ensure_registered()
         response = await self.client.request("GET", "/joined_rooms")
         return response["joined_rooms"]
 
-    async def set_display_name(self, name: str) -> dict:
+    async def set_display_name(self, name: str):
+        """
+        Set the display name of the user. See also: `API reference`_
+
+        Args:
+            name: The new display name for the user.
+
+        .. _API reference:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#put-matrix-client-r0-profile-userid-displayname
+        """
         await self.ensure_registered()
         content = {"displayname": name}
-        return await self.client.request("PUT", f"/profile/{self.mxid}/displayname", content)
+        await self.client.request("PUT", f"/profile/{self.mxid}/displayname", content)
 
-    async def set_presence(self, status: str = "online", ignore_cache: bool = False
-                           ) -> Optional[dict]:
+    async def set_presence(self, status: str = "online", ignore_cache: bool = False):
+        """
+        Set the online status of the user. See also: `API reference`_
+
+        Args:
+            status: The online status of the user. Allowed values: "online", "offline", "unavailable".
+            ignore_cache: Whether or not to set presence even if the cache says the presence is
+                already set to that value.
+
+        .. _API reference:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#put-matrix-client-r0-presence-userid-status
+        """
         await self.ensure_registered()
         if not ignore_cache and self.state_store.has_presence(self.mxid, status):
-            return None
+            return
+
         content = {
             "presence": status
         }
         resp = await self.client.request("PUT", f"/presence/{self.mxid}/status", content)
         self.state_store.set_presence(self.mxid, status)
-        return resp
 
-    async def set_avatar(self, url: str) -> dict:
+    async def set_avatar(self, url: str):
+        """
+        Set the avatar of the user. See also: `API reference`_
+
+        Args:
+            url: The new avatar URL for the user. Must be a MXC URI.
+
+        .. _API reference:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#put-matrix-client-r0-profile-userid-avatar-url
+        """
         await self.ensure_registered()
         content = {"avatar_url": url}
-        return await self.client.request("PUT", f"/profile/{self.mxid}/avatar_url", content)
+        await self.client.request("PUT", f"/profile/{self.mxid}/avatar_url", content)
 
-    async def upload_file(self, data: bytes, mime_type: Optional[str] = None) -> dict:
+    async def upload_file(self, data: bytes, mime_type: Optional[str] = None) -> str:
+        """
+        Upload a file to the content repository. See also: `API reference`_
+
+        Args:
+            data: The data to upload.
+            mime_type: The MIME type to send with the upload request.
+
+        Returns:
+            The MXC URI to the uploaded file.
+
+        Raises:
+            MatrixResponseError: If the response does not contain a ``content_uri`` field.
+
+        .. _API reference:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#post-matrix-media-r0-upload
+        """
         await self.ensure_registered()
         if magic:
             mime_type = mime_type or magic.from_buffer(data, mime=True)
-        return await self.client.request("POST", "", content=data,
+        resp = await self.client.request("POST", "", content=data,
                                          headers={"Content-Type": mime_type},
                                          api_path="/_matrix/media/r0/upload")
+        try:
+            return resp["content_uri"]
+        except KeyError:
+            raise MatrixResponseError("Media repo upload response did not contain content_uri.")
 
     async def download_file(self, url: str) -> bytes:
+        """
+        Download a file from the content repository. See also: `API reference`_
+
+        Args:
+            url: The MXC URI to download.
+
+        Returns:
+            The raw downloaded data.
+
+        .. _API reference:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#get-matrix-media-r0-download-servername-mediaid
+        """
         await self.ensure_registered()
         url = self.client.get_download_url(url)
         async with self.client.session.get(url) as response:
@@ -239,14 +358,54 @@ class IntentAPI:
     async def create_room(self, alias: Optional[str] = None, is_public: bool = False,
                           name: Optional[str] = None, topic: Optional[str] = None,
                           is_direct: bool = False, invitees: Optional[List[str]] = None,
-                          initial_state: Optional[dict] = None,
-                          guests_can_join: bool = False) -> dict:
+                          initial_state: Optional[dict] = None) -> str:
+        """
+        Create a new room. See also: `API reference`_
+
+        Args:
+            alias: The desired room alias **local part**. If this is included, a room alias will be
+                created and mapped to the newly created room. The alias will belong on the same
+                homeserver which created the room. For example, if this was set to "foo" and sent to
+                the homeserver "example.com" the complete room alias would be ``#foo:example.com``.
+            is_public: This flag sets the state event preset to ``public_chat``, which sets
+                ``join_rules`` to ``public``. Defaults to false, which sets ``join_rules`` to
+                ``invite``.
+            name: If this is included, an ``m.room.name`` event will be sent into the room to
+                indicate the name of the room. See `Room Events`_ for more information on
+                ``m.room.name``.
+            topic: If this is included, an ``m.room.topic`` event will be sent into the room to
+                indicate the topic for the room. See `Room Events`_ for more information on
+                ``m.room.topic``.
+            is_direct: This flag makes the server set the ``is_direct`` flag on the
+                ``m.room.member`` events sent to the users in ``invite`` and ``invite_3pid``. See
+                `Direct Messaging`_ for more information.
+            invitees: A list of user IDs to invite to the room. This will tell the server to invite
+                everyone in the list to the newly created room.
+            initial_state: A list of state events to set in the new room. This allows the user to
+                override the default state events set in the new room. The expected format of the
+                state events are an object with type, state_key and content keys set.
+
+                Takes precedence over events set by `is_public`, but gets overriden by ``name`` and
+                ``topic keys``.
+
+        Returns:
+            The ID of the newly created room.
+
+        Raises:
+            MatrixResponseError: If the response does not contain a ``room_id`` field.
+
+        .. _API reference:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#post-matrix-client-r0-createroom
+        .. _Room Events:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#room-events
+        .. _Direct Messaging:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#direct-messaging
+        """
         await self.ensure_registered()
         content = {
             "visibility": "private",
             "is_direct": is_direct,
             "preset": "public_chat" if is_public else "private_chat",
-            "guests_can_join": guests_can_join,
         }
         if alias:
             content["room_alias_name"] = alias
@@ -259,7 +418,11 @@ class IntentAPI:
         if initial_state:
             content["initial_state"] = initial_state
 
-        return await self.client.request("POST", "/createRoom", content)
+        resp = await self.client.request("POST", "/createRoom", content)
+        try:
+            return resp["room_id"]
+        except KeyError:
+            raise MatrixResponseError("Room create response did not contain room_id.")
 
     def _invite_direct(self, room_id: str, user_id: str) -> Awaitable[dict]:
         content = {"user_id": user_id}
@@ -267,6 +430,20 @@ class IntentAPI:
 
     async def invite(self, room_id: str, user_id: str, check_cache: bool = False
                      ) -> Optional[dict]:
+        """
+        Invite a user to participate in a particular room. See also: `API reference`_
+
+        Args:
+            room_id: The room identifier (not alias) to which to invite the user.
+            user_id: The fully qualified user ID of the invitee.
+            check_cache: Whether or not to check the state cache before inviting.
+                If true, the actual invite HTTP request will only be made if the user is not in the
+                room according to local state caches.
+
+        Returns:
+        .. _API reference:
+           https://matrix.org/docs/spec/client_server/r0.3.0.html#post-matrix-client-r0-createroom
+        """
         await self.ensure_joined(room_id)
         try:
             ok_states = {"invite", "join"}
