@@ -8,7 +8,7 @@ import asyncio
 import logging
 
 from .intent_api import HTTPAPI, IntentAPI
-from .state_store import StateStore
+from .state_store import StateStore, JSONStateStore
 
 QueryFunc = Callable[[web.Request], Awaitable[Optional[web.Response]]]
 HandlerFunc = Callable[[dict], Awaitable]
@@ -18,15 +18,20 @@ class AppService:
     def __init__(self, server: str, domain: str, as_token: str, hs_token: str, bot_localpart: str,
                  loop: Optional[asyncio.AbstractEventLoop] = None,
                  log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
-                 query_user: QueryFunc = None, query_alias: QueryFunc = None):
+                 query_user: QueryFunc = None, query_alias: QueryFunc = None,
+                 state_store: StateStore = None):
         self.server = server
         self.domain = domain
         self.verify_ssl = verify_ssl
         self.as_token = as_token
         self.hs_token = hs_token
         self.bot_mxid = f"@{bot_localpart}:{domain}"
-        self.state_store = StateStore(autosave_file="mx-state.json")
-        self.state_store.load("mx-state.json")
+        if isinstance(state_store, StateStore):
+            self.state_store = state_store
+        else:
+            file = state_store if isinstance(state_store, str) else "mx-state.json"
+            self.state_store = JSONStateStore(autosave_file=file)
+            self.state_store.load(file)
 
         self.transactions = []
 
