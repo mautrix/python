@@ -148,7 +148,7 @@ class AppService:
 
         transaction_id = request.match_info["transaction_id"]
         if transaction_id in self.transactions:
-            return web.Response(status=200)
+            return web.json_response({})  # 200 OK
 
         json = await request.json()
 
