@@ -1,5 +1,5 @@
 # -*- coding: future_fstrings -*-
-from urllib.parse import quote
+from urllib.parse import quote as urllib_quote
 from time import time
 from json.decoder import JSONDecodeError
 from typing import Optional, Dict, Awaitable, List, Union, Tuple, Any
@@ -19,6 +19,10 @@ except ImportError:
 
 from .state_store import StateStore
 from .errors import MatrixError, MatrixRequestError, MatrixResponseError, IntentError
+
+
+def quote(*args, **kwargs):
+    return urllib_quote(*args, **kwargs, safe="")
 
 
 class HTTPAPI:
