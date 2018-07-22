@@ -28,7 +28,8 @@ def quote(*args, **kwargs):
 class HTTPAPI:
     def __init__(self, base_url: str, domain: str = None, bot_mxid: str = None, token: str = None,
                  identity: str = None, log: Logger = None, state_store: StateStore = None,
-                 client_session: ClientSession = None, child: bool = False):
+                 client_session: ClientSession = None, child: bool = False, real_user: bool = False,
+                 real_user_content_key: Optional[str] = None):
         self.base_url = base_url
         self.token = token
         self.identity = identity
@@ -39,14 +40,17 @@ class HTTPAPI:
         self.bot_mxid = bot_mxid
         self._bot_intent = None
         self.state_store = state_store
+        self.is_real_user = real_user
+        self.real_user_content_key = real_user_content_key
 
-        if child:
+        if child or real_user:
             self.log = log
         else:
             self.intent_log = log.getChild("intent")
             self.log = log.getChild("api")
             self.txn_id = 0
             self.children = {}
+            self.real_users = {}
 
     def user(self, user: str) -> "ChildHTTPAPI":
         """
@@ -58,11 +62,27 @@ class HTTPAPI:
         Returns:
             A HTTPAPI instance that always uses the given Matrix ID.
         """
+        if self.is_real_user:
+            raise ValueError("Can't get child of real user")
+
         try:
             return self.children[user]
         except KeyError:
             child = ChildHTTPAPI(user, self)
             self.children[user] = child
+            return child
+
+    def real_user(self, mxid: str, token: str) -> "HTTPAPI":
+        if self.is_real_user:
+            raise ValueError("Can't get child of real user")
+
+        try:
+            return self.real_users[mxid]
+        except KeyError:
+            child = self.__class__(self.base_url, self.domain, None, token, mxid, self.log,
+                                   self.state_store, self.session, real_user=True,
+                                   real_user_content_key=self.real_user_content_key)
+            self.real_users[mxid] = child
             return child
 
     def bot_intent(self) -> "IntentAPI":
@@ -72,11 +92,12 @@ class HTTPAPI:
         Returns:
             The IntentAPI for the appservice bot.
         """
-        if self._bot_intent:
-            return self._bot_intent
-        return IntentAPI(self.bot_mxid, self, state_store=self.state_store, log=self.intent_log)
+        if not self._bot_intent:
+            self._bot_intent = IntentAPI(self.bot_mxid, self, state_store=self.state_store,
+                                         log=self.intent_log)
+        return self._bot_intent
 
-    def intent(self, user: str) -> "IntentAPI":
+    def intent(self, user: str = None, token: Optional[str] = None) -> "IntentAPI":
         """
         Get the intent API for a specific user.
 
@@ -86,6 +107,11 @@ class HTTPAPI:
         Returns:
             The IntentAPI for the given user.
         """
+        if self.is_real_user:
+            raise ValueError("Can't get child intent of real user")
+        if token:
+            return IntentAPI(user, self.real_user(user, token), self.bot_intent(), self.state_store,
+                             self.intent_log)
         return IntentAPI(user, self.user(user), self.bot_intent(), self.state_store,
                          self.intent_log)
 
@@ -154,18 +180,49 @@ class HTTPAPI:
         if method not in ["GET", "PUT", "DELETE", "POST"]:
             raise MatrixError("Unsupported HTTP method: %s" % method)
 
-        if "Content-Type" not in headers:
+        if content and "Content-Type" not in headers:
             headers["Content-Type"] = "application/json"
-        if headers["Content-Type"] == "application/json":
+        if headers.get("Content-Type", None) == "application/json":
             content = json.dumps(content)
 
-        if self.identity:
+        if self.identity and not self.is_real_user:
             query_params["user_id"] = self.identity
 
         self._log_request(method, path, content, query_params)
 
         endpoint = self.base_url + api_path + path
         return self._send(method, endpoint, content, query_params, headers or {})
+
+    def sync(self, since=None, timeout_ms=30000, filter=None, full_state=None, set_presence=None):
+        """ Perform a sync request.
+        Args:
+            since (str): Optional. A token which specifies where to continue a sync from.
+            timeout_ms (int): Optional. The time in m1illiseconds to wait.
+            filter (int|str): Either a Filter ID or a JSON string.
+            full_state (bool): Return the full state for every room the user has joined
+                Defaults to false.
+            set_presence (str): Should the client be marked as "online" or" offline"
+        """
+        request = {
+            "timeout": int(timeout_ms)
+        }
+
+        if since:
+            request["since"] = since
+        if filter:
+            request["filter"] = filter
+        if full_state:
+            request["full_state"] = json.dumps(full_state)
+        if set_presence:
+            request["set_presence"] = set_presence
+        return self.request("GET", "/sync", query_params=request)
+
+    def get_filter(self, user_id: str, filter_id: str) -> Awaitable[dict]:
+        return self.request("GET", f"/user/{user_id}/filter/{filter_id}")
+
+    async def create_filter(self, user_id: str, filter_params: dict) -> str:
+        resp = await self.request("POST", f"/user/{user_id}/filter", filter_params)
+        return resp.get("filter_id", None)
 
     def get_download_url(self, mxc_uri: str) -> str:
         """
@@ -191,7 +248,8 @@ class ChildHTTPAPI(HTTPAPI):
 
     def __init__(self, user: str, parent: HTTPAPI):
         super().__init__(parent.base_url, parent.domain, parent.bot_mxid, parent.token, user,
-                         parent.log, parent.state_store, parent.session, child=True)
+                         parent.log, parent.state_store, parent.session, child=True,
+                         real_user_content_key=parent.real_user_content_key)
         self.parent = parent
 
     @property
@@ -225,7 +283,7 @@ class IntentAPI:
 
         self.state_store = state_store
 
-    def user(self, user: str) -> "IntentAPI":
+    def user(self, user: str, token: Optional[str] = None) -> "IntentAPI":
         """
         Get the intent API for a specific user. This is just a proxy to :func:`~HTTPAPI.intent`.
 
@@ -234,15 +292,16 @@ class IntentAPI:
 
         Args:
             user: The Matrix ID of the user whose intent API to get.
+            token: The access token to use for the Matrix ID.
 
         Returns:
             The IntentAPI for the given user.
         """
         if not self.bot:
-            return self.client.intent(user)
+            return self.client.intent(user, token)
         else:
             self.log.warning("Called IntentAPI#user() of child intent object.")
-            return self.bot.client.intent(user)
+            return self.bot.client.intent(user, token)
 
     # region User actions
 
@@ -541,6 +600,16 @@ class IntentAPI:
             "join_rule": join_rule,
         }, **kwargs)
 
+    async def get_profile(self, user_id: str) -> dict:
+        return await self.client.request("GET", f"/profile/{quote(user_id)}")
+
+    async def whoami(self) -> Optional[str]:
+        try:
+            resp = await self.client.request("GET", f"/account/whoami")
+            return resp.get("user_id", None)
+        except MatrixError:
+            return None
+
     async def get_displayname(self, room_id: str, user_id: str, ignore_cache=False) -> str:
         return (await self.get_member_info(room_id, user_id, ignore_cache)).get("displayname", None)
 
@@ -687,6 +756,9 @@ class IntentAPI:
             raise ValueError("Event type not given")
         await self.ensure_joined(room_id)
         await self._ensure_has_power_level_for(room_id, event_type)
+
+        if self.client.is_real_user and self.client.real_user_content_key:
+            content[self.client.real_user_content_key] = True
 
         txn_id = txn_id or str(self.client.txn_id) + str(int(time() * 1000))
         self.client.txn_id += 1

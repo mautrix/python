@@ -19,6 +19,7 @@ class AppService:
                  loop: Optional[asyncio.AbstractEventLoop] = None,
                  log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
+                 real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
                  state_store: StateStore = None):
         self.server = server
         self.domain = domain
@@ -26,6 +27,7 @@ class AppService:
         self.as_token = as_token
         self.hs_token = hs_token
         self.bot_mxid = f"@{bot_localpart}:{domain}"
+        self.real_user_content_key = real_user_content_key
         if isinstance(state_store, StateStore):
             self.state_store = state_store
         else:
@@ -85,6 +87,7 @@ class AppService:
         self._http_session = aiohttp.ClientSession(loop=self.loop, connector=connector)
         self._intent = HTTPAPI(base_url=self.server, domain=self.domain, bot_mxid=self.bot_mxid,
                                token=self.as_token, log=self.log, state_store=self.state_store,
+                               real_user_content_key=self.real_user_content_key,
                                client_session=self._http_session).bot_intent()
 
         yield self.loop.create_server(self.app.make_handler(), host, port)
