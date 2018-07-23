@@ -43,7 +43,11 @@ class HTTPAPI:
         self.is_real_user = real_user
         self.real_user_content_key = real_user_content_key
 
-        if child or real_user:
+        if real_user:
+            self.log = log
+            self.intent_log = log.getChild("intent")
+            self.txn_id = 0
+        elif child:
             self.log = log
         else:
             self.intent_log = log.getChild("intent")
@@ -180,7 +184,7 @@ class HTTPAPI:
         if method not in ["GET", "PUT", "DELETE", "POST"]:
             raise MatrixError("Unsupported HTTP method: %s" % method)
 
-        if content and "Content-Type" not in headers:
+        if "Content-Type" not in headers:
             headers["Content-Type"] = "application/json"
         if headers.get("Content-Type", None) == "application/json":
             content = json.dumps(content)
