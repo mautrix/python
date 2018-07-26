@@ -425,7 +425,7 @@ class IntentAPI:
     async def create_room(self, alias: Optional[str] = None, is_public: bool = False,
                           name: Optional[str] = None, topic: Optional[str] = None,
                           is_direct: bool = False, invitees: Optional[List[str]] = None,
-                          initial_state: Optional[dict] = None) -> str:
+                          initial_state: Optional[List[dict]] = None) -> str:
         """
         Create a new room. See also: `API reference`_
 
@@ -526,8 +526,8 @@ class IntentAPI:
             if "is already in the room" in e.message:
                 self.state_store.joined(room_id, user_id)
 
-    def set_room_avatar(self, room_id: str, avatar_url: str, info: Optional[dict] = None, **kwargs
-                        ) -> Awaitable[dict]:
+    def set_room_avatar(self, room_id: str, avatar_url: Optional[str], info: Optional[dict] = None,
+                        **kwargs) -> Awaitable[dict]:
         content = {}
         if avatar_url:
             content["url"] = avatar_url
@@ -554,6 +554,10 @@ class IntentAPI:
     def set_room_name(self, room_id: str, name: str, **kwargs) -> Awaitable[dict]:
         body = {"name": name}
         return self.send_state_event(room_id, "m.room.name", body, **kwargs)
+
+    def set_room_topic(self, room_id: str, topic: str, **kwargs) -> Awaitable[dict]:
+        body = {"topic": topic}
+        return self.send_state_event(room_id, "m.room.topic", body, **kwargs)
 
     async def get_power_levels(self, room_id: str, ignore_cache: bool = False) -> dict:
         await self.ensure_joined(room_id)
@@ -683,7 +687,7 @@ class IntentAPI:
         }, **kwargs)
 
     def send_text(self, room_id: str, text: str, html: Optional[str] = None,
-                  msgtype: str = "m.text", relates_to: Optional[str] = None, **kwargs
+                  msgtype: str = "m.text", relates_to: Optional[dict] = None, **kwargs
                   ) -> Awaitable[dict]:
         if html:
             if not text:
@@ -836,7 +840,7 @@ class IntentAPI:
             raise ValueError("Room ID not given")
         return self.client.request("GET", f"/rooms/{quote(room_id)}/members")
 
-    async def get_room_members(self, room_id: str, allowed_memberships: Tuple[str] = ("join",)
+    async def get_room_members(self, room_id: str, allowed_memberships: Tuple[str, ...] = ("join",)
                                ) -> List[str]:
         memberships = await self.get_room_memberships(room_id)
         return [membership["state_key"] for membership in memberships["chunk"] if
