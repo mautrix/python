@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="mautrix-appservice",
-    version="0.3.2",
+    version="0.3.3",
     url="https://github.com/tulir/mautrix-appservice-python",
 
     author="Tulir Asokan",
