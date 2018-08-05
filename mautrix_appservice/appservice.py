@@ -20,7 +20,7 @@ class AppService:
                  log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
-                 state_store: StateStore = None):
+                 state_store: StateStore = None, aiohttp_params: dict = None):
         self.server = server
         self.domain = domain
         self.verify_ssl = verify_ssl
@@ -52,7 +52,7 @@ class AppService:
 
         self.event_handlers = []
 
-        self.app = web.Application(loop=self.loop)
+        self.app = web.Application(loop=self.loop, **aiohttp_params)
         self.app.router.add_route("PUT", "/transactions/{transaction_id}",
                                   self._http_handle_transaction)
         self.app.router.add_route("GET", "/rooms/{alias}", self._http_query_alias)
