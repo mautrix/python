@@ -563,9 +563,11 @@ class IntentAPI:
         await self.ensure_joined(room_id)
         if not ignore_cache:
             try:
-                return self.state_store.get_power_levels(room_id)
+                levels = self.state_store.get_power_levels(room_id)
             except KeyError:
-                pass
+                levels = None
+            if levels:
+                return levels
         levels = await self.client.request("GET",
                                            f"/rooms/{quote(room_id)}/state/m.room.power_levels")
         self.state_store.set_power_levels(room_id, levels)
