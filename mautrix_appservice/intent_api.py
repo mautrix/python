@@ -840,9 +840,16 @@ class IntentAPI:
             raise ValueError("Room ID not given")
         return self.client.request("GET", f"/rooms/{quote(room_id)}/members")
 
+    def get_room_joined_memberships(self, room_id: str) -> Awaitable[dict]:
+        if not room_id:
+            raise ValueError("Room ID not given")
+        return self.client.request("GET", f"/rooms/{quote(room_id)}/joined_members")
+
     async def get_room_members(self, room_id: str, allowed_memberships: Tuple[str, ...] = ("join",)
                                ) -> List[str]:
-        memberships = await self.get_room_memberships(room_id)
+        memberships = (await self.get_room_joined_memberships(room_id)
+                       if allowed_memberships == ("join",)
+                       else await self.get_room_memberships(room_id))
         return [membership["state_key"] for membership in memberships["chunk"] if
                 membership["content"]["membership"] in allowed_memberships]
 
