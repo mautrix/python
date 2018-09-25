@@ -1,7 +1,5 @@
 from .appservice import AppService
-from .errors import MatrixError, MatrixRequestError, IntentError
-from .state_store import StateStore
-from .intent_api import IntentAPI
-
-__version__ = "0.3.6"
-__author__ = "Tulir Asokan <tulir@maunium.net>"
+from .api import (HTTPAPI, AppServiceAPI, IntentAPI,
+                  MatrixError, MatrixRequestError, MatrixResponseError, IntentError)
+from .state_store import StateStore, JSONStateStore
+from .__meta__ import __version__, __author__

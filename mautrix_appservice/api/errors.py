@@ -26,6 +26,7 @@ class MatrixRequestError(MatrixError):
         self.errcode = errcode
         self.message = message
 
+
 class MatrixResponseError(MatrixError):
     """The response from the homeserver did not fulfill expectations."""
 

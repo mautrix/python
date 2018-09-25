@@ -1,13 +1,13 @@
 # -*- coding: future_fstrings -*-
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
+from typing import Optional, Callable, Awaitable, Union, Iterator
 from contextlib import contextmanager
-from typing import Optional, Callable, Awaitable, Union
 from aiohttp import web
 import aiohttp
 import asyncio
 import logging
 
-from .intent_api import HTTPAPI, IntentAPI
+from .api import AppServiceAPI, IntentAPI
 from .state_store import StateStore, JSONStateStore
 
 QueryFunc = Callable[[web.Request], Awaitable[Optional[web.Response]]]
@@ -15,6 +15,7 @@ HandlerFunc = Callable[[dict], Awaitable]
 
 
 class AppService:
+    """The main AppService container."""
     def __init__(self, server: str, domain: str, as_token: str, hs_token: str, bot_localpart: str,
                  loop: Optional[asyncio.AbstractEventLoop] = None,
                  log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
@@ -72,7 +73,7 @@ class AppService:
             return self._http_session
 
     @property
-    def intent(self) -> IntentAPI:
+    def intent(self) -> 'IntentAPI':
         if self._intent is None:
             raise AttributeError("the intent attribute can only be used from "
                                  "within the `AppService.run` context manager")
@@ -80,15 +81,16 @@ class AppService:
             return self._intent
 
     @contextmanager
-    def run(self, host: str = "127.0.0.1", port: int = 8080):
+    def run(self, host: str = "127.0.0.1", port: int = 8080) -> Iterator[asyncio.AbstractServer]:
         connector = None
         if self.server.startswith("https://") and not self.verify_ssl:
             connector = aiohttp.TCPConnector(verify_ssl=False)
         self._http_session = aiohttp.ClientSession(loop=self.loop, connector=connector)
-        self._intent = HTTPAPI(base_url=self.server, domain=self.domain, bot_mxid=self.bot_mxid,
-                               token=self.as_token, log=self.log, state_store=self.state_store,
-                               real_user_content_key=self.real_user_content_key,
-                               client_session=self._http_session).bot_intent()
+        self._intent = AppServiceAPI(base_url=self.server, domain=self.domain,
+                                     bot_mxid=self.bot_mxid, token=self.as_token, log=self.log,
+                                     state_store=self.state_store,
+                                     real_user_content_key=self.real_user_content_key,
+                                     client_session=self._http_session).bot_intent()
 
         yield self.loop.create_server(self.app.make_handler(), host, port)
 
@@ -167,7 +169,7 @@ class AppService:
 
         return web.json_response({})
 
-    def handle_matrix_event(self, event: dict):
+    def handle_matrix_event(self, event: dict) -> None:
         async def try_handle(handler_func: HandlerFunc):
             try:
                 await handler_func(event)

@@ -1,295 +1,44 @@
 # -*- coding: future_fstrings -*-
+from typing import Optional, Dict, Awaitable, List, Tuple, TYPE_CHECKING
 from urllib.parse import quote as urllib_quote
-from time import time
-from json.decoder import JSONDecodeError
-from typing import Optional, Dict, Awaitable, List, Union, Tuple, Any
 from logging import Logger
-from datetime import datetime, timezone
-import re
-import json
-import asyncio
+from time import time
 
-from aiohttp import ClientSession
-from aiohttp.client_exceptions import ContentTypeError
+from ..state_store import StateStore
+from .errors import MatrixError, MatrixRequestError, MatrixResponseError, IntentError
+from .client import ClientAPI
 
 try:
     import magic
 except ImportError:
     magic = None
 
-from .state_store import StateStore
-from .errors import MatrixError, MatrixRequestError, MatrixResponseError, IntentError
+if TYPE_CHECKING:
+    from .appservice import AppServiceAPI
 
 
 def quote(*args, **kwargs):
     return urllib_quote(*args, **kwargs, safe="")
 
 
-class HTTPAPI:
-    def __init__(self, base_url: str, domain: str = None, bot_mxid: str = None, token: str = None,
-                 identity: str = None, log: Logger = None, state_store: StateStore = None,
-                 client_session: ClientSession = None, child: bool = False, real_user: bool = False,
-                 real_user_content_key: Optional[str] = None):
-        self.base_url = base_url
-        self.token = token
-        self.identity = identity
-        self.validate_cert = True
-        self.session = client_session
+class IntentAPI(ClientAPI):
+    """
+    IntentAPI is a high-level wrapper around the AppServiceAPI that provides many easy-to-use
+    functions for accessing the client-server API. It is designed for appservices and will
+    automatically handle many things like missing invites using the appservice bot.
+    """
 
-        self.domain = domain
-        self.bot_mxid = bot_mxid
-        self._bot_intent = None
+    def __init__(self, mxid: str, client: 'AppServiceAPI', bot: 'IntentAPI' = None,
+                 state_store: StateStore = None, log: Logger = None):
+        super(IntentAPI, self).__init__(mxid, client)
+        self.bot = bot
+        self.log = log
         self.state_store = state_store
-        self.is_real_user = real_user
-        self.real_user_content_key = real_user_content_key
 
-        if real_user:
-            self.log = log
-            self.intent_log = log.getChild("intent")
-            self.txn_id = 0
-        elif child:
-            self.log = log
-        else:
-            self.intent_log = log.getChild("intent")
-            self.log = log.getChild("api")
-            self.txn_id = 0
-            self.children = {}
-            self.real_users = {}
-
-    def user(self, user: str) -> "ChildHTTPAPI":
-        """
-        Get a child HTTPAPI instance.
-
-        Args:
-            user: The Matrix ID of the user whose API to get.
-
-        Returns:
-            A HTTPAPI instance that always uses the given Matrix ID.
-        """
-        if self.is_real_user:
-            raise ValueError("Can't get child of real user")
-
-        try:
-            return self.children[user]
-        except KeyError:
-            child = ChildHTTPAPI(user, self)
-            self.children[user] = child
-            return child
-
-    def real_user(self, mxid: str, token: str) -> "HTTPAPI":
-        if self.is_real_user:
-            raise ValueError("Can't get child of real user")
-
-        try:
-            return self.real_users[mxid]
-        except KeyError:
-            child = self.__class__(self.base_url, self.domain, None, token, mxid, self.log,
-                                   self.state_store, self.session, real_user=True,
-                                   real_user_content_key=self.real_user_content_key)
-            self.real_users[mxid] = child
-            return child
-
-    def bot_intent(self) -> "IntentAPI":
-        """
-        Get the intent API for the appservice bot.
-
-        Returns:
-            The IntentAPI for the appservice bot.
-        """
-        if not self._bot_intent:
-            self._bot_intent = IntentAPI(self.bot_mxid, self, state_store=self.state_store,
-                                         log=self.intent_log)
-        return self._bot_intent
-
-    def intent(self, user: str = None, token: Optional[str] = None) -> "IntentAPI":
+    def user(self, user: str, token: Optional[str] = None) -> 'IntentAPI':
         """
         Get the intent API for a specific user.
-
-        Args:
-            user: The Matrix ID of the user whose intent API to get.
-
-        Returns:
-            The IntentAPI for the given user.
-        """
-        if self.is_real_user:
-            raise ValueError("Can't get child intent of real user")
-        if token:
-            return IntentAPI(user, self.real_user(user, token), self.bot_intent(), self.state_store,
-                             self.intent_log)
-        return IntentAPI(user, self.user(user), self.bot_intent(), self.state_store,
-                         self.intent_log)
-
-    async def _send(self, method, endpoint, content, query_params, headers):
-        while True:
-            request = self.session.request(method, endpoint, params=query_params,
-                                           data=content, headers=headers)
-            async with request as response:
-                if response.status < 200 or response.status >= 300:
-                    errcode = message = None
-                    try:
-                        response_data = await response.json()
-                        errcode = response_data["errcode"]
-                        message = response_data["error"]
-                    except (JSONDecodeError, ContentTypeError, KeyError):
-                        pass
-                    raise MatrixRequestError(code=response.status, text=await response.text(),
-                                             errcode=errcode, message=message)
-
-                if response.status == 429:
-                    await asyncio.sleep(response.json()["retry_after_ms"] / 1000)
-                else:
-                    return await response.json()
-
-    def _log_request(self, method, path, content, query_params):
-        log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
-        log_content = log_content or "(No content)"
-        query_identity = query_params["user_id"] if "user_id" in query_params else "No identity"
-        self.log.debug("%s %s %s as user %s", method, path, log_content, query_identity)
-
-    def request(self, method: str, path: str, content: Optional[Union[dict, bytes, str]] = None,
-                timestamp: Optional[int] = None, external_url: Optional[str] = None,
-                headers: Optional[Dict[str, str]] = None,
-                query_params: Optional[Dict[str, Any]] = None,
-                api_path: str = "/_matrix/client/r0") -> Awaitable[dict]:
-        """
-        Make a raw HTTP request.
-
-        Args:
-            method: The HTTP method to use.
-            path: The API endpoint to call. Does not include the base path (e.g. /_matrix/client/r0).
-            content: The content to post as a dict (json) or bytes/str (raw).
-            timestamp: The timestamp query param used for timestamp massaging.
-            external_url: The external_url field to send in the content
-                (only applicable if content is dict).
-            headers: The dict of HTTP headers to send.
-            query_params: The dict of query parameters to send.
-            api_path: The base API path.
-
-        Returns:
-            The response as a dict.
-        """
-        content = content or {}
-        headers = headers or {}
-        query_params = query_params or {}
-        query_params["access_token"] = self.token
-
-        if timestamp is not None:
-            if isinstance(timestamp, datetime):
-                timestamp = int(timestamp.replace(tzinfo=timezone.utc).timestamp() * 1000)
-            query_params["ts"] = timestamp
-        if isinstance(content, dict) and external_url is not None:
-            content["external_url"] = external_url
-
-        method = method.upper()
-        if method not in ["GET", "PUT", "DELETE", "POST"]:
-            raise MatrixError("Unsupported HTTP method: %s" % method)
-
-        if "Content-Type" not in headers:
-            headers["Content-Type"] = "application/json"
-        if headers.get("Content-Type", None) == "application/json":
-            content = json.dumps(content)
-
-        if self.identity and not self.is_real_user:
-            query_params["user_id"] = self.identity
-
-        self._log_request(method, path, content, query_params)
-
-        endpoint = self.base_url + api_path + path
-        return self._send(method, endpoint, content, query_params, headers or {})
-
-    def sync(self, since=None, timeout_ms=30000, filter=None, full_state=None, set_presence=None):
-        """ Perform a sync request.
-        Args:
-            since (str): Optional. A token which specifies where to continue a sync from.
-            timeout_ms (int): Optional. The time in m1illiseconds to wait.
-            filter (int|str): Either a Filter ID or a JSON string.
-            full_state (bool): Return the full state for every room the user has joined
-                Defaults to false.
-            set_presence (str): Should the client be marked as "online" or" offline"
-        """
-        request = {
-            "timeout": int(timeout_ms)
-        }
-
-        if since:
-            request["since"] = since
-        if filter:
-            request["filter"] = filter
-        if full_state:
-            request["full_state"] = json.dumps(full_state)
-        if set_presence:
-            request["set_presence"] = set_presence
-        return self.request("GET", "/sync", query_params=request)
-
-    def get_filter(self, user_id: str, filter_id: str) -> Awaitable[dict]:
-        return self.request("GET", f"/user/{user_id}/filter/{filter_id}")
-
-    async def create_filter(self, user_id: str, filter_params: dict) -> str:
-        resp = await self.request("POST", f"/user/{user_id}/filter", filter_params)
-        return resp.get("filter_id", None)
-
-    def get_download_url(self, mxc_uri: str) -> str:
-        """
-        Get the full URL to download a mxc:// URI.
-
-        Args:
-            mxc_uri: The MXC URI whose full URL to get.
-
-        Returns:
-            The full URL.
-
-        Raises:
-            ValueError: If `mxc_uri` doesn't begin with mxc://
-        """
-        if mxc_uri.startswith('mxc://'):
-            return f"{self.base_url}/_matrix/media/r0/download/{mxc_uri[6:]}"
-        else:
-            raise ValueError("MXC URI did not begin with 'mxc://'")
-
-
-class ChildHTTPAPI(HTTPAPI):
-    """ChildHTTPAPI is a simple proxy to a HTTPAPI that always uses a specific user."""
-
-    def __init__(self, user: str, parent: HTTPAPI):
-        super().__init__(parent.base_url, parent.domain, parent.bot_mxid, parent.token, user,
-                         parent.log, parent.state_store, parent.session, child=True,
-                         real_user_content_key=parent.real_user_content_key)
-        self.parent = parent
-
-    @property
-    def txn_id(self) -> int:
-        return self.parent.txn_id
-
-    @txn_id.setter
-    def txn_id(self, value: int):
-        self.parent.txn_id = value
-
-
-class IntentAPI:
-    """
-    IntentAPI is a high-level wrapper around the HTTPAPI that provides many easy-to-use functions
-    for accessing the client-server API.
-    """
-
-    mxid_regex = re.compile("@(.+):(.+)")
-
-    def __init__(self, mxid: str, client: HTTPAPI, bot: "IntentAPI" = None,
-                 state_store: StateStore = None, log: Logger = None):
-        self.client = client
-        self.bot = bot
-        self.mxid = mxid
-        self.log = log
-
-        results = self.mxid_regex.match(mxid)
-        if not results:
-            raise ValueError("invalid MXID")
-        self.localpart = results.group(1)
-
-        self.state_store = state_store
-
-    def user(self, user: str, token: Optional[str] = None) -> "IntentAPI":
-        """
-        Get the intent API for a specific user. This is just a proxy to :func:`~HTTPAPI.intent`.
+        This is just a proxy to :func:`~AppServiceAPI.intent`.
 
         You should only call this method for the bot user. Calling it with child intent APIs will
         result in a warning log.
@@ -317,7 +66,7 @@ class IntentAPI:
             The list of room IDs the user is in.
 
         .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#get-matrix-client-r0-joined-rooms
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-joined-rooms
         """
         await self.ensure_registered()
         response = await self.client.request("GET", "/joined_rooms")
@@ -331,7 +80,7 @@ class IntentAPI:
             name: The new display name for the user.
 
         .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#put-matrix-client-r0-profile-userid-displayname
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-profile-userid-displayname
         """
         await self.ensure_registered()
         content = {"displayname": name}
@@ -347,7 +96,7 @@ class IntentAPI:
                 already set to that value.
 
         .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#put-matrix-client-r0-presence-userid-status
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-presence-userid-status
         """
         await self.ensure_registered()
         if not ignore_cache and self.state_store.has_presence(self.mxid, status):
@@ -356,7 +105,7 @@ class IntentAPI:
         content = {
             "presence": status
         }
-        resp = await self.client.request("PUT", f"/presence/{self.mxid}/status", content)
+        await self.client.request("PUT", f"/presence/{self.mxid}/status", content)
         self.state_store.set_presence(self.mxid, status)
 
     async def set_avatar(self, url: str):
@@ -367,7 +116,7 @@ class IntentAPI:
             url: The new avatar URL for the user. Must be a MXC URI.
 
         .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#put-matrix-client-r0-profile-userid-avatar-url
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-profile-userid-avatar-url
         """
         await self.ensure_registered()
         content = {"avatar_url": url}
@@ -388,7 +137,7 @@ class IntentAPI:
             MatrixResponseError: If the response does not contain a ``content_uri`` field.
 
         .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#post-matrix-media-r0-upload
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-media-r0-upload
         """
         await self.ensure_registered()
         if magic:
@@ -412,7 +161,7 @@ class IntentAPI:
             The raw downloaded data.
 
         .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#get-matrix-media-r0-download-servername-mediaid
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-download-servername-mediaid
         """
         await self.ensure_registered()
         url = self.client.get_download_url(url)
@@ -462,11 +211,11 @@ class IntentAPI:
             MatrixResponseError: If the response does not contain a ``room_id`` field.
 
         .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#post-matrix-client-r0-createroom
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-createroom
         .. _Room Events:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#room-events
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#room-events
         .. _Direct Messaging:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#direct-messaging
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#direct-messaging
         """
         await self.ensure_registered()
         content = {
@@ -509,7 +258,7 @@ class IntentAPI:
 
         Returns:
         .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.3.0.html#post-matrix-client-r0-createroom
+           https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-createroom
         """
         await self.ensure_joined(room_id)
         try:
@@ -539,7 +288,7 @@ class IntentAPI:
                              ) -> Optional[dict]:
         await self.ensure_registered()
         content = {"room_id": room_id}
-        alias = f"#{localpart}:{self.client.domain}"
+        alias = f"#{localpart}:{self.domain}"
         try:
             return await self.client.request("PUT", f"/directory/room/{quote(alias)}", content)
         except MatrixRequestError as e:
@@ -548,7 +297,7 @@ class IntentAPI:
                 return await self.client.request("PUT", f"/directory/room/{quote(alias)}", content)
 
     def remove_room_alias(self, localpart: str) -> Awaitable[dict]:
-        alias = f"#{localpart}:{self.client.domain}"
+        alias = f"#{localpart}:{self.domain}"
         return self.client.request("DELETE", f"/directory/room/{quote(alias)}")
 
     def set_room_name(self, room_id: str, name: str, **kwargs) -> Awaitable[dict]:
@@ -559,7 +308,7 @@ class IntentAPI:
         body = {"topic": topic}
         return self.send_state_event(room_id, "m.room.topic", body, **kwargs)
 
-    async def get_power_levels(self, room_id: str, ignore_cache: bool = False) -> dict:
+    async def get_power_levels(self, room_id: str, ignore_cache: bool = False) -> Dict:
         await self.ensure_joined(room_id)
         if not ignore_cache:
             try:
@@ -573,7 +322,7 @@ class IntentAPI:
         self.state_store.set_power_levels(room_id, levels)
         return levels
 
-    async def set_power_levels(self, room_id: str, content: dict, **kwargs) -> dict:
+    async def set_power_levels(self, room_id: str, content: Dict, **kwargs) -> Dict:
         if "events" not in content:
             content["events"] = {}
         response = await self.send_state_event(room_id, "m.room.power_levels", content, **kwargs)
@@ -610,7 +359,7 @@ class IntentAPI:
             "join_rule": join_rule,
         }, **kwargs)
 
-    async def get_profile(self, user_id: str) -> dict:
+    async def get_profile(self, user_id: str) -> Dict:
         return await self.client.request("GET", f"/profile/{quote(user_id)}")
 
     async def whoami(self) -> Optional[str]:
@@ -626,14 +375,14 @@ class IntentAPI:
     async def get_avatar_url(self, room_id: str, user_id: str, ignore_cache=False) -> str:
         return (await self.get_member_info(room_id, user_id, ignore_cache)).get("avatar_url", None)
 
-    async def get_member_info(self, room_id: str, user_id: str, ignore_cache=False) -> dict:
+    async def get_member_info(self, room_id: str, user_id: str, ignore_cache=False) -> Dict:
         member = self.state_store.get_member(room_id, user_id)
         if len(member) == 0 or ignore_cache:
             event = await self.get_state_event(room_id, "m.room.member", user_id)
             member = event.get("content", {})
         return member
 
-    async def get_event(self, room_id: str, event_id: str) -> dict:
+    async def get_event(self, room_id: str, event_id: str) -> Dict:
         await self.ensure_joined(room_id)
         return await self.client.request("GET", f"/rooms/{room_id}/event/{event_id}")
 
@@ -651,7 +400,7 @@ class IntentAPI:
         self.state_store.set_typing(room_id, self.mxid, is_typing, timeout)
         return resp
 
-    async def mark_read(self, room_id: str, event_id: str) -> dict:
+    async def mark_read(self, room_id: str, event_id: str) -> Dict:
         await self.ensure_joined(room_id)
         return await self.client.request("POST", f"/rooms/{room_id}/receipt/m.read/{event_id}",
                                          content={})
@@ -708,7 +457,7 @@ class IntentAPI:
                 "m.relates_to": relates_to or None,
             }, **kwargs)
 
-    def send_message(self, room_id: str, body: dict, **kwargs) -> Awaitable[dict]:
+    def send_message(self, room_id: str, body: Dict, **kwargs) -> Awaitable[dict]:
         return self.send_event(room_id, "m.room.message", body, **kwargs)
 
     async def error_and_leave(self, room_id: str, text: str, html: Optional[str] = None):
@@ -758,8 +507,8 @@ class IntentAPI:
             raise ValueError("Transaction ID not given")
         return f"/rooms/{quote(room_id)}/send/{quote(event_type)}/{quote(txn_id)}"
 
-    async def send_event(self, room_id: str, event_type: str, content: dict,
-                         txn_id: Optional[int] = None, **kwargs) -> dict:
+    async def send_event(self, room_id: str, event_type: str, content: Dict,
+                         txn_id: Optional[int] = None, **kwargs) -> Dict:
         if not room_id:
             raise ValueError("Room ID not given")
         elif not event_type:
@@ -788,8 +537,8 @@ class IntentAPI:
             url += f"/{quote(state_key)}"
         return url
 
-    async def send_state_event(self, room_id: str, event_type: str, content: dict,
-                               state_key: Optional[str] = "", **kwargs) -> dict:
+    async def send_state_event(self, room_id: str, event_type: str, content: Dict,
+                               state_key: Optional[str] = "", **kwargs) -> Dict:
         if not room_id:
             raise ValueError("Room ID not given")
         elif not event_type:
@@ -801,7 +550,7 @@ class IntentAPI:
             return await self.client.request("PUT", url, content, **kwargs)
 
     async def get_state_event(self, room_id: str, event_type: str, state_key: Optional[str] = ""
-                              ) -> dict:
+                              ) -> Dict:
         if not room_id:
             raise ValueError("Room ID not given")
         elif not event_type:
@@ -856,7 +605,7 @@ class IntentAPI:
         return [membership["state_key"] for membership in memberships["chunk"] if
                 membership["content"]["membership"] in allowed_memberships]
 
-    async def get_room_state(self, room_id: str) -> dict:
+    async def get_room_state(self, room_id: str) -> Dict:
         await self.ensure_joined(room_id)
         state = await self.client.request("GET", f"/rooms/{quote(room_id)}/state")
         # TODO update values based on state?

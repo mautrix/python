@@ -1,8 +1,9 @@
 import setuptools
+from mautrix_appservice.__meta__ import __version__
 
 setuptools.setup(
     name="mautrix-appservice",
-    version="0.3.6",
+    version=__version__,
     url="https://github.com/tulir/mautrix-appservice-python",
 
     author="Tulir Asokan",
@@ -26,10 +27,10 @@ setuptools.setup(
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: MIT License",
         "Topic :: Communications :: Chat",
+        "Framework :: AsyncIO",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
     ]
 )
-
