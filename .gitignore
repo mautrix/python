@@ -2,7 +2,7 @@
 
 build/
 dist/
-mautrix_appservice.egg-info
+*.egg-info
 
 .venv
 pip-selfcheck.json

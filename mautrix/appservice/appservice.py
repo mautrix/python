@@ -1,12 +1,12 @@
-# -*- coding: future_fstrings -*-
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
-from typing import Optional, Callable, Awaitable, Union, Iterator
+from typing import Optional, Callable, Awaitable, Union, Iterator, List, Dict, Any
 from contextlib import contextmanager
 from aiohttp import web
 import aiohttp
 import asyncio
 import logging
 
+from ..types import JSON, UserID, RoomAlias, MatrixEvent
 from .api import AppServiceAPI, IntentAPI
 from .state_store import StateStore, JSONStateStore
 
@@ -16,24 +16,43 @@ HandlerFunc = Callable[[dict], Awaitable]
 
 class AppService:
     """The main AppService container."""
+
+    server: str
+    domain: str
+    verify_ssl: bool
+    as_token: str
+    hs_token: str
+    bot_mxid: UserID
+    real_user_content_key: str
+    state_store: StateStore
+
+    transactions: List[str]
+
+    query_user: Callable[[UserID], JSON]
+    query_alias: Callable[[RoomAlias], JSON]
+
+    loop: asyncio.AbstractEventLoop
+    log: logging.Logger
+    app: web.Application
+
     def __init__(self, server: str, domain: str, as_token: str, hs_token: str, bot_localpart: str,
                  loop: Optional[asyncio.AbstractEventLoop] = None,
                  log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
-                 state_store: StateStore = None, aiohttp_params: dict = None):
+                 state_store: StateStore = None, aiohttp_params: Dict = None) -> None:
         self.server = server
         self.domain = domain
         self.verify_ssl = verify_ssl
         self.as_token = as_token
         self.hs_token = hs_token
         self.bot_mxid = f"@{bot_localpart}:{domain}"
-        self.real_user_content_key = real_user_content_key
+        self.real_user_content_key: str = real_user_content_key
         if isinstance(state_store, StateStore):
             self.state_store = state_store
         else:
             file = state_store if isinstance(state_store, str) else "mx-state.json"
-            self.state_store = JSONStateStore(autosave_file=file)
+            self.state_store: JSONStateStore = JSONStateStore(autosave_file=file)
             self.state_store.load(file)
 
         self.transactions = []
@@ -59,7 +78,7 @@ class AppService:
         self.app.router.add_route("GET", "/rooms/{alias}", self._http_query_alias)
         self.app.router.add_route("GET", "/users/{user_id}", self._http_query_user)
 
-        async def update_state(event):
+        async def update_state(event: MatrixEvent):
             self.state_store.update_state(event)
 
         self.matrix_event_handler(update_state)

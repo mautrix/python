@@ -1,12 +1,11 @@
-# -*- coding: future_fstrings -*-
 from typing import Optional, Dict, Awaitable, List, Tuple, TYPE_CHECKING
 from urllib.parse import quote as urllib_quote
 from logging import Logger
 from time import time
 
+from ...api import MatrixError, MatrixRequestError, MatrixResponseError
+from ...client import ClientAPI
 from ..state_store import StateStore
-from .errors import MatrixError, MatrixRequestError, MatrixResponseError, IntentError
-from .client import ClientAPI
 
 try:
     import magic
@@ -19,6 +18,14 @@ if TYPE_CHECKING:
 
 def quote(*args, **kwargs):
     return urllib_quote(*args, **kwargs, safe="")
+
+
+class IntentError(MatrixError):
+    """An intent execution failure, most likely caused by a `MatrixRequestError`."""
+
+    def __init__(self, message: str, source: Exception):
+        super().__init__(message)
+        self.source = source
 
 
 class IntentAPI(ClientAPI):

@@ -1,4 +1,3 @@
-# -*- coding: future_fstrings -*-
 from json.decoder import JSONDecodeError
 from typing import Optional, Dict, Awaitable, Union, Any
 from logging import Logger
@@ -8,6 +7,7 @@ import asyncio
 from aiohttp import ClientSession
 from aiohttp.client_exceptions import ContentTypeError
 
+from ..types import JSON
 from .errors import MatrixRequestError
 
 
@@ -15,7 +15,7 @@ class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
 
     def __init__(self, base_url: str, token: str, client_session: ClientSession, txn_id: int = 0,
-                 log: Optional[Logger] = None):
+                 log: Optional[Logger] = None) -> None:
         """
         Args:
             base_url: The base URL of the homeserver client-server API to use.
@@ -24,16 +24,16 @@ class HTTPAPI:
             txn_id: The outgoing transaction ID to start with.
             log: The logging.Logger instance to log requests with.
         """
-        self.base_url = base_url
-        self.token = token
-        self.log = log
-        self.session = client_session
-        self.validate_cert = True
+        self.base_url: str = base_url
+        self.token: str = token
+        self.log: Optional[Logger] = log
+        self.session: ClientSession = client_session
+        self.validate_cert: bool = True
         if txn_id is not None:
-            self.txn_id = txn_id
+            self.txn_id: int = txn_id
 
-    async def _send(self, method: str, endpoint: str, content: Any, query_params: Dict[str, str],
-                    headers: Dict[str, str]) -> None:
+    async def _send(self, method: str, endpoint: str, content: Union[bytes, str],
+                    query_params: Dict[str, str], headers: Dict[str, str]) -> None:
         while True:
             request = self.session.request(method, endpoint, data=content,
                                            params=query_params, headers=headers)
@@ -62,10 +62,10 @@ class HTTPAPI:
         as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
         self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "))
 
-    def request(self, method: str, path: str, content: Optional[Union[Dict, bytes, str]] = None,
+    def request(self, method: str, path: str, content: Optional[Union[JSON, bytes, str]] = None,
                 headers: Optional[Dict[str, str]] = None,
-                query_params: Optional[Dict[str, Any]] = None,
-                api_path: str = "/_matrix/client/r0") -> Awaitable[Dict]:
+                query_params: Optional[Dict[str, str]] = None,
+                api_path: str = "/_matrix/client/r0") -> Awaitable[JSON]:
         """
         Make a raw HTTP request.
         Args:
