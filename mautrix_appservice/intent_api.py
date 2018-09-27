@@ -851,7 +851,7 @@ class IntentAPI:
                                ) -> List[str]:
         if allowed_memberships == ("join",):
             memberships = await self.get_room_joined_memberships(room_id)
-            return memberships["joined"].keys()
+            return list(memberships["joined"].keys())
         memberships = await self.get_room_memberships(room_id)
         return [membership["state_key"] for membership in memberships["chunk"] if
                 membership["content"]["membership"] in allowed_memberships]
