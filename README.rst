@@ -20,6 +20,6 @@ Components:
 .. _python-appservice-framework: https://github.com/Cadair/python-appservice-framework/
 .. |PyPI badge| image:: https://img.shields.io/pypi/v/mautrix.svg
    :target: https://pypi.python.org/pypi/mautrix
-.. |Python versions| image:: https://img.shields.io/pypi/pyversions/mautrix-appservice.svg
-.. |License| image:: https://img.shields.io/github/license/tulir/mautrix.svg
+.. |Python versions| image:: https://img.shields.io/pypi/pyversions/mautrix.svg
+.. |License| image:: https://img.shields.io/github/license/tulir/mautrix-python.svg
    :target: https://github.com/tulir/mautrix-python/blob/master/LICENSE
