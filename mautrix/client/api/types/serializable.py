@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 import attr
 import json
+import copy
 
 from ....types import JSON
 from .obj import Obj, Lst
@@ -12,12 +13,10 @@ T2 = TypeVar("T2")
 
 
 class Serializable:
-    @abstractmethod
     def serialize(self) -> JSON:
         raise NotImplementedError()
 
     @classmethod
-    @abstractmethod
     def deserialize(cls, raw: JSON) -> Any:
         raise NotImplementedError()
 
@@ -26,7 +25,7 @@ class GenericSerializable(ABC, Generic[T], Serializable):
     @classmethod
     @abstractmethod
     def deserialize(cls, raw: JSON) -> T:
-        raise NotImplementedError()
+        pass
 
     def json(self) -> str:
         return json.dumps(self.serialize())
@@ -55,35 +54,45 @@ class SerializableEnum(Serializable, Enum):
         return cls.deserialize(json.loads(data))
 
 
-def _fields(attrs_type: Type[T]) -> Iterator[Tuple[str, Type[T2]]]:
-    return ((field.metadata.get("json", field.name), field) for field in attr.fields(attrs_type))
+def _fields(attrs_type: Type[T], only_if_flatten: bool = None) -> Iterator[Tuple[str, Type[T2]]]:
+    return ((field.metadata.get("json", field.name), field) for field in attr.fields(attrs_type)
+            if only_if_flatten is None or field.metadata.get("flatten", False) == only_if_flatten)
+
+
+immutable = (int, str, float, bool, type(None))
+
+
+def _safe_default(val: T) -> T:
+    if isinstance(val, immutable):
+        return val
+    return copy.copy(val)
 
 
 def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
                    default_if_empty: bool = False) -> T:
     data = data or {}
-    # Initialize with unflattened data
+    unrecognized = {}
     new_items = {field.name: _deserialize(field.type, data, field.default)
-                 for _, field in _fields(attrs_type)
-                 if field.metadata.get("flatten", False)}
-    # Loop through items to add rest of data
-    fields = dict(_fields(attrs_type))
+                 for _, field in _fields(attrs_type, only_if_flatten=True)}
+    fields = dict(_fields(attrs_type, only_if_flatten=False))
     for key, value in data.items():
         try:
             field = fields[key]
         except KeyError:
-            continue
-        if field.metadata.get("flatten", False):
+            unrecognized[key] = value
             continue
         new_items[field.name] = _deserialize(field.type, value, field.default)
     if len(new_items) == 0 and default_if_empty:
-        return default
-    return attrs_type(**new_items)
+        return _safe_default(default)
+    obj = attrs_type(**new_items)
+    if len(unrecognized) > 0:
+        obj.unrecognized_ = unrecognized
+    return obj
 
 
 def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
     if value is None:
-        return default
+        return _safe_default(default)
 
     cls = getattr(cls, "__supertype__", None) or cls
     if attr.has(cls):
@@ -121,11 +130,17 @@ def _attrs_to_dict(data: T) -> JSON:
                 field_val = field.default
             else:
                 continue
+        if field.metadata.get("omitdefault", False) and field_val == field.default:
+            continue
         serialized = _serialize(field_val)
         if field.metadata.get("flatten", False) and isinstance(serialized, dict):
             new_dict.update(serialized)
         else:
             new_dict[json_name] = serialized
+    try:
+        new_dict.update(data.unrecognized_)
+    except (AttributeError, TypeError):
+        pass
     return new_dict
 
 
@@ -142,6 +157,8 @@ def _serialize(val: Any) -> JSON:
 
 
 class SerializableAttrs(GenericSerializable[T]):
+    unrecognized_: Optional[JSON] = None
+
     @classmethod
     def deserialize(cls, data: JSON) -> T:
         return _dict_to_attrs(cls, data)

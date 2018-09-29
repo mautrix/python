@@ -1,11 +1,9 @@
-from typing import NewType, Optional, List, Dict
+from typing import Optional, List, Dict
 import attr
 
 from ....types import JSON
 from .primitive import RoomID, UserID, EventID
 from .serializable import SerializableEnum, SerializableAttrs
-
-MatrixEvent = NewType("MatrixEvent", JSON)
 
 STATE_EVENTS = ("m.room.aliases", "m.room.canonical_alias", "m.room.create", "m.room.join_rules",
                 "m.room.member", "m.room.power_levels", "m.room.name", "m.room.topic",
@@ -19,11 +17,27 @@ ACCOUNT_DATA_EVENTS = ("m.direct", "m.push_rules", "m.tag")
 
 
 class EventType(SerializableEnum):
-    M_ROOM_ALIASES = "m.room.aliases"
-    M_ROOM_CANONICAL_ALIAS = "m.room.canonical_alias"
-    M_ROOM_CREATE = "m.room.create"
-    M_ROOM_JOIN_RULES = "m.room.join_rules"
-    M_ROOM_POWER_LEVELS = "m.room.power_levels"
+    ROOM_ALIASES = "m.room.aliases"
+    ROOM_CANONICAL_ALIAS = "m.room.canonical_alias"
+    ROOM_CREATE = "m.room.create"
+    ROOM_JOIN_RULES = "m.room.join_rules"
+    ROOM_MEMBER = "m.room.member"
+    ROOM_POWER_LEVELS = "m.room.power_levels"
+    ROOM_NAME = "m.room.name"
+    ROOM_TOPIC = "m.room.topic"
+    ROOM_AVATAR = "m.room.avatar"
+    ROOM_PINNED_EVENTS = "m.room.pinned_events"
+
+    ROOM_REDACTION = "m.room.redaction"
+    ROOM_MESSAGE = "m.room.message"
+    STICKER = "m.sticker"
+
+    RECEIPT = "m.receipt"
+    TYPING = "m.typing"
+
+    DIRECT = "m.direct"
+    PUSH_RULES = "m.push_rules"
+    TAG = "m.tag"
 
     @property
     def is_state(self) -> bool:
@@ -78,10 +92,10 @@ class RoomTagInfo(SerializableAttrs['RoomTagInfo']):
 
 @attr.s(auto_attribs=True)
 class PowerLevels(SerializableAttrs['PowerLevels']):
-    users: Dict[str, int] = None
+    users: Dict[str, int] = attr.ib(default={}, metadata={"omitempty": False})
     users_default: int = 0
 
-    events: Dict[str, int] = None
+    events: Dict[str, int] = attr.ib(default={}, metadata={"omitempty": False})
     events_default: int = 0
 
     state_default: int = 50

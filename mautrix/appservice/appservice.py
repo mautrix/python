@@ -7,7 +7,7 @@ import asyncio
 import logging
 
 from ..types import JSON
-from ..client.api.types import UserID, RoomAlias, MatrixEvent
+from ..client.api.types import UserID, RoomAlias, Event
 from .api import AppServiceAPI, IntentAPI
 from .state_store import StateStore, JSONStateStore
 
@@ -79,7 +79,7 @@ class AppService:
         self.app.router.add_route("GET", "/rooms/{alias}", self._http_query_alias)
         self.app.router.add_route("GET", "/users/{user_id}", self._http_query_user)
 
-        async def update_state(event: MatrixEvent):
+        async def update_state(event: Event):
             self.state_store.update_state(event)
 
         self.matrix_event_handler(update_state)

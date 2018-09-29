@@ -2,7 +2,7 @@ from typing import Set, Dict
 import json
 
 from ...types import JSON
-from ...client.api.types import RoomID, UserID
+from ...client.api.types import Event, EventType, PowerLevels, Member, Membership, RoomID, UserID
 from .abstract import StateStore
 
 
@@ -10,8 +10,8 @@ class JSONStateStore(StateStore):
     autosave_file: str
 
     registrations: Set[UserID]
-    members: Dict[RoomID, Dict[UserID, JSON]]
-    power_levels: Dict[RoomID, JSON]
+    members: Dict[RoomID, Dict[UserID, Member]]
+    power_levels: Dict[RoomID, PowerLevels]
 
     def __init__(self, autosave_file: str = None) -> None:
         super().__init__()
@@ -67,50 +67,32 @@ class JSONStateStore(StateStore):
         self.registrations.add(user_id)
         self._autosave()
 
-    def get_member(self, room_id: RoomID, user_id: UserID) -> JSON:
+    def get_member(self, room_id: RoomID, user_id: UserID) -> Member:
         return self.members.get(room_id, {}).get(user_id, {})
 
-    def set_member(self, room_id: RoomID, user_id: UserID, member: JSON) -> None:
+    def set_member(self, room_id: RoomID, user_id: UserID, member: Member) -> None:
         if room_id not in self.members:
             self.members[room_id] = {}
         self.members[room_id][user_id] = member
         self._autosave()
 
-    def set_membership(self, room_id: RoomID, user_id: UserID, membership: str) -> None:
-        if room_id not in self.members:
-            self.members[room_id] = {
-                user_id: {
-                    "membership": membership
-                }
-            }
-        elif user_id not in self.members[room_id]:
-            self.members[room_id][user_id] = {
-                "membership": membership
-            }
-        else:
-            self.members[room_id][user_id]["membership"] = membership
+    def set_membership(self, room_id: RoomID, user_id: UserID, membership: Membership) -> None:
+        self.members.setdefault(room_id, {}).setdefault(user_id, Member()).membership = membership
 
     def has_power_levels(self, room_id: RoomID) -> bool:
         return room_id in self.power_levels
 
-    def get_power_levels(self, room_id: RoomID) -> JSON:
+    def get_power_levels(self, room_id: RoomID) -> PowerLevels:
         return self.power_levels[room_id]
 
     def set_power_level(self, room_id: RoomID, user_id: UserID, level: int) -> None:
-        if room_id not in self.power_levels:
-            self.power_levels[room_id] = {
-                "users": {},
-                "events": {},
-            }
-        elif "users" not in self.power_levels[room_id]:
-            self.power_levels[room_id]["users"] = {}
-        self.power_levels[room_id]["users"][user_id] = level
+        try:
+            self.power_levels[room_id].set_user_level(user_id, level)
+        except KeyError:
+            self.power_levels[room_id] = PowerLevels()
+            self.power_levels[room_id].set_user_level(user_id, level)
         self._autosave()
 
-    def set_power_levels(self, room_id: RoomID, content: JSON) -> None:
-        if "events" not in content:
-            content["events"] = {}
-        if "users" not in content:
-            content["users"] = {}
+    def set_power_levels(self, room_id: RoomID, content: PowerLevels) -> None:
         self.power_levels[room_id] = content
         self._autosave()

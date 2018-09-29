@@ -1,9 +1,8 @@
-from typing import Optional, Dict, Tuple
+from typing import Dict, Tuple
 from abc import ABC, abstractmethod
 import time
 
-from ...types import JSON
-from ...client.api.types import MatrixEvent, RoomID, UserID
+from ...client.api.types import Event, EventType, PowerLevels, Member, Membership, RoomID, UserID
 
 
 class StateStore(ABC):
@@ -16,15 +15,15 @@ class StateStore(ABC):
         self.typing = {}
 
     @abstractmethod
-    def get_member(self, room_id: RoomID, user_id: UserID) -> JSON:
+    def get_member(self, room_id: RoomID, user_id: UserID) -> Member:
         pass
 
     @abstractmethod
-    def set_member(self, room_id: RoomID, user_id: UserID, member: JSON) -> None:
+    def set_member(self, room_id: RoomID, user_id: UserID, member: Member) -> None:
         pass
 
     @abstractmethod
-    def set_membership(self, room_id: RoomID, user_id: UserID, membership: str) -> None:
+    def set_membership(self, room_id: RoomID, user_id: UserID, membership: Membership) -> None:
         pass
 
     @abstractmethod
@@ -32,7 +31,7 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    def get_power_levels(self, room_id: RoomID) -> JSON:
+    def get_power_levels(self, room_id: RoomID) -> PowerLevels:
         pass
 
     @abstractmethod
@@ -40,7 +39,7 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    def set_power_levels(self, room_id: RoomID, content: JSON) -> None:
+    def set_power_levels(self, room_id: RoomID, content: PowerLevels) -> None:
         pass
 
     def set_presence(self, user_id: UserID, presence: str) -> None:
@@ -67,33 +66,27 @@ class StateStore(ABC):
         except KeyError:
             return False
 
-    def update_state(self, event: MatrixEvent) -> None:
-        event_type = event["type"]
-        if event_type == "m.room.power_levels":
-            self.set_power_levels(event["room_id"], event["content"])
-        elif event_type == "m.room.member":
-            self.set_member(event["room_id"], event["state_key"], event["content"])
+    def update_state(self, evt: Event) -> None:
+        if evt.type == EventType.ROOM_POWER_LEVELS:
+            self.set_power_levels(evt.room_id, evt.content.power_levels)
+        elif evt.type == EventType.ROOM_MEMBER:
+            self.set_member(evt.room_id, UserID(evt.state_key), evt.content.member)
 
-    def get_membership(self, room_id: RoomID, user_id: UserID) -> str:
-        return self.get_member(room_id, user_id).get("membership", "left")
+    def get_membership(self, room_id: RoomID, user_id: UserID) -> Membership:
+        return self.get_member(room_id, user_id).membership or Membership.LEAVE
 
     def is_joined(self, room_id: RoomID, user_id: UserID) -> bool:
-        return self.get_membership(room_id, user_id) == "join"
+        return self.get_membership(room_id, user_id) == Membership.JOIN
 
     def joined(self, room_id: RoomID, user_id: UserID) -> None:
-        return self.set_membership(room_id, user_id, "join")
+        return self.set_membership(room_id, user_id, Membership.JOIN)
 
     def invited(self, room_id: RoomID, user_id: UserID) -> None:
-        return self.set_membership(room_id, user_id, "invite")
+        return self.set_membership(room_id, user_id, Membership.INVITE)
 
     def left(self, room_id: RoomID, user_id: UserID) -> None:
-        return self.set_membership(room_id, user_id, "left")
+        return self.set_membership(room_id, user_id, Membership.LEAVE)
 
-    def has_power_level(self, room_id: RoomID, user_id: UserID, event_id: str,
-                        is_state_event: bool = False, default: Optional[int] = None) -> bool:
+    def has_power_level(self, room_id: RoomID, user_id: UserID, event_type: EventType) -> bool:
         room_levels = self.get_power_levels(room_id)
-        default_required = default or (room_levels.get("state_default", 50) if is_state_event
-                                       else room_levels.get("events_default", 0))
-        required = room_levels.get("events", {}).get(event_id, default_required)
-        has = room_levels.get("users", {}).get(user_id, room_levels.get("users_default", 0))
-        return has >= required
+        return room_levels.get_user_level(user_id) >= room_levels.get_event_level(event_type)
