@@ -1,6 +1,7 @@
 from json.decoder import JSONDecodeError
 from typing import Optional, Dict, Awaitable, Union
 from logging import Logger
+from time import time
 import json
 import asyncio
 
@@ -33,7 +34,7 @@ class HTTPAPI:
             self.txn_id: int = txn_id
 
     async def _send(self, method: str, endpoint: str, content: Union[bytes, str],
-                    query_params: Dict[str, str], headers: Dict[str, str]) -> None:
+                    query_params: Dict[str, str], headers: Dict[str, str]) -> JSON:
         while True:
             request = self.session.request(method, endpoint, data=content,
                                            params=query_params, headers=headers)
@@ -61,6 +62,11 @@ class HTTPAPI:
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
         self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "))
+
+    def get_txn_id(self) -> str:
+        """Get a new unique transaction ID."""
+        self.txn_id += 1
+        return str(self.txn_id) + str(int(time() * 1000))
 
     def request(self, method: str, path: str, content: Optional[Union[JSON, bytes, str]] = None,
                 headers: Optional[Dict[str, str]] = None,
@@ -90,7 +96,8 @@ class HTTPAPI:
 
         if "Content-Type" not in headers:
             headers["Content-Type"] = "application/json"
-        if headers.get("Content-Type", None) == "application/json":
+        if headers.get("Content-Type", None) == "application/json" and isinstance(content,
+                                                                                  (dict, list)):
             content = json.dumps(content)
 
         self._log_request(method, path, content, query_params)

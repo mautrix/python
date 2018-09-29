@@ -200,6 +200,7 @@ class Unsigned(SerializableAttrs['Unsigned']):
     prev_content: EventContent = None
     prev_sender: str = None
     replaces_state: str = None
+    transaction_id: str = None
     age: int = None
 
 

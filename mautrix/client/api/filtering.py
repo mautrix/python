@@ -26,7 +26,7 @@ class FilteringMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-user-userid-filter-filterid
         """
-        return self.client.request("GET", f"/user/{user_id}/filter/{filter_id}")
+        return self.api.request("GET", f"/user/{user_id}/filter/{filter_id}")
 
     async def create_filter(self, user_id: str, filter_params: Dict) -> str:
         """
@@ -41,7 +41,7 @@ class FilteringMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-user-userid-filter
         """
-        resp = await self.client.request("POST", f"/user/{user_id}/filter", filter_params)
+        resp = await self.api.request("POST", f"/user/{user_id}/filter", filter_params)
         return resp.get("filter_id", None)
 
     # endregion

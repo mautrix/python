@@ -1,3 +1,4 @@
+from urllib.parse import quote as urllib_quote
 import re
 
 from ...api import HTTPAPI
@@ -6,7 +7,7 @@ from ...api import HTTPAPI
 class BaseClientAPI:
     mxid_regex = re.compile("@(.+):(.+)")
 
-    def __init__(self, mxid: str, client: HTTPAPI):
+    def __init__(self, mxid: str, api: HTTPAPI):
         mxid_parts = self.mxid_regex.match(mxid)
         if not mxid_parts:
             raise ValueError("invalid MXID")
@@ -14,4 +15,8 @@ class BaseClientAPI:
         self.domain = mxid_parts.group(2)
 
         self.mxid = mxid
-        self.client = client
+        self.api = api
+
+
+def quote(*args, **kwargs):
+    return urllib_quote(*args, **kwargs, safe="")

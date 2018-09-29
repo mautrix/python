@@ -53,6 +53,9 @@ class SerializableEnum(Serializable, Enum):
     def parse_json(cls, data: str) -> SerializableEnumChild:
         return cls.deserialize(json.loads(data))
 
+    def __str__(self):
+        return self.value
+
 
 def _fields(attrs_type: Type[T], only_if_flatten: bool = None) -> Iterator[Tuple[str, Type[T2]]]:
     return ((field.metadata.get("json", field.name), field) for field in attr.fields(attrs_type)
