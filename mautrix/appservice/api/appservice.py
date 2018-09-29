@@ -35,10 +35,9 @@ class AppServiceAPI(HTTPAPI):
             real_user_content_key: The key to inject in outgoing message events sent through real
                 users.
         """
-        super(AppServiceAPI, self).__init__(base_url=base_url, token=token,
-                                            log=log if real_user or child else log.getChild("api"),
-                                            client_session=client_session,
-                                            txn_id=0 if not child else None)
+        super().__init__(base_url=base_url, token=token,
+                         log=log if real_user or child else log.getChild("api"),
+                         client_session=client_session, txn_id=0 if not child else None)
         self.identity: str = identity
         self.bot_mxid: str = bot_mxid
         self._bot_intent: Optional[IntentAPI] = None

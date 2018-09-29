@@ -12,7 +12,7 @@ from .api import AppServiceAPI, IntentAPI
 from .state_store import StateStore, JSONStateStore
 
 QueryFunc = Callable[[web.Request], Awaitable[Optional[web.Response]]]
-HandlerFunc = Callable[[dict], Awaitable]
+HandlerFunc = Callable[[Event], Awaitable]
 
 
 class AppService:
@@ -106,9 +106,8 @@ class AppService:
         if self.server.startswith("https://") and not self.verify_ssl:
             connector = aiohttp.TCPConnector(verify_ssl=False)
         self._http_session = aiohttp.ClientSession(loop=self.loop, connector=connector)
-        self._intent = AppServiceAPI(base_url=self.server, domain=self.domain,
-                                     bot_mxid=self.bot_mxid, token=self.as_token, log=self.log,
-                                     state_store=self.state_store,
+        self._intent = AppServiceAPI(base_url=self.server, bot_mxid=self.bot_mxid, log=self.log,
+                                     token=self.as_token, state_store=self.state_store,
                                      real_user_content_key=self.real_user_content_key,
                                      client_session=self._http_session).bot_intent()
 

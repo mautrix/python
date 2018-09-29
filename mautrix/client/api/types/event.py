@@ -76,8 +76,13 @@ class Membership(SerializableEnum):
 
 
 @attr.s(auto_attribs=True)
+class InReplyTo(SerializableAttrs['InReplyTo']):
+    event_id: str = None
+
+
+@attr.s(auto_attribs=True)
 class RelatesTo(SerializableAttrs['RelatesTo']):
-    pass
+    in_reply_to: InReplyTo = attr.ib(default=None, metadata={"json": "m.in_reply_to"})
 
 
 @attr.s(auto_attribs=True)
@@ -147,6 +152,21 @@ class Member(SerializableAttrs['Member']):
 
 
 @attr.s(auto_attribs=True)
+class BaseFileInfo(SerializableAttrs['BaseFileInfo']):
+    mimetype: str = None
+    height: int = attr.ib(default=None, metadata={"json": "h"})
+    width: int = attr.ib(default=None, metadata={"json": "w"})
+    duration: int = None
+    size: int = None
+
+
+@attr.s(auto_attribs=True)
+class FileInfo(BaseFileInfo, SerializableAttrs['FileInfo']):
+    thumbnail_info: BaseFileInfo = None
+    thumbnail_url: str = None
+
+
+@attr.s(auto_attribs=True)
 class EventContent(SerializableAttrs['EventContent']):
     msgtype: MessageType = None
     body: str = None
@@ -154,6 +174,7 @@ class EventContent(SerializableAttrs['EventContent']):
     formatted_body: str = None
 
     url: str = None
+    info: FileInfo = None
 
     membership: Membership = None
     member: Member = attr.ib(default=None, metadata={"flatten": True})
