@@ -1,5 +1,5 @@
 from json.decoder import JSONDecodeError
-from typing import Optional, Dict, Awaitable, Union, Any
+from typing import Optional, Dict, Awaitable, Union
 from logging import Logger
 import json
 import asyncio

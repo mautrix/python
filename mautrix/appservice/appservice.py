@@ -1,12 +1,13 @@
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
-from typing import Optional, Callable, Awaitable, Union, Iterator, List, Dict, Any
+from typing import Optional, Callable, Awaitable, Union, Iterator, List, Dict
 from contextlib import contextmanager
 from aiohttp import web
 import aiohttp
 import asyncio
 import logging
 
-from ..types import JSON, UserID, RoomAlias, MatrixEvent
+from ..types import JSON
+from ..client.api.types import UserID, RoomAlias, MatrixEvent
 from .api import AppServiceAPI, IntentAPI
 from .state_store import StateStore, JSONStateStore
 

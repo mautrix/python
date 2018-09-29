@@ -1,7 +1,8 @@
-from typing import Set, Dict, Any
+from typing import Set, Dict
 import json
 
-from ...types import JSON, RoomID, UserID
+from ...types import JSON
+from ...client.api.types import RoomID, UserID
 from .abstract import StateStore
 
 

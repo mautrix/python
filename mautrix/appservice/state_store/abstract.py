@@ -1,8 +1,9 @@
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Tuple
 from abc import ABC, abstractmethod
 import time
 
-from ...types import MatrixEvent, JSON, RoomID, UserID
+from ...types import JSON
+from ...client.api.types import MatrixEvent, RoomID, UserID
 
 
 class StateStore(ABC):
