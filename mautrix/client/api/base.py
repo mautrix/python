@@ -1,13 +1,15 @@
+from typing import Callable, Any, Union
 from urllib.parse import quote as urllib_quote
 import re
 
 from ...api import HTTPAPI
+from .types import UserID
 
 
 class BaseClientAPI:
     mxid_regex = re.compile("@(.+):(.+)")
 
-    def __init__(self, mxid: str, api: HTTPAPI):
+    def __init__(self, mxid: UserID, api: HTTPAPI):
         mxid_parts = self.mxid_regex.match(mxid)
         if not mxid_parts:
             raise ValueError("invalid MXID")

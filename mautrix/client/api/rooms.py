@@ -1,10 +1,10 @@
 from typing import Optional, List, Union
 
-from ...errors import MatrixResponseError
+from ...errors import MatrixResponseError, MatrixRequestError
+from ...api import Method
 from ...types import JSON
-from .types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility,
-                    RoomCreatePreset,
-                    RoomAliasInfo, DirectoryPaginationToken, RoomDirectoryResponse)
+from .types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility, RoomAliasInfo,
+                    RoomCreatePreset, DirectoryPaginationToken, RoomDirectoryResponse)
 from .base import BaseClientAPI, quote
 
 
@@ -94,7 +94,7 @@ class RoomMethods(BaseClientAPI):
         if creation_content:
             content["creation_content"] = creation_content
 
-        resp = await self.api.request("POST", "/createRoom", content)
+        resp = await self.api.request(Method.POST, "/createRoom", content)
         try:
             return resp["room_id"]
         except KeyError:
@@ -104,21 +104,31 @@ class RoomMethods(BaseClientAPI):
     # region 9.2 Room aliases
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#room-aliases
 
-    async def add_room_alias(self, room_alias: RoomAlias, room_id: RoomID) -> None:
+    async def add_room_alias(self, room_id: RoomID, alias_localpart: str,
+                             override: bool = False) -> None:
         """
         Create a new mapping from room alias to room ID. See also: `API reference`_
 
         Args:
-            room_alias: The room alias to set.
             room_id: The room ID to set.
+            alias_localpart: The localpart of the room alias to set.
+            override: Whether or not the alias should be removed and the request retried if the
+                server responds with HTTP 409 Conflict
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-directory-room-roomalias
         """
-        await self.api.request("PUT", f"/directory/room/{quote(room_alias)}", {
-            "room_id": room_id,
-        })
+        room_alias = f"#{alias_localpart}:{self.domain}"
+        content = {"room_id": room_id}
+        try:
+            await self.api.request(Method.PUT, f"/directory/room/{quote(room_alias)}", content)
+        except MatrixRequestError as e:
+            if override and e.code == 409:
+                await self.remove_room_alias(alias_localpart)
+                await self.api.request(Method.PUT, f"/directory/room/{quote(room_alias)}", content)
+            else:
+                raise
 
-    async def remove_room_alias(self, room_alias: RoomAlias) -> None:
+    async def remove_room_alias(self, alias_localpart: str) -> None:
         """
         Remove a mapping of room alias to room ID.
 
@@ -127,11 +137,12 @@ class RoomMethods(BaseClientAPI):
         See also: `API reference`_
 
         Args:
-            room_alias: The room alias to remove.
+            alias_localpart: The room alias to remove.
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#delete-matrix-client-r0-directory-room-roomalias
         """
-        await self.api.request("DELETE", f"/directory/room/{quote(room_alias)}")
+        room_alias = f"#{alias_localpart}:{self.domain}"
+        await self.api.request(Method.DELETE, f"/directory/room/{quote(room_alias)}")
 
     async def get_room_alias(self, room_alias: RoomAlias) -> RoomAliasInfo:
         """
@@ -150,7 +161,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-directory-room-roomalias
         """
-        content = await self.api.request("GET", f"/directory/room/{quote(room_alias)}")
+        content = await self.api.request(Method.GET, f"/directory/room/{quote(room_alias)}")
         return RoomAliasInfo.deserialize(content)
 
     # endregion
@@ -159,7 +170,7 @@ class RoomMethods(BaseClientAPI):
 
     async def get_joined_rooms(self) -> List[RoomID]:
         """Get the list of rooms the user is in."""
-        content = await self.api.request("GET", "/joined_rooms")
+        content = await self.api.request(Method.GET, "/joined_rooms")
         try:
             return content["joined_rooms"]
         except KeyError:
@@ -182,7 +193,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-join
         """
-        content = await self.api.request("POST", f"/rooms/{quote(room_id)}/join", {
+        content = await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/join", {
             "third_party_signed": third_party_signed,
         } if third_party_signed is not None else None)
         try:
@@ -208,7 +219,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-join-roomidoralias
         """
-        content = await self.api.request("POST", f"/join/{quote(room_id_or_alias)}",
+        content = await self.api.request(Method.POST, f"/join/{quote(room_id_or_alias)}",
                                          content={
                                              "third_party_signed": third_party_signed,
                                          } if third_party_signed is not None else None,
@@ -238,7 +249,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-invite
         """
-        await self.api.request("POST", f"/rooms/{quote(room_id)}/invite", {
+        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/invite", {
             "user_id": user_id,
         })
 
@@ -267,7 +278,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-leave
         """
-        await self.api.request("POST", f"/rooms/{quote(room_id)}/leave")
+        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/leave")
 
     async def forget_room(self, room_id: RoomID) -> None:
         """
@@ -287,7 +298,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-forget
         """
-        await self.api.request("POST", f"/rooms/{quote(room_id)}/forget")
+        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/forget")
 
     async def kick_user(self, room_id: RoomID, user_id: UserID, reason: Optional[str] = "") -> None:
         """
@@ -313,7 +324,7 @@ class RoomMethods(BaseClientAPI):
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-kick
         .. _m.room.member: https://matrix.org/docs/spec/client_server/r0.4.0.html#m-room-member
         """
-        await self.api.request("POST", f"/rooms/{quote(room_id)}/kick", {
+        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/kick", {
             "user_id": user_id,
             "reason": reason or None,
         })
@@ -338,7 +349,7 @@ class RoomMethods(BaseClientAPI):
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-ban
         .. _m.room.member: https://matrix.org/docs/spec/client_server/r0.4.0.html#m-room-member
         """
-        await self.api.request("POST", f"/rooms/{quote(room_id)}/ban", {
+        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/ban", {
             "user_id": user_id,
             "reason": reason or None,
         })
@@ -355,7 +366,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-unban
         """
-        await self.api.request("POST", f"/rooms/{quote(room_id)}/unban", {
+        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/unban", {
             "user_id": user_id,
         })
 
@@ -378,7 +389,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-directory-list-room-roomid
         """
-        resp = await self.api.request("GET", f"/directory/list/room/{quote(room_id)}")
+        resp = await self.api.request(Method.GET, f"/directory/list/room/{quote(room_id)}")
         try:
             return RoomDirectoryVisibility(resp["visibility"])
         except KeyError:
@@ -401,7 +412,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-directory-list-room-roomid
         """
-        await self.api.request("PUT", f"/directory/list/room/{quote(room_id)}", {
+        await self.api.request(Method.PUT, f"/directory/list/room/{quote(room_id)}", {
             "visibility": visibility.value,
         })
 
@@ -433,9 +444,9 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-publicrooms
         """
-        method = "GET" if (search_query is None
+        method = Method.GET if (search_query is None
                            and include_all_networks is None
-                           and third_party_instance_id is None) else "POST"
+                           and third_party_instance_id is None) else Method.POST
         content = {}
         if limit is not None:
             content["limit"] = limit

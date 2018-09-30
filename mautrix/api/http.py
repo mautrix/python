@@ -1,6 +1,7 @@
 from json.decoder import JSONDecodeError
 from typing import Optional, Dict, Awaitable, Union
 from logging import Logger
+from enum import Enum
 from time import time
 import json
 import asyncio
@@ -10,6 +11,19 @@ from aiohttp.client_exceptions import ContentTypeError
 
 from ..types import JSON
 from ..errors import MatrixRequestError
+
+
+class APIPath(Enum):
+    CLIENT = "/_matrix/client/r0"
+    MEDIA = "/_matrix/media/r0"
+    IDENTITY = "/_matrix/identity/r0"
+
+
+class Method(Enum):
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    DELETE = "DELETE"
 
 
 class HTTPAPI:
@@ -33,10 +47,10 @@ class HTTPAPI:
         if txn_id is not None:
             self.txn_id: int = txn_id
 
-    async def _send(self, method: str, endpoint: str, content: Union[bytes, str],
+    async def _send(self, method: Method, endpoint: str, content: Union[bytes, str],
                     query_params: Dict[str, str], headers: Dict[str, str]) -> JSON:
         while True:
-            request = self.session.request(method, endpoint, data=content,
+            request = self.session.request(method.value, endpoint, data=content,
                                            params=query_params, headers=headers)
             async with request as response:
                 if response.status < 200 or response.status >= 300:
@@ -55,18 +69,18 @@ class HTTPAPI:
                 else:
                     return await response.json()
 
-    def _log_request(self, method: str, path: str, content: Union[str, bytes],
+    def _log_request(self, method: Method, path: str, content: Union[str, bytes],
                      query_params: Dict[str, str]) -> None:
         if not self.log:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
-        self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "))
+        self.log.debug(f"{method.value} {path} {log_content} {as_user}".strip(" "))
 
-    def request(self, method: str, path: str, content: Optional[Union[JSON, bytes, str]] = None,
+    def request(self, method: Method, path: str, content: Optional[Union[JSON, bytes, str]] = None,
                 headers: Optional[Dict[str, str]] = None,
                 query_params: Optional[Dict[str, str]] = None,
-                api_path: str = "/_matrix/client/r0") -> Awaitable[JSON]:
+                api_path: APIPath = APIPath.CLIENT) -> Awaitable[JSON]:
         """
         Make a raw HTTP request.
         Args:
@@ -85,19 +99,15 @@ class HTTPAPI:
         headers["Authorization"] = f"Bearer {self.token}"
         query_params = query_params or {}
 
-        method = method.upper()
-        if method not in ("GET", "PUT", "DELETE", "POST"):
-            raise ValueError("Unsupported HTTP method: %s" % method)
-
         if "Content-Type" not in headers:
             headers["Content-Type"] = "application/json"
-        if headers.get("Content-Type", None) == "application/json" and isinstance(content,
-                                                                                  (dict, list)):
+        is_json = headers.get("Content-Type", None) == "application/json"
+        if is_json and isinstance(content, (dict, list)):
             content = json.dumps(content)
 
         self._log_request(method, path, content, query_params)
 
-        endpoint = self.base_url + api_path + path
+        endpoint = self.base_url + api_path.value + path
         return self._send(method, endpoint, content, query_params, headers or {})
 
     def get_txn_id(self) -> str:
@@ -105,17 +115,20 @@ class HTTPAPI:
         self.txn_id += 1
         return str(self.txn_id) + str(int(time() * 1000))
 
-    def get_download_url(self, mxc_uri: str) -> str:
+    def get_download_url(self, mxc_uri: str, download_type: str = "default") -> str:
         """
         Get the full HTTP URL to download a mxc:// URI.
         Args:
             mxc_uri: The MXC URI whose full URL to get.
+            download_type: The type of download ("download" or "thumbnail")
         Returns:
             The full HTTP URL.
         Raises:
             ValueError: If `mxc_uri` doesn't begin with mxc://
         """
-        if mxc_uri.startswith('mxc://'):
-            return f"{self.base_url}/_matrix/media/r0/download/{mxc_uri[6:]}"
+        if download_type == "default":
+            download_type = "download"
+        if mxc_uri.startswith("mxc://"):
+            return f"{self.base_url}{APIPath.MEDIA.value}/{type}/{mxc_uri[6:]}"
         else:
-            raise ValueError("MXC URI did not begin with 'mxc://'")
+            raise ValueError("MXC URI did not begin with `mxc://`")

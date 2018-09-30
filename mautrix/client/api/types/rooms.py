@@ -1,9 +1,10 @@
 from enum import Enum
-from typing import List, NewType
+from typing import List, NewType, NamedTuple
 import attr
 
-from .primitive import RoomID, RoomAlias
+from .primitive import RoomID, RoomAlias, SyncToken
 from .util import SerializableAttrs
+from .event import Event
 
 
 class RoomCreatePreset(Enum):
@@ -54,3 +55,8 @@ class RoomDirectoryResponse(SerializableAttrs['RoomDirectoryResponse']):
     next_batch: DirectoryPaginationToken = None
     prev_batch: DirectoryPaginationToken = None
     total_room_count_estimate: int = None
+
+
+PaginatedMessages = NamedTuple("PaginatedMessages", start=SyncToken, end=SyncToken,
+                               events=List[Event])
+

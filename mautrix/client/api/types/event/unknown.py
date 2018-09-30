@@ -18,5 +18,6 @@ class EventContent(MessageEventContent, StateEventContent, SerializableAttrs['Ev
 
 @attr.s(auto_attribs=True)
 class Event(MessageEvent, StateEvent, SerializableAttrs['Event']):
-    content: EventContent
+    content: EventContent = None
+    state_key: str = None
     unsigned: Optional[Unsigned] = None

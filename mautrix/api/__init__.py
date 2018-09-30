@@ -1,1 +1,1 @@
-from .http import HTTPAPI
+from .http import HTTPAPI, Method, APIPath

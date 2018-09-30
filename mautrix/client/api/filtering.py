@@ -1,4 +1,5 @@
 from ...errors import MatrixResponseError
+from ...api import Method
 from .base import BaseClientAPI
 from .types import UserID, Filter, FilterID
 
@@ -26,7 +27,7 @@ class FilteringMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-user-userid-filter-filterid
         """
-        content = await self.api.request("GET", f"/user/{user_id}/filter/{filter_id}")
+        content = await self.api.request(Method.GET, f"/user/{user_id}/filter/{filter_id}")
         return Filter.deserialize(content)
 
     async def create_filter(self, user_id: UserID, filter_params: Filter) -> FilterID:
@@ -42,7 +43,7 @@ class FilteringMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-user-userid-filter
         """
-        resp = await self.api.request("POST", f"/user/{user_id}/filter", filter_params.serialize())
+        resp = await self.api.request(Method.POST, f"/user/{user_id}/filter", filter_params.serialize())
         try:
             return resp["filter_id"]
         except KeyError:

@@ -1,8 +1,12 @@
-from typing import Awaitable, Dict, Optional, List, Tuple
+from typing import Awaitable, Dict, Optional, List
 
+from mautrix.client.api.types import MessageType, RelatesTo, Format, FileInfo, ContentURI, \
+    BaseFileInfo
+from ...api import Method
 from ...errors import MatrixResponseError
 from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
-                    EventType, StateEventContent, MessageEventContent, Member, Event)
+                    EventType, StateEventContent, MessageEventContent, Member, Event,
+                    PaginatedMessages, SerializerError)
 from .base import BaseClientAPI, quote
 
 
@@ -41,7 +45,7 @@ class EventMethods(BaseClientAPI):
             request["full_state"] = "true"
         if set_presence:
             request["set_presence"] = set_presence
-        return self.api.request("GET", "/sync", query_params=request)
+        return self.api.request(Method.GET, "/sync", query_params=request)
 
     # endregion
     # region 8.3 Getting events for a room
@@ -61,8 +65,12 @@ class EventMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#id247
         """
-        content = await self.api.request("GET", f"/rooms/{quote(room_id)}/event/{quote(event_id)}")
-        return Event.deserialize(content)
+        content = await self.api.request(Method.GET,
+                                         f"/rooms/{quote(room_id)}/event/{quote(event_id)}")
+        try:
+            return Event.deserialize(content)
+        except SerializerError as e:
+            raise MatrixResponseError("Invalid event in response") from e
 
     async def get_state_event(self, room_id: RoomID, event_type: EventType,
                               state_key: Optional[str] = None) -> StateEvent:
@@ -81,8 +89,12 @@ class EventMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
-        content = await self.api.request("GET", self._get_state_url(room_id, event_type, state_key))
-        return StateEvent.deserialize(content)
+        content = await self.api.request(Method.GET,
+                                         self._get_state_url(room_id, event_type, state_key))
+        try:
+            return StateEvent.deserialize(content)
+        except SerializerError as e:
+            raise MatrixResponseError("Invalid state event in response") from e
 
     async def get_state(self, room_id: RoomID) -> List[StateEvent]:
         """
@@ -96,8 +108,11 @@ class EventMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-state
         """
-        content = await self.api.request("GET", f"/rooms/{quote(room_id)}/state")
-        return [StateEvent.deserialize(event) for event in content]
+        content = await self.api.request(Method.GET, f"/rooms/{quote(room_id)}/state")
+        try:
+            return [StateEvent.deserialize(event) for event in content]
+        except SerializerError as e:
+            raise MatrixResponseError("Invalid state events in response") from e
 
     async def get_members(self, room_id: RoomID) -> List[StateEvent]:
         """
@@ -111,12 +126,13 @@ class EventMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-members
         """
-        content = await self.api.request("GET", f"/rooms/{quote(room_id)}/members")
+        content = await self.api.request(Method.GET, f"/rooms/{quote(room_id)}/members")
         try:
-            chunk = content["chunk"]
+            return [StateEvent.deserialize(event) for event in content["chunk"]]
         except KeyError:
             raise MatrixResponseError("`chunk` not in response.")
-        return [StateEvent.deserialize(event) for event in chunk]
+        except SerializerError as e:
+            raise MatrixResponseError("Invalid state events in response") from e
 
     async def get_joined_members(self, room_id: RoomID) -> Dict[UserID, Member]:
         """
@@ -134,17 +150,18 @@ class EventMethods(BaseClientAPI):
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-joined-members
         .. _/members: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-members
         """
-        content = await self.api.request("GET", f"/rooms/{quote(room_id)}/members")
+        content = await self.api.request(Method.GET, f"/rooms/{quote(room_id)}/members")
         try:
-            joined = content["joined"]
+            return {user_id: Member.deserialize(event) for user_id, event in content["joined"]}
         except KeyError:
             raise MatrixResponseError("`joined` not in response.")
-        return {user_id: Member.deserialize(event) for user_id, event in joined}
+        except SerializerError as e:
+            raise MatrixResponseError("Invalid member objects in response") from e
 
     async def get_messages(self, room_id: RoomID, direction: PaginationDirection,
                            from_token: SyncToken, to_token: Optional[SyncToken] = None,
                            limit: Optional[int] = None, filter_json: Optional[str] = None
-                           ) -> Tuple[SyncToken, SyncToken, List[Event]]:
+                           ) -> PaginatedMessages:
         """
         Get a list of message and state events for a room. Pagination parameters are used to
         paginate history in the room. See also: `API reference`_
@@ -175,17 +192,19 @@ class EventMethods(BaseClientAPI):
             query_params["limit"] = str(limit)
         if filter:
             query_params["filter"] = filter_json
-        content = await self.api.request("GET", f"/rooms/{quote(room_id)}/messages",
+        content = await self.api.request(Method.GET, f"/rooms/{quote(room_id)}/messages",
                                          query_params=query_params)
         try:
-            return (content["start"], content["end"],
-                    [Event.deserialize(event) for event in content["chunk"]])
+            return PaginatedMessages(content["start"], content["end"],
+                                     [Event.deserialize(event) for event in content["chunk"]])
         except KeyError:
             if "start" not in content:
                 raise MatrixResponseError("`start` not in response.")
             elif "end" not in content:
                 raise MatrixResponseError("`start` not in response.")
             raise MatrixResponseError("`content` not in response.")
+        except SerializerError as e:
+            raise MatrixResponseError("Invalid events in response") from e
 
     # endregion
     # region 8.4 Sending events to a room
@@ -224,7 +243,7 @@ class EventMethods(BaseClientAPI):
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
         url = self._get_state_url(room_id, event_type, state_key)
-        resp = await self.api.request("PUT", url, content.serialize(), **kwargs)
+        resp = await self.api.request(Method.PUT, url, content.serialize(), **kwargs)
         try:
             return resp["event_id"]
         except KeyError:
@@ -254,18 +273,172 @@ class EventMethods(BaseClientAPI):
         elif not event_type:
             raise ValueError("Event type not given")
         url = f"/rooms/{quote(room_id)}/send/{quote(str(event_type))}/{self.api.get_txn_id()}"
-        resp = await self.api.request("PUT", url, content.serialize(), **kwargs)
+        resp = await self.api.request(Method.PUT, url, content.serialize(), **kwargs)
         try:
             return resp["event_id"]
         except KeyError:
             raise MatrixResponseError("`event_id` not in response.")
 
+    # region Message send helper functions
+    def send_message(self, room_id: RoomID, content: MessageEventContent, **kwargs
+                     ) -> Awaitable[EventID]:
+        """
+        Send a message to a room.
+
+        Args:
+            room_id: The ID of the room to send the message to.
+            content: The content to send.
+            **kwargs: Optional parameters to pass to the :HTTPAPI:`request` method.
+
+        Returns:
+            The ID of the event that was sent.
+        """
+        return self.send_message_event(room_id, EventType.ROOM_MESSAGE, content, **kwargs)
+
+    def send_text(self, room_id: RoomID, text: str, html: Optional[str] = None,
+                  msgtype: MessageType = MessageType.TEXT, relates_to: Optional[RelatesTo] = None,
+                  **kwargs) -> Awaitable[EventID]:
+        """
+        Send a text message to a room.
+
+        Args:
+            room_id: The ID of the room to send the message to.
+            text: The text to send. If set to None, the given HTML is used instead.
+            html: The HTML to send.
+            msgtype: The message type to send. Defaults to :MessageType:`TEXT` (normal text message)
+            relates_to: Message relation metadata used for things like replies.
+            **kwargs: Optional parameters to pass to the :HTTPAPI:`request` method.
+
+        Returns:
+            The ID of the event that was sent.
+        """
+        if html:
+            if not text:
+                text = html
+            content = MessageEventContent(msgtype, text, Format.HTML, html)
+        else:
+            content = MessageEventContent(msgtype, text)
+        if relates_to:
+            content.relates_to = relates_to
+        return self.send_message(room_id, content, **kwargs)
+
+    def send_notice(self, room_id: RoomID, text: str, html: Optional[str] = None,
+                    relates_to: Optional[RelatesTo] = None, **kwargs) -> Awaitable[EventID]:
+        """
+        Send a notice text message to a room. Notices are like normal text messages, but usually
+        sent by bots to tell other bots not to react to them. If you're a bot, please send notices
+        instead of normal text, unless there is a reason to do something else.
+
+        Args:
+            room_id: The ID of the room to send the message to.
+            text: The text to send. If set to None, the given HTML is used instead.
+            html: The HTML to send.
+            msgtype: The message type to send. Defaults to :MessageType:`TEXT` (normal text message)
+            relates_to: Message relation metadata used for things like replies.
+            **kwargs: Optional parameters to pass to the :HTTPAPI:`request` method.
+
+        Returns:
+            The ID of the event that was sent.
+        """
+        return self.send_text(room_id, text, html, MessageType.NOTICE, relates_to, **kwargs)
+
+    def send_emote(self, room_id: RoomID, text: str, html: Optional[str] = None,
+                   relates_to: Optional[RelatesTo] = None, **kwargs) -> Awaitable[EventID]:
+        """
+        Send an emote to a room. Emotes are usually displayed by prepending a star and the user's
+        display name to the message, which means they're usually written in the third person.
+
+        Args:
+            room_id: The ID of the room to send the message to.
+            text: The text to send. If set to None, the given HTML is used instead.
+            html: The HTML to send.
+            msgtype: The message type to send. Defaults to :MessageType:`TEXT` (normal text message)
+            relates_to: Message relation metadata used for things like replies.
+            **kwargs: Optional parameters to pass to the :HTTPAPI:`request` method.
+
+        Returns:
+            The ID of the event that was sent.
+        """
+        return self.send_text(room_id, text, html, MessageType.EMOTE, relates_to, **kwargs)
+
+    def send_file(self, room_id: RoomID, url: ContentURI, info: Optional[FileInfo] = None,
+                  file_name: str = None, file_type: MessageType = MessageType.FILE,
+                  relates_to: Optional[RelatesTo] = None, **kwargs) -> Awaitable[EventID]:
+        """
+        Send a file to a room.
+
+        Args:
+            room_id: The ID of the room to send the message to.
+            url: The Matrix content repository URI of the file. You can upload files using
+                :MediaRepositoryMethods:`upload_media`.
+            info: Additional metadata about the file, e.g. mimetype, image size, video duration, etc
+            file_name: The name for the file to send.
+            file_type: The general file type to send. The file type can be further specified by
+                setting the ``mimetype`` field of the ``info`` parameter. Defaults to
+                :MessageType:`FILE` (unspecified file type, e.g. document)
+            relates_to: Message relation metadata used for things like replies.
+            **kwargs: Optional parameters to pass to the :HTTPAPI:`request` method.
+
+        Returns:
+            The ID of the event that was sent.
+        """
+        return self.send_message(room_id, MessageEventContent(url=url, info=info, body=file_name,
+                                                              relates_to=relates_to,
+                                                              msgtype=file_type))
+
+    def send_sticker(self, room_id: RoomID, url: ContentURI, info: Optional[FileInfo],
+                     text: Optional[str] = "", relates_to: Optional[RelatesTo] = None, **kwargs
+                     ) -> Awaitable[EventID]:
+        """
+        Send a sticker to a room. Stickers are basically images, but they're usually rendered
+        slightly differently.
+
+        Args:
+            room_id: The ID of the room to send the message to.
+            url: The Matrix content repository URI of the sticker. You can upload files using
+                :MediaRepositoryMethods:`upload_media`.
+            info: Additional metadata about the sticker, e.g. mimetype and image size
+            text: A textual description of the sticker.
+            relates_to: Message relation metadata used for things like replies.
+            **kwargs: Optional parameters to pass to the :HTTPAPI:`request` method.
+
+        Returns:
+            The ID of the event that was sent.
+        """
+        return self.send_message_event(room_id, EventType.STICKER,
+                                       MessageEventContent(url=url, info=info, body=text,
+                                                           relates_to=relates_to),
+                                       **kwargs)
+
+    def send_image(self, room_id: RoomID, url: ContentURI, info: Optional[FileInfo] = None,
+                   file_name: str = None, relates_to: Optional[RelatesTo] = None, **kwargs
+                   ) -> Awaitable[EventID]:
+        """
+        Send an image to a room.
+
+        Args:
+            room_id: The ID of the room to send the message to.
+            url: The Matrix content repository URI of the image. You can upload files using
+                :MediaRepositoryMethods:`upload_media`.
+            info: Additional metadata about the image, e.g. mimetype and image size
+            file_name: The file name for the image to send.
+            relates_to: Message relation metadata used for things like replies.
+            **kwargs: Optional parameters to pass to the :HTTPAPI:`request` method.
+
+        Returns:
+            The ID of the event that was sent.
+        """
+        return self.send_file(room_id, url, info, file_name, MessageType.IMAGE, relates_to,
+                              **kwargs)
+
+    # endregion
+
     # endregion
     # region 8.5 Redactions
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#redactions
 
-    async def redact(self, room_id: RoomID, event_id: EventID,
-                     reason: Optional[str] = "") -> EventID:
+    async def redact(self, room_id: RoomID, event_id: EventID, reason: Optional[str] = "", **kwargs
+                     ) -> EventID:
         """
         Send an event to redact a previous event.
 
@@ -283,6 +456,9 @@ class EventMethods(BaseClientAPI):
             room_id: The ID of the room the event is in.
             event_id: The ID of the event to redact.
             reason: The reason for the event being redacted.
+            **kwargs: Optional parameters to pass to the :HTTPAPI:`request` method. Used by the
+                :IntentAPI: to pass timestamp massaging and external URL fields to
+                :AppServiceAPI:`request`.
 
         Returns:
             The ID of the event that was sent to redact the other event.
@@ -290,7 +466,7 @@ class EventMethods(BaseClientAPI):
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-rooms-roomid-redact-eventid-txnid
         """
         url = f"/rooms/{quote(room_id)}/redact/{quote(event_id)}/{self.api.get_txn_id()}"
-        resp = await self.api.request("PUT", url)
+        resp = await self.api.request(Method.PUT, url, **kwargs)
         try:
             return resp["event_id"]
         except KeyError:

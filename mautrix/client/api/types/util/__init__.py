@@ -1,1 +1,1 @@
-from .serializable import SerializableAttrs, SerializableEnum
+from .serializable import SerializableAttrs, SerializableEnum, SerializerError

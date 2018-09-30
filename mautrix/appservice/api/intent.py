@@ -3,6 +3,9 @@ from urllib.parse import quote as urllib_quote
 from logging import Logger
 from time import time
 
+from mautrix.client.api.types import StateEvent, EventType, StateEventContent, EventID, \
+    MessageEventContent
+from ...client.api.types import UserID, RoomID
 from ...client import ClientAPI
 from ...errors import MatrixError, MatrixRequestError, MatrixResponseError, IntentError
 from ..state_store import StateStore
@@ -20,6 +23,26 @@ def quote(*args, **kwargs):
     return urllib_quote(*args, **kwargs, safe="")
 
 
+ENSURE_REGISTERED_METHODS = (
+    # Room methods
+    ClientAPI.create_room, ClientAPI.add_room_alias, ClientAPI.remove_room_alias,
+    ClientAPI.get_room_alias, ClientAPI.get_joined_rooms, ClientAPI.join_room_by_id,
+    ClientAPI.join_room, ClientAPI.set_room_directory_visibility, ClientAPI.forget_room,
+    ClientAPI.leave_room,
+    # User data methods
+    ClientAPI.search_users, ClientAPI.set_displayname, ClientAPI.set_avatar_url,
+)
+
+ENSURE_JOINED_METHODS = (
+    # Room methods
+    ClientAPI.invite_user,
+    # Event methods
+    ClientAPI.get_event, ClientAPI.get_state_event, ClientAPI.get_state,
+    ClientAPI.get_joined_members, ClientAPI.get_messages, ClientAPI.send_state_event,
+    ClientAPI.send_message_event, ClientAPI.redact,
+)
+
+
 class IntentAPI(ClientAPI):
     """
     IntentAPI is a high-level wrapper around the AppServiceAPI that provides many easy-to-use
@@ -27,14 +50,32 @@ class IntentAPI(ClientAPI):
     automatically handle many things like missing invites using the appservice bot.
     """
 
-    def __init__(self, mxid: str, api: 'AppServiceAPI', bot: 'IntentAPI' = None,
+    def __init__(self, mxid: UserID, api: 'AppServiceAPI', bot: 'IntentAPI' = None,
                  state_store: StateStore = None, log: Logger = None):
         super().__init__(mxid, api)
         self.bot = bot
         self.log = log
         self.state_store = state_store
 
-    def user(self, user: str, token: Optional[str] = None) -> 'IntentAPI':
+        for method in ENSURE_REGISTERED_METHODS:
+            method = getattr(self, method.__name__)
+
+            async def wrapper(shelf, *args, **kwargs):
+                await shelf.ensure_registered()
+                await method(*args, **kwargs)
+
+            setattr(self, method.__name__, wrapper)
+
+        for method in ENSURE_JOINED_METHODS:
+            method = getattr(self, method.__name__)
+
+            async def wrapper(shelf, room_id, *args, **kwargs):
+                await shelf.ensure_joined(room_id)
+                await method(room_id, *args, **kwargs)
+
+            setattr(self, method.__name__, wrapper)
+
+    def user(self, user_id: UserID, token: Optional[str] = None) -> 'IntentAPI':
         """
         Get the intent API for a specific user.
         This is just a proxy to :func:`~AppServiceAPI.intent`.
@@ -43,47 +84,22 @@ class IntentAPI(ClientAPI):
         result in a warning log.
 
         Args:
-            user: The Matrix ID of the user whose intent API to get.
+            user_id: The Matrix ID of the user whose intent API to get.
             token: The access token to use for the Matrix ID.
 
         Returns:
             The IntentAPI for the given user.
         """
         if not self.bot:
-            return self.api.intent(user, token)
+            return self.api.intent(user_id, token)
         else:
             self.log.warning("Called IntentAPI#user() of child intent object.")
-            return self.bot.api.intent(user, token)
+            return self.bot.api.intent(user_id, token)
+
+    def __call_api__(self):
+        pass
 
     # region User actions
-
-    async def get_joined_rooms(self) -> List[str]:
-        """
-        Get the list of rooms the user is in. See also: `API reference`_
-
-        Returns:
-            The list of room IDs the user is in.
-
-        .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-joined-rooms
-        """
-        await self.ensure_registered()
-        response = await self.api.request("GET", "/joined_rooms")
-        return response["joined_rooms"]
-
-    async def set_display_name(self, name: str):
-        """
-        Set the display name of the user. See also: `API reference`_
-
-        Args:
-            name: The new display name for the user.
-
-        .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-profile-userid-displayname
-        """
-        await self.ensure_registered()
-        content = {"displayname": name}
-        await self.api.request("PUT", f"/profile/{self.mxid}/displayname", content)
 
     async def set_presence(self, status: str = "online", ignore_cache: bool = False):
         """
@@ -106,20 +122,6 @@ class IntentAPI(ClientAPI):
         }
         await self.api.request("PUT", f"/presence/{self.mxid}/status", content)
         self.state_store.set_presence(self.mxid, status)
-
-    async def set_avatar(self, url: str):
-        """
-        Set the avatar of the user. See also: `API reference`_
-
-        Args:
-            url: The new avatar URL for the user. Must be a MXC URI.
-
-        .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-profile-userid-avatar-url
-        """
-        await self.ensure_registered()
-        content = {"avatar_url": url}
-        await self.api.request("PUT", f"/profile/{self.mxid}/avatar_url", content)
 
     async def upload_file(self, data: bytes, mime_type: Optional[str] = None) -> str:
         """
@@ -170,104 +172,34 @@ class IntentAPI(ClientAPI):
     # endregion
     # region Room actions
 
-    async def create_room(self, alias: Optional[str] = None, is_public: bool = False,
-                          name: Optional[str] = None, topic: Optional[str] = None,
-                          is_direct: bool = False, invitees: Optional[List[str]] = None,
-                          initial_state: Optional[List[dict]] = None) -> str:
+    async def invite_user(self, room_id: RoomID, user_id: UserID, check_cache: bool = False
+                          ) -> None:
         """
-        Create a new room. See also: `API reference`_
+        Invite a user to participate in a particular room. They do not start participating in the
+        room until they actually join the room.
+
+        Only users currently in the room can invite other users to join that room.
+
+        If the user was invited to the room, the homeserver will add a ``m.room.member`` event to
+        the room.
+
+        See also: `API reference`_
 
         Args:
-            alias: The desired room alias **local part**. If this is included, a room alias will be
-                created and mapped to the newly created room. The alias will belong on the same
-                homeserver which created the room. For example, if this was set to "foo" and sent to
-                the homeserver "example.com" the complete room alias would be ``#foo:example.com``.
-            is_public: This flag sets the state event preset to ``public_chat``, which sets
-                ``join_rules`` to ``public``. Defaults to false, which sets ``join_rules`` to
-                ``invite``.
-            name: If this is included, an ``m.room.name`` event will be sent into the room to
-                indicate the name of the room. See `Room Events`_ for more information on
-                ``m.room.name``.
-            topic: If this is included, an ``m.room.topic`` event will be sent into the room to
-                indicate the topic for the room. See `Room Events`_ for more information on
-                ``m.room.topic``.
-            is_direct: This flag makes the server set the ``is_direct`` flag on the
-                ``m.room.member`` events sent to the users in ``invite`` and ``invite_3pid``. See
-                `Direct Messaging`_ for more information.
-            invitees: A list of user IDs to invite to the room. This will tell the server to invite
-                everyone in the list to the newly created room.
-            initial_state: A list of state events to set in the new room. This allows the user to
-                override the default state events set in the new room. The expected format of the
-                state events are an object with type, state_key and content keys set.
-
-                Takes precedence over events set by `is_public`, but gets overriden by ``name`` and
-                ``topic keys``.
-
-        Returns:
-            The ID of the newly created room.
-
-        Raises:
-            MatrixResponseError: If the response does not contain a ``room_id`` field.
-
-        .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-createroom
-        .. _Room Events:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#room-events
-        .. _Direct Messaging:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#direct-messaging
-        """
-        await self.ensure_registered()
-        content = {
-            "visibility": "private",
-            "is_direct": is_direct,
-            "preset": "public_chat" if is_public else "private_chat",
-        }
-        if alias:
-            content["room_alias_name"] = alias
-        if invitees:
-            content["invite"] = invitees
-        if name:
-            content["name"] = name
-        if topic:
-            content["topic"] = topic
-        if initial_state:
-            content["initial_state"] = initial_state
-
-        resp = await self.api.request("POST", "/createRoom", content)
-        try:
-            return resp["room_id"]
-        except KeyError:
-            raise MatrixResponseError("Room create response did not contain room_id.")
-
-    def _invite_direct(self, room_id: str, user_id: str) -> Awaitable[dict]:
-        content = {"user_id": user_id}
-        return self.api.request("POST", "/rooms/" + room_id + "/invite", content)
-
-    async def invite(self, room_id: str, user_id: str, check_cache: bool = False
-                     ) -> Optional[dict]:
-        """
-        Invite a user to participate in a particular room. See also: `API reference`_
-
-        Args:
-            room_id: The room identifier (not alias) to which to invite the user.
+            room_id: The ID of the room to which to invite the user.
             user_id: The fully qualified user ID of the invitee.
-            check_cache: Whether or not to check the state cache before inviting.
-                If true, the actual invite HTTP request will only be made if the user is not in the
-                room according to local state caches.
+            check_cache: Whether or not the function should be a no-op if the state store says the
+                user is already invited.
 
-        Returns:
-        .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-createroom
+        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-invite
         """
-        await self.ensure_joined(room_id)
         try:
-            ok_states = {"invite", "join"}
+            ok_states = ("invite", "join")
             do_invite = (not check_cache
                          or self.state_store.get_membership(room_id, user_id) not in ok_states)
             if do_invite:
-                response = await self._invite_direct(room_id, user_id)
+                await super().invite_user(room_id, user_id)
                 self.state_store.invited(room_id, user_id)
-                return response
         except MatrixRequestError as e:
             if e.errcode != "M_FORBIDDEN":
                 raise IntentError(f"Failed to invite {user_id} to {room_id}", e)
@@ -282,22 +214,6 @@ class IntentAPI(ClientAPI):
         if info:
             content["info"] = info
         return self.send_state_event(room_id, "m.room.avatar", content, **kwargs)
-
-    async def add_room_alias(self, room_id: str, localpart: str, override: bool = True
-                             ) -> Optional[dict]:
-        await self.ensure_registered()
-        content = {"room_id": room_id}
-        alias = f"#{localpart}:{self.domain}"
-        try:
-            return await self.api.request("PUT", f"/directory/room/{quote(alias)}", content)
-        except MatrixRequestError as e:
-            if override and e.code == 409:
-                await self.remove_room_alias(localpart)
-                return await self.api.request("PUT", f"/directory/room/{quote(alias)}", content)
-
-    def remove_room_alias(self, localpart: str) -> Awaitable[dict]:
-        alias = f"#{localpart}:{self.domain}"
-        return self.api.request("DELETE", f"/directory/room/{quote(alias)}")
 
     def set_room_name(self, room_id: str, name: str, **kwargs) -> Awaitable[dict]:
         body = {"name": name}
@@ -317,7 +233,7 @@ class IntentAPI(ClientAPI):
             if levels:
                 return levels
         levels = await self.api.request("GET",
-                                           f"/rooms/{quote(room_id)}/state/m.room.power_levels")
+                                        f"/rooms/{quote(room_id)}/state/m.room.power_levels")
         self.state_store.set_power_levels(room_id, levels)
         return levels
 
@@ -358,9 +274,6 @@ class IntentAPI(ClientAPI):
             "join_rule": join_rule,
         }, **kwargs)
 
-    async def get_profile(self, user_id: str) -> Dict:
-        return await self.api.request("GET", f"/profile/{quote(user_id)}")
-
     async def whoami(self) -> Optional[str]:
         try:
             resp = await self.api.request("GET", f"/account/whoami")
@@ -368,22 +281,18 @@ class IntentAPI(ClientAPI):
         except MatrixError:
             return None
 
-    async def get_displayname(self, room_id: str, user_id: str, ignore_cache=False) -> str:
+    async def get_room_displayname(self, room_id: str, user_id: str, ignore_cache=False) -> str:
         return (await self.get_member_info(room_id, user_id, ignore_cache)).get("displayname", None)
 
-    async def get_avatar_url(self, room_id: str, user_id: str, ignore_cache=False) -> str:
+    async def get_room_avatar_url(self, room_id: str, user_id: str, ignore_cache=False) -> str:
         return (await self.get_member_info(room_id, user_id, ignore_cache)).get("avatar_url", None)
 
-    async def get_member_info(self, room_id: str, user_id: str, ignore_cache=False) -> Dict:
+    async def get_room_member_info(self, room_id: str, user_id: str, ignore_cache=False) -> Dict:
         member = self.state_store.get_member(room_id, user_id)
         if len(member) == 0 or ignore_cache:
             event = await self.get_state_event(room_id, "m.room.member", user_id)
             member = event.get("content", {})
         return member
-
-    async def get_event(self, room_id: str, event_id: str) -> Dict:
-        await self.ensure_joined(room_id)
-        return await self.api.request("GET", f"/rooms/{room_id}/event/{event_id}")
 
     async def set_typing(self, room_id: str, is_typing: bool = True, timeout: int = 5000,
                          ignore_cache: bool = False) -> Optional[dict]:
@@ -404,68 +313,10 @@ class IntentAPI(ClientAPI):
         return await self.api.request("POST", f"/rooms/{room_id}/receipt/m.read/{event_id}",
                                       content={})
 
-    def send_notice(self, room_id: str, text: str, html: Optional[str] = None,
-                    relates_to: Optional[dict] = None, **kwargs) -> Awaitable[dict]:
-        return self.send_text(room_id, text, html, "m.notice", relates_to, **kwargs)
-
-    def send_emote(self, room_id: str, text: str, html: Optional[str] = None,
-                   relates_to: Optional[dict] = None, **kwargs) -> Awaitable[dict]:
-        return self.send_text(room_id, text, html, "m.emote", relates_to, **kwargs)
-
-    def send_image(self, room_id: str, url: str, info: Optional[dict] = None, text: str = None,
-                   relates_to: Optional[dict] = None, **kwargs) -> Awaitable[dict]:
-        return self.send_file(room_id, url, info or {}, text, "m.image", relates_to, **kwargs)
-
-    def send_file(self, room_id: str, url: str, info: Optional[dict] = None, text: str = None,
-                  file_type: str = "m.file", relates_to: Optional[dict] = None, **kwargs
-                  ) -> Awaitable[dict]:
-        return self.send_message(room_id, {
-            "msgtype": file_type,
-            "url": url,
-            "body": text or "Uploaded file",
-            "info": info or {},
-            "m.relates_to": relates_to or None,
-        }, **kwargs)
-
-    def send_sticker(self, room_id: str, url: str, info: Optional[dict] = None, text: str = None,
-                     relates_to: Optional[dict] = None, **kwargs) -> Awaitable[dict]:
-        return self.send_event(room_id, "m.sticker", {
-            "url": url,
-            "body": text or "",
-            "info": info or {},
-            "m.relates_to": relates_to or None,
-        }, **kwargs)
-
-    def send_text(self, room_id: str, text: str, html: Optional[str] = None,
-                  msgtype: str = "m.text", relates_to: Optional[dict] = None, **kwargs
-                  ) -> Awaitable[dict]:
-        if html:
-            if not text:
-                text = html
-            return self.send_message(room_id, {
-                "body": text,
-                "msgtype": msgtype,
-                "format": "org.matrix.custom.html",
-                "formatted_body": html or text,
-                "m.relates_to": relates_to or None,
-            }, **kwargs)
-        else:
-            return self.send_message(room_id, {
-                "body": text,
-                "msgtype": msgtype,
-                "m.relates_to": relates_to or None,
-            }, **kwargs)
-
-    def send_message(self, room_id: str, body: Dict, **kwargs) -> Awaitable[dict]:
-        return self.send_event(room_id, "m.room.message", body, **kwargs)
-
     async def error_and_leave(self, room_id: str, text: str, html: Optional[str] = None):
         await self.ensure_joined(room_id)
         await self.send_notice(room_id, text, html=html)
         await self.leave_room(room_id)
-
-    def kick(self, room_id: str, user_id: str, message: Optional[str] = None) -> Awaitable[dict]:
-        return self.set_membership(room_id, user_id, "leave", message or "")
 
     def get_membership(self, room_id: str, user_id: str) -> Awaitable[str]:
         return self.get_state_event(room_id, "m.room.member", state_key=user_id)
@@ -485,102 +336,34 @@ class IntentAPI(ClientAPI):
 
         return self.send_state_event(room_id, "m.room.member", body, state_key=user_id, **kwargs)
 
-    def redact(self, room_id: str, event_id: str, reason: Optional[str] = None,
-               txn_id: Optional[int] = None, timestamp: Optional[int] = None) -> Awaitable[dict]:
-        txn_id = txn_id or str(self.api.txn_id) + str(int(time() * 1000))
-        self.api.txn_id += 1
-        content = {}
-        if reason:
-            content["reason"] = reason
-        return self.api.request("PUT",
-                                   f"/rooms/{quote(room_id)}/redact/{quote(event_id)}/{txn_id}",
-                                content, timestamp=timestamp)
-
-    @staticmethod
-    def _get_event_url(room_id: str, event_type: str, txn_id: int) -> str:
-        if not room_id:
-            raise ValueError("Room ID not given")
-        elif not event_type:
-            raise ValueError("Event type not given")
-        elif not txn_id:
-            raise ValueError("Transaction ID not given")
-        return f"/rooms/{quote(room_id)}/send/{quote(event_type)}/{quote(txn_id)}"
-
-    async def send_event(self, room_id: str, event_type: str, content: Dict,
-                         txn_id: Optional[int] = None, **kwargs) -> Dict:
-        if not room_id:
-            raise ValueError("Room ID not given")
-        elif not event_type:
-            raise ValueError("Event type not given")
-        await self.ensure_joined(room_id)
+    async def send_message_event(self, room_id: RoomID, event_type: EventType,
+                                 content: MessageEventContent, **kwargs) -> EventID:
         await self._ensure_has_power_level_for(room_id, event_type)
 
         if self.api.is_real_user and self.api.real_user_content_key:
-            content[self.api.real_user_content_key] = True
+            content.unrecognized_[self.api.real_user_content_key] = True
 
-        txn_id = txn_id or str(self.api.txn_id) + str(int(time() * 1000))
-        self.api.txn_id += 1
+        return await super().send_message_event(room_id, event_type, content, **kwargs)
 
-        url = self._get_event_url(room_id, event_type, txn_id)
+    async def send_state_event(self, room_id: RoomID, event_type: EventType,
+                               content: StateEventContent, state_key: Optional[str] = "", **kwargs
+                               ) -> EventID:
+        await self._ensure_has_power_level_for(room_id, event_type)
+        return await super().send_state_event(room_id, event_type, content, state_key, **kwargs)
 
-        return await self.api.request("PUT", url, content, **kwargs)
+    async def get_state_event(self, room_id: RoomID, event_type: EventType,
+                              state_key: Optional[str] = "") -> StateEvent:
+        await self._ensure_has_power_level_for(room_id, event_type)
+        event = await super().get_state_event(room_id, event_type, state_key)
+        self.state_store.update_state(event)
+        return event
 
-    @staticmethod
-    def _get_state_url(room_id: str, event_type: str, state_key: Optional[str] = "") -> str:
-        if not room_id:
-            raise ValueError("Room ID not given")
-        elif not event_type:
-            raise ValueError("Event type not given")
-        url = f"/rooms/{quote(room_id)}/state/{quote(event_type)}"
-        if state_key:
-            url += f"/{quote(state_key)}"
-        return url
-
-    async def send_state_event(self, room_id: str, event_type: str, content: Dict,
-                               state_key: Optional[str] = "", **kwargs) -> Dict:
-        if not room_id:
-            raise ValueError("Room ID not given")
-        elif not event_type:
-            raise ValueError("Event type not given")
-        await self.ensure_joined(room_id)
-        has_pl = await self._ensure_has_power_level_for(room_id, event_type, is_state_event=True)
-        if has_pl:
-            url = self._get_state_url(room_id, event_type, state_key)
-            return await self.api.request("PUT", url, content, **kwargs)
-
-    async def get_state_event(self, room_id: str, event_type: str, state_key: Optional[str] = ""
-                              ) -> Dict:
-        if not room_id:
-            raise ValueError("Room ID not given")
-        elif not event_type:
-            raise ValueError("Event type not given")
-        await self.ensure_joined(room_id)
-        url = self._get_state_url(room_id, event_type, state_key)
-        content = await self.api.request("GET", url)
-        self.state_store.update_state({
-            "type": event_type,
-            "room_id": room_id,
-            "state_key": state_key,
-            "content": content,
-        })
-        return content
-
-    def join_room(self, room_id: str):
-        if not room_id:
-            raise ValueError("Room ID not given")
-        return self.ensure_joined(room_id, ignore_cache=True)
-
-    def _join_room_direct(self, room: str) -> Awaitable[dict]:
-        if not room:
-            raise ValueError("Room ID not given")
-        return self.api.request("POST", f"/join/{quote(room)}")
-
-    def leave_room(self, room_id: str) -> Awaitable[dict]:
+    def leave_room(self, room_id: RoomID) -> None:
         if not room_id:
             raise ValueError("Room ID not given")
         try:
             self.state_store.left(room_id, self.mxid)
-            return self.api.request("POST", f"/rooms/{quote(room_id)}/leave")
+            super().leave_room(room_id)
         except MatrixRequestError as e:
             if "not in room" not in e.message:
                 raise
@@ -604,30 +387,30 @@ class IntentAPI(ClientAPI):
         return [membership["state_key"] for membership in memberships["chunk"] if
                 membership["content"]["membership"] in allowed_memberships]
 
-    async def get_room_state(self, room_id: str) -> Dict:
-        await self.ensure_joined(room_id)
-        state = await self.api.request("GET", f"/rooms/{quote(room_id)}/state")
-        # TODO update values based on state?
+    async def get_state(self, room_id: RoomID) -> List[StateEvent]:
+        state = await super().get_state(room_id)
+        for event in state:
+            self.state_store.update_state(event)
         return state
 
     # endregion
     # region Ensure functions
 
-    async def ensure_joined(self, room_id: str, ignore_cache: bool = False):
+    async def ensure_joined(self, room_id: RoomID, ignore_cache: bool = False) -> None:
         if not room_id:
             raise ValueError("Room ID not given")
         if not ignore_cache and self.state_store.is_joined(room_id, self.mxid):
             return
         await self.ensure_registered()
         try:
-            await self._join_room_direct(room_id)
+            await self.join_room(room_id)
             self.state_store.joined(room_id, self.mxid)
         except MatrixRequestError as e:
             if e.errcode != "M_FORBIDDEN" or not self.bot:
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}", e)
             try:
                 await self.bot.invite(room_id, self.mxid)
-                await self._join_room_direct(room_id)
+                await self.join_room(room_id)
                 self.state_store.joined(room_id, self.mxid)
             except MatrixRequestError as e2:
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}", e2)
@@ -637,20 +420,19 @@ class IntentAPI(ClientAPI):
         query_params = {"kind": "user"}
         return self.api.request("POST", "/register", content, query_params=query_params)
 
-    async def ensure_registered(self):
+    async def ensure_registered(self) -> None:
         if self.state_store.is_registered(self.mxid):
             return
         try:
             await self._register()
         except MatrixRequestError as e:
             if e.errcode != "M_USER_IN_USE":
-                self.log.exception(f"Failed to register {self.mxid}!")
-                # raise IntentError(f"Failed to register {self.mxid}", e)
-                return
+                raise IntentError(f"Failed to register {self.mxid}", e)
+                # self.log.exception(f"Failed to register {self.mxid}!")
+                # return
         self.state_store.registered(self.mxid)
 
-    async def _ensure_has_power_level_for(self, room_id: str, event_type: str,
-                                          is_state_event: bool = False):
+    async def _ensure_has_power_level_for(self, room_id: RoomID, event_type: EventType) -> None:
         if not room_id:
             raise ValueError("Room ID not given")
         elif not event_type:
@@ -658,15 +440,11 @@ class IntentAPI(ClientAPI):
 
         if not self.state_store.has_power_levels(room_id):
             await self.get_power_levels(room_id)
-        if self.state_store.has_power_level(room_id, self.mxid, event_type,
-                                            is_state_event=is_state_event):
-            return True
-        elif not self.bot:
-            self.log.warning(
-                f"Power level of {self.mxid} is not enough for {event_type} in {room_id}")
-            # raise IntentError(f"Power level of {self.mxid} is not enough"
-            #                   f"for {event_type} in {room_id}")
-        return False
-        # TODO implement
+        if not self.state_store.has_power_level(room_id, self.mxid, event_type):
+            # TODO implement something better
+            raise IntentError(f"Power level of {self.mxid} is not enough "
+                              f"for {event_type} in {room_id}")
+            # self.log.warning(
+            #     f"Power level of {self.mxid} is not enough for {event_type} in {room_id}")
 
     # endregion

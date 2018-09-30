@@ -7,4 +7,6 @@ RoomAlias = NewType("RoomAlias", str)
 
 FilterID = NewType("FilterID", str)
 
+ContentURI = NewType("ContentURI", str)
+
 SyncToken = NewType("SyncToken", str)
