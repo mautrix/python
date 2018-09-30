@@ -1,7 +1,7 @@
 from typing import List
 import attr
 
-from .serializable import SerializableAttrs, SerializableEnum
+from .util import SerializableAttrs, SerializableEnum
 from .event import EventType
 from .primitive import RoomID, UserID
 

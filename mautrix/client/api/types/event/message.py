@@ -1,8 +1,8 @@
 from typing import Optional
 import attr
 
-from .serializable import SerializableEnum, SerializableAttrs
-from .event import BaseRoomEvent, BaseUnsigned
+from ..util import SerializableEnum, SerializableAttrs
+from .base import BaseRoomEvent, BaseUnsigned
 
 
 class Format(SerializableEnum):

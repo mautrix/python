@@ -3,7 +3,7 @@ from typing import List
 import attr
 
 from .primitive import RoomID
-from .serializable import SerializableAttrs
+from mautrix.client.api.types.util.serializable import SerializableAttrs
 
 
 class RoomCreatePreset(Enum):

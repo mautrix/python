@@ -5,7 +5,7 @@ import attr
 import json
 import copy
 
-from ....types import JSON
+from .....types import JSON
 from .obj import Obj, Lst
 
 T = TypeVar("T")

@@ -1,8 +1,6 @@
-import attr
-
-from ....types import JSON
-from .primitive import RoomID, UserID, EventID
-from .serializable import SerializableEnum, SerializableAttrs
+from .....types import JSON
+from ..primitive import RoomID, UserID, EventID
+from ..util import SerializableEnum
 
 STATE_EVENTS = ("m.room.aliases", "m.room.canonical_alias", "m.room.create", "m.room.join_rules",
                 "m.room.member", "m.room.power_levels", "m.room.name", "m.room.topic",

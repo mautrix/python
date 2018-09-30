@@ -1,9 +1,9 @@
 from typing import Optional
 import attr
 
-from .serializable import SerializableAttrs
-from .message_event import MessageEvent, MessageEventContent, MessageUnsigned
-from .state_event import StateEvent, StateEventContent, StateUnsigned
+from ..util import SerializableAttrs
+from .message import MessageEvent, MessageEventContent, MessageUnsigned
+from .state import StateEvent, StateEventContent, StateUnsigned
 
 
 @attr.s(auto_attribs=True)

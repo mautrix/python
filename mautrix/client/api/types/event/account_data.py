@@ -1,8 +1,8 @@
 from typing import Dict
 import attr
 
-from .serializable import SerializableAttrs
-from .event import BaseEvent
+from ..util import SerializableAttrs
+from .base import BaseEvent
 
 
 @attr.s(auto_attribs=True)
