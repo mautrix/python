@@ -2,7 +2,8 @@ from typing import Dict, Tuple
 from abc import ABC, abstractmethod
 import time
 
-from ...client.api.types import Event, EventType, PowerLevels, Member, Membership, RoomID, UserID
+from ...client.api.types import (StateEvent, EventType, PowerLevels, Member, Membership, RoomID,
+                                 UserID)
 
 
 class StateStore(ABC):
@@ -66,7 +67,7 @@ class StateStore(ABC):
         except KeyError:
             return False
 
-    def update_state(self, evt: Event) -> None:
+    def update_state(self, evt: StateEvent) -> None:
         if evt.type == EventType.ROOM_POWER_LEVELS:
             self.set_power_levels(evt.room_id, evt.content.power_levels)
         elif evt.type == EventType.ROOM_MEMBER:

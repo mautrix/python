@@ -1,8 +1,7 @@
 from typing import Set, Dict
 import json
 
-from ...types import JSON
-from ...client.api.types import Event, EventType, PowerLevels, Member, Membership, RoomID, UserID
+from ...client.api.types import PowerLevels, Member, Membership, RoomID, UserID
 from .abstract import StateStore
 
 

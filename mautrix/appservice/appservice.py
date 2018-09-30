@@ -182,13 +182,13 @@ class AppService:
             return web.Response(status=400)
 
         for event in events:
-            self.handle_matrix_event(event)
+            self.handle_matrix_event(Event.deserialize(event))
 
         self.transactions.append(transaction_id)
 
         return web.json_response({})
 
-    def handle_matrix_event(self, event: dict) -> None:
+    def handle_matrix_event(self, event: Event) -> None:
         async def try_handle(handler_func: HandlerFunc):
             try:
                 await handler_func(event)

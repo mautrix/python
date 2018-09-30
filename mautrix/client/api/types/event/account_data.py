@@ -17,4 +17,4 @@ class AccountDataEventContent(SerializableAttrs['AccountDataEventContent']):
 
 @attr.s(auto_attribs=True)
 class AccountDataEvent(BaseEvent, SerializableAttrs['AccountDataEvent']):
-    content: AccountDataEventContent = None
+    content: AccountDataEventContent

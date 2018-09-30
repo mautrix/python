@@ -21,6 +21,11 @@ class Serializable:
         raise NotImplementedError()
 
 
+class SerializerError(Exception):
+    def __init__(self, message: str = None) -> None:
+        super().__init__(message)
+
+
 class GenericSerializable(ABC, Generic[T], Serializable):
     @classmethod
     @abstractmethod
@@ -39,12 +44,15 @@ SerializableEnumChild = TypeVar("SerializableEnumChild", bound='SerializableEnum
 
 
 class SerializableEnum(Serializable, Enum):
-    def serialize(self) -> JSON:
+    def serialize(self) -> str:
         return self.value
 
     @classmethod
-    def deserialize(cls, raw: JSON) -> SerializableEnumChild:
-        return cls(raw)
+    def deserialize(cls, raw: str) -> SerializableEnumChild:
+        try:
+            return cls(raw)
+        except ValueError as e:
+            raise SerializerError() from e
 
     def json(self) -> str:
         return json.dumps(self.serialize())
@@ -87,7 +95,14 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
         new_items[field.name] = _deserialize(field.type, value, field.default)
     if len(new_items) == 0 and default_if_empty:
         return _safe_default(default)
-    obj = attrs_type(**new_items)
+    try:
+        obj = attrs_type(**new_items)
+    except TypeError as e:
+        for json_key, field in _fields(attrs_type):
+            if json_key not in new_items:
+                raise SerializerError(
+                    f"Missing value for {field.name} in {attrs_type.__name__}") from e
+        raise SerializerError("Unknown serialization error") from e
     if len(unrecognized) > 0:
         obj.unrecognized_ = unrecognized
     return obj

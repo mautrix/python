@@ -1,3 +1,5 @@
+import attr
+
 from .....types import JSON
 from ..primitive import RoomID, UserID, EventID
 from ..util import SerializableEnum
@@ -10,7 +12,7 @@ MESSAGE_EVENTS = ("m.room.redaction", "m.room.message", "m.sticker")
 
 EPHEMERAL_EVENTS = ("m.receipt", "m.typing", "m.presence")
 
-ACCOUNT_DATA_EVENTS = ("m.direct", "m.push_rules", "m.tag")
+ACCOUNT_DATA_EVENTS = ("m.direct", "m.push_rules", "m.tag", "m.ignored_user_list")
 
 
 class EventType(SerializableEnum):
@@ -36,6 +38,7 @@ class EventType(SerializableEnum):
     DIRECT = "m.direct"
     PUSH_RULES = "m.push_rules"
     TAG = "m.tag"
+    IGNORED_USER_LIST = "m.ignored_user_list"
 
     @property
     def is_state(self) -> bool:
@@ -55,12 +58,12 @@ class BaseUnsigned:
 
 
 class BaseEvent:
-    content: JSON = None
-    type: EventType = None
+    content: JSON
+    type: EventType
 
 
 class BaseRoomEvent(BaseEvent):
-    room_id: RoomID = None
-    event_id: EventID = None
-    sender: UserID = None
-    timestamp: int = None
+    room_id: RoomID
+    event_id: EventID
+    sender: UserID
+    timestamp: int = attr.ib(metadata={"json": "origin_server_ts"})

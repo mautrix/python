@@ -73,6 +73,6 @@ class MessageUnsigned(BaseUnsigned, SerializableAttrs['MessageUnsigned']):
 
 @attr.s(auto_attribs=True)
 class MessageEvent(BaseRoomEvent, SerializableAttrs['Event']):
-    content: MessageEventContent = None
+    content: MessageEventContent
     redacts: str = None
     unsigned: Optional[MessageUnsigned] = None

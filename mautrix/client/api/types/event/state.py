@@ -106,6 +106,6 @@ class StateUnsigned(BaseUnsigned, SerializableAttrs['StateUnsigned']):
 
 @attr.s(auto_attribs=True)
 class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
-    state_key: str = None
-    content: StateEventContent = None
+    state_key: str
+    content: StateEventContent
     unsigned: Optional[StateUnsigned] = None
