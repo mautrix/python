@@ -1,14 +1,15 @@
-from time import time
 from typing import Awaitable, Dict, Optional, List, Tuple
 
-from ...api import MatrixResponseError
-from .types import UserID, RoomID, EventID, Event, EventType, EventContent, Member
+from ...errors import MatrixResponseError
+from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
+                    EventType, StateEventContent, MessageEventContent, Member, Event)
 from .base import BaseClientAPI, quote
 
 
 class EventMethods(BaseClientAPI):
     """
-    Methods in section 8 Events of the spec. See also: `API reference`_
+    Methods in section 8 Events of the spec. Includes /syncing, getting messages and state, setting
+    state, sending messages and redacting messages. See also: `API reference`_
 
     .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#events
     """
@@ -16,7 +17,7 @@ class EventMethods(BaseClientAPI):
     # region 8.2 Syncing
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#syncing
 
-    def sync(self, since: str = None, timeout_ms: int = 30000, filter_id: int = None,
+    def sync(self, since: SyncToken = None, timeout_ms: int = 30000, filter_id: FilterID = None,
              full_state: bool = None, set_presence: str = None) -> Awaitable[Dict]:
         """
         Perform a sync request. See also: `API reference`_
@@ -48,8 +49,8 @@ class EventMethods(BaseClientAPI):
 
     async def get_event(self, room_id: RoomID, event_id: EventID) -> Event:
         """
-        Get a single event based on ``room_id``/``event_id``. You must have permission to retrieve this
-        event e.g. by being a member in the room for this event. See also: `API reference`_
+        Get a single event based on ``room_id``/``event_id``. You must have permission to retrieve
+        this event e.g. by being a member in the room for this event. See also: `API reference`_
 
         Args:
             room_id: The ID of the room the event is in.
@@ -64,7 +65,7 @@ class EventMethods(BaseClientAPI):
         return Event.deserialize(content)
 
     async def get_state_event(self, room_id: RoomID, event_type: EventType,
-                              state_key: Optional[str] = None) -> Event:
+                              state_key: Optional[str] = None) -> StateEvent:
         """
         Looks up the contents of a state event in a room. If the user is joined to the room then the
         state is taken from the current state of the room. If the user has left the room then the
@@ -81,9 +82,9 @@ class EventMethods(BaseClientAPI):
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
         content = await self.api.request("GET", self._get_state_url(room_id, event_type, state_key))
-        return Event.deserialize(content)
+        return StateEvent.deserialize(content)
 
-    async def get_state(self, room_id: RoomID) -> List[Event]:
+    async def get_state(self, room_id: RoomID) -> List[StateEvent]:
         """
         Get the state events for the current state of a room. See also: `API reference`_
 
@@ -96,9 +97,9 @@ class EventMethods(BaseClientAPI):
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-state
         """
         content = await self.api.request("GET", f"/rooms/{quote(room_id)}/state")
-        return [Event.deserialize(event) for event in content]
+        return [StateEvent.deserialize(event) for event in content]
 
-    async def get_members(self, room_id: RoomID) -> List[Event]:
+    async def get_members(self, room_id: RoomID) -> List[StateEvent]:
         """
         Get the list of members for a room. See also: `API reference`_
 
@@ -115,7 +116,7 @@ class EventMethods(BaseClientAPI):
             chunk = content["chunk"]
         except KeyError:
             raise MatrixResponseError("`chunk` not in response.")
-        return [Event.deserialize(event) for event in chunk]
+        return [StateEvent.deserialize(event) for event in chunk]
 
     async def get_joined_members(self, room_id: RoomID) -> Dict[UserID, Member]:
         """
@@ -140,16 +141,17 @@ class EventMethods(BaseClientAPI):
             raise MatrixResponseError("`joined` not in response.")
         return {user_id: Member.deserialize(event) for user_id, event in joined}
 
-    async def get_messages(self, room_id: RoomID, direction: str, from_token: str,
-                           to_token: Optional[str] = None, limit: Optional[int] = None,
-                           filter_json: Optional[str] = None) -> Tuple[str, str, List[Event]]:
+    async def get_messages(self, room_id: RoomID, direction: PaginationDirection,
+                           from_token: SyncToken, to_token: Optional[SyncToken] = None,
+                           limit: Optional[int] = None, filter_json: Optional[str] = None
+                           ) -> Tuple[SyncToken, SyncToken, List[Event]]:
         """
         Get a list of message and state events for a room. Pagination parameters are used to
         paginate history in the room. See also: `API reference`_
 
         Args:
             room_id: The ID of the room to get events from.
-            direction: The direction to return events from. One of: ["b", "f"]
+            direction: The direction to return events from.
             from_token: The token to start returning events from. This token can be obtained from a
                 ``prev_batch`` token returned for each room by the `sync endpoint`_, or from a
                 ``start`` or ``end`` token returned by a previous request to this endpoint.
@@ -163,11 +165,9 @@ class EventMethods(BaseClientAPI):
         .. _RoomEventFilter: https://matrix.org/docs/spec/client_server/r0.4.0.html#filtering
         .. _sync endpoint: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-sync
         """
-        if len(direction) == 0 or direction[0] not in ("b", "f"):
-            raise ValueError("Invalid direction. Valid values: b, f")
         query_params = {
             "from": from_token,
-            "dir": direction[0],
+            "dir": direction.value,
         }
         if to_token:
             query_params["to"] = to_token
@@ -202,8 +202,9 @@ class EventMethods(BaseClientAPI):
             url += f"/{quote(state_key)}"
         return url
 
-    async def send_state_event(self, room_id: RoomID, event_type: EventType, content: EventContent,
-                               state_key: Optional[str] = "", **kwargs) -> EventID:
+    async def send_state_event(self, room_id: RoomID, event_type: EventType,
+                               content: StateEventContent, state_key: Optional[str] = "", **kwargs
+                               ) -> EventID:
         """
         Send a state event to a room. State events with the same ``room_id``, ``event_type`` and
         ``state_key`` will be overridden. See also: `API reference`_
@@ -230,7 +231,7 @@ class EventMethods(BaseClientAPI):
             raise MatrixResponseError("`event_id` not in response.")
 
     async def send_message_event(self, room_id: RoomID, event_type: EventType,
-                                 content: EventContent, **kwargs) -> EventID:
+                                 content: MessageEventContent, **kwargs) -> EventID:
         """
         Send a message event to a room. Message events allow access to historical events and
         pagination, making them suited for "once-off" activity in a room. See also: `API reference`_

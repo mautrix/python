@@ -1,4 +1,3 @@
-from typing import Optional, List, Dict
 import attr
 
 from ....types import JSON
@@ -11,7 +10,7 @@ STATE_EVENTS = ("m.room.aliases", "m.room.canonical_alias", "m.room.create", "m.
 
 MESSAGE_EVENTS = ("m.room.redaction", "m.room.message", "m.sticker")
 
-EPHEMERAL_EVENTS = ("m.receipt", "m.typing")
+EPHEMERAL_EVENTS = ("m.receipt", "m.typing", "m.presence")
 
 ACCOUNT_DATA_EVENTS = ("m.direct", "m.push_rules", "m.tag")
 
@@ -34,6 +33,7 @@ class EventType(SerializableEnum):
 
     RECEIPT = "m.receipt"
     TYPING = "m.typing"
+    PRESENCE = "m.presence"
 
     DIRECT = "m.direct"
     PUSH_RULES = "m.push_rules"
@@ -52,175 +52,17 @@ class EventType(SerializableEnum):
         return self.value in ACCOUNT_DATA_EVENTS
 
 
-class Format(SerializableEnum):
-    HTML = "org.matrix.custom.html"
-
-
-class MessageType(SerializableEnum):
-    TEXT = "m.text"
-    EMOTE = "m.emote"
-    NOTICE = "m.notice"
-    IMAGE = "m.image"
-    VIDEO = "m.video"
-    AUDIO = "m.audio"
-    FILE = "m.file"
-    LOCATION = "m.location"
-
-
-class Membership(SerializableEnum):
-    JOIN = "join"
-    LEAVE = "leave"
-    INVITE = "invite"
-    BAN = "ban"
-    KNOCK = "knock"
-
-
-@attr.s(auto_attribs=True)
-class InReplyTo(SerializableAttrs['InReplyTo']):
-    event_id: str = None
-
-
-@attr.s(auto_attribs=True)
-class RelatesTo(SerializableAttrs['RelatesTo']):
-    in_reply_to: InReplyTo = attr.ib(default=None, metadata={"json": "m.in_reply_to"})
-
-
-@attr.s(auto_attribs=True)
-class MatchedCommand(SerializableAttrs['MatchedCommand']):
-    pass
-
-
-@attr.s(auto_attribs=True)
-class RoomTagInfo(SerializableAttrs['RoomTagInfo']):
-    order: int = None
-
-
-@attr.s(auto_attribs=True)
-class PowerLevels(SerializableAttrs['PowerLevels']):
-    users: Dict[str, int] = attr.ib(default={}, metadata={"omitempty": False})
-    users_default: int = 0
-
-    events: Dict[str, int] = attr.ib(default={}, metadata={"omitempty": False})
-    events_default: int = 0
-
-    state_default: int = 50
-
-    invite: int = 50
-    kick: int = 50
-    ban: int = 50
-    redact: int = 50
-
-    def get_user_level(self, user_id: UserID) -> int:
-        return self.users.get(user_id, self.users_default)
-
-    def set_user_level(self, user_id: UserID, level: int) -> None:
-        if level == self.users_default:
-            del self.users[user_id]
-        else:
-            self.users[user_id] = level
-
-    def ensure_user_level(self, user_id: UserID, level: int) -> bool:
-        if self.get_user_level(user_id) != level:
-            self.set_user_level(user_id, level)
-            return True
-        return False
-
-    def get_event_level(self, event_type: EventType) -> int:
-        return self.events.get(event_type.value,
-                               self.state_default if event_type.is_state else self.events_default)
-
-    def set_event_level(self, event_type: EventType, level: int) -> None:
-        if level == self.state_default if event_type.is_state else self.events_default:
-            del self.events[event_type.value]
-        else:
-            self.events[event_type.value] = level
-
-    def ensure_event_level(self, event_type: EventType, level: int) -> bool:
-        if self.get_event_level(event_type) != level:
-            self.set_event_level(event_type, level)
-            return True
-        return False
-
-
-@attr.s(auto_attribs=True)
-class Member(SerializableAttrs['Member']):
-    membership: Membership = None
-    avatar_url: str = None
-    displayname: str = None
-    reason: str = None
-    third_party_invite: JSON = None
-
-
-@attr.s(auto_attribs=True)
-class BaseFileInfo(SerializableAttrs['BaseFileInfo']):
-    mimetype: str = None
-    height: int = attr.ib(default=None, metadata={"json": "h"})
-    width: int = attr.ib(default=None, metadata={"json": "w"})
-    duration: int = None
-    size: int = None
-
-
-@attr.s(auto_attribs=True)
-class FileInfo(BaseFileInfo, SerializableAttrs['FileInfo']):
-    thumbnail_info: BaseFileInfo = None
-    thumbnail_url: str = None
-
-
-@attr.s(auto_attribs=True)
-class EventContent(SerializableAttrs['EventContent']):
-    msgtype: MessageType = None
-    body: str = None
-    format: Format = None
-    formatted_body: str = None
-
-    url: str = None
-    info: FileInfo = None
-
-    membership: Membership = None
-    member: Member = attr.ib(default=None, metadata={"flatten": True})
-
-    relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
-    command: MatchedCommand = attr.ib(default=None, metadata={"json": "m.command"})
-
-    room_aliases: List[str] = attr.ib(default=None, metadata={"json": "aliases"})
-    canonical_alias: str = attr.ib(default=None, metadata={"json": "alias"})
-
-    room_name: str = attr.ib(default=None, metadata={"json": "name"})
-    room_topic: str = attr.ib(default=None, metadata={"json": "topic"})
-
-    power_levels: PowerLevels = attr.ib(default=None, metadata={"flatten": True})
-
-    room_tags: Dict[str, RoomTagInfo] = attr.ib(default=None, metadata={"json": "tags"})
-
-    typing_user_ids: List[str] = attr.ib(default=None, metadata={"json": "user_ids"})
-
-
-@attr.s(auto_attribs=True)
-class Unsigned(SerializableAttrs['Unsigned']):
-    prev_content: EventContent = None
-    prev_sender: str = None
-    replaces_state: str = None
-    transaction_id: str = None
+class BaseUnsigned:
     age: int = None
 
 
-@attr.s(auto_attribs=True)
-class StrippedState(SerializableAttrs['StrippedState']):
-    content: EventContent = None
+class BaseEvent:
+    content: JSON = None
     type: EventType = None
-    state_key: str = None
 
 
-@attr.s(auto_attribs=True)
-class Event(SerializableAttrs['Event']):
+class BaseRoomEvent(BaseEvent):
     room_id: RoomID = None
     event_id: EventID = None
-    state_key: str = None
     sender: UserID = None
-    type: EventType = None
     timestamp: int = None
-    content: EventContent = None
-
-    redacts: str = None
-    unsigned: Optional[Unsigned] = None
-    invite_room_state: Optional[List[StrippedState]] = None

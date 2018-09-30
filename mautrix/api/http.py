@@ -9,7 +9,7 @@ from aiohttp import ClientSession
 from aiohttp.client_exceptions import ContentTypeError
 
 from ..types import JSON
-from .errors import MatrixRequestError
+from ..errors import MatrixRequestError
 
 
 class HTTPAPI:
@@ -63,11 +63,6 @@ class HTTPAPI:
         as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
         self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "))
 
-    def get_txn_id(self) -> str:
-        """Get a new unique transaction ID."""
-        self.txn_id += 1
-        return str(self.txn_id) + str(int(time() * 1000))
-
     def request(self, method: str, path: str, content: Optional[Union[JSON, bytes, str]] = None,
                 headers: Optional[Dict[str, str]] = None,
                 query_params: Optional[Dict[str, str]] = None,
@@ -87,8 +82,8 @@ class HTTPAPI:
         """
         content = content or {}
         headers = headers or {}
+        headers["Authorization"] = f"Bearer {self.token}"
         query_params = query_params or {}
-        query_params["access_token"] = self.token
 
         method = method.upper()
         if method not in ("GET", "PUT", "DELETE", "POST"):
@@ -104,6 +99,11 @@ class HTTPAPI:
 
         endpoint = self.base_url + api_path + path
         return self._send(method, endpoint, content, query_params, headers or {})
+
+    def get_txn_id(self) -> str:
+        """Get a new unique transaction ID."""
+        self.txn_id += 1
+        return str(self.txn_id) + str(int(time() * 1000))
 
     def get_download_url(self, mxc_uri: str) -> str:
         """

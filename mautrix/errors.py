@@ -23,3 +23,11 @@ class MatrixResponseError(MatrixError):
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class IntentError(MatrixError):
+    """An intent execution failure, most likely caused by a `MatrixRequestError`."""
+
+    def __init__(self, message: str, source: Exception):
+        super().__init__(message)
+        self.source = source
