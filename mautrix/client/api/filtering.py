@@ -6,10 +6,12 @@ from .types import UserID, Filter, FilterID
 
 class FilteringMethods(BaseClientAPI):
     """
-    Methods in section 7 Filtering of the spec. See also: `API reference`_
+    Methods in section 7 Filtering of the spec.
 
     Filters can be created on the server and can be passed as as a parameter to APIs which return
     events. These filters alter the data returned from those APIs. Not all APIs accept filters.
+
+    See also: `API reference`_
 
     .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#filtering
     """
@@ -43,7 +45,8 @@ class FilteringMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-user-userid-filter
         """
-        resp = await self.api.request(Method.POST, f"/user/{user_id}/filter", filter_params.serialize())
+        resp = await self.api.request(Method.POST, f"/user/{user_id}/filter",
+                                      filter_params.serialize())
         try:
             return resp["filter_id"]
         except KeyError:

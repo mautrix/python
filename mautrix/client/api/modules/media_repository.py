@@ -1,5 +1,6 @@
 from typing import Optional
 
+from mautrix.client.api.types import MXOpenGraph
 from ....api import APIPath, Method
 from ....errors import MatrixResponseError
 from ..base import BaseClientAPI
@@ -13,7 +14,9 @@ except ImportError:
 
 class MediaRepositoryMethods(BaseClientAPI):
     """
-    Methods in section 13.8 Content Repository of the spec. See also: `API reference`_
+    Methods in section 13.8 Content Repository of the spec. These methods are used for uploading and
+    downloading content from the media repository and for getting URL previews without leaking
+    client IPs. See also: `API reference`_
 
     .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#id112
     """
@@ -95,8 +98,26 @@ class MediaRepositoryMethods(BaseClientAPI):
         async with self.api.session.get(url, params=query_params) as response:
             return await response.read()
 
-    async def get_url_preview(self):
-        pass
+    async def get_url_preview(self, url: str, timestamp: Optional[int] = None) -> MXOpenGraph:
+        """
+        Get information about a URL for a client. See also: `API reference`_
+
+        Args:
+            url: The URL to get a preview of.
+            timestamp: The preferred point in time to return a preview for. The server may return a
+                newer version if it does not have the requested version available.
+
+        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-preview-url
+        """
+        query_params = {"url": url}
+        if timestamp is not None:
+            query_params["ts"] = timestamp
+        content = await self.api.request(Method.GET, "/preview_url", query_params=query_params,
+                                         api_path=APIPath.MEDIA)
+        try:
+            return MXOpenGraph.deserialize(content)
+        except SerializerError:
+            raise MatrixResponseError("Invalid MXOpenGraph in response.")
 
     async def get_media_repo_config(self) -> MediaRepoConfig:
         """

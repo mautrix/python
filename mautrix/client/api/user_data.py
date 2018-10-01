@@ -8,7 +8,8 @@ from .base import BaseClientAPI, quote
 
 class UserDataMethods(BaseClientAPI):
     """
-    Methods in section 10 User Data of the spec. See also: `API reference`_
+    Methods in section 10 User Data of the spec. These methods are used for setting and getting user
+    metadata and searching for users. See also: `API reference`_
 
     .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#user-data
     """

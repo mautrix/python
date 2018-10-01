@@ -10,7 +10,10 @@ from .base import BaseClientAPI, quote
 
 class RoomMethods(BaseClientAPI):
     """
-    Methods in section 9 Rooms of the spec. See also: `API reference`_
+    Methods in section 9 Rooms of the spec. These methods are used for creating rooms, interacting
+    with the room directory and using the easy room metadata editing endpoints. Generic state
+    setting and sending events are in the :EventMethods: (section 8) module.
+    See also: `API reference`_
 
     .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#rooms
     """

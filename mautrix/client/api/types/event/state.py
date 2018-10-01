@@ -8,6 +8,7 @@ from .base import BaseRoomEvent, BaseUnsigned, EventType
 
 
 class Membership(SerializableEnum):
+    """A room membership state."""
     JOIN = "join"
     LEAVE = "leave"
     INVITE = "invite"
@@ -17,6 +18,7 @@ class Membership(SerializableEnum):
 
 @attr.s(auto_attribs=True)
 class PowerLevels(SerializableAttrs['PowerLevels']):
+    """The full content of a power level event."""
     users: Dict[str, int] = attr.ib(default={}, metadata={"omitempty": False})
     users_default: int = 0
 
@@ -64,6 +66,7 @@ class PowerLevels(SerializableAttrs['PowerLevels']):
 
 @attr.s(auto_attribs=True)
 class Member(SerializableAttrs['Member']):
+    """The content of a membership event."""
     membership: Membership = None
     avatar_url: str = None
     displayname: str = None
@@ -73,6 +76,9 @@ class Member(SerializableAttrs['Member']):
 
 @attr.s(auto_attribs=True)
 class StateEventContent(SerializableAttrs['StateEventContent']):
+    """The content of a state event. The contents of all known different state event types are
+    available in this object. You should check :StateEvent:`type` to find the specific field to
+    access"""
     membership: Membership = None
     member: Member = attr.ib(default=None, metadata={"flatten": True})
 
@@ -91,6 +97,7 @@ class StateEventContent(SerializableAttrs['StateEventContent']):
 
 @attr.s(auto_attribs=True)
 class StrippedState(SerializableAttrs['StrippedState']):
+    """Stripped state events included with some invite events."""
     content: StateEventContent = None
     type: EventType = None
     state_key: str = None
@@ -98,6 +105,7 @@ class StrippedState(SerializableAttrs['StrippedState']):
 
 @attr.s(auto_attribs=True)
 class StateUnsigned(BaseUnsigned, SerializableAttrs['StateUnsigned']):
+    """Unsigned information sent with state events."""
     prev_content: StateEventContent = None
     prev_sender: str = None
     replaces_state: str = None
@@ -106,6 +114,7 @@ class StateUnsigned(BaseUnsigned, SerializableAttrs['StateUnsigned']):
 
 @attr.s(auto_attribs=True)
 class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
+    """A room state event."""
     state_key: str
     content: StateEventContent
     unsigned: Optional[StateUnsigned] = None

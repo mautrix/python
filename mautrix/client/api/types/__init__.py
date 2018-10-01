@@ -7,5 +7,5 @@ from .event import (EventType, MessageEvent, MessageEventContent, MessageUnsigne
 from .rooms import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
                     RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages)
 from .users import User, UserSearchResults
-from .media import MediaRepoConfig
+from .media import MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio
 from .util import SerializerError
