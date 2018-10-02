@@ -2,3 +2,4 @@ Sphinx
 sphinx-autobuild
 git+https://github.com/tulir/sphinx-autodoc-typehints.git#egg=sphinx-autodoc-typehints
 sphinx-rtd-theme
+-r ../requirements.txt
