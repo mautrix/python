@@ -13,9 +13,8 @@ class RoomMethods(BaseClientAPI):
     Methods in section 9 Rooms of the spec. These methods are used for creating rooms, interacting
     with the room directory and using the easy room metadata editing endpoints. Generic state
     setting and sending events are in the :EventMethods: (section 8) module.
-    See also: `API reference`_
 
-    .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#rooms
+    See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#rooms>`__
     """
 
     # region 9.1 Creation
@@ -29,7 +28,9 @@ class RoomMethods(BaseClientAPI):
                           initial_state: Optional[List[StateEvent]] = None,
                           room_version: str = None, creation_content: JSON = None) -> RoomID:
         """
-        Create a new room with various configuration options. See also: `API reference`_
+        Create a new room with various configuration options.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-createroom>`__
 
         Args:
             alias_localpart: The desired room alias **local part**. If this is included, a room
@@ -50,7 +51,7 @@ class RoomMethods(BaseClientAPI):
                 indicate the topic for the room. See `Room Events`_ for more information on
                 ``m.room.topic``.
             is_direct: This flag makes the server set the ``is_direct`` flag on the
-                ``m.room.member`` events sent to the users in ``invite`` and ``invite_3pid``. See
+                `m.room.member`_ events sent to the users in ``invite`` and ``invite_3pid``. See
                 `Direct Messaging`_ for more information.
             invitees: A list of user IDs to invite to the room. This will tell the server to invite
                 everyone in the list to the newly created room.
@@ -72,10 +73,10 @@ class RoomMethods(BaseClientAPI):
         Raises:
             MatrixResponseError: If the response does not contain a ``room_id`` field.
 
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-createroom
         .. _Room Events: https://matrix.org/docs/spec/client_server/r0.4.0.html#room-events
         .. _Direct Messaging: https://matrix.org/docs/spec/client_server/r0.4.0.html#direct-messaging
         .. _m.room.create: https://matrix.org/docs/spec/client_server/r0.4.0.html#m-room-create
+        .. _m.room.member: https://matrix.org/docs/spec/client_server/r0.4.0.html#m-room-member
         """
         content = {
             "visibility": visibility.value,
@@ -110,15 +111,15 @@ class RoomMethods(BaseClientAPI):
     async def add_room_alias(self, room_id: RoomID, alias_localpart: str,
                              override: bool = False) -> None:
         """
-        Create a new mapping from room alias to room ID. See also: `API reference`_
+        Create a new mapping from room alias to room ID.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-directory-room-roomalias>`__
 
         Args:
             room_id: The room ID to set.
             alias_localpart: The localpart of the room alias to set.
             override: Whether or not the alias should be removed and the request retried if the
                 server responds with HTTP 409 Conflict
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-directory-room-roomalias
         """
         room_alias = f"#{alias_localpart}:{self.domain}"
         content = {"room_id": room_id}
@@ -137,12 +138,11 @@ class RoomMethods(BaseClientAPI):
 
         Servers may choose to implement additional access control checks here, for instance that
         room aliases can only be deleted by their creator or server administrator.
-        See also: `API reference`_
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#delete-matrix-client-r0-directory-room-roomalias>`__
 
         Args:
             alias_localpart: The room alias to remove.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#delete-matrix-client-r0-directory-room-roomalias
         """
         room_alias = f"#{alias_localpart}:{self.domain}"
         await self.api.request(Method.DELETE, f"/directory/room/{quote(room_alias)}")
@@ -154,15 +154,13 @@ class RoomMethods(BaseClientAPI):
         The server will use the federation API to resolve the alias if the domain part of the alias
         does not correspond to the server's own domain.
 
-        See also: `API reference`_
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-directory-room-roomalias>`__
 
         Args:
             room_alias: The room alias.
 
         Returns:
             The room ID and a list of servers that are aware of the room.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-directory-room-roomalias
         """
         content = await self.api.request(Method.GET, f"/directory/room/{quote(room_alias)}")
         return RoomAliasInfo.deserialize(content)
@@ -184,7 +182,9 @@ class RoomMethods(BaseClientAPI):
 
     async def join_room_by_id(self, room_id: RoomID, third_party_signed: JSON = None) -> RoomID:
         """
-        Start participating in a room, i.e. join it by its ID. See also: `API reference`_
+        Start participating in a room, i.e. join it by its ID.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-join>`__
 
         Args:
             room_id: The ID of the room to join.
@@ -193,8 +193,6 @@ class RoomMethods(BaseClientAPI):
 
         Returns:
             The ID of the room the user joined.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-join
         """
         content = await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/join", {
             "third_party_signed": third_party_signed,
@@ -208,7 +206,9 @@ class RoomMethods(BaseClientAPI):
                         third_party_signed: JSON = None) -> RoomID:
         """
         Start participating in a room, i.e. join it by its ID or alias, with an optional list of
-        servers to ask about the ID from. See also: `API reference`_
+        servers to ask about the ID from.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-join-roomidoralias>`__
 
         Args:
             room_id_or_alias: The ID of the room to join, or an alias pointing to the room.
@@ -219,8 +219,6 @@ class RoomMethods(BaseClientAPI):
 
         Returns:
             The ID of the room the user joined.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-join-roomidoralias
         """
         content = await self.api.request(Method.POST, f"/join/{quote(room_id_or_alias)}",
                                          content={
@@ -241,16 +239,14 @@ class RoomMethods(BaseClientAPI):
 
         Only users currently in the room can invite other users to join that room.
 
-        If the user was invited to the room, the homeserver will add a ``m.room.member`` event to
+        If the user was invited to the room, the homeserver will add a `m.room.member`_ event to
         the room.
 
-        See also: `API reference`_
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-invite>`__
 
         Args:
             room_id: The ID of the room to which to invite the user.
             user_id: The fully qualified user ID of the invitee.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-invite
         """
         await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/invite", {
             "user_id": user_id,
@@ -274,12 +270,10 @@ class RoomMethods(BaseClientAPI):
         The user will still be allowed to retrieve history from the room which they were previously
         allowed to see.
 
-        See also: `API reference`_
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-leave>`__
 
         Args:
             room_id: The ID of the room to leave.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-leave
         """
         await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/leave")
 
@@ -294,12 +288,12 @@ class RoomMethods(BaseClientAPI):
         If the user is currently joined to the room, they must leave the room before calling this
         API.
 
-         See also: `API reference`_
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-forget>`__
 
         Args:
             room_id: The ID of the room to forget.
 
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-forget
+        
         """
         await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/forget")
 
@@ -311,21 +305,16 @@ class RoomMethods(BaseClientAPI):
 
         Kicking a user adjusts the target member's membership state to be ``leave`` with an optional
         ``reason``. Like with other membership changes, a user can directly adjust the target
-        member's state by calling :EventMethods:`send_state_event` with :EventTypes:`ROOM_MEMBER`
-        as the event type and the ``user_id`` as the state key.
+        member's state by calling :meth:`EventMethods.send_state_event` with
+        :const:`EventTypes.ROOM_MEMBER` as the event type and the ``user_id`` as the state key.
 
-        See also: `API reference`_
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-kick>`__
 
         Args:
             room_id: The ID of the room from which the user should be kicked.
             user_id: The fully qualified user ID of the user being kicked.
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
-
-        Returns:
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-kick
-        .. _m.room.member: https://matrix.org/docs/spec/client_server/r0.4.0.html#m-room-member
         """
         await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/kick", {
             "user_id": user_id,
@@ -341,16 +330,14 @@ class RoomMethods(BaseClientAPI):
         Ban a user in the room. If the user is currently in the room, also kick them. When a user is
         banned from a room, they may not join it or be invited to it until they are unbanned. The
         caller must have the required power level in order to perform this operation.
-        See also: `API reference`_
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-ban>`__
 
         Args:
             room_id: The ID of the room from which the user should be banned.
             user_id: The fully qualified user ID of the user being banned.
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-ban
-        .. _m.room.member: https://matrix.org/docs/spec/client_server/r0.4.0.html#m-room-member
         """
         await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/ban", {
             "user_id": user_id,
@@ -361,13 +348,13 @@ class RoomMethods(BaseClientAPI):
         """
         Unban a user from the room. This allows them to be invited to the room, and join if they
         would otherwise be allowed to join according to its join rules. The caller must have the
-        required power level in order to perform this operation. See also: `API reference`_
+        required power level in order to perform this operation.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-unban>`__
 
         Args:
             room_id: The ID of the room from which the user should be unbanned.
             user_id: The fully qualified user ID of the user being banned.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-unban
         """
         await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/unban", {
             "user_id": user_id,
@@ -382,15 +369,14 @@ class RoomMethods(BaseClientAPI):
     async def get_room_directory_visibility(self, room_id: RoomID) -> RoomDirectoryVisibility:
         """
         Get the visibility of the room on the server's public room directory.
-        See also: `API reference`_
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-directory-list-room-roomid>`__
 
         Args:
             room_id: The ID of the room.
 
         Returns:
             The visibility of the room in the directory.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-directory-list-room-roomid
         """
         resp = await self.api.request(Method.GET, f"/directory/list/room/{quote(room_id)}")
         try:
@@ -426,7 +412,9 @@ class RoomMethods(BaseClientAPI):
                                  third_party_instance_id: Optional[str] = None
                                  ) -> RoomDirectoryResponse:
         """
-        Get a list of public rooms from the server's room directory. See also: `API reference`_
+        Get a list of public rooms from the server's room directory.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-publicrooms>`__
 
         Args:
             limit: The maximum number of results to return.
@@ -444,8 +432,6 @@ class RoomMethods(BaseClientAPI):
         Returns:
             The relevant pagination tokens, an estimate of the total number of public rooms and the
             paginated chunk of public rooms.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-publicrooms
         """
         method = Method.GET if (search_query is None
                            and include_all_networks is None

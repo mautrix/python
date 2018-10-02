@@ -18,12 +18,24 @@ class APIPath(Enum):
     MEDIA = "/_matrix/media/r0"
     IDENTITY = "/_matrix/identity/r0"
 
+    def __repr__(self):
+        return self.value
+
+    def __str__(self):
+        return self.value
+
 
 class Method(Enum):
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
     DELETE = "DELETE"
+
+    def __repr__(self):
+        return self.value
+
+    def __str__(self):
+        return self.value
 
 
 class HTTPAPI:
@@ -50,7 +62,7 @@ class HTTPAPI:
     async def _send(self, method: Method, endpoint: str, content: Union[bytes, str],
                     query_params: Dict[str, str], headers: Dict[str, str]) -> JSON:
         while True:
-            request = self.session.request(method.value, endpoint, data=content,
+            request = self.session.request(str(method), endpoint, data=content,
                                            params=query_params, headers=headers)
             async with request as response:
                 if response.status < 200 or response.status >= 300:
@@ -75,7 +87,7 @@ class HTTPAPI:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
-        self.log.debug(f"{method.value} {path} {log_content} {as_user}".strip(" "))
+        self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "))
 
     def request(self, method: Method, path: str, content: Optional[Union[JSON, bytes, str]] = None,
                 headers: Optional[Dict[str, str]] = None,
@@ -107,7 +119,7 @@ class HTTPAPI:
 
         self._log_request(method, path, content, query_params)
 
-        endpoint = self.base_url + api_path.value + path
+        endpoint = self.base_url + str(api_path) + path
         return self._send(method, endpoint, content, query_params, headers or {})
 
     def get_txn_id(self) -> str:

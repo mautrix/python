@@ -78,7 +78,7 @@ class IntentAPI(ClientAPI):
     def user(self, user_id: UserID, token: Optional[str] = None) -> 'IntentAPI':
         """
         Get the intent API for a specific user.
-        This is just a proxy to :func:`~AppServiceAPI.intent`.
+        This is just a proxy to :meth:`AppServiceAPI.intent`.
 
         You should only call this method for the bot user. Calling it with child intent APIs will
         result in a warning log.
@@ -103,15 +103,14 @@ class IntentAPI(ClientAPI):
 
     async def set_presence(self, status: str = "online", ignore_cache: bool = False):
         """
-        Set the online status of the user. See also: `API reference`_
+        Set the online status of the user.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-presence-userid-status>`__
 
         Args:
             status: The online status of the user. Allowed values: "online", "offline", "unavailable".
             ignore_cache: Whether or not to set presence even if the cache says the presence is
                 already set to that value.
-
-        .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-presence-userid-status
         """
         await self.ensure_registered()
         if not ignore_cache and self.state_store.has_presence(self.mxid, status):
@@ -120,54 +119,8 @@ class IntentAPI(ClientAPI):
         content = {
             "presence": status
         }
-        await self.api.request("PUT", f"/presence/{self.mxid}/status", content)
+        await self.api.request(Method.PUT, f"/presence/{self.mxid}/status", content)
         self.state_store.set_presence(self.mxid, status)
-
-    async def upload_file(self, data: bytes, mime_type: Optional[str] = None) -> str:
-        """
-        Upload a file to the content repository. See also: `API reference`_
-
-        Args:
-            data: The data to upload.
-            mime_type: The MIME type to send with the upload request.
-
-        Returns:
-            The MXC URI to the uploaded file.
-
-        Raises:
-            MatrixResponseError: If the response does not contain a ``content_uri`` field.
-
-        .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-media-r0-upload
-        """
-        await self.ensure_registered()
-        if magic:
-            mime_type = mime_type or magic.from_buffer(data, mime=True)
-        resp = await self.api.request("POST", "", content=data,
-                                      headers={"Content-Type": mime_type},
-                                      api_path="/_matrix/media/r0/upload")
-        try:
-            return resp["content_uri"]
-        except KeyError:
-            raise MatrixResponseError("Media repo upload response did not contain content_uri.")
-
-    async def download_file(self, url: str) -> bytes:
-        """
-        Download a file from the content repository. See also: `API reference`_
-
-        Args:
-            url: The MXC URI to download.
-
-        Returns:
-            The raw downloaded data.
-
-        .. _API reference:
-           https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-download-servername-mediaid
-        """
-        await self.ensure_registered()
-        url = self.api.get_download_url(url)
-        async with self.api.session.get(url) as response:
-            return await response.read()
 
     # endregion
     # region Room actions
@@ -183,15 +136,13 @@ class IntentAPI(ClientAPI):
         If the user was invited to the room, the homeserver will add a ``m.room.member`` event to
         the room.
 
-        See also: `API reference`_
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-invite>`__
 
         Args:
             room_id: The ID of the room to which to invite the user.
             user_id: The fully qualified user ID of the invitee.
             check_cache: Whether or not the function should be a no-op if the state store says the
                 user is already invited.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-rooms-roomid-invite
         """
         try:
             ok_states = ("invite", "join")

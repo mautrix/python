@@ -64,7 +64,7 @@ class FileInfo(BaseFileInfo, SerializableAttrs['FileInfo']):
 class MessageEventContent(SerializableAttrs['EventContent']):
     """The content of a message event. The contents of all known different message event types are
     available in this object. Most event types have at least a `msgtype` and a `body`, but you
-    should still check the :MessageEvent:`type` beforehand."""
+    should still check the :attr:`MessageEvent.type` beforehand."""
     msgtype: MessageType = None
     body: str = None
     format: Format = None

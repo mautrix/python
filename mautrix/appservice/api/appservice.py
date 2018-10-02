@@ -5,8 +5,8 @@ from ...api import HTTPAPI
 from .intent import IntentAPI
 
 if TYPE_CHECKING:
-    from aiohttp import ClientSession
     from logging import Logger
+    from aiohttp import ClientSession
     from ..state_store import StateStore
 
 

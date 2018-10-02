@@ -77,7 +77,7 @@ class Member(SerializableAttrs['Member']):
 @attr.s(auto_attribs=True)
 class StateEventContent(SerializableAttrs['StateEventContent']):
     """The content of a state event. The contents of all known different state event types are
-    available in this object. You should check :StateEvent:`type` to find the specific field to
+    available in this object. You should check :attr:`StateEvent.type` to find the specific field to
     access"""
     membership: Membership = None
     member: Member = attr.ib(default=None, metadata={"flatten": True})

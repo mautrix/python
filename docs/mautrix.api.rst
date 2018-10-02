@@ -4,14 +4,6 @@ mautrix.api package
 Submodules
 ----------
 
-mautrix.api.errors module
--------------------------
-
-.. automodule:: mautrix.api.errors
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 mautrix.api.http module
 -----------------------
 

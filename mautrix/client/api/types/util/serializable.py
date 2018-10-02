@@ -22,8 +22,7 @@ class Serializable:
 
 
 class SerializerError(Exception):
-    def __init__(self, message: str = None) -> None:
-        super().__init__(message)
+    pass
 
 
 class GenericSerializable(ABC, Generic[T], Serializable):
@@ -62,6 +61,9 @@ class SerializableEnum(Serializable, Enum):
         return cls.deserialize(json.loads(data))
 
     def __str__(self):
+        return self.value
+
+    def __repr__(self):
         return self.value
 
 

@@ -16,14 +16,15 @@ class MediaRepositoryMethods(BaseClientAPI):
     """
     Methods in section 13.8 Content Repository of the spec. These methods are used for uploading and
     downloading content from the media repository and for getting URL previews without leaking
-    client IPs. See also: `API reference`_
+    client IPs.
 
-    .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#id112
-    """
+    See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#id112>`__"""
 
     async def upload_media(self, data: bytes, mime_type: Optional[str] = None) -> ContentURI:
         """
-        Upload a file to the content repository. See also: `API reference`_
+        Upload a file to the content repository.
+        
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-media-r0-upload>`__
 
         Args:
             data: The data to upload.
@@ -34,8 +35,6 @@ class MediaRepositoryMethods(BaseClientAPI):
 
         Raises:
             MatrixResponseError: If the response does not contain a ``content_uri`` field.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-media-r0-upload
         """
         if magic:
             mime_type = mime_type or magic.from_buffer(data, mime=True)
@@ -49,15 +48,15 @@ class MediaRepositoryMethods(BaseClientAPI):
 
     async def download_media(self, url: ContentURI) -> bytes:
         """
-        Download a file from the content repository. See also: `API reference`_
+        Download a file from the content repository.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-download-servername-mediaid>`__
 
         Args:
             url: The MXC URI to download.
 
         Returns:
             The raw downloaded data.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-download-servername-mediaid
         """
         url = self.api.get_download_url(url)
         async with self.api.session.get(url) as response:
@@ -67,7 +66,9 @@ class MediaRepositoryMethods(BaseClientAPI):
                                  width: Optional[int] = None, height: Optional[int] = None,
                                  resize_method: Optional[str] = None, allow_remote: bool = True):
         """
-        Download a thumbnail for a file in the content repository. See also: `API reference`_
+        Download a thumbnail for a file in the content repository.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-thumbnail-servername-mediaid>`__
 
         Args:
             url: The MXC URI to download.
@@ -82,8 +83,6 @@ class MediaRepositoryMethods(BaseClientAPI):
 
         Returns:
             The raw downloaded data.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-thumbnail-servername-mediaid
         """
         url = self.api.get_download_url(url, download_type="thumbnail")
         query_params = {}
@@ -100,14 +99,14 @@ class MediaRepositoryMethods(BaseClientAPI):
 
     async def get_url_preview(self, url: str, timestamp: Optional[int] = None) -> MXOpenGraph:
         """
-        Get information about a URL for a client. See also: `API reference`_
+        Get information about a URL for a client.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-preview-url>`__
 
         Args:
             url: The URL to get a preview of.
             timestamp: The preferred point in time to return a preview for. The server may return a
                 newer version if it does not have the requested version available.
-
-        .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-preview-url
         """
         query_params = {"url": url}
         if timestamp is not None:
@@ -130,6 +129,8 @@ class MediaRepositoryMethods(BaseClientAPI):
         client and the server may affect the apparent behaviour of content repository APIs, for
         example, proxies may enforce a lower upload size limit than is advertised by the server on
         this endpoint.
+
+        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-config>`__
 
         Returns:
             The media repository config.

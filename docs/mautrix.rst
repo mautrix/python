@@ -13,6 +13,14 @@ Subpackages
 Submodules
 ----------
 
+mautrix.errors module
+---------------------
+
+.. automodule:: mautrix.errors
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 mautrix.types module
 --------------------
 
