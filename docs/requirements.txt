@@ -1,0 +1,4 @@
+Sphinx
+sphinx-autobuild
+https://github.com/tulir/sphinx-autodoc-typehints
+sphinx-rtd-theme

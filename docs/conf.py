@@ -15,6 +15,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
+from mautrix.__meta__ import __version__
 
 
 # -- Project information -----------------------------------------------------
@@ -23,10 +24,10 @@ project = 'mautrix-python'
 copyright = '2018, Tulir Asokan'
 author = 'Tulir Asokan'
 
-# The short X.Y version
-version = '0.4'
 # The full version, including alpha/beta/rc tags
-release = '0.4.0.dev1'
+release = __version__
+# The short X.Y version
+version = '.'.join(release.split('.')[:2])
 
 
 # -- General configuration ---------------------------------------------------
