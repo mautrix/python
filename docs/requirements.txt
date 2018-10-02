@@ -1,4 +1,4 @@
 Sphinx
 sphinx-autobuild
-https://github.com/tulir/sphinx-autodoc-typehints
+git+https://github.com/tulir/sphinx-autodoc-typehints.git#egg=sphinx-autodoc-typehints
 sphinx-rtd-theme
