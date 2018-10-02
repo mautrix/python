@@ -2,7 +2,7 @@ from typing import Optional
 
 from ...errors import MatrixResponseError
 from ...api import Method
-from .types import UserSearchResults, Member, SerializerError
+from .types import UserSearchResults, Member, SerializerError, User
 from .base import BaseClientAPI, quote
 
 
@@ -17,7 +17,7 @@ class UserDataMethods(BaseClientAPI):
     # region 10.1 User Directory
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#user-directory
 
-    async def search_users(self, search_query: str, limit: Optional[int] = None
+    async def search_users(self, search_query: str, limit: Optional[int] = 10
                            ) -> UserSearchResults:
         """
         Performs a search for users on the homeserver. The homeserver may determine which subset of
@@ -39,7 +39,21 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The results of the search and whether or not the results were limited.
         """
-        raise NotImplementedError()
+        content = await self.api.request(Method.POST, "/user_directory/search", {
+            "search_term": search_query,
+            "limit": limit,
+        })
+        try:
+            return UserSearchResults([User.deserialize(user) for user in content["results"]],
+                                     content["limited"])
+        except SerializerError as e:
+            raise MatrixResponseError("Invalid user in search results") from e
+        except KeyError:
+            if "results" not in content:
+                raise MatrixResponseError("`results` not in content.")
+            elif "limited" not in content:
+                raise MatrixResponseError("`limited` not in content.")
+            raise
 
     # endregion
     # region 10.2 Profiles
@@ -54,7 +68,9 @@ class UserDataMethods(BaseClientAPI):
         Args:
             displayname: The new display name for the user.
         """
-        raise NotImplementedError()
+        await self.api.request(Method.PUT, f"/profile/{quote(self.mxid)}/displayname", {
+            "displayname": displayname,
+        })
 
     async def get_displayname(self, user_id: str) -> str:
         """
@@ -68,7 +84,11 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The display name of the given user.
         """
-        raise NotImplementedError()
+        content = await self.api.request(Method.GET, f"/profile/{quote(user_id)}/displayname")
+        try:
+            return content["displayname"]
+        except KeyError:
+            raise MatrixResponseError("`displayname` not in response.")
 
     async def set_avatar_url(self, avatar_url: str) -> None:
         """
@@ -79,7 +99,9 @@ class UserDataMethods(BaseClientAPI):
         Args:
             avatar_url: The ``mxc://`` URI to the new avatar.
         """
-        raise NotImplementedError()
+        await self.api.request(Method.PUT, f"/profile/{quote(self.mxid)}/avatar_url", {
+            "avatar_url": avatar_url,
+        })
 
     async def get_avatar_url(self, user_id: str) -> str:
         """
@@ -93,7 +115,11 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The ``mxc://`` URI to the user's avatar.
         """
-        raise NotImplementedError()
+        content = await self.api.request(Method.GET, f"/profile/{quote(user_id)}/avatar_url")
+        try:
+            return content["avatar_url"]
+        except KeyError:
+            raise MatrixResponseError("`avatar_url` not in response.")
 
     async def get_profile(self, user_id: str) -> Member:
         """

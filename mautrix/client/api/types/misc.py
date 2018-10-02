@@ -3,7 +3,7 @@ from typing import List, NewType, NamedTuple
 import attr
 
 from .primitive import RoomID, RoomAlias, SyncToken
-from .util import SerializableAttrs
+from .util import SerializableAttrs, SerializableEnum
 from .event import Event
 
 
@@ -60,3 +60,16 @@ class RoomDirectoryResponse(SerializableAttrs['RoomDirectoryResponse']):
 PaginatedMessages = NamedTuple("PaginatedMessages", start=SyncToken, end=SyncToken,
                                events=List[Event])
 
+
+class PresenceState(SerializableEnum):
+    ONLINE = "online"
+    OFFLINE = "offline"
+    UNAVAILABLE = "unavailable"
+
+
+@attr.s(auto_attribs=True)
+class Presence(SerializableAttrs['Presence']):
+    presence: PresenceState
+    last_active_ago: int = None
+    status_msg: str = None
+    currently_active: bool = None

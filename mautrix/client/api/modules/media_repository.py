@@ -115,8 +115,8 @@ class MediaRepositoryMethods(BaseClientAPI):
                                          api_path=APIPath.MEDIA)
         try:
             return MXOpenGraph.deserialize(content)
-        except SerializerError:
-            raise MatrixResponseError("Invalid MXOpenGraph in response.")
+        except SerializerError as e:
+            raise MatrixResponseError("Invalid MXOpenGraph in response.") from e
 
     async def get_media_repo_config(self) -> MediaRepoConfig:
         """

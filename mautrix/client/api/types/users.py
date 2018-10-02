@@ -3,12 +3,13 @@ import attr
 
 from .primitive import UserID
 from .util import SerializableAttrs
-from .event import Member
 
 
 @attr.s(auto_attribs=True)
-class User(Member, SerializableAttrs['User']):
-    user_id: UserID = None
+class User(SerializableAttrs['User']):
+    user_id: UserID
+    avatar_url: str = None
+    displayname: str = None
 
 
 UserSearchResults = NamedTuple("UserSearchResults", results=List[User], limit=int)
