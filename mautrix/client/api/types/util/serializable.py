@@ -96,7 +96,8 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
                    default_if_empty: bool = False) -> T:
     data = data or {}
     unrecognized = {}
-    new_items = {field.name: _deserialize(field.type, data, field.default)
+    new_items = {field.name: _try_deserialize(field.type, data, field.default,
+                                              field.metadata.get("ignore_errors", False))
                  for _, field in _fields(attrs_type, only_if_flatten=True)}
     fields = dict(_fields(attrs_type, only_if_flatten=False))
     for key, value in data.items():
@@ -105,7 +106,8 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
         except KeyError:
             unrecognized[key] = value
             continue
-        new_items[field.name] = _deserialize(field.type, value, field.default)
+        new_items[field.name] = _try_deserialize(field.type, value, field.default,
+                                                 field.metadata.get("ignore_errors", False))
     if len(new_items) == 0 and default_if_empty:
         return _safe_default(default)
     try:
@@ -114,11 +116,23 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
         for json_key, field in _fields(attrs_type):
             if json_key not in new_items:
                 raise SerializerError(
-                    f"Missing value for {field.name} in {attrs_type.__name__}") from e
+                    f"Missing value for required key {field.name} in {attrs_type.__name__}") from e
         raise SerializerError("Unknown serialization error") from e
     if len(unrecognized) > 0:
         obj.unrecognized_ = unrecognized
     return obj
+
+
+def _try_deserialize(cls: Type[T], value: JSON, default: Optional[T] = None,
+                     ignore_errors: bool = False) -> T:
+    try:
+        return _deserialize(cls, value, default)
+    except SerializerError:
+        if not ignore_errors:
+            raise
+    except (TypeError, ValueError, KeyError) as e:
+        if not ignore_errors:
+            raise SerializerError("Unknown serialization error") from e
 
 
 def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
@@ -130,6 +144,11 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
         return _dict_to_attrs(cls, value, default, default_if_empty=True)
     elif cls == Any or cls == JSON:
         return value
+    elif type(cls) == type(Union):
+        if len(cls.__args__) == 2 and isinstance(None, cls.__args__[1]):
+            return _deserialize(cls.__args__[0], value, default)
+    elif issubclass(cls, Serializable):
+        return cls.deserialize(value)
     elif issubclass(cls, List):
         item_cls, = getattr(cls, "__args__", default=(None,))
         return [_deserialize(item_cls, item) for item in value]
@@ -139,11 +158,7 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
     elif issubclass(cls, Dict):
         key_cls, val_cls = getattr(cls, "__args__", default=(None, None))
         return {key: _deserialize(val_cls, item) for key, item in value}
-    elif type(cls) == type(Union) and len(cls.__args__) == 2 and isinstance(None, cls.__args__[1]):
-        return _deserialize(cls.__args__[0], value)
-    elif issubclass(cls, Serializable):
-        return cls.deserialize(value)
-    elif isinstance(value, list):
+    if isinstance(value, list):
         return Lst(value)
     elif isinstance(value, dict):
         return Obj(**value)

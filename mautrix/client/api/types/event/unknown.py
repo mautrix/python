@@ -29,3 +29,7 @@ class Event(MessageEvent, StateEvent, SerializableAttrs['Event']):
     content: EventContent = None
     state_key: str = None
     unsigned: Optional[Unsigned] = None
+    message_event: Optional[MessageEvent] = attr.ib(
+        default=None, metadata={"flatten": True, "ignore_errors": True})
+    state_event: Optional[StateEvent] = attr.ib(
+        default=None, metadata={"flatten": True, "ignore_errors": True})
