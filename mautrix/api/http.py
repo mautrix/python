@@ -1,9 +1,9 @@
 from json.decoder import JSONDecodeError
 from typing import Optional, Dict, Awaitable, Union
-from logging import Logger
 from enum import Enum
 from time import time
 import json
+import logging
 import asyncio
 
 from aiohttp import ClientSession
@@ -42,7 +42,7 @@ class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
 
     def __init__(self, base_url: str, token: str, client_session: ClientSession, txn_id: int = 0,
-                 log: Optional[Logger] = None) -> None:
+                 log: Optional[logging.Logger] = None) -> None:
         """
         Args:
             base_url: The base URL of the homeserver client-server API to use.
@@ -53,7 +53,7 @@ class HTTPAPI:
         """
         self.base_url: str = base_url
         self.token: str = token
-        self.log: Optional[Logger] = log
+        self.log: Optional[logging.Logger] = log or logging.getLogger("mautrix.api")
         self.session: ClientSession = client_session
         self.validate_cert: bool = True
         if txn_id is not None:
