@@ -8,10 +8,10 @@ from .types import UserID
 
 class BaseClientAPI:
     """
-    BaseClientAPI is the base class for :ClientAPI:. This is separate from the main ClientAPI class
-    so that the ClientAPI methods can be split into multiple classes (that inherit this class). All
-    those section-specific method classes are inherited by the main ClientAPI class to create the
-    full class.
+    BaseClientAPI is the base class for :class:`ClientAPI`. This is separate from the main
+    ClientAPI class so that the ClientAPI methods can be split into multiple classes (that
+    inherit this class).All those section-specific method classes are inherited by the main
+    ClientAPI class to create the full class.
     """
     mxid_regex: Pattern = re.compile("@(.+):(.+)")
 
@@ -20,18 +20,19 @@ class BaseClientAPI:
     mxid: UserID
     api: HTTPAPI
 
-    def __init__(self, mxid: UserID, api: HTTPAPI) -> None:
+    def __init__(self, mxid: UserID, api: HTTPAPI = None, *args, **kwargs) -> None:
         """
-        Initialize a ClientAPI.
+        Initialize a ClientAPI. You must either provide the
 
         Args:
             mxid: The Matrix ID of the user. This is used for things like setting profile metadata.
                 Additionally, the homeserver domain is extracted from this string and used for
                 setting aliases and such. This can be changed later using `set_mxid`.
-            api: The HTTPAPI instance to use.
+            api: The :class:`HTTPAPI` instance to use. You can also pass the ``args`` and ``kwargs``
+                to create a HTTPAPI instance rather than creating the instance yourself.``
         """
         self.set_mxid(mxid)
-        self.api = api
+        self.api = api or HTTPAPI(*args, **kwargs)
 
     def set_mxid(self, mxid: UserID) -> None:
         """
@@ -47,7 +48,3 @@ class BaseClientAPI:
         self.domain = mxid_parts.group(2)
 
         self.mxid = mxid
-
-
-def quote(string: str) -> str:
-    return urllib_quote(string, safe="")

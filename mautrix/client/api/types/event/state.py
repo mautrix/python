@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict
 import attr
 
-from .....types import JSON
+from .....api import JSON
 from ..primitive import UserID
 from ..util import SerializableEnum, SerializableAttrs
 from .base import BaseRoomEvent, BaseUnsigned, EventType

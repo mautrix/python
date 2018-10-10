@@ -6,7 +6,7 @@ import aiohttp
 import asyncio
 import logging
 
-from ..types import JSON
+from ..api import JSON
 from ..client.api.types import UserID, RoomAlias, Event
 from .api import AppServiceAPI, IntentAPI
 from .state_store import StateStore, JSONStateStore

@@ -1,11 +1,10 @@
 from typing import Optional, List, Union
 
 from ...errors import MatrixResponseError, MatrixRequestError
-from ...api import Method
-from ...types import JSON
+from ...api import Method, JSON, Path
 from .types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility, RoomAliasInfo,
                     RoomCreatePreset, DirectoryPaginationToken, RoomDirectoryResponse)
-from .base import BaseClientAPI, quote
+from .base import BaseClientAPI
 
 
 class RoomMethods(BaseClientAPI):
@@ -98,7 +97,7 @@ class RoomMethods(BaseClientAPI):
         if creation_content:
             content["creation_content"] = creation_content
 
-        resp = await self.api.request(Method.POST, "/createRoom", content)
+        resp = await self.api.request(Method.POST, Path.createRoom, content)
         try:
             return resp["room_id"]
         except KeyError:
@@ -124,11 +123,11 @@ class RoomMethods(BaseClientAPI):
         room_alias = f"#{alias_localpart}:{self.domain}"
         content = {"room_id": room_id}
         try:
-            await self.api.request(Method.PUT, f"/directory/room/{quote(room_alias)}", content)
+            await self.api.request(Method.PUT, Path.directory.room[room_alias], content)
         except MatrixRequestError as e:
             if override and e.code == 409:
                 await self.remove_room_alias(alias_localpart)
-                await self.api.request(Method.PUT, f"/directory/room/{quote(room_alias)}", content)
+                await self.api.request(Method.PUT, Path.directory.room[room_alias], content)
             else:
                 raise
 
@@ -145,7 +144,7 @@ class RoomMethods(BaseClientAPI):
             alias_localpart: The room alias to remove.
         """
         room_alias = f"#{alias_localpart}:{self.domain}"
-        await self.api.request(Method.DELETE, f"/directory/room/{quote(room_alias)}")
+        await self.api.request(Method.DELETE, Path.directory.room[room_alias])
 
     async def get_room_alias(self, room_alias: RoomAlias) -> RoomAliasInfo:
         """
@@ -162,7 +161,7 @@ class RoomMethods(BaseClientAPI):
         Returns:
             The room ID and a list of servers that are aware of the room.
         """
-        content = await self.api.request(Method.GET, f"/directory/room/{quote(room_alias)}")
+        content = await self.api.request(Method.GET, Path.directory.room[room_alias])
         return RoomAliasInfo.deserialize(content)
 
     # endregion
@@ -194,7 +193,7 @@ class RoomMethods(BaseClientAPI):
         Returns:
             The ID of the room the user joined.
         """
-        content = await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/join", {
+        content = await self.api.request(Method.POST, Path.rooms[room_id].join, {
             "third_party_signed": third_party_signed,
         } if third_party_signed is not None else None)
         try:
@@ -220,7 +219,7 @@ class RoomMethods(BaseClientAPI):
         Returns:
             The ID of the room the user joined.
         """
-        content = await self.api.request(Method.POST, f"/join/{quote(room_id_or_alias)}",
+        content = await self.api.request(Method.POST, Path.join[room_id_or_alias],
                                          content={
                                              "third_party_signed": third_party_signed,
                                          } if third_party_signed is not None else None,
@@ -248,7 +247,7 @@ class RoomMethods(BaseClientAPI):
             room_id: The ID of the room to which to invite the user.
             user_id: The fully qualified user ID of the invitee.
         """
-        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/invite", {
+        await self.api.request(Method.POST, Path.rooms[room_id].invite, {
             "user_id": user_id,
         })
 
@@ -275,7 +274,7 @@ class RoomMethods(BaseClientAPI):
         Args:
             room_id: The ID of the room to leave.
         """
-        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/leave")
+        await self.api.request(Method.POST, Path.rooms[room_id].leave)
 
     async def forget_room(self, room_id: RoomID) -> None:
         """
@@ -295,7 +294,7 @@ class RoomMethods(BaseClientAPI):
 
         
         """
-        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/forget")
+        await self.api.request(Method.POST, Path.rooms[room_id].forget)
 
     async def kick_user(self, room_id: RoomID, user_id: UserID, reason: Optional[str] = "") -> None:
         """
@@ -316,7 +315,7 @@ class RoomMethods(BaseClientAPI):
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
         """
-        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/kick", {
+        await self.api.request(Method.POST, Path.rooms[room_id].kick, {
             "user_id": user_id,
             "reason": reason or None,
         })
@@ -339,7 +338,7 @@ class RoomMethods(BaseClientAPI):
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
         """
-        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/ban", {
+        await self.api.request(Method.POST, Path.rooms[room_id].ban, {
             "user_id": user_id,
             "reason": reason or None,
         })
@@ -356,7 +355,7 @@ class RoomMethods(BaseClientAPI):
             room_id: The ID of the room from which the user should be unbanned.
             user_id: The fully qualified user ID of the user being banned.
         """
-        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/unban", {
+        await self.api.request(Method.POST, Path.rooms[room_id].unban, {
             "user_id": user_id,
         })
 
@@ -378,7 +377,7 @@ class RoomMethods(BaseClientAPI):
         Returns:
             The visibility of the room in the directory.
         """
-        resp = await self.api.request(Method.GET, f"/directory/list/room/{quote(room_id)}")
+        resp = await self.api.request(Method.GET, Path.directory.list.room[room_id])
         try:
             return RoomDirectoryVisibility(resp["visibility"])
         except KeyError:
@@ -401,7 +400,7 @@ class RoomMethods(BaseClientAPI):
 
         .. _API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-directory-list-room-roomid
         """
-        await self.api.request(Method.PUT, f"/directory/list/room/{quote(room_id)}", {
+        await self.api.request(Method.PUT, Path.directory.list.room[room_id], {
             "visibility": visibility.value,
         })
 
@@ -434,8 +433,8 @@ class RoomMethods(BaseClientAPI):
             paginated chunk of public rooms.
         """
         method = Method.GET if (search_query is None
-                           and include_all_networks is None
-                           and third_party_instance_id is None) else Method.POST
+                                and include_all_networks is None
+                                and third_party_instance_id is None) else Method.POST
         content = {}
         if limit is not None:
             content["limit"] = limit
@@ -451,7 +450,8 @@ class RoomMethods(BaseClientAPI):
             content["third_party_instance_id"] = third_party_instance_id
         query_params = {"server": server} if server is not None else None
 
-        content = await self.api.request(method, "/publicRooms", content, query_params=query_params)
+        content = await self.api.request(method, Path.publicRooms, content,
+                                         query_params=query_params)
 
         return RoomDirectoryResponse.deserialize(content)
 

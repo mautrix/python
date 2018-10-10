@@ -1,6 +1,6 @@
 import attr
 
-from .....types import JSON
+from .....api import JSON
 from ..primitive import RoomID, UserID, EventID
 from ..util import SerializableEnum
 

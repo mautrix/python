@@ -1,8 +1,8 @@
 from typing import Optional
 
 from ....errors import MatrixResponseError
-from ....api import Method
-from ..base import BaseClientAPI, quote
+from ....api import Method, Path
+from ..base import BaseClientAPI
 from ..types import RoomID, UserID, EventID, Presence, PresenceState, SerializerError
 
 
@@ -42,8 +42,7 @@ class MiscModuleMethods(BaseClientAPI):
             content = {"typing": True, "timeout": timeout}
         else:
             content = {"typing": False}
-        await self.api.request(Method.PUT, f"/rooms/{quote(room_id)}/typing/{quote(self.mxid)}",
-                               content)
+        await self.api.request(Method.PUT, Path.rooms[room_id].typing[self.mxid], content)
 
     # endregion
     # region 13.5 Receipts
@@ -60,8 +59,7 @@ class MiscModuleMethods(BaseClientAPI):
             event_id: The last event ID to acknowledge.
             receipt_type: The type of receipt to send. Currently only ``m.read`` is supported.
         """
-        url = f"/rooms/{quote(room_id)}/receipt/{quote(receipt_type)}/{quote(event_id)}"
-        await self.api.request(Method.POST, url)
+        await self.api.request(Method.POST, Path.rooms[room_id].receipt[receipt_type][event_id])
 
     # endregion
     # region 13.6 Fully read markers
@@ -86,7 +84,7 @@ class MiscModuleMethods(BaseClientAPI):
         }
         if read_receipt:
             content["m.read"] = read_receipt
-        await self.api.request(Method.POST, f"/rooms/{quote(room_id)}/read_markers", content)
+        await self.api.request(Method.POST, Path.rooms[room_id].read_markers, content)
 
     # endregion
     # region 13.7 Presence
@@ -109,7 +107,7 @@ class MiscModuleMethods(BaseClientAPI):
         }
         if status:
             content["status_msg"] = status
-        await self.api.request(Method.PUT, f"/presence/{quote(self.mxid)}/status", content)
+        await self.api.request(Method.PUT, Path.presence[self.mxid].status, content)
 
     async def get_presence(self, user_id: UserID) -> Presence:
         """
@@ -123,7 +121,7 @@ class MiscModuleMethods(BaseClientAPI):
         Returns:
             The presence info of the given user.
         """
-        content = await self.api.request(Method.GET, f"/presence/{quote(user_id)}/status")
+        content = await self.api.request(Method.GET, Path.presence[user_id].status)
         try:
             return Presence.deserialize(content)
         except SerializerError:

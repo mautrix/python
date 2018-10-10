@@ -1,13 +1,11 @@
 from typing import Awaitable, Dict, Optional, List
 
-from mautrix.client.api.types import MessageType, RelatesTo, Format, FileInfo, ContentURI, \
-    BaseFileInfo
-from ...api import Method
+from ...api import Method, JSON, Path
 from ...errors import MatrixResponseError
 from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
-                    EventType, StateEventContent, MessageEventContent, Member, Event,
-                    PaginatedMessages, SerializerError)
-from .base import BaseClientAPI, quote
+                    EventType, StateEventContent, MessageEventContent, Member, Event, ContentURI,
+                    PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, FileInfo)
+from .base import BaseClientAPI
 
 
 class EventMethods(BaseClientAPI):
@@ -21,8 +19,8 @@ class EventMethods(BaseClientAPI):
     # region 8.2 Syncing
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#syncing
 
-    def sync(self, since: SyncToken = None, timeout_ms: int = 30000, filter_id: FilterID = None,
-             full_state: bool = None, set_presence: str = None) -> Awaitable[Dict]:
+    def sync(self, since: SyncToken = None, timeout: int = 30000, filter_id: FilterID = None,
+             full_state: bool = None, set_presence: str = None) -> Awaitable[JSON]:
         """
         Perform a sync request.
 
@@ -30,13 +28,13 @@ class EventMethods(BaseClientAPI):
 
         Args:
             since (str): Optional. A token which specifies where to continue a sync from.
-            timeout_ms (int): Optional. The time in milliseconds to wait.
+            timeout (int): Optional. The time in milliseconds to wait.
             filter_id (int): A filter ID.
             full_state (bool): Return the full state for every room the user has joined
                 Defaults to false.
             set_presence (str): Should the client be marked as "online" or" offline"
         """
-        request = {"timeout": timeout_ms}
+        request = {"timeout": timeout}
         if since:
             request["since"] = since
         if filter_id:
@@ -45,7 +43,7 @@ class EventMethods(BaseClientAPI):
             request["full_state"] = "true"
         if set_presence:
             request["set_presence"] = set_presence
-        return self.api.request(Method.GET, "/sync", query_params=request)
+        return self.api.request(Method.GET, Path.sync, query_params=request)
 
     # endregion
     # region 8.3 Getting events for a room
@@ -65,8 +63,7 @@ class EventMethods(BaseClientAPI):
         Returns:
             The event.
         """
-        content = await self.api.request(Method.GET,
-                                         f"/rooms/{quote(room_id)}/event/{quote(event_id)}")
+        content = await self.api.request(Method.GET, Path.rooms[room_id].event[event_id])
         try:
             return Event.deserialize(content)
         except SerializerError as e:
@@ -90,7 +87,7 @@ class EventMethods(BaseClientAPI):
             The state event.
         """
         content = await self.api.request(Method.GET,
-                                         self._get_state_url(room_id, event_type, state_key))
+                                         Path.rooms[room_id].state[event_type][state_key])
         try:
             return StateEvent.deserialize(content)
         except SerializerError as e:
@@ -108,7 +105,7 @@ class EventMethods(BaseClientAPI):
         Returns:
             A list of state events with the most recent of each event_type/state_key pair.
         """
-        content = await self.api.request(Method.GET, f"/rooms/{quote(room_id)}/state")
+        content = await self.api.request(Method.GET, Path.rooms[room_id].state)
         try:
             return [StateEvent.deserialize(event) for event in content]
         except SerializerError as e:
@@ -126,7 +123,7 @@ class EventMethods(BaseClientAPI):
         Returns:
             A list of most recent member events for each user.
         """
-        content = await self.api.request(Method.GET, f"/rooms/{quote(room_id)}/members")
+        content = await self.api.request(Method.GET, Path.rooms[room_id].members)
         try:
             return [StateEvent.deserialize(event) for event in content["chunk"]]
         except KeyError:
@@ -150,7 +147,7 @@ class EventMethods(BaseClientAPI):
         Returns:
             A dictionary from user IDs to Member info objects.
         """
-        content = await self.api.request(Method.GET, f"/rooms/{quote(room_id)}/members")
+        content = await self.api.request(Method.GET, Path.rooms[room_id].members)
         try:
             return {user_id: Member.deserialize(event) for user_id, event in content["joined"]}
         except KeyError:
@@ -193,7 +190,7 @@ class EventMethods(BaseClientAPI):
             query_params["limit"] = str(limit)
         if filter:
             query_params["filter"] = filter_json
-        content = await self.api.request(Method.GET, f"/rooms/{quote(room_id)}/messages",
+        content = await self.api.request(Method.GET, Path.rooms[room_id].messages,
                                          query_params=query_params)
         try:
             return PaginatedMessages(content["start"], content["end"],
@@ -210,17 +207,6 @@ class EventMethods(BaseClientAPI):
     # endregion
     # region 8.4 Sending events to a room
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#sending-events-to-a-room
-
-    def _get_state_url(self, room_id: RoomID, event_type: EventType, state_key: Optional[str] = ""
-                       ) -> str:
-        if not room_id:
-            raise ValueError("Room ID not given")
-        elif not event_type:
-            raise ValueError("Event type not given")
-        url = f"/rooms/{quote(room_id)}/state/{quote(str(event_type))}"
-        if state_key:
-            url += f"/{quote(state_key)}"
-        return url
 
     async def send_state_event(self, room_id: RoomID, event_type: EventType,
                                content: StateEventContent, state_key: Optional[str] = "", **kwargs
@@ -243,8 +229,8 @@ class EventMethods(BaseClientAPI):
         Returns:
             The ID of the event that was sent.
         """
-        url = self._get_state_url(room_id, event_type, state_key)
-        resp = await self.api.request(Method.PUT, url, content.serialize(), **kwargs)
+        resp = await self.api.request(Method.PUT, Path.rooms[room_id].state[event_type][state_key],
+                                      content.serialize(), **kwargs)
         try:
             return resp["event_id"]
         except KeyError:
@@ -273,7 +259,7 @@ class EventMethods(BaseClientAPI):
             raise ValueError("Room ID not given")
         elif not event_type:
             raise ValueError("Event type not given")
-        url = f"/rooms/{quote(room_id)}/send/{quote(str(event_type))}/{self.api.get_txn_id()}"
+        url = Path.rooms[room_id].send[event_type][self.api.get_txn_id()]
         resp = await self.api.request(Method.PUT, url, content.serialize(), **kwargs)
         try:
             return resp["event_id"]
@@ -385,7 +371,7 @@ class EventMethods(BaseClientAPI):
         """
         return self.send_message(room_id, MessageEventContent(url=url, info=info, body=file_name,
                                                               relates_to=relates_to,
-                                                              msgtype=file_type))
+                                                              msgtype=file_type), **kwargs)
 
     def send_sticker(self, room_id: RoomID, url: ContentURI, info: Optional[FileInfo],
                      text: Optional[str] = "", relates_to: Optional[RelatesTo] = None, **kwargs
@@ -464,7 +450,7 @@ class EventMethods(BaseClientAPI):
         Returns:
             The ID of the event that was sent to redact the other event.
         """
-        url = f"/rooms/{quote(room_id)}/redact/{quote(event_id)}/{self.api.get_txn_id()}"
+        url = Path.rooms[room_id].redact[event_id][self.api.get_txn_id()]
         resp = await self.api.request(Method.PUT, url, **kwargs)
         try:
             return resp["event_id"]

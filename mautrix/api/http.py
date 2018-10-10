@@ -1,5 +1,6 @@
+from typing import Optional, Dict, Awaitable, Union, List, NewType
+from urllib.parse import quote as urllib_quote
 from json.decoder import JSONDecodeError
-from typing import Optional, Dict, Awaitable, Union
 from enum import Enum
 from time import time
 import json
@@ -9,8 +10,9 @@ import asyncio
 from aiohttp import ClientSession
 from aiohttp.client_exceptions import ContentTypeError
 
-from ..types import JSON
 from ..errors import MatrixRequestError
+
+JSON = NewType("JSON", Union[str, int, float, bool, None, Dict[str, 'JSON'], List['JSON']])
 
 
 class APIPath(Enum):
@@ -38,10 +40,39 @@ class Method(Enum):
         return self.value
 
 
+def quote(string: str) -> str:
+    return urllib_quote(string, safe="")
+
+
+class PathBuilder:
+    def __init__(self, path: str = "") -> None:
+        self.path: str = path
+
+    def __str__(self) -> str:
+        return self.path
+
+    def __repr__(self):
+        return self.path
+
+    def __getattr__(self, append: str) -> 'PathBuilder':
+        if append is None:
+            return self
+        return PathBuilder(f"{self.path}/{append}")
+
+    def raw(self, append: str) -> 'PathBuilder':
+        return PathBuilder(self.path + append)
+
+    def __getitem__(self, append: str) -> 'PathBuilder':
+        return PathBuilder(f"{self.path}/{quote(append)}")
+
+
+Path = PathBuilder()
+
+
 class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
 
-    def __init__(self, base_url: str, token: str, client_session: ClientSession, txn_id: int = 0,
+    def __init__(self, base_url: str, token: str, client_session: ClientSession, *, txn_id: int = 0,
                  log: Optional[logging.Logger] = None) -> None:
         """
         Args:

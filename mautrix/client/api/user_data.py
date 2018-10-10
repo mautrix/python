@@ -1,9 +1,9 @@
 from typing import Optional
 
 from ...errors import MatrixResponseError
-from ...api import Method
+from ...api import Method, Path
 from .types import UserSearchResults, Member, SerializerError, User
-from .base import BaseClientAPI, quote
+from .base import BaseClientAPI
 
 
 class UserDataMethods(BaseClientAPI):
@@ -39,7 +39,7 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The results of the search and whether or not the results were limited.
         """
-        content = await self.api.request(Method.POST, "/user_directory/search", {
+        content = await self.api.request(Method.POST, Path.user_directory.search, {
             "search_term": search_query,
             "limit": limit,
         })
@@ -68,7 +68,7 @@ class UserDataMethods(BaseClientAPI):
         Args:
             displayname: The new display name for the user.
         """
-        await self.api.request(Method.PUT, f"/profile/{quote(self.mxid)}/displayname", {
+        await self.api.request(Method.PUT, Path.profile[self.mxid].displayname, {
             "displayname": displayname,
         })
 
@@ -84,7 +84,7 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The display name of the given user.
         """
-        content = await self.api.request(Method.GET, f"/profile/{quote(user_id)}/displayname")
+        content = await self.api.request(Method.GET, Path.profile[user_id].displayname)
         try:
             return content["displayname"]
         except KeyError:
@@ -99,7 +99,7 @@ class UserDataMethods(BaseClientAPI):
         Args:
             avatar_url: The ``mxc://`` URI to the new avatar.
         """
-        await self.api.request(Method.PUT, f"/profile/{quote(self.mxid)}/avatar_url", {
+        await self.api.request(Method.PUT, Path.profile[self.mxid].avatar_url, {
             "avatar_url": avatar_url,
         })
 
@@ -115,7 +115,7 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The ``mxc://`` URI to the user's avatar.
         """
-        content = await self.api.request(Method.GET, f"/profile/{quote(user_id)}/avatar_url")
+        content = await self.api.request(Method.GET, Path.profile[user_id].avatar_url)
         try:
             return content["avatar_url"]
         except KeyError:
@@ -133,7 +133,7 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The profile information of the given user.
         """
-        content = await self.api.request(Method.GET, f"/profile/{quote(user_id)}")
+        content = await self.api.request(Method.GET, Path.profile[user_id])
         try:
             return Member.deserialize(content)
         except SerializerError as e:
