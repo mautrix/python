@@ -1,25 +1,34 @@
 mautrix-python
 ==============
 
-|PyPI badge| |Python versions| |License|
+|PyPI| |Python versions| |License|
 
-A Python 3 asyncio Matrix framework.
+A Python 3.6+ asyncio Matrix framework.
 
 Components:
 
-* Basic HTTP request sender
-* Client API endpoints as functions
-* High-level application service framework
+* Basic HTTP request sender (mautrix.api_)
+* `Client API`_ endpoints as functions (mautrix.client.api_)
+* High-level application service framework (mautrix.appservice_)
 
   * Basic transaction and user/alias query support (based on Cadair's python-appservice-framework_)
   * Basic room state storage
   * Intent wrapper around the client API functions (design based on matrix-appservice-bridge)
 
-* Soon™: High-level client framework
+* Soon™: High-level client framework (mautrix.client_)
 
 .. _python-appservice-framework: https://github.com/Cadair/python-appservice-framework/
-.. |PyPI badge| image:: https://img.shields.io/pypi/v/mautrix.svg
+.. _Client API: https://matrix.org/docs/spec/client_server/r0.4.0.html
+
+.. _mautrix.api: https://mautrix.readthedocs.io/en/latest/mautrix.api.html
+.. _mautrix.client.api: https://mautrix.readthedocs.io/en/latest/mautrix.client.api.html
+.. _mautrix.appservice: https://mautrix.readthedocs.io/en/latest/mautrix.appservice.html
+.. _mautrix.client: https://mautrix.readthedocs.io/en/latest/mautrix.client.html
+
+.. |PyPI| image:: https://img.shields.io/pypi/v/mautrix.svg
    :target: https://pypi.python.org/pypi/mautrix
+.. |ReadTheDocs| image:: https://img.shields.io/readthedocs/mautrix.svg
+   :target: https://mautrix.readthedocs.io
 .. |Python versions| image:: https://img.shields.io/pypi/pyversions/mautrix.svg
 .. |License| image:: https://img.shields.io/github/license/tulir/mautrix-python.svg
    :target: https://github.com/tulir/mautrix-python/blob/master/LICENSE
