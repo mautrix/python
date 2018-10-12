@@ -1,10 +1,10 @@
-from typing import Optional, Union
+from typing import Optional, Union, Dict, List
 from attr import dataclass
 import attr
 
 from .....api import JSON
 from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
-from ..primitive import ContentURI, EventID
+from ..primitive import ContentURI, EventID, UserID
 from .base import BaseRoomEvent, BaseUnsigned
 
 
@@ -47,7 +47,17 @@ class RelatesTo(SerializableAttrs['RelatesTo']):
 
 @dataclass
 class MatchedCommand(SerializableAttrs['MatchedCommand']):
-    pass
+    target: UserID = None
+    matched: str = None
+    arguments: Dict[str, str] = None
+
+
+@dataclass
+class MatchedPassiveCommand(SerializableAttrs['MatchedPassiveCommand']):
+    captured: List[List[str]] = None
+
+    command: str = None
+    arguments: Dict[str, str] = None
 
 
 @dataclass
@@ -167,6 +177,8 @@ class LocationMessageEventContent(BaseMessageEventContent,
 class MessageUnsigned(BaseUnsigned, SerializableAttrs['MessageUnsigned']):
     """Unsigned information sent with message events."""
     transaction_id: str = None
+    passive_command: MatchedPassiveCommand = attr.ib(default=None,
+                                                     metadata={"json": "m.passive_command"})
 
 
 MessageEventContent = Union[TextMessageEventContent, MediaMessageEventContent,

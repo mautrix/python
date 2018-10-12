@@ -23,11 +23,8 @@ def deserialize_event(data: JSON) -> Event:
     elif event_type == EventType.ROOM_REDACTION:
         return RedactionEvent.deserialize(data)
     elif event_type.is_state:
-        data.get("content", {})["__mautrix_event_type"] = event_type
-        data.get("unsigned", {}).get("prev_content", {})["__mautrix_event_type"] = event_type
         return StateEvent.deserialize(data)
     elif event_type.is_account_data:
-        data.get("content", {})["__mautrix_event_type"] = event_type
         return AccountDataEvent.deserialize(data)
     elif event_type.is_ephemeral:
         # TODO implement

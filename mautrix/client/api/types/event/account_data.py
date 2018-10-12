@@ -22,6 +22,7 @@ account_data_event_content_map = {
     EventType.TAG: RoomTagAccountDataEventContent
 }
 
+
 # TODO remaining account data event types
 
 
@@ -30,8 +31,16 @@ class AccountDataEvent(BaseEvent, SerializableAttrs['AccountDataEvent']):
     content: AccountDataEventContent
 
     @classmethod
+    def deserialize(cls, data: JSON) -> 'AccountDataEvent':
+        try:
+            data.get("content", {})["__mautrix_event_type"] = EventType(data.get("type"))
+        except ValueError:
+            pass
+        return super().deserialize(data)
+
+    @staticmethod
     @deserializer(AccountDataEventContent)
-    def deserialize_content(cls, data: JSON) -> AccountDataEventContent:
+    def deserialize_content(data: JSON) -> AccountDataEventContent:
         evt_type = data.pop("__mautrix_event_type", None)
         content_type = account_data_event_content_map.get(evt_type, None)
         if not content_type:

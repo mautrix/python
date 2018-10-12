@@ -150,8 +150,18 @@ class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
     unsigned: Optional[StateUnsigned] = None
 
     @classmethod
+    def deserialize(cls, data: JSON) -> 'StateEvent':
+        try:
+            event_type = EventType(data.get("type"))
+            data.get("content", {})["__mautrix_event_type"] = event_type
+            data.get("unsigned", {}).get("prev_content", {})["__mautrix_event_type"] = event_type
+        except ValueError:
+            pass
+        return super().deserialize(data)
+
+    @staticmethod
     @deserializer(StateEventContent)
-    def deserialize_content(cls, data: JSON) -> StateEventContent:
+    def deserialize_content(data: JSON) -> StateEventContent:
         evt_type = data.pop("__mautrix_event_type", None)
         content_type = state_event_content_map.get(evt_type, None)
         if not content_type:
