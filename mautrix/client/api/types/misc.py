@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import List, NewType, NamedTuple
-import attr
+from attr import dataclass
 
-from .primitive import RoomID, RoomAlias, SyncToken
+from .primitive import RoomID, RoomAlias, SyncToken, ContentURI
 from .util import SerializableAttrs, SerializableEnum
 from .event import Event
 
@@ -23,7 +23,7 @@ class PaginationDirection(Enum):
     BACKWARD = "b"
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class RoomAliasInfo(SerializableAttrs['RoomAliasInfo']):
     room_id: RoomID = None
     servers: List[str] = None
@@ -32,7 +32,7 @@ class RoomAliasInfo(SerializableAttrs['RoomAliasInfo']):
 DirectoryPaginationToken = NewType("DirectoryPaginationToken", str)
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class PublicRoomInfo(SerializableAttrs['PublicRoomInfo']):
     room_id: RoomID
 
@@ -43,13 +43,13 @@ class PublicRoomInfo(SerializableAttrs['PublicRoomInfo']):
 
     name: str = None
     topic: str = None
-    avatar_url: str = None
+    avatar_url: ContentURI = None
 
     aliases: List[RoomAlias] = None
     canonical_alias: RoomAlias = None
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class RoomDirectoryResponse(SerializableAttrs['RoomDirectoryResponse']):
     chunk: List[PublicRoomInfo]
     next_batch: DirectoryPaginationToken = None
@@ -67,7 +67,7 @@ class PresenceState(SerializableEnum):
     UNAVAILABLE = "unavailable"
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class Presence(SerializableAttrs['Presence']):
     presence: PresenceState
     last_active_ago: int = None

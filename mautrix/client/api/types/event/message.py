@@ -1,7 +1,10 @@
-from typing import Optional
+from typing import Optional, Union
+from attr import dataclass
 import attr
 
-from ..util import SerializableEnum, SerializableAttrs
+from .....api import JSON
+from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
+from ..primitive import ContentURI, EventID
 from .base import BaseRoomEvent, BaseUnsigned
 
 
@@ -9,6 +12,10 @@ class Format(SerializableEnum):
     """A message format. Currently only ``org.matrix.custom.html`` is available.
     This will probably be deprecated when extensible events are implemented."""
     HTML = "org.matrix.custom.html"
+
+
+TEXT_MESSAGE_TYPES = ("m.text", "m.emote", "m.notice")
+MEDIA_MESSAGE_TYPES = ("m.image", "m.video", "m.audio", "m.file")
 
 
 class MessageType(SerializableEnum):
@@ -23,71 +30,196 @@ class MessageType(SerializableEnum):
     LOCATION = "m.location"
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class InReplyTo(SerializableAttrs['InReplyTo']):
     """Message reply info. Currently only contains the ID of the event that an event is replying to.
     Cross-room replies are not possible, as other users may not be able to view events in the other
     room."""
-    event_id: str = None
+    event_id: EventID = None
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class RelatesTo(SerializableAttrs['RelatesTo']):
     """Message relations. Currently only used for replies, but will be used for reactions, edits,
     threading, etc in the future."""
     in_reply_to: InReplyTo = attr.ib(default=None, metadata={"json": "m.in_reply_to"})
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class MatchedCommand(SerializableAttrs['MatchedCommand']):
     pass
 
 
-@attr.s(auto_attribs=True)
-class BaseFileInfo(SerializableAttrs['BaseFileInfo']):
-    """Basic information about a file (no thumbnail)."""
+@dataclass
+class BaseMessageEventContent:
+    msgtype: MessageType
+    body: str
+
+
+@dataclass
+class TextMessageEventContent(BaseMessageEventContent,
+                              SerializableAttrs['TextMessageEventContent']):
+    format: Format = None
+    formatted_body: str = None
+
+    command: MatchedCommand = attr.ib(default=None, metadata={"json": "m.command"})
+    relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
+
+
+@dataclass
+class ThumbnailInfo(SerializableAttrs['ThumbnailInfo']):
+    """Information about the thumbnail for a document, video, image or location."""
     mimetype: str = None
     height: int = attr.ib(default=None, metadata={"json": "h"})
+    width: int = attr.ib(default=None, metadata={"json": "w"})
+    size: int = None
+
+
+@dataclass
+class ImageInfo(SerializableAttrs['ImageInfo']):
+    """Information about an image message."""
+    mimetype: str = None
+    height: int = attr.ib(default=None, metadata={"json": "h"})
+    width: int = attr.ib(default=None, metadata={"json": "w"})
+    size: int = None
+    thumbnail_info: ThumbnailInfo = None
+    thumbnail_url: ContentURI = None
+
+
+@dataclass
+class VideoInfo(SerializableAttrs['VideoInfo']):
+    """Information about a video message."""
+    mimetype: str = None
+    height: int = attr.ib(default=None, metadata={"json": "h"})
+    width: int = attr.ib(default=None, metadata={"json": "w"})
+    size: int = None
+    duration: int = None
+    thumbnail_info: ThumbnailInfo = None
+    thumbnail_url: ContentURI = None
+
+
+@dataclass
+class AudioInfo(SerializableAttrs['AudioInfo']):
+    """Information about an audio message."""
+    mimetype: str = None
+    size: int = None
+    duration: int = None
+
+
+@dataclass
+class FileInfo(SerializableAttrs['FileInfo']):
+    """Information about a document message."""
+    mimetype: str = None
+    size: int = None
+    thumbnail_info: ThumbnailInfo = None
+    thumbnail_url: ContentURI = None
+
+
+MediaInfo = Union[ImageInfo, VideoInfo, AudioInfo, FileInfo, Obj]
+
+
+@dataclass
+class MediaMessageEventContent(BaseMessageEventContent,
+                               SerializableAttrs['MediaMessageEventContent']):
+    url: ContentURI
+    info: MediaInfo = None
+
+    relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
+
+    @staticmethod
+    @deserializer(MediaInfo)
+    def deserialize_info(data: JSON) -> MediaInfo:
+        if not isinstance(data, dict):
+            return Obj()
+        msgtype = data.pop("__mautrix_msgtype", None)
+        if msgtype == "m.image":
+            return ImageInfo.deserialize(data)
+        elif msgtype == "m.video":
+            return VideoInfo.deserialize(data)
+        elif msgtype == "m.audio":
+            return AudioInfo.deserialize(data)
+        elif msgtype == "m.file":
+            return FileInfo.deserialize(data)
+        else:
+            return Obj(**data)
+
+
+@dataclass
+class LocationInfo(SerializableAttrs['LocationInfo']):
+    """Information about a location message."""
+    thumbnail_url: ContentURI = None
+    thumbnail_info: ThumbnailInfo = attr.ib(default=None, metadata={"json": "h"})
     width: int = attr.ib(default=None, metadata={"json": "w"})
     duration: int = None
     size: int = None
 
 
-@attr.s(auto_attribs=True)
-class FileInfo(BaseFileInfo, SerializableAttrs['FileInfo']):
-    """Information about a file and possibly a thumbnail of the image/video/etc."""
-    thumbnail_info: BaseFileInfo = None
-    thumbnail_url: str = None
-
-
-@attr.s(auto_attribs=True)
-class MessageEventContent(SerializableAttrs['EventContent']):
-    """The content of a message event. The contents of all known different message event types are
-    available in this object. Most event types have at least a `msgtype` and a `body`, but you
-    should still check the :attr:`MessageEvent.type` beforehand."""
-    msgtype: MessageType = None
-    body: str = None
-    format: Format = None
-    formatted_body: str = None
-
-    url: str = None
-    info: FileInfo = None
-
-    redaction_reason: str = attr.ib(default=None, metadata={"json": "reason"})
+@dataclass
+class LocationMessageEventContent(BaseMessageEventContent,
+                                  SerializableAttrs['LocationMessageEventContent']):
+    geo_uri: str
+    info: LocationInfo = None
 
     relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
-    command: MatchedCommand = attr.ib(default=None, metadata={"json": "m.command"})
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class MessageUnsigned(BaseUnsigned, SerializableAttrs['MessageUnsigned']):
     """Unsigned information sent with message events."""
     transaction_id: str = None
 
 
-@attr.s(auto_attribs=True)
-class MessageEvent(BaseRoomEvent, SerializableAttrs['Event']):
-    """A room message event."""
+MessageEventContent = Union[TextMessageEventContent, MediaMessageEventContent,
+                            LocationMessageEventContent, Obj]
+
+
+@dataclass
+class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
+    """A m.room.message event"""
     content: MessageEventContent
-    redacts: str = None
+    unsigned: Optional[MessageUnsigned] = None
+
+    @staticmethod
+    @deserializer(MessageEventContent)
+    def deserialize_content(data: JSON) -> MessageEventContent:
+        if not isinstance(data, dict):
+            return Obj()
+        msgtype = data.get("msgtype", None)
+        if msgtype in TEXT_MESSAGE_TYPES:
+            return TextMessageEventContent.deserialize(data)
+        elif msgtype in MEDIA_MESSAGE_TYPES:
+            data.get("info", {})["__mautrix_msgtype"] = msgtype
+            return MediaMessageEventContent.deserialize(data)
+        elif msgtype == "m.location":
+            return LocationMessageEventContent.deserialize(data)
+        else:
+            return Obj(**data)
+
+
+@dataclass
+class StickerEventContent(SerializableAttrs['StickerEventContent']):
+    body: str
+    url: ContentURI
+    info: ImageInfo = None
+
+    relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
+
+
+@dataclass
+class StickerEvent(BaseRoomEvent, SerializableAttrs['StickerEvent']):
+    """A m.sticker event"""
+    content: StickerEventContent
+    unsigned: Optional[MessageUnsigned] = None
+
+
+@dataclass
+class RedactionEventContent(SerializableAttrs['RedactionEventContent']):
+    reason: str = None
+
+
+@dataclass
+class RedactionEvent(BaseRoomEvent, SerializableAttrs['RedactionEvent']):
+    """A m.room.redaction event"""
+    content: StickerEventContent
+    redacts: str
     unsigned: Optional[MessageUnsigned] = None

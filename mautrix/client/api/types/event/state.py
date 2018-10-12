@@ -1,24 +1,16 @@
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
+from attr import dataclass
 import attr
 
 from .....api import JSON
-from ..primitive import UserID
-from ..util import SerializableEnum, SerializableAttrs
+from ..primitive import UserID, EventID, ContentURI
+from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
 from .base import BaseRoomEvent, BaseUnsigned, EventType
 
 
-class Membership(SerializableEnum):
-    """A room membership state."""
-    JOIN = "join"
-    LEAVE = "leave"
-    INVITE = "invite"
-    BAN = "ban"
-    KNOCK = "knock"
-
-
-@attr.s(auto_attribs=True)
-class PowerLevels(SerializableAttrs['PowerLevels']):
-    """The full content of a power level event."""
+@dataclass
+class PowerLevelStateEventContent(SerializableAttrs['PowerLevelStateEventContent']):
+    """The content of a power level event."""
     users: Dict[str, int] = attr.ib(default={}, metadata={"omitempty": False})
     users_default: int = 0
 
@@ -64,57 +56,104 @@ class PowerLevels(SerializableAttrs['PowerLevels']):
         return False
 
 
-@attr.s(auto_attribs=True)
-class Member(SerializableAttrs['Member']):
+class Membership(SerializableEnum):
+    """A room membership state."""
+    JOIN = "join"
+    LEAVE = "leave"
+    INVITE = "invite"
+    BAN = "ban"
+    KNOCK = "knock"
+
+
+@dataclass
+class MemberStateEventContent(SerializableAttrs['MemberStateEventContent']):
     """The content of a membership event."""
-    membership: Membership = None
+    membership: Membership
     avatar_url: str = None
     displayname: str = None
     reason: str = None
     third_party_invite: JSON = None
 
 
-@attr.s(auto_attribs=True)
-class StateEventContent(SerializableAttrs['StateEventContent']):
-    """The content of a state event. The contents of all known different state event types are
-    available in this object. You should check :attr:`StateEvent.type` to find the specific field to
-    access"""
-    membership: Membership = None
-    member: Member = attr.ib(default=None, metadata={"flatten": True})
+@dataclass
+class AliasesStateEventContent(SerializableAttrs['AliasesStateEventContent']):
+    aliases: List[str] = None
 
-    room_aliases: List[str] = attr.ib(default=None, metadata={"json": "aliases"})
 
+@dataclass
+class CanonicalAliasStateEventContent(SerializableAttrs['CanonicalAliasStateEventContent']):
     canonical_alias: str = attr.ib(default=None, metadata={"json": "alias"})
 
-    room_name: str = attr.ib(default=None, metadata={"json": "name"})
 
-    room_topic: str = attr.ib(default=None, metadata={"json": "topic"})
-
-    power_levels: PowerLevels = attr.ib(default=None, metadata={"flatten": True})
-
-    typing_user_ids: List[str] = attr.ib(default=None, metadata={"json": "user_ids"})
+@dataclass
+class RoomNameStateEventContent(SerializableAttrs['RoomNameStateEventContent']):
+    name: str
 
 
-@attr.s(auto_attribs=True)
+@dataclass
+class RoomTopicStateEventContent(SerializableAttrs['RoomTopicStateEventContent']):
+    topic: str
+
+
+@dataclass
+class RoomAvatarStateEventContent(SerializableAttrs['RoomAvatarStateEventContent']):
+    url: ContentURI
+
+
+StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
+                          AliasesStateEventContent, CanonicalAliasStateEventContent,
+                          RoomNameStateEventContent, RoomAvatarStateEventContent,
+                          RoomTopicStateEventContent, Obj]
+
+
+@dataclass
 class StrippedState(SerializableAttrs['StrippedState']):
     """Stripped state events included with some invite events."""
     content: StateEventContent = None
     type: EventType = None
     state_key: str = None
 
+    @classmethod
+    def deserialize(cls, data: JSON) -> 'StrippedState':
+        try:
+            data.get("content", {})["__mautrix_event_type"] = EventType(data.get("type", None))
+        except ValueError:
+            pass
+        return super().deserialize(data)
 
-@attr.s(auto_attribs=True)
+
+@dataclass
 class StateUnsigned(BaseUnsigned, SerializableAttrs['StateUnsigned']):
     """Unsigned information sent with state events."""
     prev_content: StateEventContent = None
-    prev_sender: str = None
-    replaces_state: str = None
+    prev_sender: UserID = None
+    replaces_state: EventID = None
     invite_room_state: Optional[List[StrippedState]] = None
 
 
-@attr.s(auto_attribs=True)
+state_event_content_map = {
+    EventType.ROOM_POWER_LEVELS: PowerLevelStateEventContent,
+    EventType.ROOM_MEMBER: MemberStateEventContent,
+    EventType.ROOM_ALIASES: AliasesStateEventContent,
+    EventType.ROOM_CANONICAL_ALIAS: CanonicalAliasStateEventContent,
+    EventType.ROOM_NAME: RoomNameStateEventContent,
+    EventType.ROOM_AVATAR: RoomAvatarStateEventContent,
+    EventType.ROOM_TOPIC: RoomTopicStateEventContent,
+}
+
+
+@dataclass
 class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
     """A room state event."""
     state_key: str
     content: StateEventContent
     unsigned: Optional[StateUnsigned] = None
+
+    @classmethod
+    @deserializer(StateEventContent)
+    def deserialize_content(cls, data: JSON) -> StateEventContent:
+        evt_type = data.pop("__mautrix_event_type", None)
+        content_type = state_event_content_map.get(evt_type, None)
+        if not content_type:
+            return Obj(**data)
+        return content_type.deserialize(data)

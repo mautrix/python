@@ -1,7 +1,7 @@
 from typing import Set, Dict
 import json
 
-from ...client.api.types import PowerLevels, Member, Membership, RoomID, UserID
+from ...client.api.types import PowerLevelStateEventContent, Member, Membership, RoomID, UserID
 from .abstract import StateStore
 
 
@@ -10,7 +10,7 @@ class JSONStateStore(StateStore):
 
     registrations: Set[UserID]
     members: Dict[RoomID, Dict[UserID, Member]]
-    power_levels: Dict[RoomID, PowerLevels]
+    power_levels: Dict[RoomID, PowerLevelStateEventContent]
 
     def __init__(self, autosave_file: str = None) -> None:
         super().__init__()
@@ -81,17 +81,17 @@ class JSONStateStore(StateStore):
     def has_power_levels(self, room_id: RoomID) -> bool:
         return room_id in self.power_levels
 
-    def get_power_levels(self, room_id: RoomID) -> PowerLevels:
+    def get_power_levels(self, room_id: RoomID) -> PowerLevelStateEventContent:
         return self.power_levels[room_id]
 
     def set_power_level(self, room_id: RoomID, user_id: UserID, level: int) -> None:
         try:
             self.power_levels[room_id].set_user_level(user_id, level)
         except KeyError:
-            self.power_levels[room_id] = PowerLevels()
+            self.power_levels[room_id] = PowerLevelStateEventContent()
             self.power_levels[room_id].set_user_level(user_id, level)
         self._autosave()
 
-    def set_power_levels(self, room_id: RoomID, content: PowerLevels) -> None:
+    def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
         self.power_levels[room_id] = content
         self._autosave()

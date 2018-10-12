@@ -1,6 +1,12 @@
 from .base import EventType
-from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MessageType, Format,
-                      RelatesTo, InReplyTo, FileInfo, BaseFileInfo, MatchedCommand)
-from .state import (StateEvent, StateEventContent, Membership, Member, PowerLevels, StateUnsigned,
-                    StrippedState)
-from .unknown import Event, EventContent, Unsigned
+from .message import (RedactionEvent, RedactionEventContent, StickerEvent, StickerEventContent,
+                      MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
+                      LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format,
+                      MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
+                      TextMessageEventContent, BaseMessageEventContent, MatchedCommand, RelatesTo)
+from .state import (PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
+                    AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedState,
+                    RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
+                    RoomAvatarStateEventContent, StateEventContent)
+from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo, RoomTagAccountDataEventContent)
+from .generic import Event

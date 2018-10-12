@@ -2,8 +2,8 @@ from typing import Dict, Tuple
 from abc import ABC, abstractmethod
 import time
 
-from ...client.api.types import (StateEvent, EventType, PowerLevels, Member, Membership, RoomID,
-                                 UserID)
+from ...client.api.types import (StateEvent, EventType, PowerLevelStateEventContent, Member,
+                                 Membership, RoomID, UserID)
 
 
 class StateStore(ABC):
@@ -32,7 +32,7 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    def get_power_levels(self, room_id: RoomID) -> PowerLevels:
+    def get_power_levels(self, room_id: RoomID) -> PowerLevelStateEventContent:
         pass
 
     @abstractmethod
@@ -40,7 +40,7 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    def set_power_levels(self, room_id: RoomID, content: PowerLevels) -> None:
+    def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
         pass
 
     def set_presence(self, user_id: UserID, presence: str) -> None:

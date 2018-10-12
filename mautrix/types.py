@@ -5,13 +5,17 @@ from .client.api.types import (
 
     Filter, EventFilter, RoomFilter, RoomEventFilter,
 
-    EventType, MessageEvent, MessageEventContent, MessageUnsigned, MessageType, Format, RelatesTo,
-    InReplyTo, FileInfo, BaseFileInfo, MatchedCommand, StateEvent, StateEventContent, Membership,
-    Member, PowerLevels, StateUnsigned, StrippedState, Event, EventContent, Unsigned,
-    RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
-    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages, Presence, PresenceState,
+    EventType, RedactionEvent, RedactionEventContent, StickerEvent, StickerEventContent,
+    MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
+    LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format, MediaInfo, FileInfo,
+    AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent,
+    BaseMessageEventContent, MatchedCommand, RelatesTo, PowerLevelStateEventContent, Membership,
+    MemberStateEventContent, StateEvent, AliasesStateEventContent, CanonicalAliasStateEventContent,
+    StrippedState, RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
+    RoomAvatarStateEventContent, StateEventContent, AccountDataEvent, AccountDataEventContent,
+    RoomTagInfo, RoomTagAccountDataEventContent, Event,
 
-    User, UserSearchResults,
+    User, Member, UserSearchResults,
 
     MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio,
 

@@ -1,38 +1,40 @@
+from attr import dataclass
 import attr
 
+from .primitive import ContentURI
 from .util import SerializableAttrs
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class MediaRepoConfig(SerializableAttrs['MediaRepoConfig']):
     upload_size: int = attr.ib(metadata={"json": "m.upload_size"})
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class OpenGraphImage(SerializableAttrs['OpenGraphImage']):
-    url: str = attr.ib(default=None, metadata={"json": "og:image"})
+    url: ContentURI = attr.ib(default=None, metadata={"json": "og:image"})
     mimetype: str = attr.ib(default=None, metadata={"json": "og:image:type"})
     height: int = attr.ib(default=None, metadata={"json": "og:image:width"})
     width: int = attr.ib(default=None, metadata={"json": "og:image:height"})
     size: int = attr.ib(default=None, metadata={"json": "matrix:image:size"})
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class OpenGraphVideo(SerializableAttrs['OpenGraphVideo']):
-    url: str = attr.ib(default=None, metadata={"json": "og:video"})
+    url: ContentURI = attr.ib(default=None, metadata={"json": "og:video"})
     mimetype: str = attr.ib(default=None, metadata={"json": "og:video:type"})
     height: int = attr.ib(default=None, metadata={"json": "og:video:width"})
     width: int = attr.ib(default=None, metadata={"json": "og:video:height"})
     size: int = attr.ib(default=None, metadata={"json": "matrix:video:size"})
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class OpenGraphAudio(SerializableAttrs['OpenGraphAudio']):
-    url: str = attr.ib(default=None, metadata={"json": "og:audio"})
+    url: ContentURI = attr.ib(default=None, metadata={"json": "og:audio"})
     mimetype: str = attr.ib(default=None, metadata={"json": "og:audio:type"})
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class MXOpenGraph(SerializableAttrs['MXOpenGraph']):
     title: str = attr.ib(default=None, metadata={"json": "og:title"})
     description: str = attr.ib(default=None, metadata={"json": "og:description"})

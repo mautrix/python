@@ -1,20 +1,39 @@
-from typing import Dict
+from typing import Dict, Union
+from attr import dataclass
 import attr
 
-from ..util import SerializableAttrs
-from .base import BaseEvent
+from .....api import JSON
+from ..util import SerializableAttrs, Obj, deserializer
+from .base import EventType, BaseEvent
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class RoomTagInfo(SerializableAttrs['RoomTagInfo']):
     order: int = None
 
 
-@attr.s(auto_attribs=True)
-class AccountDataEventContent(SerializableAttrs['AccountDataEventContent']):
-    room_tags: Dict[str, RoomTagInfo] = attr.ib(default=None, metadata={"json": "tags"})
+@dataclass
+class RoomTagAccountDataEventContent(SerializableAttrs['RoomTagAccountDataEventContent']):
+    tags: Dict[str, RoomTagInfo] = attr.ib(default=None, metadata={"json": "tags"})
 
 
-@attr.s(auto_attribs=True)
+AccountDataEventContent = Union[RoomTagAccountDataEventContent, Obj]
+account_data_event_content_map = {
+    EventType.TAG: RoomTagAccountDataEventContent
+}
+
+# TODO remaining account data event types
+
+
+@dataclass
 class AccountDataEvent(BaseEvent, SerializableAttrs['AccountDataEvent']):
     content: AccountDataEventContent
+
+    @classmethod
+    @deserializer(AccountDataEventContent)
+    def deserialize_content(cls, data: JSON) -> AccountDataEventContent:
+        evt_type = data.pop("__mautrix_event_type", None)
+        content_type = account_data_event_content_map.get(evt_type, None)
+        if not content_type:
+            return Obj(**data)
+        return content_type.deserialize(data)

@@ -1,4 +1,5 @@
-from typing import Generic, List, Set, Dict, Type, TypeVar, Any, Union, Optional, Tuple, Iterator
+from typing import Generic, List, Set, Dict, Type, TypeVar, Any, Union, Optional, Tuple, Iterator, \
+    Callable, NewType
 from abc import ABC, abstractmethod
 from enum import Enum
 import attr
@@ -78,6 +79,28 @@ class SerializableEnum(Serializable, Enum):
         return self.value
 
 
+Serializer = NewType("Serializer", Callable[[T], JSON])
+Deserializer = NewType("Deserializer", Callable[[JSON], T])
+serializer_map: Dict[Type[T], Serializer] = {}
+deserializer_map: Dict[Type[T], Deserializer] = {}
+
+
+def serializer(elem_type: Type[T]) -> Callable[[Serializer], Serializer]:
+    def decorator(func: Serializer) -> Serializer:
+        serializer_map[elem_type] = func
+        return func
+
+    return decorator
+
+
+def deserializer(elem_type: Type[T]) -> Callable[[Deserializer], Deserializer]:
+    def decorator(func: Deserializer) -> Deserializer:
+        deserializer_map[elem_type] = func
+        return func
+
+    return decorator
+
+
 def _fields(attrs_type: Type[T], only_if_flatten: bool = None) -> Iterator[Tuple[str, Type[T2]]]:
     return ((field.metadata.get("json", field.name), field) for field in attr.fields(attrs_type)
             if only_if_flatten is None or field.metadata.get("flatten", False) == only_if_flatten)
@@ -140,6 +163,10 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
         return _safe_default(default)
 
     cls = getattr(cls, "__supertype__", None) or cls
+    try:
+        return deserializer_map[cls](value)
+    except KeyError:
+        pass
     if attr.has(cls):
         return _dict_to_attrs(cls, value, default, default_if_empty=True)
     elif cls == Any or cls == JSON:
@@ -178,7 +205,10 @@ def _attrs_to_dict(data: T) -> JSON:
                 continue
         if field.metadata.get("omitdefault", False) and field_val == field.default:
             continue
-        serialized = _serialize(field_val)
+        try:
+            serialized = serializer_map[field.type](field_val)
+        except KeyError:
+            serialized = _serialize(field_val)
         if field.metadata.get("flatten", False) and isinstance(serialized, dict):
             new_dict.update(serialized)
         else:

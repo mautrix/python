@@ -1,14 +1,22 @@
 from typing import List, NamedTuple
-import attr
+from attr import dataclass
 
-from .primitive import UserID
+from .event import Membership
+from .primitive import UserID, ContentURI
 from .util import SerializableAttrs
 
 
-@attr.s(auto_attribs=True)
+@dataclass
+class Member(SerializableAttrs['Member']):
+    membership: Membership = None
+    avatar_url: ContentURI = None
+    displayname: str = None
+
+
+@dataclass
 class User(SerializableAttrs['User']):
     user_id: UserID
-    avatar_url: str = None
+    avatar_url: ContentURI = None
     displayname: str = None
 
 

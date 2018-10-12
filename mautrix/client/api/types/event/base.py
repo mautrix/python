@@ -1,8 +1,8 @@
+from attr import dataclass
 import attr
 
-from .....api import JSON
 from ..primitive import RoomID, UserID, EventID
-from ..util import SerializableEnum
+from ..util import SerializableEnum, Obj
 
 STATE_EVENTS = ("m.room.aliases", "m.room.canonical_alias", "m.room.create", "m.room.join_rules",
                 "m.room.member", "m.room.power_levels", "m.room.name", "m.room.topic",
@@ -42,6 +42,11 @@ class EventType(SerializableEnum):
     IGNORED_USER_LIST = "m.ignored_user_list"
 
     @property
+    def is_message(self) -> bool:
+        """Whether or not the event is a message event."""
+        return self.value in EPHEMERAL_EVENTS
+
+    @property
     def is_state(self) -> bool:
         """Whether or not the event is a state event."""
         return self.value in STATE_EVENTS
@@ -57,17 +62,20 @@ class EventType(SerializableEnum):
         return self.value in ACCOUNT_DATA_EVENTS
 
 
+@dataclass
 class BaseUnsigned:
     """Base unsigned information."""
     age: int = None
 
 
+@dataclass
 class BaseEvent:
     """Base event class. The only things an event **must** have are content and event type."""
-    content: JSON
+    content: Obj
     type: EventType
 
 
+@dataclass
 class BaseRoomEvent(BaseEvent):
     """Base room event class. Room events must have a room ID, event ID, sender and timestamp in
     addition to the content and type in the base event."""

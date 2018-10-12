@@ -1,5 +1,5 @@
 from typing import List
-import attr
+from attr import dataclass
 
 from .util import SerializableAttrs, SerializableEnum
 from .event import EventType
@@ -11,7 +11,7 @@ class EventFormat(SerializableEnum):
     FEDERATION = "federation"
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class EventFilter(SerializableAttrs['EventFilter']):
     limit: int = None
     not_senders: List[UserID] = None
@@ -20,14 +20,14 @@ class EventFilter(SerializableAttrs['EventFilter']):
     types: List[EventType] = None
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class RoomEventFilter(EventFilter, SerializableAttrs['RoomEventFilter']):
     not_rooms: List[RoomID] = None
     rooms: List[RoomID] = None
     contains_url: bool = False
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class RoomFilter(SerializableAttrs['RoomFilter']):
     not_rooms: List[RoomID] = None
     rooms: List[RoomID] = None
@@ -38,7 +38,7 @@ class RoomFilter(SerializableAttrs['RoomFilter']):
     account_data: RoomEventFilter = None
 
 
-@attr.s(auto_attribs=True)
+@dataclass
 class Filter(SerializableAttrs['Filter']):
     event_fields: List[str]
     event_format: EventFormat
