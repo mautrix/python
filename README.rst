@@ -1,7 +1,7 @@
 mautrix-python
 ==============
 
-|PyPI| |Python versions| |License|
+|PyPI| |ReadTheDocs| |Python versions| |License|
 
 A Python 3.6+ asyncio Matrix framework.
 
