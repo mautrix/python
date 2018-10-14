@@ -1,10 +1,9 @@
 from typing import Optional
 
-from mautrix.client.api.types import MXOpenGraph
 from ....api import APIPath, Method, Path
 from ....errors import MatrixResponseError
 from ..base import BaseClientAPI
-from ..types import ContentURI, MediaRepoConfig, SerializerError
+from ..types import ContentURI, MediaRepoConfig, SerializerError, MXOpenGraph
 
 try:
     import magic

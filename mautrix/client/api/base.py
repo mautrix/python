@@ -1,5 +1,5 @@
-from typing import Pattern
-from urllib.parse import quote as urllib_quote
+from typing import Pattern, Optional
+import asyncio
 import re
 
 from ...api import HTTPAPI
@@ -19,8 +19,10 @@ class BaseClientAPI:
     domain: str
     mxid: UserID
     api: HTTPAPI
+    loop: asyncio.AbstractEventLoop
 
-    def __init__(self, mxid: UserID, api: HTTPAPI = None, *args, **kwargs) -> None:
+    def __init__(self, mxid: UserID, api: HTTPAPI = None,
+                 loop: Optional[asyncio.AbstractEventLoop] = None, *args, **kwargs) -> None:
         """
         Initialize a ClientAPI. You must either provide the
 
@@ -32,6 +34,8 @@ class BaseClientAPI:
                 to create a HTTPAPI instance rather than creating the instance yourself.``
         """
         self.set_mxid(mxid)
+        self.loop = loop or asyncio.get_event_loop()
+        kwargs["loop"] = self.loop
         self.api = api or HTTPAPI(*args, **kwargs)
 
     def set_mxid(self, mxid: UserID) -> None:

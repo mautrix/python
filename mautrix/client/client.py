@@ -5,7 +5,7 @@ from ..api import JSON
 from .api.types import EventType, StateEvent, Event, FilterID, Filter, SyncToken
 from .api import ClientAPI
 
-EventHandler = Callable[[Awaitable[Event]], None]
+EventHandler = Callable[[Event], Awaitable[None]]
 
 
 class Client(ClientAPI):
@@ -50,7 +50,7 @@ class Client(ClientAPI):
 
     async def call_handlers(self, event: Event) -> None:
         for handler in self.global_event_handlers + self.event_handlers.get(event.type, []):
-            asyncio.ensure_future(handler(event))
+            asyncio.ensure_future(handler(event), loop=self.loop)
 
     async def handle_sync(self, data: JSON) -> None:
         rooms = data.get("rooms", {})

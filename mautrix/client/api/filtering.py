@@ -1,7 +1,7 @@
 from ...errors import MatrixResponseError
 from ...api import Method, Path
 from .base import BaseClientAPI
-from .types import UserID, Filter, FilterID
+from .types import Filter, FilterID
 
 
 class FilteringMethods(BaseClientAPI):

@@ -73,7 +73,8 @@ class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
 
     def __init__(self, base_url: str, token: str, client_session: ClientSession, *, txn_id: int = 0,
-                 log: Optional[logging.Logger] = None) -> None:
+                 log: Optional[logging.Logger] = None, loop: Optional[asyncio.AbstractEventLoop]
+                 ) -> None:
         """
         Args:
             base_url: The base URL of the homeserver client-server API to use.
@@ -87,6 +88,7 @@ class HTTPAPI:
         self.log: Optional[logging.Logger] = log or logging.getLogger("mautrix.api")
         self.session: ClientSession = client_session
         self.validate_cert: bool = True
+        self.loop = loop
         if txn_id is not None:
             self.txn_id: int = txn_id
 
@@ -108,7 +110,8 @@ class HTTPAPI:
                                              errcode=errcode, message=message)
 
                 if response.status == 429:
-                    await asyncio.sleep(response.json()["retry_after_ms"] / 1000)
+                    resp = await response.json()
+                    await asyncio.sleep(resp["retry_after_ms"] / 1000, loop=self.loop)
                 else:
                     return await response.json()
 
