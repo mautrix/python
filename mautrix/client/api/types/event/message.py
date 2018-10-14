@@ -1,4 +1,5 @@
 from typing import Optional, Union, Dict, List
+from html import escape
 from attr import dataclass
 import attr
 
@@ -8,6 +9,8 @@ from ..primitive import ContentURI, EventID, UserID
 from .base import BaseRoomEvent, BaseUnsigned
 
 
+# region Message types
+
 class Format(SerializableEnum):
     """A message format. Currently only ``org.matrix.custom.html`` is available.
     This will probably be deprecated when extensible events are implemented."""
@@ -15,7 +18,7 @@ class Format(SerializableEnum):
 
 
 TEXT_MESSAGE_TYPES = ("m.text", "m.emote", "m.notice")
-MEDIA_MESSAGE_TYPES = ("m.image", "m.video", "m.audio", "m.file")
+MEDIA_MESSAGE_TYPES = ("m.image", "m.sticker", "m.video", "m.audio", "m.file")
 
 
 class MessageType(SerializableEnum):
@@ -24,11 +27,23 @@ class MessageType(SerializableEnum):
     EMOTE = "m.emote"
     NOTICE = "m.notice"
     IMAGE = "m.image"
+    STICKER = "m.sticker"
     VIDEO = "m.video"
     AUDIO = "m.audio"
     FILE = "m.file"
     LOCATION = "m.location"
 
+    @property
+    def is_text(self) -> bool:
+        return self.value in TEXT_MESSAGE_TYPES
+
+    @property
+    def is_media(self) -> bool:
+        return self.value in MEDIA_MESSAGE_TYPES
+
+
+# endregion
+# region Relations
 
 @dataclass
 class InReplyTo(SerializableAttrs['InReplyTo']):
@@ -42,8 +57,21 @@ class InReplyTo(SerializableAttrs['InReplyTo']):
 class RelatesTo(SerializableAttrs['RelatesTo']):
     """Message relations. Currently only used for replies, but will be used for reactions, edits,
     threading, etc in the future."""
-    in_reply_to: InReplyTo = attr.ib(default=None, metadata={"json": "m.in_reply_to"})
+    _in_reply_to: InReplyTo = attr.ib(default=None, metadata={"json": "m.in_reply_to"})
 
+    @property
+    def in_reply_to(self) -> InReplyTo:
+        if self._in_reply_to is None:
+            self._in_reply_to = InReplyTo()
+        return self._in_reply_to
+
+    @in_reply_to.setter
+    def in_reply_to(self, in_reply_to: InReplyTo) -> None:
+        self._in_reply_to = in_reply_to
+
+
+# endregion
+# region Matched commands
 
 @dataclass
 class MatchedCommand(SerializableAttrs['MatchedCommand']):
@@ -60,21 +88,37 @@ class MatchedPassiveCommand(SerializableAttrs['MatchedPassiveCommand']):
     arguments: Dict[str, str] = None
 
 
+# endregion
+# region Base event content
+class BaseMessageEventContentFuncs:
+    """Base class for the contents of all message-type events (currently m.room.message and
+    m.sticker). Contains relation helpers."""
+    body: str
+    _relates_to: Optional[RelatesTo]
+
+    def set_reply(self, in_reply_to: 'MessageEvent'):
+        self.relates_to.in_reply_to.event_id = in_reply_to.event_id
+
+    @property
+    def relates_to(self) -> RelatesTo:
+        if self._relates_to is None:
+            self._relates_to = RelatesTo()
+        return self._relates_to
+
+    @relates_to.setter
+    def relates_to(self, relates_to: RelatesTo) -> None:
+        self._relates_to = relates_to
+
+
 @dataclass
-class BaseMessageEventContent:
+class BaseMessageEventContent(BaseMessageEventContentFuncs):
+    """Base event content for all m.room.message-type events."""
     msgtype: MessageType
     body: str
 
 
-@dataclass
-class TextMessageEventContent(BaseMessageEventContent,
-                              SerializableAttrs['TextMessageEventContent']):
-    format: Format = None
-    formatted_body: str = None
-
-    command: MatchedCommand = attr.ib(default=None, metadata={"json": "m.command"})
-    relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
-
+# endregion
+# region Media info
 
 @dataclass
 class ThumbnailInfo(SerializableAttrs['ThumbnailInfo']):
@@ -129,12 +173,26 @@ MediaInfo = Union[ImageInfo, VideoInfo, AudioInfo, FileInfo, Obj]
 
 
 @dataclass
+class LocationInfo(SerializableAttrs['LocationInfo']):
+    """Information about a location message."""
+    thumbnail_url: ContentURI = None
+    thumbnail_info: ThumbnailInfo = attr.ib(default=None, metadata={"json": "h"})
+    width: int = attr.ib(default=None, metadata={"json": "w"})
+    duration: int = None
+    size: int = None
+
+
+# endregion
+# region Event content
+
+@dataclass
 class MediaMessageEventContent(BaseMessageEventContent,
                                SerializableAttrs['MediaMessageEventContent']):
+    """The content of a media message event (m.image, m.audio, m.video, m.file)"""
     url: ContentURI
-    info: MediaInfo = None
+    info: Optional[MediaInfo] = None
 
-    relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
+    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
 
     @staticmethod
     @deserializer(MediaInfo)
@@ -142,7 +200,7 @@ class MediaMessageEventContent(BaseMessageEventContent,
         if not isinstance(data, dict):
             return Obj()
         msgtype = data.pop("__mautrix_msgtype", None)
-        if msgtype == "m.image":
+        if msgtype == "m.image" or msgtype == "m.sticker":
             return ImageInfo.deserialize(data)
         elif msgtype == "m.video":
             return VideoInfo.deserialize(data)
@@ -155,23 +213,38 @@ class MediaMessageEventContent(BaseMessageEventContent,
 
 
 @dataclass
-class LocationInfo(SerializableAttrs['LocationInfo']):
-    """Information about a location message."""
-    thumbnail_url: ContentURI = None
-    thumbnail_info: ThumbnailInfo = attr.ib(default=None, metadata={"json": "h"})
-    width: int = attr.ib(default=None, metadata={"json": "w"})
-    duration: int = None
-    size: int = None
-
-
-@dataclass
 class LocationMessageEventContent(BaseMessageEventContent,
                                   SerializableAttrs['LocationMessageEventContent']):
     geo_uri: str
     info: LocationInfo = None
 
-    relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
+    _relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
 
+
+@dataclass
+class TextMessageEventContent(BaseMessageEventContent,
+                              SerializableAttrs['TextMessageEventContent']):
+    """The content of a text message event (m.text, m.notice, m.emote)"""
+    format: Format = None
+    formatted_body: str = None
+
+    command: MatchedCommand = attr.ib(default=None, metadata={"json": "m.command"})
+    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
+
+    def set_reply(self, in_reply_to: 'MessageEvent') -> None:
+        super().set_reply(in_reply_to)
+        if len(self.formatted_body) == 0 or self.format != Format.HTML:
+            self.format = Format.HTML
+            self.formatted_body = escape(self.body)
+        self.formatted_body = in_reply_to.make_reply_fallback_html() + self.formatted_body
+        self.body = in_reply_to.make_reply_fallback_text() + self.body
+
+
+MessageEventContent = Union[TextMessageEventContent, MediaMessageEventContent,
+                            LocationMessageEventContent, Obj]
+
+
+# endregion
 
 @dataclass
 class MessageUnsigned(BaseUnsigned, SerializableAttrs['MessageUnsigned']):
@@ -181,13 +254,25 @@ class MessageUnsigned(BaseUnsigned, SerializableAttrs['MessageUnsigned']):
                                                      metadata={"json": "m.passive_command"})
 
 
-MessageEventContent = Union[TextMessageEventContent, MediaMessageEventContent,
-                            LocationMessageEventContent, Obj]
+html_reply_fallback_format = ("<mx-reply><blockquote>"
+                              "<a href='https://matrix.to/#/{room_id}/{event_id}'>In reply to</a>"
+                              "<a href='https://matrix.to/#/{sender}'>{displayname}</a>"
+                              "{content}"
+                              "</blockquote></mx-reply>")
+
+media_reply_fallback_body_map = {
+    MessageType.IMAGE: "an image",
+    MessageType.STICKER: "a sticker",
+    MessageType.AUDIO: "audio",
+    MessageType.VIDEO: "a video",
+    MessageType.FILE: "a file",
+    MessageType.LOCATION: "a location",
+}
 
 
 @dataclass
 class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
-    """A m.room.message event"""
+    """An m.room.message event"""
     content: MessageEventContent
     unsigned: Optional[MessageUnsigned] = None
 
@@ -207,31 +292,29 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
         else:
             return Obj(**data)
 
+    def make_reply_fallback_html(self) -> str:
+        """Generate the HTML fallback for messages replying to this event."""
+        if self.content.msgtype.is_text:
+            body = self.content.formatted_body or escape(self.content.body)
+        else:
+            sent_type = media_reply_fallback_body_map[self.content.msgtype] or "a message"
+            body = f"sent {sent_type}"
+        displayname = self.sender
+        return html_reply_fallback_format.format(room_id=self.room_id, event_id=self.event_id,
+                                                 sender=self.sender, displayname=displayname,
+                                                 body=body)
 
-@dataclass
-class StickerEventContent(SerializableAttrs['StickerEventContent']):
-    body: str
-    url: ContentURI
-    info: ImageInfo = None
-
-    relates_to: RelatesTo = attr.ib(default=None, metadata={"json": "m.relates_to"})
-
-
-@dataclass
-class StickerEvent(BaseRoomEvent, SerializableAttrs['StickerEvent']):
-    """A m.sticker event"""
-    content: StickerEventContent
-    unsigned: Optional[MessageUnsigned] = None
-
-
-@dataclass
-class RedactionEventContent(SerializableAttrs['RedactionEventContent']):
-    reason: str = None
-
-
-@dataclass
-class RedactionEvent(BaseRoomEvent, SerializableAttrs['RedactionEvent']):
-    """A m.room.redaction event"""
-    content: StickerEventContent
-    redacts: str
-    unsigned: Optional[MessageUnsigned] = None
+    def make_reply_fallback_text(self) -> str:
+        """Generate the plaintext fallback for messages replying to this event."""
+        if self.content.msgtype.is_text:
+            body = self.content.body
+        else:
+            body = media_reply_fallback_body_map[self.content.msgtype]
+        lines = body.strip().split("\n")
+        first_line, lines = lines[0], lines[1:]
+        displayname = self.sender
+        fallback_text = f"> <{displayname}> {first_line}"
+        for line in lines:
+            fallback_text += f"\n> {line}"
+        fallback_text += "\n\n"
+        return fallback_text

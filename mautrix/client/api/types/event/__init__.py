@@ -1,6 +1,6 @@
 from .base import EventType
-from .message import (RedactionEvent, RedactionEventContent, StickerEvent, StickerEventContent,
-                      MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
+from .redaction import RedactionEventContent, RedactionEvent
+from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
                       LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format,
                       MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
                       TextMessageEventContent, BaseMessageEventContent, MatchedCommand, RelatesTo)
@@ -8,5 +8,6 @@ from .state import (PowerLevelStateEventContent, Membership, MemberStateEventCon
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedState,
                     RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
                     RoomAvatarStateEventContent, StateEventContent)
-from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo, RoomTagAccountDataEventContent)
+from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,
+                           RoomTagAccountDataEventContent)
 from .generic import Event

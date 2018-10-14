@@ -2,7 +2,7 @@ from .primitive import UserID, EventID, RoomID, RoomAlias, FilterID, ContentURI,
 from .filter import Filter, EventFilter, RoomFilter, RoomEventFilter
 from .event import (EventType,
 
-                    RedactionEvent, RedactionEventContent, StickerEvent, StickerEventContent,
+                    RedactionEvent, RedactionEventContent,
 
                     MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
                     LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format,

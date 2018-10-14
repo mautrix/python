@@ -5,7 +5,7 @@ from .client.api.types import (
 
     Filter, EventFilter, RoomFilter, RoomEventFilter,
 
-    EventType, RedactionEvent, RedactionEventContent, StickerEvent, StickerEventContent,
+    EventType, RedactionEvent, RedactionEventContent,
     MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
     LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format, MediaInfo, FileInfo,
     AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent,

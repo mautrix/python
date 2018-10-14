@@ -3,11 +3,13 @@ from typing import Union, NewType
 from .....api import JSON
 from ..util import deserializer, Obj
 from .base import EventType
-from .message import MessageEvent, StickerEvent, RedactionEvent
-from .state import StateEvent
-from .account_data import AccountDataEvent
+from .redaction import RedactionEvent
+from .message import MessageEvent, MessageEventContent
+from .state import StateEvent, StateEventContent
+from .account_data import AccountDataEvent, AccountDataEventContent
 
-Event = NewType("Event", Union[MessageEvent, StickerEvent, RedactionEvent, StateEvent, Obj])
+Event = NewType("Event", Union[MessageEvent, RedactionEvent, StateEvent, Obj])
+EventContent = Union[MessageEventContent, StateEventContent, AccountDataEventContent]
 
 
 @deserializer(Event)
@@ -19,7 +21,8 @@ def deserialize_event(data: JSON) -> Event:
     if event_type == EventType.ROOM_MESSAGE:
         return MessageEvent.deserialize(data)
     elif event_type == EventType.STICKER:
-        return StickerEvent.deserialize(data)
+        data.get("content", {})["msgtype"] = "m.sticker"
+        return MessageEvent.deserialize(data)
     elif event_type == EventType.ROOM_REDACTION:
         return RedactionEvent.deserialize(data)
     elif event_type.is_state:

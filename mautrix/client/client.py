@@ -14,6 +14,7 @@ class Client(ClientAPI):
 
         self.global_event_handlers: List[EventHandler] = []
         self.event_handlers: Dict[EventType, List[EventHandler]] = {}
+        self.syncing_id: int = 0
 
     def on(self, var: Union[EventHandler, EventType]
            ) -> Union[EventHandler, Callable[[EventHandler], EventHandler]]:
@@ -23,8 +24,9 @@ class Client(ClientAPI):
                 return func
 
             return decorator
-        self.add_event_handler(var)
-        return var
+        else:
+            self.add_event_handler(var)
+            return var
 
     def add_event_handler(self, handler: EventHandler, event_type: Optional[EventType] = None
                           ) -> None:
@@ -35,10 +37,16 @@ class Client(ClientAPI):
 
     def remove_event_handler(self, handler: EventHandler, event_type: Optional[EventType] = None
                              ) -> None:
-        if not isinstance(event_type, EventType):
-            self.global_event_handlers.remove(handler)
-        else:
-            self.event_handlers.get(event_type, []).remove(handler)
+        try:
+            if not isinstance(event_type, EventType):
+                self.global_event_handlers.remove(handler)
+            else:
+                handlers = self.event_handlers[event_type]
+                handlers.remove(handler)
+                if len(handlers) == 0:
+                    del self.event_handlers[event_type]
+        except (KeyError, ValueError):
+            pass
 
     async def call_handlers(self, event: Event) -> None:
         for handler in self.global_event_handlers + self.event_handlers.get(event.type, []):
@@ -65,13 +73,22 @@ class Client(ClientAPI):
                     await self.call_handlers(StateEvent.deserialize(raw_event))
 
     async def start(self, since: Optional[SyncToken] = None,
-                    filter_data: Optional[Union[FilterID, Filter]] = None):
+                    filter_data: Optional[Union[FilterID, Filter]] = None) -> None:
         if isinstance(filter_data, Filter):
-            filter_data = self.create_filter(filter_data)
+            filter_data = await self.create_filter(filter_data)
 
-        while True:
+        self.syncing_id += 1
+        this_sync_id = self.syncing_id
+
+        while this_sync_id == self.syncing_id:
             data = await self.sync(since=since, filter_id=filter_data)
+            if this_sync_id != self.syncing_id:
+                break
+            since = data.get("next_batch")
             try:
                 await self.handle_sync(data)
             except Exception:
                 self.api.log.exception("Sync handling errored")
+
+    def stop(self) -> None:
+        self.syncing_id += 1
