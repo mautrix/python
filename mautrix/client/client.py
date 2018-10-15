@@ -52,27 +52,31 @@ class Client(ClientAPI):
 
     async def call_handlers(self, event: Event) -> None:
         for handler in self.global_event_handlers + self.event_handlers.get(event.type, []):
-            asyncio.ensure_future(handler(event), loop=self.loop)
+            await handler(event)
 
-    async def handle_sync(self, data: JSON) -> None:
+    def handle_sync(self, data: JSON) -> None:
         rooms = data.get("rooms", {})
         for room_id, room_data in rooms.get("join", {}).items():
             for raw_event in room_data.get("state", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                await self.call_handlers(StateEvent.deserialize(raw_event))
+                asyncio.ensure_future(self.call_handlers(StateEvent.deserialize(raw_event)),
+                                      loop=self.loop)
 
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                await self.call_handlers(Event.deserialize(raw_event))
+                asyncio.ensure_future(self.call_handlers(Event.deserialize(raw_event)),
+                                      loop=self.loop)
         for room_id, room_data in rooms.get("invite", {}).items():
             for raw_event in room_data.get("state", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                await self.call_handlers(StateEvent.deserialize(raw_event))
+                asyncio.ensure_future(self.call_handlers(StateEvent.deserialize(raw_event)),
+                                      loop=self.loop)
         for room_id, room_data in rooms.get("leave", {}).items():
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 if "state_key" in raw_event:
                     raw_event["room_id"] = room_id
-                    await self.call_handlers(StateEvent.deserialize(raw_event))
+                    asyncio.ensure_future(self.call_handlers(StateEvent.deserialize(raw_event)),
+                                          loop=self.loop)
 
     async def start(self, filter_data: Optional[Union[FilterID, Filter]] = None) -> None:
         if isinstance(filter_data, Filter):
@@ -87,7 +91,7 @@ class Client(ClientAPI):
                 break
             self.store.next_batch = data.get("next_batch")
             try:
-                await self.handle_sync(data)
+                self.handle_sync(data)
             except Exception:
                 self.api.log.exception("Sync handling errored")
 
