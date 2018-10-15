@@ -4,14 +4,16 @@ import asyncio
 from ..api import JSON
 from .api.types import EventType, StateEvent, Event, FilterID, Filter, SyncToken
 from .api import ClientAPI
+from .store import ClientStore, MemoryClientStore
 
 EventHandler = Callable[[Event], Awaitable[None]]
 
 
 class Client(ClientAPI):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, store: ClientStore = None, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.store = store or MemoryClientStore()
         self.global_event_handlers: List[EventHandler] = []
         self.event_handlers: Dict[EventType, List[EventHandler]] = {}
         self.syncing_id: int = 0
@@ -72,8 +74,7 @@ class Client(ClientAPI):
                     raw_event["room_id"] = room_id
                     await self.call_handlers(StateEvent.deserialize(raw_event))
 
-    async def start(self, since: Optional[SyncToken] = None,
-                    filter_data: Optional[Union[FilterID, Filter]] = None) -> None:
+    async def start(self, filter_data: Optional[Union[FilterID, Filter]] = None) -> None:
         if isinstance(filter_data, Filter):
             filter_data = await self.create_filter(filter_data)
 
@@ -81,10 +82,10 @@ class Client(ClientAPI):
         this_sync_id = self.syncing_id
 
         while this_sync_id == self.syncing_id:
-            data = await self.sync(since=since, filter_id=filter_data)
+            data = await self.sync(since=self.store.next_batch, filter_id=filter_data)
             if this_sync_id != self.syncing_id:
                 break
-            since = data.get("next_batch")
+            self.store.next_batch = data.get("next_batch")
             try:
                 await self.handle_sync(data)
             except Exception:

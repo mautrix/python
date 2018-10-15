@@ -8,6 +8,7 @@ from .event import (EventType,
                     LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format,
                     MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
                     TextMessageEventContent, BaseMessageEventContent, MatchedCommand, RelatesTo,
+                    MatchedPassiveCommand,
 
                     PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedState,

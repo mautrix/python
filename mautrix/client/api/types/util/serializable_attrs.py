@@ -173,3 +173,9 @@ class SerializableAttrs(GenericSerializable[T]):
 
     def serialize(self) -> JSON:
         return _attrs_to_dict(self)
+
+    def __getitem__(self, item):
+        try:
+            return getattr(self, item)
+        except AttributeError:
+            return self.unrecognized_[item]

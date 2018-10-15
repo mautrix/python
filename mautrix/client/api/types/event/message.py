@@ -250,8 +250,9 @@ MessageEventContent = Union[TextMessageEventContent, MediaMessageEventContent,
 class MessageUnsigned(BaseUnsigned, SerializableAttrs['MessageUnsigned']):
     """Unsigned information sent with message events."""
     transaction_id: str = None
-    passive_command: MatchedPassiveCommand = attr.ib(default=None,
-                                                     metadata={"json": "m.passive_command"})
+    passive_command: Dict[str, MatchedPassiveCommand] = attr.ib(default=None,
+                                                                metadata={
+                                                                    "json": "m.passive_command"})
 
 
 html_reply_fallback_format = ("<mx-reply><blockquote>"
@@ -274,7 +275,17 @@ media_reply_fallback_body_map = {
 class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
     """An m.room.message event"""
     content: MessageEventContent
-    unsigned: Optional[MessageUnsigned] = None
+    _unsigned: Optional[MessageUnsigned] = None
+
+    @property
+    def unsigned(self) -> MessageUnsigned:
+        if not self._unsigned:
+            self._unsigned = MessageUnsigned()
+        return self._unsigned
+
+    @unsigned.setter
+    def unsigned(self, value: MessageUnsigned) -> None:
+        self._unsigned = value
 
     @staticmethod
     @deserializer(MessageEventContent)

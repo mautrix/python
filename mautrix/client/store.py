@@ -1,4 +1,6 @@
+from typing import Optional
 from abc import ABC, abstractmethod
+
 from .api.types import SyncToken
 
 
@@ -13,14 +15,15 @@ class ClientStore(ABC):
     def next_batch(self, value: SyncToken) -> None:
         pass
 
+
 class MemoryClientStore(ClientStore):
-    def __init__(self, next_batch: SyncToken) -> None:
-        self.next_batch: SyncToken = next_batch
+    def __init__(self, next_batch: Optional[SyncToken] = None) -> None:
+        self.next_batch: Optional[SyncToken] = next_batch
 
     @property
-    def next_batch(self):
+    def next_batch(self) -> Optional[SyncToken]:
         return self.next_batch
 
     @next_batch.setter
-    def next_batch(self, value):
-        pass
+    def next_batch(self, value: SyncToken) -> None:
+        self.next_batch = value

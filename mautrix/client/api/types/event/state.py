@@ -147,7 +147,17 @@ class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
     """A room state event."""
     state_key: str
     content: StateEventContent
-    unsigned: Optional[StateUnsigned] = None
+    _unsigned: Optional[StateUnsigned] = None
+
+    @property
+    def unsigned(self) -> StateUnsigned:
+        if not self._unsigned:
+            self._unsigned = StateUnsigned()
+        return self._unsigned
+
+    @unsigned.setter
+    def unsigned(self, value: StateUnsigned) -> None:
+        self._unsigned = value
 
     @classmethod
     def deserialize(cls, data: JSON) -> 'StateEvent':

@@ -16,4 +16,14 @@ class RedactionEvent(BaseRoomEvent, SerializableAttrs['RedactionEvent']):
     """A m.room.redaction event"""
     content: RedactionEventContent
     redacts: str
-    unsigned: Optional[BaseUnsigned] = None
+    _unsigned: Optional[BaseUnsigned] = None
+
+    @property
+    def unsigned(self) -> BaseUnsigned:
+        if not self._unsigned:
+            self._unsigned = BaseUnsigned()
+        return self._unsigned
+
+    @unsigned.setter
+    def unsigned(self, value: BaseUnsigned) -> None:
+        self._unsigned = value

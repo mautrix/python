@@ -8,7 +8,7 @@ from .client.api.types import (
     EventType, RedactionEvent, RedactionEventContent,
     MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
     LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format, MediaInfo, FileInfo,
-    AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent,
+    AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent, MatchedPassiveCommand,
     BaseMessageEventContent, MatchedCommand, RelatesTo, PowerLevelStateEventContent, Membership,
     MemberStateEventContent, StateEvent, AliasesStateEventContent, CanonicalAliasStateEventContent,
     StrippedState, RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
