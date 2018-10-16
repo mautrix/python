@@ -84,9 +84,20 @@ class Client(ClientAPI):
 
         self.syncing_id += 1
         this_sync_id = self.syncing_id
+        fail_sleep = 5
 
         while this_sync_id == self.syncing_id:
-            data = await self.sync(since=self.store.next_batch, filter_id=filter_data)
+            try:
+                data = await self.sync(since=self.store.next_batch, filter_id=filter_data)
+                fail_sleep = 5
+            except MatrixRequestError:
+                self.api.log.exception(f"Sync request errored, waiting {fail_sleep}"
+                                       " seconds before continuing")
+                await asyncio.sleep(fail_sleep, loop=self.loop)
+                if fail_sleep < 80:
+                    fail_sleep *= 2
+                continue
+
             if this_sync_id != self.syncing_id:
                 break
             self.store.next_batch = data.get("next_batch")
