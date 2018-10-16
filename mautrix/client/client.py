@@ -1,8 +1,9 @@
 from typing import Dict, List, Callable, Union, Optional, Awaitable
 import asyncio
 
+from ..errors import MatrixRequestError
 from ..api import JSON
-from .api.types import EventType, StateEvent, Event, FilterID, Filter, SyncToken
+from .api.types import EventType, StateEvent, Event, FilterID, Filter
 from .api import ClientAPI
 from .store import ClientStore, MemoryClientStore
 
@@ -12,7 +13,7 @@ EventHandler = Callable[[Event], Awaitable[None]]
 class Client(ClientAPI):
     def __init__(self, *args, store: ClientStore = None, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self.log = self.api.log
         self.store = store or MemoryClientStore()
         self.global_event_handlers: List[EventHandler] = []
         self.event_handlers: Dict[EventType, List[EventHandler]] = {}
@@ -51,8 +52,12 @@ class Client(ClientAPI):
             pass
 
     async def call_handlers(self, event: Event) -> None:
+        event._client = self
         for handler in self.global_event_handlers + self.event_handlers.get(event.type, []):
-            await handler(event)
+            try:
+                await handler(event)
+            except Exception:
+                self.log.exception("Failed to run handler")
 
     def handle_sync(self, data: JSON) -> None:
         rooms = data.get("rooms", {})
@@ -91,7 +96,7 @@ class Client(ClientAPI):
                 data = await self.sync(since=self.store.next_batch, filter_id=filter_data)
                 fail_sleep = 5
             except MatrixRequestError:
-                self.api.log.exception(f"Sync request errored, waiting {fail_sleep}"
+                self.log.exception(f"Sync request errored, waiting {fail_sleep}"
                                        " seconds before continuing")
                 await asyncio.sleep(fail_sleep, loop=self.loop)
                 if fail_sleep < 80:
@@ -104,7 +109,7 @@ class Client(ClientAPI):
             try:
                 self.handle_sync(data)
             except Exception:
-                self.api.log.exception("Sync handling errored")
+                self.log.exception("Sync handling errored")
 
     def stop(self) -> None:
         self.syncing_id += 1

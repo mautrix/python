@@ -1,4 +1,4 @@
-from typing import Optional, Union, Dict, List
+from typing import Optional, Union, Dict, List, Awaitable, TYPE_CHECKING
 from html import escape
 from attr import dataclass
 import attr
@@ -6,7 +6,10 @@ import attr
 from .....api import JSON
 from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
 from ..primitive import ContentURI, EventID, UserID
-from .base import BaseRoomEvent, BaseUnsigned
+from .base import BaseRoomEvent, BaseUnsigned, EventType
+
+if TYPE_CHECKING:
+    from ...client import ClientAPI
 
 
 # region Message types
@@ -276,6 +279,7 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
     """An m.room.message event"""
     content: MessageEventContent
     _unsigned: Optional[MessageUnsigned] = None
+    _client: Optional['ClientAPI'] = None
 
     @property
     def unsigned(self) -> MessageUnsigned:
@@ -329,3 +333,19 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
             fallback_text += f"\n> {line}"
         fallback_text += "\n\n"
         return fallback_text
+
+    def respond(self, content: Union[str, MessageEventContent],
+                event_type: EventType = EventType.ROOM_MESSAGE) -> Awaitable[EventID]:
+        if isinstance(content, str):
+            content = MessageEventContent(msgtype=MessageType.TEXT, body=content)
+        return self._client.send_message_event(self.room_id, event_type, content)
+
+    def reply(self, content: Union[str, MessageEventContent],
+              event_type: EventType = EventType.ROOM_MESSAGE) -> Awaitable[EventID]:
+        if isinstance(content, str):
+            content = MessageEventContent(msgtype=MessageType.TEXT, body=content)
+        content.set_reply(self)
+        return self._client.send_message_event(self.room_id, event_type, content)
+
+    def mark_read(self) -> Awaitable[None]:
+        return self._client.send_receipt(self.room_id, self.event_id, "m.read")

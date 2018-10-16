@@ -35,7 +35,7 @@ class AccountDataEvent(BaseEvent, SerializableAttrs['AccountDataEvent']):
         try:
             data.get("content", {})["__mautrix_event_type"] = EventType(data.get("type"))
         except ValueError:
-            pass
+            return Obj(**data)
         return super().deserialize(data)
 
     @staticmethod

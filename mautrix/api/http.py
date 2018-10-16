@@ -62,8 +62,8 @@ class PathBuilder:
     def raw(self, append: str) -> 'PathBuilder':
         return PathBuilder(self.path + append)
 
-    def __getitem__(self, append: str) -> 'PathBuilder':
-        return PathBuilder(f"{self.path}/{quote(append)}")
+    def __getitem__(self, append: Union[str, int]) -> 'PathBuilder':
+        return PathBuilder(f"{self.path}/{quote(str(append))}")
 
 
 Path = PathBuilder()
@@ -87,7 +87,6 @@ class HTTPAPI:
         self.token: str = token
         self.log: Optional[logging.Logger] = log or logging.getLogger("mautrix.api")
         self.session: ClientSession = client_session
-        self.validate_cert: bool = True
         self.loop = loop
         if txn_id is not None:
             self.txn_id: int = txn_id
@@ -153,7 +152,7 @@ class HTTPAPI:
 
         self._log_request(method, path, content, query_params)
 
-        endpoint = self.base_url + str(api_path) + path
+        endpoint = self.base_url + str(api_path) + str(path)
         return self._send(method, endpoint, content, query_params, headers or {})
 
     def get_txn_id(self) -> str:

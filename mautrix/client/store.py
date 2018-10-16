@@ -18,12 +18,12 @@ class ClientStore(ABC):
 
 class MemoryClientStore(ClientStore):
     def __init__(self, next_batch: Optional[SyncToken] = None) -> None:
-        self.next_batch: Optional[SyncToken] = next_batch
+        self._next_batch: Optional[SyncToken] = next_batch
 
     @property
     def next_batch(self) -> Optional[SyncToken]:
-        return self.next_batch
+        return self._next_batch
 
     @next_batch.setter
     def next_batch(self, value: SyncToken) -> None:
-        self.next_batch = value
+        self._next_batch = value

@@ -166,7 +166,7 @@ class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
             data.get("content", {})["__mautrix_event_type"] = event_type
             data.get("unsigned", {}).get("prev_content", {})["__mautrix_event_type"] = event_type
         except ValueError:
-            pass
+            return Obj(**data)
         return super().deserialize(data)
 
     @staticmethod
