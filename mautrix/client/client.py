@@ -3,7 +3,8 @@ import asyncio
 
 from ..errors import MatrixRequestError
 from ..api import JSON
-from .api.types import EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID, Filter
+from .api.types import (EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID,
+                        Filter)
 from .api import ClientAPI
 from .store import ClientStore, MemoryClientStore
 
@@ -54,10 +55,7 @@ class Client(ClientAPI):
             pass
 
     async def call_handlers(self, event: Event) -> None:
-        if getattr(event, "sender", None) == self.mxid:
-            return
         if isinstance(event, MessageEvent):
-            event._client = self
             event.content.trim_reply_fallback()
         for handler in self.global_event_handlers + self.event_handlers.get(event.type, []):
             try:
@@ -103,7 +101,7 @@ class Client(ClientAPI):
                 fail_sleep = 5
             except MatrixRequestError:
                 self.log.exception(f"Sync request errored, waiting {fail_sleep}"
-                                       " seconds before continuing")
+                                   " seconds before continuing")
                 await asyncio.sleep(fail_sleep, loop=self.loop)
                 if fail_sleep < 80:
                     fail_sleep *= 2

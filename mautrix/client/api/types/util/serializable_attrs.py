@@ -50,8 +50,9 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
                    default_if_empty: bool = False) -> T:
     data = data or {}
     unrecognized = {}
-    new_items = {field.name: _try_deserialize(field.type, data, field.default,
-                                              field.metadata.get("ignore_errors", False))
+    new_items = {field.name.lstrip("_"):
+                     _try_deserialize(field.type, data, field.default,
+                                      field.metadata.get("ignore_errors", False))
                  for _, field in _fields(attrs_type, only_if_flatten=True)}
     fields = dict(_fields(attrs_type, only_if_flatten=False))
     for key, value in data.items():
@@ -60,8 +61,9 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
         except KeyError:
             unrecognized[key] = value
             continue
-        new_items[field.name] = _try_deserialize(field.type, value, field.default,
-                                                 field.metadata.get("ignore_errors", False))
+        name = field.name.lstrip("_")
+        new_items[name] = _try_deserialize(field.type, value, field.default,
+                                           field.metadata.get("ignore_errors", False))
     if len(new_items) == 0 and default_if_empty:
         return _safe_default(default)
     try:
@@ -115,6 +117,7 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
         return {_deserialize(item_cls, item) for item in value}
     elif issubclass(cls, Dict):
         key_cls, val_cls = getattr(cls, "__args__", (None, None))
+        print(cls, value)
         return {key: _deserialize(val_cls, item) for key, item in value}
     if isinstance(value, list):
         return Lst(value)

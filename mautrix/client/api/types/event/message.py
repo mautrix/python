@@ -1,4 +1,4 @@
-from typing import Optional, Union, Dict, List, Awaitable, Pattern, TYPE_CHECKING
+from typing import Optional, Union, Dict, List, Pattern, TYPE_CHECKING
 from html import escape
 from attr import dataclass
 import attr
@@ -7,15 +7,7 @@ import re
 from .....api import JSON
 from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
 from ..primitive import ContentURI, EventID, UserID
-from .base import BaseRoomEvent, BaseUnsigned, EventType
-
-if TYPE_CHECKING:
-    from ...client import ClientAPI
-
-try:
-    import commonmark
-except ImportError:
-    commonmark = None
+from .base import BaseRoomEvent, BaseUnsigned
 
 
 # region Message types
@@ -66,17 +58,17 @@ class InReplyTo(SerializableAttrs['InReplyTo']):
 class RelatesTo(SerializableAttrs['RelatesTo']):
     """Message relations. Currently only used for replies, but will be used for reactions, edits,
     threading, etc in the future."""
-    in_reply_to_: InReplyTo = attr.ib(default=None, metadata={"json": "m.in_reply_to"})
+    _in_reply_to: InReplyTo = attr.ib(default=None, metadata={"json": "m.in_reply_to"})
 
     @property
     def in_reply_to(self) -> InReplyTo:
-        if self.in_reply_to_ is None:
-            self.in_reply_to_ = InReplyTo()
-        return self.in_reply_to_
+        if self._in_reply_to is None:
+            self._in_reply_to = InReplyTo()
+        return self._in_reply_to
 
     @in_reply_to.setter
     def in_reply_to(self, in_reply_to: InReplyTo) -> None:
-        self.in_reply_to_ = in_reply_to
+        self._in_reply_to = in_reply_to
 
 
 # endregion
@@ -104,24 +96,24 @@ class BaseMessageEventContentFuncs:
     """Base class for the contents of all message-type events (currently m.room.message and
     m.sticker). Contains relation helpers."""
     body: str
-    relates_to_: Optional[RelatesTo]
+    _relates_to: Optional[RelatesTo]
 
     def set_reply(self, in_reply_to: 'MessageEvent') -> None:
         self.relates_to.in_reply_to.event_id = in_reply_to.event_id
 
     @property
     def relates_to(self) -> RelatesTo:
-        if self.relates_to_ is None:
-            self.relates_to_ = RelatesTo()
-        return self.relates_to_
+        if self._relates_to is None:
+            self._relates_to = RelatesTo()
+        return self._relates_to
 
     @relates_to.setter
     def relates_to(self, relates_to: RelatesTo) -> None:
-        self.relates_to_ = relates_to
+        self._relates_to = relates_to
 
     def get_reply_to(self) -> Optional[EventID]:
-        if self.relates_to_ and self.relates_to_.in_reply_to_:
-            return self.relates_to_.in_reply_to_.event_id
+        if self._relates_to and self._relates_to._in_reply_to:
+            return self._relates_to._in_reply_to.event_id
         return None
 
     def trim_reply_fallback(self) -> None:
@@ -210,7 +202,7 @@ class MediaMessageEventContent(BaseMessageEventContent,
     url: ContentURI
     info: Optional[MediaInfo] = None
 
-    relates_to_: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
+    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
 
     @staticmethod
     @deserializer(MediaInfo)
@@ -236,7 +228,7 @@ class LocationMessageEventContent(BaseMessageEventContent,
     geo_uri: str
     info: LocationInfo = None
 
-    relates_to_: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
+    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
 
 
 html_reply_fallback_regex: Pattern = re.compile("^<mx-reply>"
@@ -252,7 +244,7 @@ class TextMessageEventContent(BaseMessageEventContent,
     formatted_body: str = None
 
     command: MatchedCommand = attr.ib(default=None, metadata={"json": "m.command"})
-    relates_to_: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
+    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
 
     def set_reply(self, in_reply_to: 'MessageEvent') -> None:
         super().set_reply(in_reply_to)
@@ -263,9 +255,9 @@ class TextMessageEventContent(BaseMessageEventContent,
         self.body = in_reply_to.make_reply_fallback_text() + self.body
 
     def trim_reply_fallback(self) -> None:
-        has_reply = (self.relates_to_ and
-                     self.relates_to_.in_reply_to_ and
-                     self.relates_to_.in_reply_to_.event_id)
+        has_reply = (self._relates_to and
+                     self._relates_to._in_reply_to and
+                     self._relates_to._in_reply_to.event_id)
         if has_reply:
             self._trim_reply_fallback_text()
             self._trim_reply_fallback_html()
@@ -321,7 +313,6 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
     """An m.room.message event"""
     content: MessageEventContent
     _unsigned: Optional[MessageUnsigned] = None
-    _client: Optional['ClientAPI'] = None
 
     @property
     def unsigned(self) -> MessageUnsigned:
@@ -375,25 +366,3 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
             fallback_text += f"\n> {line}"
         fallback_text += "\n\n"
         return fallback_text
-
-    def respond(self, content: Union[str, MessageEventContent],
-                event_type: EventType = EventType.ROOM_MESSAGE) -> Awaitable[EventID]:
-        if isinstance(content, str):
-            content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=content)
-            if commonmark:
-                content.format = Format.HTML
-                content.formatted_body = commonmark.commonmark(content.body)
-        return self._client.send_message_event(self.room_id, event_type, content)
-
-    def reply(self, content: Union[str, MessageEventContent],
-              event_type: EventType = EventType.ROOM_MESSAGE) -> Awaitable[EventID]:
-        if isinstance(content, str):
-            content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=content)
-            if commonmark:
-                content.format = Format.HTML
-                content.formatted_body = commonmark.commonmark(content.body)
-        content.set_reply(self)
-        return self._client.send_message_event(self.room_id, event_type, content)
-
-    def mark_read(self) -> Awaitable[None]:
-        return self._client.send_receipt(self.room_id, self.event_id, "m.read")
