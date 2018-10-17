@@ -33,6 +33,8 @@ class Client(ClientAPI):
 
     def add_event_handler(self, handler: EventHandler, event_type: Optional[EventType] = None
                           ) -> None:
+        if isinstance(handler, EventType):
+            handler, event_type = event_type, handler
         if not isinstance(event_type, EventType):
             self.global_event_handlers.append(handler)
         else:

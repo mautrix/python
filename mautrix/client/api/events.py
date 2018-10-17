@@ -4,7 +4,8 @@ from ...api import Method, JSON, Path
 from ...errors import MatrixResponseError
 from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
                     EventType, StateEventContent, MessageEventContent, Member, Event, ContentURI,
-                    PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, FileInfo)
+                    PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, FileInfo,
+                    MessageEvent)
 from .base import BaseClientAPI
 
 
@@ -65,9 +66,12 @@ class EventMethods(BaseClientAPI):
         """
         content = await self.api.request(Method.GET, Path.rooms[room_id].event[event_id])
         try:
-            return Event.deserialize(content)
+            evt = Event.deserialize(content)
         except SerializerError as e:
             raise MatrixResponseError("Invalid event in response") from e
+        if isinstance(evt, MessageEvent):
+            evt._client = self
+        return evt
 
     async def get_state_event(self, room_id: RoomID, event_type: EventType,
                               state_key: Optional[str] = None) -> StateEvent:

@@ -119,6 +119,11 @@ class BaseMessageEventContentFuncs:
     def relates_to(self, relates_to: RelatesTo) -> None:
         self.relates_to_ = relates_to
 
+    def get_reply_to(self) -> Optional[EventID]:
+        if self.relates_to_ and self.relates_to_.in_reply_to_:
+            return self.relates_to_.in_reply_to_.event_id
+        return None
+
     def trim_reply_fallback(self) -> None:
         pass
 
@@ -271,6 +276,8 @@ class TextMessageEventContent(BaseMessageEventContent,
         lines = self.body.split("\n")
         while len(lines) > 0 and lines[0].startswith("> "):
             lines.pop(0)
+        # Pop extra newline at end of fallback
+        lines.pop(0)
         self.body = "\n".join(lines)
 
     def _trim_reply_fallback_html(self) -> None:
@@ -372,7 +379,7 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
     def respond(self, content: Union[str, MessageEventContent],
                 event_type: EventType = EventType.ROOM_MESSAGE) -> Awaitable[EventID]:
         if isinstance(content, str):
-            content = TextMessageEventContent(msgtype=MessageType.TEXT, body=content)
+            content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=content)
             if commonmark:
                 content.format = Format.HTML
                 content.formatted_body = commonmark.commonmark(content.body)
@@ -381,7 +388,7 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
     def reply(self, content: Union[str, MessageEventContent],
               event_type: EventType = EventType.ROOM_MESSAGE) -> Awaitable[EventID]:
         if isinstance(content, str):
-            content = TextMessageEventContent(msgtype=MessageType.TEXT, body=content)
+            content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=content)
             if commonmark:
                 content.format = Format.HTML
                 content.formatted_body = commonmark.commonmark(content.body)
