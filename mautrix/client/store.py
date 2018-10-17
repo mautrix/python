@@ -5,6 +5,8 @@ from .api.types import SyncToken
 
 
 class ClientStore(ABC):
+    """ClientStore persists high-level client stuff."""
+
     @property
     @abstractmethod
     def next_batch(self) -> SyncToken:
@@ -17,6 +19,8 @@ class ClientStore(ABC):
 
 
 class MemoryClientStore(ClientStore):
+    """MemoryClientStore is a :class:`ClientStore` implementation that stores the data in memory."""
+
     def __init__(self, next_batch: Optional[SyncToken] = None) -> None:
         self._next_batch: Optional[SyncToken] = next_batch
 

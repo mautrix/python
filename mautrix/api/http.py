@@ -16,6 +16,7 @@ JSON = NewType("JSON", Union[str, int, float, bool, None, Dict[str, 'JSON'], Lis
 
 
 class APIPath(Enum):
+    """The known Matrix API path prefixes."""
     CLIENT = "/_matrix/client/r0"
     MEDIA = "/_matrix/media/r0"
     IDENTITY = "/_matrix/identity/r0"
@@ -28,6 +29,8 @@ class APIPath(Enum):
 
 
 class Method(Enum):
+    """A HTTP method."""
+
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
@@ -40,13 +43,20 @@ class Method(Enum):
         return self.value
 
 
-def quote(string: str) -> str:
-    return urllib_quote(string, safe="")
-
-
 class PathBuilder:
-    def __init__(self, path: str = "") -> None:
-        self.path: str = path
+    """
+    A utility class to build API paths.
+
+    Examples:
+        >>> from mautrix.api import Path
+        >>> room_id = "!foo:example.com"
+        >>> event_id = "$bar:example.com"
+        >>> str(Path.rooms[room_id].event[event_id])
+        "/_matrix/client/r0/rooms/%21foo%3Aexample.com/event/%24bar%3Aexample.com"
+    """
+
+    def __init__(self, path: Union[str, APIPath] = "") -> None:
+        self.path: str = str(path)
 
     def __str__(self) -> str:
         return self.path
@@ -60,13 +70,26 @@ class PathBuilder:
         return PathBuilder(f"{self.path}/{append}")
 
     def raw(self, append: str) -> 'PathBuilder':
+        """
+        Directly append a string to the path.
+
+        Args:
+            append: The string to append.
+        """
         return PathBuilder(self.path + append)
 
+    @staticmethod
+    def _quote(string: str) -> str:
+        return urllib_quote(string, safe="")
+
     def __getitem__(self, append: Union[str, int]) -> 'PathBuilder':
-        return PathBuilder(f"{self.path}/{quote(str(append))}")
+        return PathBuilder(f"{self.path}/{self._quote(str(append))}")
 
 
-Path = PathBuilder()
+Path = PathBuilder(APIPath.CLIENT)
+ClientPath = Path
+MediaPath = PathBuilder(APIPath.MEDIA)
+IdentityPath = PathBuilder(APIPath.IDENTITY)
 
 
 class HTTPAPI:
@@ -114,7 +137,7 @@ class HTTPAPI:
                 else:
                     return await response.json()
 
-    def _log_request(self, method: Method, path: str, content: Union[str, bytes],
+    def _log_request(self, method: Method, path: PathBuilder, content: Union[str, bytes],
                      query_params: Dict[str, str]) -> None:
         if not self.log:
             return
@@ -122,12 +145,13 @@ class HTTPAPI:
         as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
         self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "))
 
-    def request(self, method: Method, path: str, content: Optional[Union[JSON, bytes, str]] = None,
+    def request(self, method: Method, path: PathBuilder,
+                content: Optional[Union[JSON, bytes, str]] = None,
                 headers: Optional[Dict[str, str]] = None,
-                query_params: Optional[Dict[str, str]] = None,
-                api_path: APIPath = APIPath.CLIENT) -> Awaitable[JSON]:
+                query_params: Optional[Dict[str, str]] = None) -> Awaitable[JSON]:
         """
         Make a raw HTTP request.
+
         Args:
             method: The HTTP method to use.
             path: The API endpoint to call.
@@ -136,6 +160,7 @@ class HTTPAPI:
             headers: The dict of HTTP headers to send.
             query_params: The dict of query parameters to send.
             api_path: The base API path.
+
         Returns:
             The response as a dict.
         """
@@ -152,7 +177,7 @@ class HTTPAPI:
 
         self._log_request(method, path, content, query_params)
 
-        endpoint = self.base_url + str(api_path) + str(path)
+        endpoint = self.base_url + str(path)
         return self._send(method, endpoint, content, query_params, headers or {})
 
     def get_txn_id(self) -> str:
@@ -160,20 +185,26 @@ class HTTPAPI:
         self.txn_id += 1
         return str(self.txn_id) + str(int(time() * 1000))
 
-    def get_download_url(self, mxc_uri: str, download_type: str = "default") -> str:
+    def get_download_url(self, mxc_uri: str, download_type: str = "download") -> str:
         """
         Get the full HTTP URL to download a mxc:// URI.
+
         Args:
             mxc_uri: The MXC URI whose full URL to get.
             download_type: The type of download ("download" or "thumbnail")
+
         Returns:
             The full HTTP URL.
+
         Raises:
             ValueError: If `mxc_uri` doesn't begin with mxc://
+
+        Examples:
+            >>> api = HTTPAPI(...)
+            >>> api.get_download_url("mxc://matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6")
+            "https://matrix.org/_matrix/media/r0/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6
         """
-        if download_type == "default":
-            download_type = "download"
         if mxc_uri.startswith("mxc://"):
-            return f"{self.base_url}{APIPath.MEDIA.value}/{type}/{mxc_uri[6:]}"
+            return f"{self.base_url}{APIPath.MEDIA}/{download_type}/{mxc_uri[6:]}"
         else:
             raise ValueError("MXC URI did not begin with `mxc://`")

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ....api import APIPath, Method, Path
+from ....api import APIPath, Method, MediaPath
 from ....errors import MatrixResponseError
 from ..base import BaseClientAPI
 from ..types import ContentURI, MediaRepoConfig, SerializerError, MXOpenGraph
@@ -37,9 +37,8 @@ class MediaRepositoryMethods(BaseClientAPI):
         """
         if magic:
             mime_type = mime_type or magic.from_buffer(data, mime=True)
-        resp = await self.api.request(Method.POST, Path.upload, content=data,
-                                      headers={"Content-Type": mime_type},
-                                      api_path=APIPath.MEDIA)
+        resp = await self.api.request(Method.POST, MediaPath.upload, content=data,
+                                      headers={"Content-Type": mime_type})
         try:
             return resp["content_uri"]
         except KeyError:
@@ -110,8 +109,8 @@ class MediaRepositoryMethods(BaseClientAPI):
         query_params = {"url": url}
         if timestamp is not None:
             query_params["ts"] = timestamp
-        content = await self.api.request(Method.GET, Path.preview_url, query_params=query_params,
-                                         api_path=APIPath.MEDIA)
+        content = await self.api.request(Method.GET, MediaPath.preview_url,
+                                         query_params=query_params)
         try:
             return MXOpenGraph.deserialize(content)
         except SerializerError as e:
@@ -134,7 +133,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         Returns:
             The media repository config.
         """
-        content = await self.api.request(Method.GET, Path.config, api_path=APIPath.MEDIA)
+        content = await self.api.request(Method.GET, MediaPath.config)
         try:
             return MediaRepoConfig.deserialize(content)
         except SerializerError as e:
