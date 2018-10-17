@@ -1,5 +1,6 @@
 from typing import Pattern, Optional
 import asyncio
+import logging
 import re
 
 from ...api import HTTPAPI
@@ -20,6 +21,7 @@ class BaseClientAPI:
     mxid: UserID
     api: HTTPAPI
     loop: asyncio.AbstractEventLoop
+    log: logging.Logger
 
     def __init__(self, mxid: UserID, api: HTTPAPI = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, *args, **kwargs) -> None:
@@ -37,6 +39,7 @@ class BaseClientAPI:
         self.loop = loop or asyncio.get_event_loop()
         kwargs["loop"] = self.loop
         self.api = api or HTTPAPI(*args, **kwargs)
+        self.log = self.api.log
 
     def set_mxid(self, mxid: UserID) -> None:
         """

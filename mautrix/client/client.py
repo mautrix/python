@@ -14,7 +14,6 @@ EventHandler = Callable[[Event], Awaitable[None]]
 class Client(ClientAPI):
     def __init__(self, *args, store: ClientStore = None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.log = self.api.log
         self.store = store or MemoryClientStore()
         self.global_event_handlers: List[EventHandler] = []
         self.event_handlers: Dict[EventType, List[EventHandler]] = {}
