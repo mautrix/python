@@ -11,7 +11,7 @@ from .event import (EventType,
                     MatchedPassiveCommand,
 
                     PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
-                    AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedState,
+                    AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
                     RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
                     RoomAvatarStateEventContent, StateEventContent,
 

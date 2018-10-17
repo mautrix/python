@@ -6,7 +6,7 @@ from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaM
                       TextMessageEventContent, BaseMessageEventContent, MatchedCommand, RelatesTo,
                       MatchedPassiveCommand)
 from .state import (PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
-                    AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedState,
+                    AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
                     RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
                     RoomAvatarStateEventContent, StateEventContent)
 from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,

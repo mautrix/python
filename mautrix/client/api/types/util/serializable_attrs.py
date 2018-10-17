@@ -68,7 +68,7 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
         obj = attrs_type(**new_items)
     except TypeError as e:
         for json_key, field in _fields(attrs_type):
-            if json_key not in new_items:
+            if not field.default and json_key not in new_items:
                 raise SerializerError(
                     f"Missing value for required key {field.name} in {attrs_type.__name__}") from e
         raise SerializerError("Unknown serialization error") from e

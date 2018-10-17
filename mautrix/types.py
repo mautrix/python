@@ -11,7 +11,7 @@ from .client.api.types import (
     AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent, MatchedPassiveCommand,
     BaseMessageEventContent, MatchedCommand, RelatesTo, PowerLevelStateEventContent, Membership,
     MemberStateEventContent, StateEvent, AliasesStateEventContent, CanonicalAliasStateEventContent,
-    StrippedState, RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
+    StrippedStateEvent, RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
     RoomAvatarStateEventContent, StateEventContent, AccountDataEvent, AccountDataEventContent,
     RoomTagInfo, RoomTagAccountDataEventContent, Event,
 

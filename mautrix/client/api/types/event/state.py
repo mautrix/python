@@ -3,7 +3,7 @@ from attr import dataclass
 import attr
 
 from .....api import JSON
-from ..primitive import UserID, EventID, ContentURI
+from ..primitive import UserID, EventID, ContentURI, RoomID
 from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
 from .base import BaseRoomEvent, BaseUnsigned, EventType
 
@@ -107,14 +107,27 @@ StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
 
 
 @dataclass
-class StrippedState(SerializableAttrs['StrippedState']):
+class StrippedStateEvent(SerializableAttrs['StrippedStateEvent']):
     """Stripped state events included with some invite events."""
     content: StateEventContent = None
+    room_id: RoomID = None
     type: EventType = None
     state_key: str = None
 
+    _unsigned: Optional['StateUnsigned'] = None
+
+    @property
+    def unsigned(self) -> 'StateUnsigned':
+        if not self._unsigned:
+            self._unsigned = StateUnsigned()
+        return self._unsigned
+
+    @unsigned.setter
+    def unsigned(self, value: 'StateUnsigned') -> None:
+        self._unsigned = value
+
     @classmethod
-    def deserialize(cls, data: JSON) -> 'StrippedState':
+    def deserialize(cls, data: JSON) -> 'StrippedStateEvent':
         try:
             data.get("content", {})["__mautrix_event_type"] = EventType(data.get("type", None))
         except ValueError:
@@ -128,7 +141,7 @@ class StateUnsigned(BaseUnsigned, SerializableAttrs['StateUnsigned']):
     prev_content: StateEventContent = None
     prev_sender: UserID = None
     replaces_state: EventID = None
-    invite_room_state: Optional[List[StrippedState]] = None
+    invite_room_state: Optional[List[StrippedStateEvent]] = None
 
 
 state_event_content_map = {

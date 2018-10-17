@@ -3,7 +3,7 @@ import asyncio
 
 from ..errors import MatrixRequestError
 from ..api import JSON
-from .api.types import EventType, StateEvent, Event, FilterID, Filter
+from .api.types import EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID, Filter
 from .api import ClientAPI
 from .store import ClientStore, MemoryClientStore
 
@@ -52,7 +52,11 @@ class Client(ClientAPI):
             pass
 
     async def call_handlers(self, event: Event) -> None:
-        event._client = self
+        if getattr(event, "sender", None) == self.mxid:
+            return
+        if isinstance(event, MessageEvent):
+            event._client = self
+            event.content.trim_reply_fallback()
         for handler in self.global_event_handlers + self.event_handlers.get(event.type, []):
             try:
                 await handler(event)
@@ -72,9 +76,9 @@ class Client(ClientAPI):
                 asyncio.ensure_future(self.call_handlers(Event.deserialize(raw_event)),
                                       loop=self.loop)
         for room_id, room_data in rooms.get("invite", {}).items():
-            for raw_event in room_data.get("state", {}).get("events", []):
+            for raw_event in room_data.get("invite_state", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                asyncio.ensure_future(self.call_handlers(StateEvent.deserialize(raw_event)),
+                asyncio.ensure_future(self.call_handlers(StrippedStateEvent.deserialize(raw_event)),
                                       loop=self.loop)
         for room_id, room_data in rooms.get("leave", {}).items():
             for raw_event in room_data.get("timeline", {}).get("events", []):
