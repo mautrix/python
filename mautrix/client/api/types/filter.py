@@ -24,7 +24,7 @@ class EventFilter(SerializableAttrs['EventFilter']):
 class RoomEventFilter(EventFilter, SerializableAttrs['RoomEventFilter']):
     not_rooms: List[RoomID] = None
     rooms: List[RoomID] = None
-    contains_url: bool = False
+    contains_url: bool = None
 
 
 @dataclass
@@ -40,8 +40,8 @@ class RoomFilter(SerializableAttrs['RoomFilter']):
 
 @dataclass
 class Filter(SerializableAttrs['Filter']):
-    event_fields: List[str]
-    event_format: EventFormat
-    presence: EventFilter
-    account_data: EventFilter
-    room: RoomFilter
+    event_fields: List[str] = None
+    event_format: EventFormat = None
+    presence: EventFilter = None
+    account_data: EventFilter = None
+    room: RoomFilter = None
