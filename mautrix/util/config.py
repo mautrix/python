@@ -2,6 +2,7 @@ from typing import Any, Optional, Tuple, NamedTuple, Callable, Generic, TypeVar,
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 from abc import ABC, abstractmethod
+import io
 
 yaml = YAML()
 yaml.indent(4)
@@ -95,26 +96,21 @@ ConfigUpdateHelper = NamedTuple("ConfigUpdateHelper",
 
 
 class BaseConfig(ABC, RecursiveDict[CommentedMap]):
-    def __init__(self, path: str, base_path: str) -> None:
-        super().__init__()
-        self.path: str = path
-        self.base_path: str = base_path
-
+    @abstractmethod
     def load(self) -> None:
-        with open(self.path, 'r') as stream:
-            self._data = yaml.load(stream)
+        pass
 
+    @abstractmethod
     def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
-        try:
-            with open(self.base_path, 'r') as stream:
-                return RecursiveDict(yaml.load(stream))
-        except OSError:
-            pass
-        return None
+        pass
 
+    def load_and_update(self) -> None:
+        self.load()
+        self.update()
+
+    @abstractmethod
     def save(self) -> None:
-        with open(self.path, 'w') as stream:
-            yaml.dump(self._data, stream)
+        pass
 
     def _pre_update(self) -> Optional[ConfigUpdateHelper]:
         base = self.load_base()
@@ -139,3 +135,65 @@ class BaseConfig(ABC, RecursiveDict[CommentedMap]):
     @abstractmethod
     def update(self) -> None:
         pass
+
+
+class BaseStringConfig(BaseConfig, ABC):
+    def __init__(self, data: str, base_data: str) -> None:
+        super().__init__()
+        self._data = yaml.load(data)
+        self._base_data = yaml.load(base_data)
+
+    def load(self) -> None:
+        pass
+
+    def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
+        return self._base_data
+
+    def save(self) -> str:
+        buf = io.StringIO()
+        yaml.dump(self._data, buf)
+        return buf.getvalue()
+
+
+class BaseProxyConfig(BaseConfig, ABC):
+    def __init__(self, load: Callable[[], CommentedMap],
+                 load_base: Callable[[], Optional[RecursiveDict[CommentedMap]]],
+                 save: Callable[[RecursiveDict[CommentedMap]], None]) -> None:
+        super().__init__()
+        self._data = CommentedMap()
+        self._load_proxy = load
+        self._load_base_proxy = load_base
+        self._save_proxy = save
+
+    def load(self) -> None:
+        self._data = self._load_proxy() or CommentedMap()
+
+    def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
+        return self._load_base_proxy()
+
+    def save(self) -> None:
+        self._save_proxy(self._data)
+
+
+class BaseFileConfig(BaseConfig, ABC):
+    def __init__(self, path: str, base_path: str) -> None:
+        super().__init__()
+        self._data = CommentedMap()
+        self.path: str = path
+        self.base_path: str = base_path
+
+    def load(self) -> None:
+        with open(self.path, 'r') as stream:
+            self._data = yaml.load(stream)
+
+    def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
+        try:
+            with open(self.base_path, 'r') as stream:
+                return RecursiveDict(yaml.load(stream))
+        except OSError:
+            pass
+        return None
+
+    def save(self) -> None:
+        with open(self.path, 'w') as stream:
+            yaml.dump(self._data, stream)
