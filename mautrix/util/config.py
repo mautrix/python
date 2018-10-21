@@ -42,7 +42,7 @@ class RecursiveDict(Generic[T]):
         return self.get(key, None)
 
     def __contains__(self, key: str) -> bool:
-        return self[key] is not None
+        return self.get(key, None) is not None
 
     def _recursive_set(self, data: T, key: str, value: Any) -> None:
         key, next_key = self._parse_key(key)
@@ -112,10 +112,10 @@ class BaseConfig(ABC, RecursiveDict[CommentedMap]):
     def save(self) -> None:
         pass
 
-    def _pre_update(self) -> Optional[ConfigUpdateHelper]:
+    def update(self) -> None:
         base = self.load_base()
         if not base:
-            return None
+            return
 
         def copy(from_path: str, to_path: str = None) -> None:
             if from_path in self:
@@ -130,10 +130,12 @@ class BaseConfig(ABC, RecursiveDict[CommentedMap]):
                 for key, value in self[from_path].items():
                     base[to_path][key] = value
 
-        return ConfigUpdateHelper(base, copy, copy_dict)
+        self.do_update(ConfigUpdateHelper(base, copy, copy_dict))
+        self._data = base._data
+        self.save()
 
     @abstractmethod
-    def update(self) -> None:
+    def do_update(self, helper: ConfigUpdateHelper) -> None:
         pass
 
 
@@ -141,13 +143,13 @@ class BaseStringConfig(BaseConfig, ABC):
     def __init__(self, data: str, base_data: str) -> None:
         super().__init__()
         self._data = yaml.load(data)
-        self._base_data = yaml.load(base_data)
+        self._base = RecursiveDict(yaml.load(base_data), CommentedMap)
 
     def load(self) -> None:
         pass
 
     def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
-        return self._base_data
+        return self._base
 
     def save(self) -> str:
         buf = io.StringIO()
@@ -189,7 +191,7 @@ class BaseFileConfig(BaseConfig, ABC):
     def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
         try:
             with open(self.base_path, 'r') as stream:
-                return RecursiveDict(yaml.load(stream))
+                return RecursiveDict(yaml.load(stream), CommentedMap)
         except OSError:
             pass
         return None
