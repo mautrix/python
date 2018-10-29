@@ -78,6 +78,9 @@ class PathBuilder:
         """
         return PathBuilder(self.path + append)
 
+    def __eq__(self, other: Union['PathBuilder', str]) -> bool:
+        return other.path == self.path if isinstance(other, PathBuilder) else other == self.path
+
     @staticmethod
     def _quote(string: str) -> str:
         return urllib_quote(string, safe="")
@@ -111,6 +114,7 @@ class HTTPAPI:
         self.log: Optional[logging.Logger] = log or logging.getLogger("mautrix.api")
         self.session: ClientSession = client_session
         self.loop = loop
+        self.log_sync = False
         if txn_id is not None:
             self.txn_id: int = txn_id
 
@@ -140,6 +144,8 @@ class HTTPAPI:
     def _log_request(self, method: Method, path: PathBuilder, content: Union[str, bytes],
                      query_params: Dict[str, str]) -> None:
         if not self.log:
+            return
+        if not self.log_sync and path == Path.sync:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
