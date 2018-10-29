@@ -123,8 +123,8 @@ class BaseMessageEventContentFuncs:
 @dataclass
 class BaseMessageEventContent(BaseMessageEventContentFuncs):
     """Base event content for all m.room.message-type events."""
-    msgtype: MessageType
-    body: str
+    msgtype: MessageType = None
+    body: str = ""
 
 
 # endregion
@@ -199,7 +199,7 @@ class LocationInfo(SerializableAttrs['LocationInfo']):
 class MediaMessageEventContent(BaseMessageEventContent,
                                SerializableAttrs['MediaMessageEventContent']):
     """The content of a media message event (m.image, m.audio, m.video, m.file)"""
-    url: ContentURI
+    url: ContentURI = None
     info: Optional[MediaInfo] = None
 
     _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
@@ -225,7 +225,7 @@ class MediaMessageEventContent(BaseMessageEventContent,
 @dataclass
 class LocationMessageEventContent(BaseMessageEventContent,
                                   SerializableAttrs['LocationMessageEventContent']):
-    geo_uri: str
+    geo_uri: str = None
     info: LocationInfo = None
 
     _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})

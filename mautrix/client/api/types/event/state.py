@@ -68,7 +68,7 @@ class Membership(SerializableEnum):
 @dataclass
 class MemberStateEventContent(SerializableAttrs['MemberStateEventContent']):
     """The content of a membership event."""
-    membership: Membership
+    membership: Membership = Membership.LEAVE
     avatar_url: str = None
     displayname: str = None
     reason: str = None
@@ -87,17 +87,17 @@ class CanonicalAliasStateEventContent(SerializableAttrs['CanonicalAliasStateEven
 
 @dataclass
 class RoomNameStateEventContent(SerializableAttrs['RoomNameStateEventContent']):
-    name: str
+    name: str = None
 
 
 @dataclass
 class RoomTopicStateEventContent(SerializableAttrs['RoomTopicStateEventContent']):
-    topic: str
+    topic: str = None
 
 
 @dataclass
 class RoomAvatarStateEventContent(SerializableAttrs['RoomAvatarStateEventContent']):
-    url: ContentURI
+    url: ContentURI = None
 
 
 StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
