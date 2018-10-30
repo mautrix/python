@@ -167,7 +167,7 @@ def _serialize(val: Any) -> JSON:
 
 class SerializableAttrs(GenericSerializable[T]):
     """An abstract :class:`Serializable` that assumes the subclass"""
-    unrecognized_: Optional[JSON] = None
+    unrecognized_: Optional[JSON] = {}
 
     @classmethod
     def deserialize(cls, data: JSON) -> T:
