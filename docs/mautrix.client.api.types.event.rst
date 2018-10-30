@@ -20,6 +20,14 @@ mautrix.client.api.types.event.base module
     :undoc-members:
     :show-inheritance:
 
+mautrix.client.api.types.event.generic module
+---------------------------------------------
+
+.. automodule:: mautrix.client.api.types.event.generic
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 mautrix.client.api.types.event.message module
 ---------------------------------------------
 
@@ -28,18 +36,18 @@ mautrix.client.api.types.event.message module
     :undoc-members:
     :show-inheritance:
 
-mautrix.client.api.types.event.state module
--------------------------------------------
+mautrix.client.api.types.event.redaction module
+-----------------------------------------------
 
-.. automodule:: mautrix.client.api.types.event.state
+.. automodule:: mautrix.client.api.types.event.redaction
     :members:
     :undoc-members:
     :show-inheritance:
 
-mautrix.client.api.types.event.unknown module
----------------------------------------------
+mautrix.client.api.types.event.state module
+-------------------------------------------
 
-.. automodule:: mautrix.client.api.types.event.unknown
+.. automodule:: mautrix.client.api.types.event.state
     :members:
     :undoc-members:
     :show-inheritance:

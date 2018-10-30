@@ -28,18 +28,18 @@ mautrix.client.api.types.media module
     :undoc-members:
     :show-inheritance:
 
-mautrix.client.api.types.primitive module
------------------------------------------
+mautrix.client.api.types.misc module
+------------------------------------
 
-.. automodule:: mautrix.client.api.types.primitive
+.. automodule:: mautrix.client.api.types.misc
     :members:
     :undoc-members:
     :show-inheritance:
 
-mautrix.client.api.types.rooms module
--------------------------------------
+mautrix.client.api.types.primitive module
+-----------------------------------------
 
-.. automodule:: mautrix.client.api.types.rooms
+.. automodule:: mautrix.client.api.types.primitive
     :members:
     :undoc-members:
     :show-inheritance:

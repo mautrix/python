@@ -20,6 +20,14 @@ mautrix.client.api.types.util.serializable module
     :undoc-members:
     :show-inheritance:
 
+mautrix.client.api.types.util.serializable\_attrs module
+--------------------------------------------------------
+
+.. automodule:: mautrix.client.api.types.util.serializable_attrs
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------
