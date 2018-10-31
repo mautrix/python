@@ -10,7 +10,7 @@ import asyncio
 from aiohttp import ClientSession
 from aiohttp.client_exceptions import ContentTypeError
 
-from ..errors import MatrixRequestError
+from ..errors import make_request_error
 
 JSON = NewType("JSON", Union[str, int, float, bool, None, Dict[str, 'JSON'], List['JSON']])
 
@@ -132,7 +132,8 @@ class HTTPAPI:
                         message = response_data["error"]
                     except (JSONDecodeError, ContentTypeError, KeyError):
                         pass
-                    raise MatrixRequestError(code=response.status, text=await response.text(),
+                    raise make_request_error(http_status=response.status,
+                                             text=await response.text(),
                                              errcode=errcode, message=message)
 
                 if response.status == 429:

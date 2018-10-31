@@ -1,7 +1,7 @@
 from typing import Optional, List, Union
 import asyncio
 
-from ...errors import MatrixResponseError, MatrixRequestError
+from ...errors import MatrixResponseError, MatrixRequestError, MRoomInUse
 from ...api import Method, JSON, Path
 from .types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility, RoomAliasInfo,
                     RoomCreatePreset, DirectoryPaginationToken, RoomDirectoryResponse)
@@ -126,9 +126,12 @@ class RoomMethods(BaseClientAPI):
         try:
             await self.api.request(Method.PUT, Path.directory.room[room_alias], content)
         except MatrixRequestError as e:
-            if override and e.code == 409:
-                await self.remove_room_alias(alias_localpart)
-                await self.api.request(Method.PUT, Path.directory.room[room_alias], content)
+            if e.http_status == 409:
+                if override:
+                    await self.remove_room_alias(alias_localpart)
+                    await self.api.request(Method.PUT, Path.directory.room[room_alias], content)
+                else:
+                    raise MRoomInUse(e.http_status, e.message) from e
             else:
                 raise
 

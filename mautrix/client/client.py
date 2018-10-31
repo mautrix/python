@@ -19,7 +19,7 @@ class Client(ClientAPI):
         self.store = store or MemoryClientStore()
         self.global_event_handlers: List[EventHandler] = []
         self.event_handlers: Dict[EventType, List[EventHandler]] = {}
-        self.syncing_id: int = 0
+        self.syncing_task: Optional[asyncio.Task] = None
 
     def on(self, var: Union[EventHandler, EventType]
            ) -> Union[EventHandler, Callable[[EventHandler], EventHandler]]:
@@ -134,21 +134,31 @@ class Client(ClientAPI):
                     asyncio.ensure_future(self.call_handlers(StateEvent.deserialize(raw_event)),
                                           loop=self.loop)
 
-    async def start(self, filter_data: Optional[Union[FilterID, Filter]] = None) -> None:
+    def start(self, filter_data: Optional[Union[FilterID, Filter]]) -> None:
         """
         Start syncing with the server. Can be stopped with :meth:`stop`.
 
         Args:
             filter_data: The filter data or filter ID to use for syncing.
         """
+        self.syncing_task = asyncio.ensure_future(self._try_start(filter_data), loop=self.loop)
+
+    async def _try_start(self, filter_data: Optional[Union[FilterID, Filter]]) -> None:
+        try:
+            await self._start(filter_data)
+        except asyncio.CancelledError:
+            self.log.debug("Syncing cancelled")
+        except Exception:
+            self.log.exception("Fatal error while syncing")
+
+    async def _start(self, filter_data: Optional[Union[FilterID, Filter]] = None) -> None:
         if isinstance(filter_data, Filter):
             filter_data = await self.create_filter(filter_data)
 
-        self.syncing_id += 1
-        this_sync_id = self.syncing_id
         fail_sleep = 5
 
-        while this_sync_id == self.syncing_id:
+        self.log.debug("Starting syncing")
+        while True:
             try:
                 data = await self.sync(since=self.store.next_batch, filter_id=filter_data)
                 fail_sleep = 5
@@ -160,8 +170,6 @@ class Client(ClientAPI):
                     fail_sleep *= 2
                 continue
 
-            if this_sync_id != self.syncing_id:
-                break
             self.store.next_batch = data.get("next_batch")
             try:
                 self.handle_sync(data)
@@ -172,4 +180,5 @@ class Client(ClientAPI):
         """
         Stop a sync started with :meth:`start`.
         """
-        self.syncing_id += 1
+        if self.syncing_task:
+            self.syncing_task.cancel()
