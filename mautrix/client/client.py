@@ -142,6 +142,8 @@ class Client(ClientAPI):
         Args:
             filter_data: The filter data or filter ID to use for syncing.
         """
+        if self.syncing_task is not None:
+            self.syncing_task.cancel()
         self.syncing_task = asyncio.ensure_future(self._try_start(filter_data), loop=self.loop)
         return self.syncing_task
 
@@ -184,3 +186,4 @@ class Client(ClientAPI):
         """
         if self.syncing_task:
             self.syncing_task.cancel()
+            self.syncing_task = None
