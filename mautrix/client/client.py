@@ -135,7 +135,7 @@ class Client(ClientAPI):
                     asyncio.ensure_future(self.call_handlers(StateEvent.deserialize(raw_event)),
                                           loop=self.loop)
 
-    def start(self, filter_data: Optional[Union[FilterID, Filter]]) -> None:
+    def start(self, filter_data: Optional[Union[FilterID, Filter]]) -> asyncio.Future:
         """
         Start syncing with the server. Can be stopped with :meth:`stop`.
 
@@ -143,12 +143,13 @@ class Client(ClientAPI):
             filter_data: The filter data or filter ID to use for syncing.
         """
         self.syncing_task = asyncio.ensure_future(self._try_start(filter_data), loop=self.loop)
+        return self.syncing_task
 
     async def _try_start(self, filter_data: Optional[Union[FilterID, Filter]]) -> None:
         try:
             await self._start(filter_data)
         except asyncio.CancelledError:
-            self.log.debug("Syncing cancelled")
+            self.log.debug("Syncing stopped")
         except Exception:
             self.log.exception("Fatal error while syncing")
 
