@@ -4,7 +4,7 @@ from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaM
                       LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format,
                       MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
                       TextMessageEventContent, BaseMessageEventContent, MatchedCommand, RelatesTo,
-                      MatchedPassiveCommand)
+                      MatchedPassiveCommand, BaseFileInfo)
 from .state import (PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
                     RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,

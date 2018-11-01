@@ -8,7 +8,7 @@ from .event import (EventType,
                     LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format,
                     MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
                     TextMessageEventContent, BaseMessageEventContent, MatchedCommand, RelatesTo,
-                    MatchedPassiveCommand,
+                    MatchedPassiveCommand, BaseFileInfo,
 
                     PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
@@ -24,4 +24,5 @@ from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirectio
                    PresenceState)
 from .users import User, Member, UserSearchResults
 from .media import MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio
-from .util import SerializerError
+from .util import (SerializerError, Serializable, SerializableEnum, SerializableAttrs,
+                   serializer, deserializer)

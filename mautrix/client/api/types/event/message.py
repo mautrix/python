@@ -131,52 +131,42 @@ class BaseMessageEventContent(BaseMessageEventContentFuncs):
 # region Media info
 
 @dataclass
-class ThumbnailInfo(SerializableAttrs['ThumbnailInfo']):
+class BaseFileInfo(SerializableAttrs['BaseFileInfo']):
+    mimetype: str = None
+    size: int = None
+
+
+@dataclass
+class ThumbnailInfo(BaseFileInfo, SerializableAttrs['ThumbnailInfo']):
     """Information about the thumbnail for a document, video, image or location."""
-    mimetype: str = None
     height: int = attr.ib(default=None, metadata={"json": "h"})
     width: int = attr.ib(default=None, metadata={"json": "w"})
-    size: int = None
 
 
 @dataclass
-class ImageInfo(SerializableAttrs['ImageInfo']):
-    """Information about an image message."""
-    mimetype: str = None
-    height: int = attr.ib(default=None, metadata={"json": "h"})
-    width: int = attr.ib(default=None, metadata={"json": "w"})
-    size: int = None
-    thumbnail_info: ThumbnailInfo = None
-    thumbnail_url: ContentURI = None
-
-
-@dataclass
-class VideoInfo(SerializableAttrs['VideoInfo']):
-    """Information about a video message."""
-    mimetype: str = None
-    height: int = attr.ib(default=None, metadata={"json": "h"})
-    width: int = attr.ib(default=None, metadata={"json": "w"})
-    size: int = None
-    duration: int = None
-    thumbnail_info: ThumbnailInfo = None
-    thumbnail_url: ContentURI = None
-
-
-@dataclass
-class AudioInfo(SerializableAttrs['AudioInfo']):
-    """Information about an audio message."""
-    mimetype: str = None
-    size: int = None
-    duration: int = None
-
-
-@dataclass
-class FileInfo(SerializableAttrs['FileInfo']):
+class FileInfo(BaseFileInfo, SerializableAttrs['FileInfo']):
     """Information about a document message."""
-    mimetype: str = None
-    size: int = None
     thumbnail_info: ThumbnailInfo = None
     thumbnail_url: ContentURI = None
+
+
+@dataclass
+class ImageInfo(FileInfo, SerializableAttrs['ImageInfo']):
+    """Information about an image message."""
+    height: int = attr.ib(default=None, metadata={"json": "h"})
+    width: int = attr.ib(default=None, metadata={"json": "w"})
+
+
+@dataclass
+class VideoInfo(ImageInfo, SerializableAttrs['VideoInfo']):
+    """Information about a video message."""
+    duration: int = None
+
+
+@dataclass
+class AudioInfo(BaseFileInfo, SerializableAttrs['AudioInfo']):
+    """Information about an audio message."""
+    duration: int = None
 
 
 MediaInfo = Union[ImageInfo, VideoInfo, AudioInfo, FileInfo, Obj]

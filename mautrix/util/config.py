@@ -91,8 +91,8 @@ class RecursiveDict(Generic[T]):
 
 ConfigUpdateHelper = NamedTuple("ConfigUpdateHelper",
                                 base=RecursiveDict[CommentedMap],
-                                copy=Callable[[str, str], None],
-                                copy_dict=Callable[[str, str, bool], None])
+                                copy=Callable[[str, Optional[str]], None],
+                                copy_dict=Callable[[str, Optional[str], Optional[bool]], None])
 
 
 class BaseConfig(ABC, RecursiveDict[CommentedMap]):
@@ -117,12 +117,12 @@ class BaseConfig(ABC, RecursiveDict[CommentedMap]):
         if not base:
             return
 
-        def copy(from_path: str, to_path: str = None) -> None:
+        def copy(from_path: str, to_path: Optional[str] = None) -> None:
             if from_path in self:
                 base[to_path or from_path] = self[from_path]
 
-        def copy_dict(from_path: str, to_path: str = None,
-                      override_existing_map: bool = True) -> None:
+        def copy_dict(from_path: str, to_path: Optional[str] = None,
+                      override_existing_map: Optional[bool] = True) -> None:
             if from_path in self:
                 to_path = to_path or from_path
                 if override_existing_map or to_path not in base:

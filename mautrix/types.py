@@ -13,10 +13,10 @@ from .client.api.types import (
     MemberStateEventContent, StateEvent, AliasesStateEventContent, CanonicalAliasStateEventContent,
     StrippedStateEvent, RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
     RoomAvatarStateEventContent, StateEventContent, AccountDataEvent, AccountDataEventContent,
-    RoomTagInfo, RoomTagAccountDataEventContent, Event,
+    RoomTagInfo, RoomTagAccountDataEventContent, Event, BaseFileInfo,
 
     User, Member, UserSearchResults,
 
     MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio,
 
-    SerializerError)
+    SerializerError, Serializable, SerializableEnum, SerializableAttrs, serializer, deserializer)

@@ -4,8 +4,8 @@ from ...api import Method, JSON, Path
 from ...errors import MatrixResponseError
 from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
                     EventType, StateEventContent, MessageEventContent, Member, Event, ContentURI,
-                    PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, FileInfo,
-                    MessageEvent)
+                    PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, ImageInfo,
+                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent)
 from .base import BaseClientAPI
 
 
@@ -303,9 +303,9 @@ class EventMethods(BaseClientAPI):
         if html:
             if not text:
                 text = html
-            content = MessageEventContent(msgtype, text, Format.HTML, html)
+            content = TextMessageEventContent(msgtype, text, Format.HTML, html)
         else:
-            content = MessageEventContent(msgtype, text)
+            content = TextMessageEventContent(msgtype, text)
         if relates_to:
             content.relates_to = relates_to
         return self.send_message(room_id, content, **kwargs)
@@ -349,7 +349,7 @@ class EventMethods(BaseClientAPI):
         """
         return self.send_text(room_id, text, html, MessageType.EMOTE, relates_to, **kwargs)
 
-    def send_file(self, room_id: RoomID, url: ContentURI, info: Optional[FileInfo] = None,
+    def send_file(self, room_id: RoomID, url: ContentURI, info: Optional[BaseFileInfo] = None,
                   file_name: str = None, file_type: MessageType = MessageType.FILE,
                   relates_to: Optional[RelatesTo] = None, **kwargs) -> Awaitable[EventID]:
         """
@@ -370,11 +370,12 @@ class EventMethods(BaseClientAPI):
         Returns:
             The ID of the event that was sent.
         """
-        return self.send_message(room_id, MessageEventContent(url=url, info=info, body=file_name,
-                                                              relates_to=relates_to,
-                                                              msgtype=file_type), **kwargs)
+        return self.send_message(room_id,
+                                 MediaMessageEventContent(url=url, info=info, body=file_name,
+                                                          relates_to=relates_to,
+                                                          msgtype=file_type), **kwargs)
 
-    def send_sticker(self, room_id: RoomID, url: ContentURI, info: Optional[FileInfo],
+    def send_sticker(self, room_id: RoomID, url: ContentURI, info: Optional[ImageInfo],
                      text: Optional[str] = "", relates_to: Optional[RelatesTo] = None, **kwargs
                      ) -> Awaitable[EventID]:
         """
@@ -394,11 +395,11 @@ class EventMethods(BaseClientAPI):
             The ID of the event that was sent.
         """
         return self.send_message_event(room_id, EventType.STICKER,
-                                       MessageEventContent(url=url, info=info, body=text,
-                                                           relates_to=relates_to),
+                                       MediaMessageEventContent(url=url, info=info, body=text,
+                                                                relates_to=relates_to),
                                        **kwargs)
 
-    def send_image(self, room_id: RoomID, url: ContentURI, info: Optional[FileInfo] = None,
+    def send_image(self, room_id: RoomID, url: ContentURI, info: Optional[ImageInfo] = None,
                    file_name: str = None, relates_to: Optional[RelatesTo] = None, **kwargs
                    ) -> Awaitable[EventID]:
         """
