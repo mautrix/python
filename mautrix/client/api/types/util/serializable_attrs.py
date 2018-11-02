@@ -107,17 +107,18 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
     elif type(cls) == type(Union):
         if len(cls.__args__) == 2 and isinstance(None, cls.__args__[1]):
             return _deserialize(cls.__args__[0], value, default)
-    elif issubclass(cls, Serializable):
-        return cls.deserialize(value)
-    elif issubclass(cls, List):
-        item_cls, = getattr(cls, "__args__", (None,))
-        return [_deserialize(item_cls, item) for item in value]
-    elif issubclass(cls, Set):
-        item_cls, = getattr(cls, "__args__", (None,))
-        return {_deserialize(item_cls, item) for item in value}
-    elif issubclass(cls, Dict):
-        key_cls, val_cls = getattr(cls, "__args__", (None, None))
-        return {key: _deserialize(val_cls, item) for key, item in value.items()}
+    elif isinstance(cls, type):
+        if issubclass(cls, Serializable):
+            return cls.deserialize(value)
+        elif issubclass(cls, List):
+            item_cls, = getattr(cls, "__args__", (None,))
+            return [_deserialize(item_cls, item) for item in value]
+        elif issubclass(cls, Set):
+            item_cls, = getattr(cls, "__args__", (None,))
+            return {_deserialize(item_cls, item) for item in value}
+        elif issubclass(cls, Dict):
+            key_cls, val_cls = getattr(cls, "__args__", (None, None))
+            return {key: _deserialize(val_cls, item) for key, item in value.items()}
     if isinstance(value, list):
         return Lst(value)
     elif isinstance(value, dict):
