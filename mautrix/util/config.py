@@ -115,7 +115,7 @@ class BaseConfig(ABC, RecursiveDict[CommentedMap]):
     def update(self) -> None:
         base = self.load_base()
         if not base:
-            return
+            raise ValueError("Can't update() without base config")
 
         def copy(from_path: str, to_path: Optional[str] = None) -> None:
             if from_path in self:
