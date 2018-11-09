@@ -8,9 +8,9 @@ import logging
 import asyncio
 
 from aiohttp import ClientSession
-from aiohttp.client_exceptions import ContentTypeError
+from aiohttp.client_exceptions import ContentTypeError, ClientError
 
-from ..errors import make_request_error
+from ..errors import make_request_error, MatrixConnectionError
 
 JSON = NewType("JSON", Union[str, int, float, bool, None, Dict[str, 'JSON'], List['JSON']])
 
@@ -152,10 +152,10 @@ class HTTPAPI:
         as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
         self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "))
 
-    def request(self, method: Method, path: PathBuilder,
-                content: Optional[Union[JSON, bytes, str]] = None,
-                headers: Optional[Dict[str, str]] = None,
-                query_params: Optional[Dict[str, str]] = None) -> Awaitable[JSON]:
+    async def request(self, method: Method, path: PathBuilder,
+                      content: Optional[Union[JSON, bytes, str]] = None,
+                      headers: Optional[Dict[str, str]] = None,
+                      query_params: Optional[Dict[str, str]] = None) -> Awaitable[JSON]:
         """
         Make a raw HTTP request.
 
@@ -185,7 +185,10 @@ class HTTPAPI:
         self._log_request(method, path, content, query_params)
 
         endpoint = self.base_url + str(path)
-        return self._send(method, endpoint, content, query_params, headers or {})
+        try:
+            return await self._send(method, endpoint, content, query_params, headers or {})
+        except ClientError as e:
+            raise MatrixConnectionError(str(e)) from e
 
     def get_txn_id(self) -> str:
         """Get a new unique transaction ID."""

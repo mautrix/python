@@ -3,6 +3,10 @@ class MatrixError(Exception):
     pass
 
 
+class MatrixConnectionError(MatrixError):
+    pass
+
+
 class MatrixResponseError(MatrixError):
     """The response from the homeserver did not fulfill expectations."""
 

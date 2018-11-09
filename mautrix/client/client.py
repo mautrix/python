@@ -1,8 +1,7 @@
 from typing import Dict, List, Callable, Union, Optional, Awaitable
-from aiohttp.client_exceptions import ServerConnectionError
 import asyncio
 
-from ..errors import MatrixRequestError
+from ..errors import MatrixRequestError, MatrixConnectionError
 from ..api import JSON
 from .api.types import (EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID,
                         Filter)
@@ -166,7 +165,7 @@ class Client(ClientAPI):
             try:
                 data = await self.sync(since=self.store.next_batch, filter_id=filter_data)
                 fail_sleep = 5
-            except (MatrixRequestError, ServerConnectionError):
+            except (MatrixRequestError, MatrixConnectionError):
                 self.log.exception(f"Sync request errored, waiting {fail_sleep}"
                                    " seconds before continuing")
                 await asyncio.sleep(fail_sleep, loop=self.loop)

@@ -1,4 +1,4 @@
-from .base import MatrixError, MatrixResponseError, IntentError
+from .base import MatrixError, MatrixConnectionError, MatrixResponseError, IntentError
 from .request import (MatrixRequestError, MatrixUnknownRequestError, MatrixStandardRequestError,
                       standard_error, make_request_error,
                       MForbidden, MatrixInvalidToken, MUnknownToken, MMissingToken,
