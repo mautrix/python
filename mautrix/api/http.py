@@ -143,14 +143,21 @@ class HTTPAPI:
                     return await response.json()
 
     def _log_request(self, method: Method, path: PathBuilder, content: Union[str, bytes],
-                     query_params: Dict[str, str]) -> None:
+                     orig_content, query_params: Dict[str, str]) -> None:
         if not self.log:
             return
         if not self.log_sync and path == Path.sync:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
-        self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "))
+        self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "),
+                       extra={"matrix_http_request": {
+                           "method": str(method),
+                           "path": str(path),
+                           "content": (orig_content if isinstance(orig_content, (dict, list))
+                                       else log_content),
+                           "user": as_user,
+                       }})
 
     async def request(self, method: Method, path: PathBuilder,
                       content: Optional[Union[JSON, bytes, str]] = None,
@@ -179,10 +186,11 @@ class HTTPAPI:
         if "Content-Type" not in headers:
             headers["Content-Type"] = "application/json"
         is_json = headers.get("Content-Type", None) == "application/json"
+        orig_content = content
         if is_json and isinstance(content, (dict, list)):
             content = json.dumps(content)
 
-        self._log_request(method, path, content, query_params)
+        self._log_request(method, path, content, orig_content, query_params)
 
         endpoint = self.base_url + str(path)
         try:
