@@ -76,6 +76,8 @@ class PathBuilder:
         Args:
             append: The string to append.
         """
+        if append is None:
+            return self
         return PathBuilder(self.path + append)
 
     def __eq__(self, other: Union['PathBuilder', str]) -> bool:
@@ -86,6 +88,8 @@ class PathBuilder:
         return urllib_quote(string, safe="")
 
     def __getitem__(self, append: Union[str, int]) -> 'PathBuilder':
+        if append is None:
+            return self
         return PathBuilder(f"{self.path}/{self._quote(str(append))}")
 
 
@@ -162,7 +166,7 @@ class HTTPAPI:
     async def request(self, method: Method, path: PathBuilder,
                       content: Optional[Union[JSON, bytes, str]] = None,
                       headers: Optional[Dict[str, str]] = None,
-                      query_params: Optional[Dict[str, str]] = None) -> Awaitable[JSON]:
+                      query_params: Optional[Dict[str, str]] = None) -> JSON:
         """
         Make a raw HTTP request.
 
