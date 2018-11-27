@@ -5,7 +5,10 @@ from ...errors import MatrixResponseError
 from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
                     EventType, StateEventContent, MessageEventContent, Member, Event, ContentURI,
                     PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, ImageInfo,
-                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent)
+                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent,
+                    StateEventContent)
+from .types.event.state import state_event_content_map
+from .types.util import Obj
 from .base import BaseClientAPI
 
 
@@ -71,7 +74,7 @@ class EventMethods(BaseClientAPI):
             raise MatrixResponseError("Invalid event in response") from e
 
     async def get_state_event(self, room_id: RoomID, event_type: EventType,
-                              state_key: Optional[str] = None) -> StateEvent:
+                              state_key: Optional[str] = None) -> StateEventContent:
         """
         Looks up the contents of a state event in a room. If the user is joined to the room then the
         state is taken from the current state of the room. If the user has left the room then the
@@ -90,7 +93,9 @@ class EventMethods(BaseClientAPI):
         content = await self.api.request(Method.GET,
                                          Path.rooms[room_id].state[event_type][state_key])
         try:
-            return StateEvent.deserialize(content)
+            return state_event_content_map[event_type].deserialize(content)
+        except KeyError:
+            return Obj(**content)
         except SerializerError as e:
             raise MatrixResponseError("Invalid state event in response") from e
 
