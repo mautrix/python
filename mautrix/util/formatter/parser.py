@@ -113,13 +113,13 @@ class MatrixParser:
 
         mention = cls.mention_regex.match(href)
         if mention:
-            new_msg = cls.user_pill_to_fstring(UserID(mention.group(1)))
+            new_msg = cls.user_pill_to_fstring(msg, UserID(mention.group(1)))
             if new_msg:
                 return new_msg
 
         room = cls.room_regex.match(href)
         if room:
-            new_msg = cls.room_pill_to_fstring(RoomAlias(mention.group(1)))
+            new_msg = cls.room_pill_to_fstring(msg, RoomAlias(mention.group(1)))
             if new_msg:
                 return new_msg
 
@@ -128,11 +128,13 @@ class MatrixParser:
                 else msg.format(cls.e.INLINE_URL, url=href))
 
     @classmethod
-    def user_pill_to_fstring(cls, user_id: UserID) -> Optional[FormattedString]:
-        return FormattedString(user_id)
+    def user_pill_to_fstring(cls, msg: FormattedString, user_id: UserID
+                             ) -> Optional[FormattedString]:
+        return msg
 
     @classmethod
-    def room_pill_to_fstring(cls, room_alias: RoomAlias) -> Optional[FormattedString]:
+    def room_pill_to_fstring(cls, msg: FormattedString, room_alias: RoomAlias
+                             ) -> Optional[FormattedString]:
         return FormattedString(room_alias)
 
     @classmethod
