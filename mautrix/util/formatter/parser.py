@@ -129,15 +129,15 @@ class MatrixParser:
 
     @classmethod
     def user_pill_to_fstring(cls, user_id: UserID) -> Optional[FormattedString]:
-        return None
+        return FormattedString(user_id)
 
     @classmethod
     def room_pill_to_fstring(cls, room_alias: RoomAlias) -> Optional[FormattedString]:
-        return None
+        return FormattedString(room_alias)
 
     @classmethod
-    def custom_node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> Optional[
-        FormattedString]:
+    def custom_node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext
+                               ) -> Optional[FormattedString]:
         return None
 
     @classmethod
