@@ -7,6 +7,7 @@ class MatrixRequestError(MatrixError):
     """An error that was returned by the homeserver."""
     http_status: int
     message: Optional[str]
+    errcode: str
 
 
 class MatrixUnknownRequestError(MatrixRequestError):
@@ -23,6 +24,7 @@ class MatrixUnknownRequestError(MatrixRequestError):
 
 class MatrixStandardRequestError(MatrixRequestError):
     """A standard error type returned by the homeserver."""
+    errcode: str = None
 
     def __init__(self, http_status: int, message: str = "") -> None:
         super().__init__(message)
@@ -36,6 +38,7 @@ ec_map: Dict[str, MxSRE] = {}
 
 def standard_error(code: str) -> Callable[[MxSRE], MxSRE]:
     def decorator(cls: MxSRE) -> MxSRE:
+        cls.errcode = code
         ec_map[code] = cls
         return cls
 

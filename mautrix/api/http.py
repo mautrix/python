@@ -102,9 +102,9 @@ IdentityPath = PathBuilder(APIPath.IDENTITY)
 class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
 
-    def __init__(self, base_url: str, token: str, client_session: ClientSession, *, txn_id: int = 0,
-                 log: Optional[logging.Logger] = None, loop: Optional[asyncio.AbstractEventLoop]
-                 ) -> None:
+    def __init__(self, base_url: str, token: str, *, client_session: ClientSession = None,
+                 txn_id: int = 0, log: Optional[logging.Logger] = None,
+                 loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         """
         Args:
             base_url: The base URL of the homeserver client-server API to use.
@@ -116,8 +116,8 @@ class HTTPAPI:
         self.base_url: str = base_url
         self.token: str = token
         self.log: Optional[logging.Logger] = log or logging.getLogger("mautrix.api")
-        self.session: ClientSession = client_session
-        self.loop = loop
+        self.loop = loop or asyncio.get_event_loop()
+        self.session: ClientSession = client_session or ClientSession(loop=self.loop)
         self.log_sync = False
         if txn_id is not None:
             self.txn_id: int = txn_id
