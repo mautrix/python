@@ -41,6 +41,8 @@ class EventType(SerializableEnum):
     TAG = "m.tag"
     IGNORED_USER_LIST = "m.ignored_user_list"
 
+    ALL = "__ALL__"
+
     @property
     def is_message(self) -> bool:
         """Whether or not the event is a message event."""

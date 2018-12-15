@@ -11,4 +11,4 @@ from .state import (PowerLevelStateEventContent, Membership, MemberStateEventCon
                     RoomAvatarStateEventContent, StateEventContent)
 from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                            RoomTagAccountDataEventContent)
-from .generic import Event
+from .generic import Event, EventContent

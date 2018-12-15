@@ -44,33 +44,31 @@ class Client(ClientAPI):
         """
         if isinstance(var, EventType):
             def decorator(func: EventHandler) -> EventHandler:
-                self.add_event_handler(func, var)
+                self.add_event_handler(var, func)
                 return func
 
             return decorator
         else:
-            self.add_event_handler(var)
+            self.add_event_handler(EventType.ALL, var)
             return var
 
-    def add_event_handler(self, handler: EventHandler, event_type: Optional[EventType] = None
-                          ) -> None:
+    def add_event_handler(self, event_type: EventType, handler: EventHandler) -> None:
         """
         Add a new event handler.
 
         Args:
-            handler: The handler function to add.
             event_type: The event type to add. If not specified, the handler will be called for all
                 event types.
+            handler: The handler function to add.
         """
-        if isinstance(handler, EventType):
-            handler, event_type = event_type, handler
         if not isinstance(event_type, EventType):
+            raise ValueError("Invalid event type")
+        if event_type == EventType.ALL:
             self.global_event_handlers.append(handler)
         else:
             self.event_handlers.setdefault(event_type, []).append(handler)
 
-    def remove_event_handler(self, handler: EventHandler, event_type: Optional[EventType] = None
-                             ) -> None:
+    def remove_event_handler(self, event_type: EventType, handler: EventHandler) -> None:
         """
         Remove an event handler.
 
@@ -78,8 +76,10 @@ class Client(ClientAPI):
             handler: The handler function to remove.
             event_type: The event type to remove the handler function from.
         """
+        if not isinstance(event_type, EventType):
+            raise ValueError("Invalid event type")
         try:
-            if not isinstance(event_type, EventType):
+            if event_type == EventType.ALL:
                 self.global_event_handlers.remove(handler)
             else:
                 handlers = self.event_handlers[event_type]

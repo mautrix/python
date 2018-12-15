@@ -13,7 +13,7 @@ from .client.api.types import (
     MemberStateEventContent, StateEvent, AliasesStateEventContent, CanonicalAliasStateEventContent,
     StrippedStateEvent, RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
     RoomAvatarStateEventContent, StateEventContent, AccountDataEvent, AccountDataEventContent,
-    RoomTagInfo, RoomTagAccountDataEventContent, Event, BaseFileInfo,
+    RoomTagInfo, RoomTagAccountDataEventContent, Event, EventContent, BaseFileInfo,
 
     User, Member, UserSearchResults,
 
