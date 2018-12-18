@@ -41,7 +41,8 @@ class BaseClientAPI:
         self.api = api or HTTPAPI(*args, **kwargs)
         self.log = self.api.log
 
-    def parse_mxid(self, mxid: UserID) -> Tuple[str, str]:
+    @classmethod
+    def parse_mxid(cls, mxid: UserID) -> Tuple[str, str]:
         """
         Parse the localpart and server name from a Matrix user ID.
 
@@ -51,7 +52,7 @@ class BaseClientAPI:
         Returns:
             A tuple of (localpart, server_name)
         """
-        mxid_parts = self.mxid_regex.match(mxid)
+        mxid_parts = cls.mxid_regex.match(mxid)
         if not mxid_parts:
             raise ValueError("invalid MXID")
         return mxid_parts.group(1), mxid_parts.group(2)
