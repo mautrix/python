@@ -94,10 +94,25 @@ class RecursiveDict(Generic[T]):
         self.delete(key)
 
 
-ConfigUpdateHelper = NamedTuple("ConfigUpdateHelper",
-                                base=RecursiveDict[CommentedMap],
-                                copy=Callable[[str, Optional[str]], None],
-                                copy_dict=Callable[[str, Optional[str], Optional[bool]], None])
+class ConfigUpdateHelper:
+    base: RecursiveDict[CommentedMap]
+
+    def __init__(self, base: RecursiveDict, config: RecursiveDict) -> None:
+        self.base = base
+        self.source = config
+
+    def copy(self, from_path: str, to_path: Optional[str] = None) -> None:
+        if from_path in self.source:
+            self.base[to_path or from_path] = self.source[from_path]
+
+    def copy_dict(self, from_path: str, to_path: Optional[str] = None,
+                  override_existing_map: Optional[bool] = True) -> None:
+        if from_path in self.source:
+            to_path = to_path or from_path
+            if override_existing_map or to_path not in self.base:
+                self.base[to_path] = CommentedMap()
+            for key, value in self.source[from_path].items():
+                self.base[to_path][key] = value
 
 
 class BaseConfig(ABC, RecursiveDict[CommentedMap]):
@@ -122,20 +137,7 @@ class BaseConfig(ABC, RecursiveDict[CommentedMap]):
         if not base:
             raise ValueError("Can't update() without base config")
 
-        def copy(from_path: str, to_path: Optional[str] = None) -> None:
-            if from_path in self:
-                base[to_path or from_path] = self[from_path]
-
-        def copy_dict(from_path: str, to_path: Optional[str] = None,
-                      override_existing_map: Optional[bool] = True) -> None:
-            if from_path in self:
-                to_path = to_path or from_path
-                if override_existing_map or to_path not in base:
-                    base[to_path] = CommentedMap()
-                for key, value in self[from_path].items():
-                    base[to_path][key] = value
-
-        self.do_update(ConfigUpdateHelper(base, copy, copy_dict))
+        self.do_update(ConfigUpdateHelper(base, self))
         self._data = base._data
         self.save()
 
