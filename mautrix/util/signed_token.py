@@ -4,17 +4,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Optional
+from hashlib import sha256
+import hmac
 import json
 import base64
-import hashlib
 
 
 def _get_checksum(key: str, payload: bytes) -> str:
-    hasher = hashlib.sha256()
-    hasher.update(payload)
-    hasher.update(key.encode("utf-8"))
-    checksum = hasher.hexdigest()
-    return checksum
+    hasher = hmac.new(key.encode("utf-8"), msg=payload, digestmod=sha256)
+    checksum = base64.b64encode(hasher.digest())
+    return checksum.decode("utf-8")
 
 
 def sign_token(key: str, payload: Dict) -> str:
