@@ -583,7 +583,8 @@ class IntentAPI:
 
     async def get_pinned_messages(self, room_id: str) -> List[str]:
         await self.ensure_joined(room_id)
-        response = await self.client.request("GET", f"/rooms/{room_id}/state/m.room.pinned_events")
+        response = await self.client.request("GET",
+                                             f"/rooms/{quote(room_id)}/state/m.room.pinned_events")
         return response["content"]["pinned"]
 
     def set_pinned_messages(self, room_id: str, events: List[str], **kwargs) -> Awaitable[dict]:
@@ -635,7 +636,7 @@ class IntentAPI:
 
     async def get_event(self, room_id: str, event_id: str) -> dict:
         await self.ensure_joined(room_id)
-        return await self.client.request("GET", f"/rooms/{room_id}/event/{event_id}")
+        return await self.client.request("GET", f"/rooms/{quote(room_id)}/event/{quote(event_id)}")
 
     async def set_typing(self, room_id: str, is_typing: bool = True, timeout: int = 5000,
                          ignore_cache: bool = False) -> Optional[dict]:
@@ -647,14 +648,15 @@ class IntentAPI:
         }
         if is_typing:
             content["timeout"] = timeout
-        resp = await self.client.request("PUT", f"/rooms/{room_id}/typing/{self.mxid}", content)
+        resp = await self.client.request("PUT",
+                                         f"/rooms/{quote(room_id)}/typing/{self.mxid}", content)
         self.state_store.set_typing(room_id, self.mxid, is_typing, timeout)
         return resp
 
     async def mark_read(self, room_id: str, event_id: str) -> dict:
         await self.ensure_joined(room_id)
-        return await self.client.request("POST", f"/rooms/{room_id}/receipt/m.read/{event_id}",
-                                         content={})
+        return await self.client.request(
+            "POST", f"/rooms/{quote(room_id)}/receipt/m.read/{quote(event_id)}", content={})
 
     def send_notice(self, room_id: str, text: str, html: Optional[str] = None,
                     relates_to: Optional[dict] = None, **kwargs) -> Awaitable[dict]:
