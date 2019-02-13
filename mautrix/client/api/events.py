@@ -10,10 +10,9 @@ from ...errors import MatrixResponseError
 from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
                     EventType, StateEventContent, MessageEventContent, Member, Event, ContentURI,
                     PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, ImageInfo,
-                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent,
-                    StateEventContent)
+                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent)
 from .types.event.state import state_event_content_map
-from .types.util import Obj
+from .types.util import Obj, Serializable
 from .base import BaseClientAPI
 
 
@@ -240,8 +239,9 @@ class EventMethods(BaseClientAPI):
         Returns:
             The ID of the event that was sent.
         """
+        content = content.serialize() if isinstance(content, Serializable) else content
         resp = await self.api.request(Method.PUT, Path.rooms[room_id].state[event_type][state_key],
-                                      content.serialize(), **kwargs)
+                                      content, **kwargs)
         try:
             return resp["event_id"]
         except KeyError:
@@ -271,7 +271,8 @@ class EventMethods(BaseClientAPI):
         elif not event_type:
             raise ValueError("Event type not given")
         url = Path.rooms[room_id].send[event_type][self.api.get_txn_id()]
-        resp = await self.api.request(Method.PUT, url, content.serialize(), **kwargs)
+        content = content.serialize() if isinstance(content, Serializable) else content
+        resp = await self.api.request(Method.PUT, url, content, **kwargs)
         try:
             return resp["event_id"]
         except KeyError:

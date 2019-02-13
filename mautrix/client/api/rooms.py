@@ -9,7 +9,7 @@ import asyncio
 from ...errors import MatrixResponseError, MatrixRequestError, MRoomInUse
 from ...api import Method, JSON, Path
 from .types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility, RoomAliasInfo,
-                    RoomCreatePreset, DirectoryPaginationToken, RoomDirectoryResponse)
+                    RoomCreatePreset, DirectoryPaginationToken, RoomDirectoryResponse, Serializable)
 from .base import BaseClientAPI
 
 
@@ -97,7 +97,9 @@ class RoomMethods(BaseClientAPI):
         if topic:
             content["topic"] = topic
         if initial_state:
-            content["initial_state"] = [event.serialize() for event in initial_state]
+            content["initial_state"] = [event.serialize()
+                                        if isinstance(event, Serializable) else event
+                                        for event in initial_state]
         if room_version:
             content["room_version"] = room_version
         if creation_content:

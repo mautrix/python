@@ -6,7 +6,7 @@
 from ...errors import MatrixResponseError
 from ...api import Method, Path
 from .base import BaseClientAPI
-from .types import Filter, FilterID
+from .types import Filter, FilterID, Serializable
 
 
 class FilteringMethods(BaseClientAPI):
@@ -47,7 +47,8 @@ class FilteringMethods(BaseClientAPI):
             A filter ID that can be used in future requests to refer to the uploaded filter.
         """
         resp = await self.api.request(Method.POST, Path.user[self.mxid].filter,
-                                      filter_params.serialize())
+                                      filter_params.serialize()
+                                      if isinstance(filter_params, Serializable) else filter_params)
         try:
             return resp["filter_id"]
         except KeyError:
