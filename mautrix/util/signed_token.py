@@ -12,14 +12,15 @@ import base64
 
 def _get_checksum(key: str, payload: bytes) -> str:
     hasher = hmac.new(key.encode("utf-8"), msg=payload, digestmod=sha256)
-    checksum = base64.b64encode(hasher.digest())
-    return checksum.decode("utf-8")
+    checksum = base64.urlsafe_b64encode(hasher.digest())
+    return checksum.decode("utf-8").rstrip("=")
 
 
 def sign_token(key: str, payload: Dict) -> str:
     payload_b64 = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8"))
     checksum = _get_checksum(key, payload_b64)
-    return f"{checksum}:{payload_b64.decode('utf-8')}"
+    payload_str = payload_b64.decode("utf-8").rstrip("=")
+    return f"{checksum}:{payload_str}"
 
 
 def verify_token(key: str, data: str) -> Optional[Dict]:
@@ -30,6 +31,8 @@ def verify_token(key: str, data: str) -> Optional[Dict]:
         checksum, payload = data.split(":", 1)
     except ValueError:
         return None
+
+    payload += (3 - (len(payload) + 3) % 4) * "="
 
     if checksum != _get_checksum(key, payload.encode("utf-8")):
         return None
