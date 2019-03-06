@@ -187,3 +187,9 @@ class SerializableAttrs(GenericSerializable[T]):
             return getattr(self, item)
         except AttributeError:
             return self.unrecognized_[item]
+
+    def __setitem__(self, item, value):
+        if hasattr(self, item):
+            setattr(self, item, value)
+        else:
+            self.unrecognized_[item] = value
