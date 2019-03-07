@@ -173,7 +173,10 @@ def _serialize(val: Any) -> JSON:
 
 class SerializableAttrs(GenericSerializable[T]):
     """An abstract :class:`Serializable` that assumes the subclass"""
-    unrecognized_: Optional[JSON] = {}
+    unrecognized_: Optional[JSON]
+
+    def __init__(self):
+        self.unrecognized_ = {}
 
     @classmethod
     def deserialize(cls, data: JSON) -> T:
@@ -186,10 +189,14 @@ class SerializableAttrs(GenericSerializable[T]):
         try:
             return getattr(self, item)
         except AttributeError:
+            if self.unrecognized_ is None:
+                self.unrecognized_ = {}
             return self.unrecognized_[item]
 
     def __setitem__(self, item, value):
         if hasattr(self, item):
             setattr(self, item, value)
         else:
+            if self.unrecognized_ is None:
+                self.unrecognized_ = {}
             self.unrecognized_[item] = value

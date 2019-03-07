@@ -299,7 +299,7 @@ class IntentAPI(ClientAPI):
         await self._ensure_has_power_level_for(room_id, event_type)
 
         if self.api.is_real_user and self.api.real_user_content_key:
-            content.unrecognized_[self.api.real_user_content_key] = True
+            content[self.api.real_user_content_key] = True
 
         return await super().send_message_event(room_id, event_type, content, **kwargs)
 
