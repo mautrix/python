@@ -193,7 +193,7 @@ class SerializableAttrs(GenericSerializable[T]):
                 return self.unrecognized_[item]
             except AttributeError:
                 self.unrecognized_ = {}
-                return KeyError(item)
+                raise KeyError(item)
 
     def __setitem__(self, item, value):
         if hasattr(self, item):
