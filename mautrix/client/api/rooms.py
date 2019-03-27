@@ -181,7 +181,7 @@ class RoomMethods(BaseClientAPI):
 
     async def get_joined_rooms(self) -> List[RoomID]:
         """Get the list of rooms the user is in."""
-        content = await self.api.request(Method.GET, "/joined_rooms")
+        content = await self.api.request(Method.GET, Path.joined_rooms)
         try:
             return content["joined_rooms"]
         except KeyError:
