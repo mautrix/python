@@ -33,7 +33,9 @@ class JSONStateStore(StateStore):
 
         json.dump({
             "registrations": list(self.registrations),
-            "members": self.members,
+            "members": {room_id: {member_id: member.serialize()
+                    for member_id, member in room.items()}
+                for room_id, room in self.members.items()},
             "power_levels": self.power_levels,
         }, output)
 
@@ -53,7 +55,9 @@ class JSONStateStore(StateStore):
         if "registrations" in data:
             self.registrations = set(data["registrations"])
         if "members" in data:
-            self.members = data["members"]
+            self.members = {room_id: {member_id: Member(member)
+                    for member_id, member in room.items()}
+                for room_id, room in data["members"].items()}
         if "power_levels" in data:
             self.power_levels = data["power_levels"]
 
