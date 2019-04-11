@@ -67,18 +67,18 @@ class IntentAPI(ClientAPI):
         for method in ENSURE_REGISTERED_METHODS:
             method = getattr(self, method.__name__)
 
-            async def wrapper(shelf, *args, **kwargs):
-                await shelf.ensure_registered()
-                await method(*args, **kwargs)
+            async def wrapper(*args, __self=self, __method=method, **kwargs):
+                await __self.ensure_registered()
+                return await __method(*args, **kwargs)
 
             setattr(self, method.__name__, wrapper)
 
         for method in ENSURE_JOINED_METHODS:
             method = getattr(self, method.__name__)
 
-            async def wrapper(shelf, room_id, *args, **kwargs):
-                await shelf.ensure_joined(room_id)
-                await method(room_id, *args, **kwargs)
+            async def wrapper(*args, __self=self, __method=method, **kwargs):
+                await __self.ensure_registered()
+                return await __method(*args, **kwargs)
 
             setattr(self, method.__name__, wrapper)
 

@@ -176,9 +176,11 @@ class AppServiceAPI(HTTPAPI):
         if self.identity and not self.is_real_user:
             query_params["user_id"] = self.identity
 
+        if not str(path).startswith(str(api_path)):
+            path = str(api_path)+str(path)
+
         return super(AppServiceAPI, self).request(method, path, content,
-                                                  headers, query_params,
-                                                  api_path)
+                                                  headers, query_params)
 
 
 class ChildAppServiceAPI(AppServiceAPI):

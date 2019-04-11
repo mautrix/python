@@ -72,7 +72,7 @@ class JSONStateStore(StateStore):
         self._autosave()
 
     def get_member(self, room_id: RoomID, user_id: UserID) -> Member:
-        return self.members.get(room_id, {}).get(user_id, {})
+        return self.members.get(room_id, {}).get(user_id, Member())
 
     def set_member(self, room_id: RoomID, user_id: UserID, member: Member) -> None:
         if room_id not in self.members:
