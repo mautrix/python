@@ -95,4 +95,5 @@ class StateStore(ABC):
 
     def has_power_level(self, room_id: RoomID, user_id: UserID, event_type: EventType) -> bool:
         room_levels = self.get_power_levels(room_id)
-        return room_levels.get_user_level(user_id) >= room_levels.get_event_level(event_type)
+        # FIXME: Is this the right defaults?
+        return room_levels.get('users', {}).get(user_id, 0) >= room_levels.get('events', {}).get(event_type, 0)
