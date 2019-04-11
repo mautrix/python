@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
 from typing import Optional, Callable, Awaitable, Union, Iterator, List, Dict
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from aiohttp import web
 import aiohttp
 import asyncio
@@ -105,8 +105,8 @@ class AppService:
         else:
             return self._intent
 
-    @contextmanager
-    def run(self, host: str = "127.0.0.1", port: int = 8080) -> Iterator[asyncio.AbstractServer]:
+    @asynccontextmanager
+    async def run(self, host: str = "127.0.0.1", port: int = 8080) -> Iterator[asyncio.AbstractServer]:
         connector = None
         if self.server.startswith("https://") and not self.verify_ssl:
             connector = aiohttp.TCPConnector(verify_ssl=False)
@@ -119,7 +119,7 @@ class AppService:
         yield self.loop.create_server(self.app.make_handler(), host, port)
 
         self._intent = None
-        self._http_session.close()
+        await self._http_session.close()
         self._http_session = None
 
     def _check_token(self, request: web.Request) -> bool:
