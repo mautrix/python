@@ -46,7 +46,7 @@ class AppService:
                  log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
-                 state_store: StateStore = None, aiohttp_params: Dict = None) -> None:
+                 state_store: StateStore = None, aiohttp_params: Dict = {}) -> None:
         self.server = server
         self.domain = domain
         self.verify_ssl = verify_ssl
