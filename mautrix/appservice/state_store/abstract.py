@@ -74,9 +74,9 @@ class StateStore(ABC):
 
     def update_state(self, evt: StateEvent) -> None:
         if evt.type == EventType.ROOM_POWER_LEVELS:
-            self.set_power_levels(evt.room_id, evt.content.power_levels)
+            self.set_power_levels(evt.room_id, evt.content.users)
         elif evt.type == EventType.ROOM_MEMBER:
-            self.set_member(evt.room_id, UserID(evt.state_key), evt.content.member)
+            self.set_member(evt.room_id, UserID(evt.state_key), evt.content)
 
     def get_membership(self, room_id: RoomID, user_id: UserID) -> Membership:
         return self.get_member(room_id, user_id).membership or Membership.LEAVE

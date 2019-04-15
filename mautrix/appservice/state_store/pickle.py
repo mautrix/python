@@ -4,13 +4,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Set, Dict
-import json
+import pickle
 
 from ...client.api.types import PowerLevelStateEventContent, Member, Membership, RoomID, UserID
 from .abstract import StateStore
 
 
-class JSONStateStore(StateStore):
+class PickleStateStore(StateStore):
     autosave_file: str
 
     registrations: Set[UserID]
@@ -27,15 +27,13 @@ class JSONStateStore(StateStore):
 
     def save(self, file: str) -> None:
         if isinstance(file, str):
-            output = open(file, "w")
+            output = open(file, "wb")
         else:
             output = file
 
-        json.dump({
+        pickle.dump({
             "registrations": list(self.registrations),
-            "members": {room_id: {member_id: member.serialize()
-                    for member_id, member in room.items()}
-                for room_id, room in self.members.items()},
+            "members": self.members,
             "power_levels": self.power_levels,
         }, output)
 
@@ -45,19 +43,17 @@ class JSONStateStore(StateStore):
     def load(self, file: str) -> None:
         if isinstance(file, str):
             try:
-                input_source = open(file, "r")
+                input_source = open(file, "rb")
             except FileNotFoundError:
                 return
         else:
             input_source = file
 
-        data = json.load(input_source)
+        data = pickle.load(input_source)
         if "registrations" in data:
             self.registrations = set(data["registrations"])
         if "members" in data:
-            self.members = {room_id: {member_id: Member(member)
-                    for member_id, member in room.items()}
-                for room_id, room in data["members"].items()}
+            self.members = data["members"]
         if "power_levels" in data:
             self.power_levels = data["power_levels"]
 
@@ -102,7 +98,5 @@ class JSONStateStore(StateStore):
         self._autosave()
 
     def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
-        if getattr(content, "serialize", None):
-            content = content.serialize()
         self.power_levels[room_id] = content
         self._autosave()
