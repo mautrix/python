@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Dict, Awaitable, Union, Any, TYPE_CHECKING
 from datetime import datetime, timezone
+import asyncio
 
 from ...api import HTTPAPI
 from .intent import IntentAPI
@@ -25,7 +26,8 @@ class AppServiceAPI(HTTPAPI):
                  identity: Optional[str] = None, log: 'Logger' = None,
                  state_store: 'StateStore' = None, client_session: 'ClientSession' = None,
                  child: bool = False, real_user: bool = False,
-                 real_user_content_key: Optional[str] = None) -> None:
+                 real_user_content_key: Optional[str] = None,
+                 loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         """
         Args:
             base_url: The base URL of the homeserver client-server API to use.
@@ -40,7 +42,7 @@ class AppServiceAPI(HTTPAPI):
             real_user_content_key: The key to inject in outgoing message events sent through real
                 users.
         """
-        super().__init__(base_url=base_url, token=token,
+        super().__init__(base_url=base_url, token=token, loop=loop,
                          log=log if real_user or child else log.getChild("api"),
                          client_session=client_session, txn_id=0 if not child else None)
         self.identity: str = identity
@@ -197,7 +199,7 @@ class ChildAppServiceAPI(AppServiceAPI):
             parent: The parent AppServiceAPI instance.
         """
         super().__init__(parent.base_url, parent.bot_mxid, parent.token, user, parent.log,
-                         parent.state_store, parent.session, child=True,
+                         parent.state_store, parent.session, loop=parent.loop, child=True,
                          real_user_content_key=parent.real_user_content_key)
         self.parent = parent
 
