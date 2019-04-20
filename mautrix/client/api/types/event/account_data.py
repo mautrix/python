@@ -38,7 +38,7 @@ class AccountDataEvent(BaseEvent, SerializableAttrs['AccountDataEvent']):
     @classmethod
     def deserialize(cls, data: JSON) -> 'AccountDataEvent':
         try:
-            data.get("content", {})["__mautrix_event_type"] = EventType(data.get("type"))
+            data.get("content", {})["__mautrix_event_type"] = EventType.find(data.get("type"))
         except ValueError:
             return Obj(**data)
         return super().deserialize(data)

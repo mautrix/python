@@ -19,10 +19,7 @@ EventContent = Union[MessageEventContent, StateEventContent, AccountDataEventCon
 
 @deserializer(Event)
 def deserialize_event(data: JSON) -> Event:
-    try:
-        event_type = EventType(data.get("type", None))
-    except ValueError:
-        return Obj(**data)
+    event_type = EventType.find(data.get("type", None))
     if event_type == EventType.ROOM_MESSAGE:
         return MessageEvent.deserialize(data)
     elif event_type == EventType.STICKER:

@@ -134,7 +134,7 @@ class StrippedStateEvent(SerializableAttrs['StrippedStateEvent']):
     @classmethod
     def deserialize(cls, data: JSON) -> 'StrippedStateEvent':
         try:
-            data.get("content", {})["__mautrix_event_type"] = EventType(data.get("type", None))
+            data.get("content", {})["__mautrix_event_type"] = EventType.find(data.get("type", None))
         except ValueError:
             pass
         return super().deserialize(data)
@@ -180,7 +180,7 @@ class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
     @classmethod
     def deserialize(cls, data: JSON) -> 'StateEvent':
         try:
-            event_type = EventType(data.get("type"))
+            event_type = EventType.find(data.get("type"))
             data.get("content", {})["__mautrix_event_type"] = event_type
             data.get("unsigned", {}).get("prev_content", {})["__mautrix_event_type"] = event_type
         except ValueError:
