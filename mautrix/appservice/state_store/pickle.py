@@ -32,7 +32,7 @@ class PickleStateStore(StateStore):
             output = file
 
         pickle.dump({
-            "registrations": list(self.registrations),
+            "registrations": self.registrations,
             "members": self.members,
             "power_levels": self.power_levels,
         }, output)

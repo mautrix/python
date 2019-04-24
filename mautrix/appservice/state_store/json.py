@@ -98,7 +98,5 @@ class JSONStateStore(StateStore):
         self._autosave()
 
     def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
-        if getattr(content, "serialize", None):
-            content = content.serialize()
         self.power_levels[room_id] = content
         self._autosave()

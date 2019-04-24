@@ -313,7 +313,10 @@ class IntentAPI(ClientAPI):
                               state_key: Optional[str] = "") -> StateEvent:
         await self._ensure_has_power_level_for(room_id, event_type)
         event = await super().get_state_event(room_id, event_type, state_key)
-        self.state_store.update_state(event)
+        ## FIXME: Update the cached state store
+        ## super().get_state_event() only returns the StateEventContent object,
+        ## which does not have all the information that self.update_state() requires
+        # self.state_store.update_state(event)
         return event
 
     def leave_room(self, room_id: RoomID) -> None:
