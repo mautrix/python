@@ -26,6 +26,7 @@ class EventType(Serializable):
         EPHEMERAL = "ephemeral"
 
     ROOM_CANONICAL_ALIAS: 'EventType'
+    ROOM_ALIASES: 'EventType'
     ROOM_CREATE: 'EventType'
     ROOM_JOIN_RULES: 'EventType'
     ROOM_MEMBER: 'EventType'

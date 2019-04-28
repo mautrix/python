@@ -3,12 +3,12 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 from abc import ABC, abstractmethod
 import time
 
-from ...client.api.types import (StateEvent, EventType, PowerLevelStateEventContent, Member,
-                                 Membership, RoomID, UserID)
+from ...types import (StateEvent, EventType, PowerLevelStateEventContent,
+                                 MemberStateEventContent, Member, Membership, RoomID, UserID)
 
 
 class StateStore(ABC):
@@ -25,7 +25,8 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    def set_member(self, room_id: RoomID, user_id: UserID, member: Member) -> None:
+    def set_member(self, room_id: RoomID, user_id: UserID,
+                   member: Union[Member, MemberStateEventContent]) -> None:
         pass
 
     @abstractmethod
@@ -95,8 +96,4 @@ class StateStore(ABC):
 
     def has_power_level(self, room_id: RoomID, user_id: UserID, event_type: EventType) -> bool:
         room_levels = self.get_power_levels(room_id)
-        if isinstance(room_levels, dict):
-            # FIXME: Why is room_levels ever a dict? Should that be fixed?
-            return room_levels.get('users', {}).get(user_id, 0) >= room_levels.get('events', {}).get(event_type, 0)
-        else:
-            return room_levels.get_user_level(user_id) >= room_levels.get_event_level(event_type)
+        return room_levels.get_user_level(user_id) >= room_levels.get_event_level(event_type)

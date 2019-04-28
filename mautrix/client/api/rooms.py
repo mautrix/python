@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict
 import asyncio
 
 from ...errors import MatrixResponseError, MatrixRequestError, MRoomInUse
@@ -30,7 +30,7 @@ class RoomMethods(BaseClientAPI):
                           preset: RoomCreatePreset = RoomCreatePreset.PRIVATE,
                           name: Optional[str] = None, topic: Optional[str] = None,
                           is_direct: bool = False, invitees: Optional[List[UserID]] = None,
-                          initial_state: Optional[List[StateEvent]] = None,
+                          initial_state: Optional[List[Union[StateEvent, Dict]]] = None,
                           room_version: str = None, creation_content: JSON = None) -> RoomID:
         """
         Create a new room with various configuration options.

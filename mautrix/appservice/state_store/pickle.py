@@ -6,7 +6,7 @@
 from typing import Set, Dict
 import pickle
 
-from ...client.api.types import PowerLevelStateEventContent, Member, Membership, RoomID, UserID
+from ...types import PowerLevelStateEventContent, Member, Membership, RoomID, UserID
 from .abstract import StateStore
 
 

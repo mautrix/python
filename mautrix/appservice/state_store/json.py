@@ -6,7 +6,7 @@
 from typing import Set, Dict
 import json
 
-from ...client.api.types import PowerLevelStateEventContent, Member, Membership, RoomID, UserID
+from ...types import PowerLevelStateEventContent, Member, Membership, RoomID, UserID
 from .abstract import StateStore
 
 
@@ -33,8 +33,11 @@ class JSONStateStore(StateStore):
 
         json.dump({
             "registrations": list(self.registrations),
-            "members": self.members,
-            "power_levels": self.power_levels,
+            "members": {room_id: {user_id: member.serialize()}
+                        for room_id, members in self.members.items()
+                        for user_id, member in members.items()},
+            "power_levels": {room_id: levels.serialize()
+                             for room_id, levels in self.power_levels.items()},
         }, output)
 
         if isinstance(file, str):
@@ -53,9 +56,12 @@ class JSONStateStore(StateStore):
         if "registrations" in data:
             self.registrations = set(data["registrations"])
         if "members" in data:
-            self.members = data["members"]
+            self.members = {room_id: {user_id: Member.deserialize(content)}
+                            for room_id, members in data["members"].items()
+                            for user_id, content in members.items()}
         if "power_levels" in data:
-            self.power_levels = data["power_levels"]
+            self.power_levels = {room_id: PowerLevelStateEventContent.deserialize(content)
+                                 for room_id, content in data["power_levels"].items()}
 
         if isinstance(file, str):
             input_source.close()

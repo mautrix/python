@@ -5,14 +5,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
 from typing import Optional, Callable, Awaitable, Union, Iterator, List, Dict
-from contextlib import asynccontextmanager
 from aiohttp import web
 import aiohttp
 import asyncio
 import logging
 
 from ..api import JSON
-from ..client.api.types import UserID, RoomAlias, Event
+from ..types import UserID, RoomAlias, Event
 from .api import AppServiceAPI, IntentAPI
 from .state_store import StateStore, JSONStateStore
 
@@ -46,13 +45,13 @@ class AppService:
                  log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
-                 state_store: StateStore = None, aiohttp_params: Dict = {}) -> None:
+                 state_store: StateStore = None, aiohttp_params: Dict = None) -> None:
         self.server = server
         self.domain = domain
         self.verify_ssl = verify_ssl
         self.as_token = as_token
         self.hs_token = hs_token
-        self.bot_mxid = f"@{bot_localpart}:{domain}"
+        self.bot_mxid = UserID(f"@{bot_localpart}:{domain}")
         self.real_user_content_key: str = real_user_content_key
         if isinstance(state_store, StateStore):
             self.state_store = state_store
@@ -78,7 +77,7 @@ class AppService:
 
         self.event_handlers = []
 
-        self.app = web.Application(loop=self.loop, **aiohttp_params)
+        self.app = web.Application(loop=self.loop, **aiohttp_params if aiohttp_params else {})
         self.app.router.add_route("PUT", "/transactions/{transaction_id}",
                                   self._http_handle_transaction)
         self.app.router.add_route("GET", "/rooms/{alias}", self._http_query_alias)
@@ -92,21 +91,24 @@ class AppService:
     @property
     def http_session(self) -> aiohttp.ClientSession:
         if self._http_session is None:
-            raise AttributeError("the http_session attribute can only be used "
-                                 "from within the `AppService.run` context manager")
+            raise AttributeError("the http_session attribute can only be used after starting")
         else:
             return self._http_session
 
     @property
     def intent(self) -> 'IntentAPI':
         if self._intent is None:
-            raise AttributeError("the intent attribute can only be used from "
-                                 "within the `AppService.run` context manager")
+            raise AttributeError("the intent attribute can only be used after starting")
         else:
             return self._intent
 
-    @asynccontextmanager
-    async def run(self, host: str = "127.0.0.1", port: int = 8080) -> Iterator[asyncio.AbstractServer]:
+    async def __aenter__(self):
+        await self.start()
+
+    async def __aexit__(self):
+        await self.stop()
+
+    async def start(self, host: str = "127.0.0.1", port: int = 8080):
         connector = None
         if self.server.startswith("https://") and not self.verify_ssl:
             connector = aiohttp.TCPConnector(verify_ssl=False)
@@ -116,8 +118,9 @@ class AppService:
                                      real_user_content_key=self.real_user_content_key,
                                      client_session=self._http_session).bot_intent()
 
-        yield self.loop.create_server(self.app.make_handler(), host, port)
+        await self.loop.create_server(self.app.make_handler(), host, port)
 
+    async def stop(self) -> None:
         self._intent = None
         await self._http_session.close()
         self._http_session = None

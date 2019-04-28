@@ -19,7 +19,7 @@ class PowerLevelStateEventContent(SerializableAttrs['PowerLevelStateEventContent
     users: Dict[str, int] = attr.ib(default={}, metadata={"omitempty": False})
     users_default: int = 0
 
-    events: Dict[str, int] = attr.ib(default={}, metadata={"omitempty": False})
+    events: Dict[EventType, int] = attr.ib(default={}, metadata={"omitempty": False})
     events_default: int = 0
 
     state_default: int = 50
@@ -45,14 +45,14 @@ class PowerLevelStateEventContent(SerializableAttrs['PowerLevelStateEventContent
         return False
 
     def get_event_level(self, event_type: EventType) -> int:
-        return self.events.get(event_type.value,
+        return self.events.get(event_type,
                                self.state_default if event_type.is_state else self.events_default)
 
     def set_event_level(self, event_type: EventType, level: int) -> None:
         if level == self.state_default if event_type.is_state else self.events_default:
-            del self.events[event_type.value]
+            del self.events[event_type]
         else:
-            self.events[event_type.value] = level
+            self.events[event_type] = level
 
     def ensure_event_level(self, event_type: EventType, level: int) -> bool:
         if self.get_event_level(event_type) != level:
@@ -104,11 +104,15 @@ class RoomTopicStateEventContent(SerializableAttrs['RoomTopicStateEventContent']
 class RoomAvatarStateEventContent(SerializableAttrs['RoomAvatarStateEventContent']):
     url: ContentURI = None
 
+@dataclass
+class RoomPinnedEventsStateEventContent(SerializableAttrs['RoomPinnedEventsStateEventContent']):
+    pinned: List[EventID] = None
+
 
 StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
                           AliasesStateEventContent, CanonicalAliasStateEventContent,
                           RoomNameStateEventContent, RoomAvatarStateEventContent,
-                          RoomTopicStateEventContent, Obj]
+                          RoomTopicStateEventContent, RoomPinnedEventsStateEventContent, Obj]
 
 
 @dataclass
@@ -153,6 +157,7 @@ state_event_content_map = {
     EventType.ROOM_POWER_LEVELS: PowerLevelStateEventContent,
     EventType.ROOM_MEMBER: MemberStateEventContent,
     EventType.ROOM_ALIASES: AliasesStateEventContent,
+    EventType.ROOM_PINNED_EVENTS: RoomPinnedEventsStateEventContent,
     EventType.ROOM_CANONICAL_ALIAS: CanonicalAliasStateEventContent,
     EventType.ROOM_NAME: RoomNameStateEventContent,
     EventType.ROOM_AVATAR: RoomAvatarStateEventContent,

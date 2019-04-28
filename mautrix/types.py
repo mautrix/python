@@ -16,9 +16,10 @@ from .client.api.types import (
     AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent, MatchedPassiveCommand,
     BaseMessageEventContent, MatchedCommand, RelatesTo, PowerLevelStateEventContent, Membership,
     MemberStateEventContent, StateEvent, AliasesStateEventContent, CanonicalAliasStateEventContent,
-    StrippedStateEvent, RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
-    RoomAvatarStateEventContent, StateEventContent, AccountDataEvent, AccountDataEventContent,
-    RoomTagInfo, RoomTagAccountDataEventContent, Event, EventContent, BaseFileInfo,
+    StrippedStateEvent, RoomNameStateEventContent, RoomTopicStateEventContent,
+    RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
+    StateEventContent, AccountDataEvent, AccountDataEventContent, RoomTagInfo,
+    RoomTagAccountDataEventContent, Event, EventContent, BaseFileInfo, Presence, PresenceState,
 
     User, Member, UserSearchResults,
 
