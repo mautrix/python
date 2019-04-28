@@ -4,13 +4,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Set, Dict
-import json
+import pickle
 
 from ...client.api.types import PowerLevelStateEventContent, Member, Membership, RoomID, UserID
 from .abstract import StateStore
 
 
-class JSONStateStore(StateStore):
+class PickleStateStore(StateStore):
     autosave_file: str
 
     registrations: Set[UserID]
@@ -27,12 +27,12 @@ class JSONStateStore(StateStore):
 
     def save(self, file: str) -> None:
         if isinstance(file, str):
-            output = open(file, "w")
+            output = open(file, "wb")
         else:
             output = file
 
-        json.dump({
-            "registrations": list(self.registrations),
+        pickle.dump({
+            "registrations": self.registrations,
             "members": self.members,
             "power_levels": self.power_levels,
         }, output)
@@ -43,13 +43,13 @@ class JSONStateStore(StateStore):
     def load(self, file: str) -> None:
         if isinstance(file, str):
             try:
-                input_source = open(file, "r")
+                input_source = open(file, "rb")
             except FileNotFoundError:
                 return
         else:
             input_source = file
 
-        data = json.load(input_source)
+        data = pickle.load(input_source)
         if "registrations" in data:
             self.registrations = set(data["registrations"])
         if "members" in data:

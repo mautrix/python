@@ -74,9 +74,9 @@ class StateStore(ABC):
 
     def update_state(self, evt: StateEvent) -> None:
         if evt.type == EventType.ROOM_POWER_LEVELS:
-            self.set_power_levels(evt.room_id, evt.content.power_levels)
+            self.set_power_levels(evt.room_id, evt.content)
         elif evt.type == EventType.ROOM_MEMBER:
-            self.set_member(evt.room_id, UserID(evt.state_key), evt.content.member)
+            self.set_member(evt.room_id, UserID(evt.state_key), evt.content)
 
     def get_membership(self, room_id: RoomID, user_id: UserID) -> Membership:
         return self.get_member(room_id, user_id).membership or Membership.LEAVE
@@ -95,4 +95,8 @@ class StateStore(ABC):
 
     def has_power_level(self, room_id: RoomID, user_id: UserID, event_type: EventType) -> bool:
         room_levels = self.get_power_levels(room_id)
-        return room_levels.get_user_level(user_id) >= room_levels.get_event_level(event_type)
+        if isinstance(room_levels, dict):
+            # FIXME: Why is room_levels ever a dict? Should that be fixed?
+            return room_levels.get('users', {}).get(user_id, 0) >= room_levels.get('events', {}).get(event_type, 0)
+        else:
+            return room_levels.get_user_level(user_id) >= room_levels.get_event_level(event_type)

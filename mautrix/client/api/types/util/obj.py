@@ -12,12 +12,13 @@ class Obj(GenericSerializable['Obj']):
             Lst(v) if isinstance(v, list) else v) for k, v in kwargs.items()}
 
     def __getattr__(self, name):
+        # FIXME: Why is this function needed? Is it just to strip the '_' from the name?
         name = name.rstrip('_')
         obj = self.__dict__.get(name)
         if obj is None:
-            obj = Obj()
-            self.__dict__[name] = obj
-        return obj
+            raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
+        else:
+            return obj
 
     def __getitem__(self, name):
         return self.__dict__.get(name)
@@ -36,6 +37,13 @@ class Obj(GenericSerializable['Obj']):
 
     def __contains__(self, item):
         return item in self.__dict__
+
+    def get(self, key, default=None):
+        obj = self.__dict__.get(key)
+        if obj is None:
+            return default
+        else:
+            return obj
 
     def serialize(self) -> Dict[str, JSON]:
         return {k: v.serialize() if isinstance(v, Serializable) else v

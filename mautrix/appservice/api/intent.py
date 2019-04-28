@@ -67,18 +67,18 @@ class IntentAPI(ClientAPI):
         for method in ENSURE_REGISTERED_METHODS:
             method = getattr(self, method.__name__)
 
-            async def wrapper(shelf, *args, **kwargs):
-                await shelf.ensure_registered()
-                await method(*args, **kwargs)
+            async def wrapper(*args, __self=self, __method=method, **kwargs):
+                await __self.ensure_registered()
+                return await __method(*args, **kwargs)
 
             setattr(self, method.__name__, wrapper)
 
         for method in ENSURE_JOINED_METHODS:
             method = getattr(self, method.__name__)
 
-            async def wrapper(shelf, room_id, *args, **kwargs):
-                await shelf.ensure_joined(room_id)
-                await method(room_id, *args, **kwargs)
+            async def wrapper(*args, __self=self, __method=method, **kwargs):
+                await __self.ensure_registered()
+                return await __method(*args, **kwargs)
 
             setattr(self, method.__name__, wrapper)
 
@@ -313,7 +313,10 @@ class IntentAPI(ClientAPI):
                               state_key: Optional[str] = "") -> StateEvent:
         await self._ensure_has_power_level_for(room_id, event_type)
         event = await super().get_state_event(room_id, event_type, state_key)
-        self.state_store.update_state(event)
+        ## FIXME: Update the cached state store
+        ## super().get_state_event() only returns the StateEventContent object,
+        ## which does not have all the information that self.update_state() requires
+        # self.state_store.update_state(event)
         return event
 
     def leave_room(self, room_id: RoomID) -> None:
