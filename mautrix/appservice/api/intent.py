@@ -14,7 +14,7 @@ from ...types import (StateEvent, EventType, StateEventContent, EventID, Content
                       RoomTopicStateEventContent, PowerLevelStateEventContent,
                       RoomPinnedEventsStateEventContent, Membership, Member)
 from ...client import ClientAPI
-from ...errors import MatrixError, MatrixRequestError, IntentError
+from ...errors import MForbidden, MatrixRequestError, IntentError
 from ..state_store import StateStore
 
 try:
@@ -79,7 +79,10 @@ class IntentAPI(ClientAPI):
             method = getattr(self, method.__name__)
 
             async def wrapper(*args, __self=self, __method=method, **kwargs):
-                await __self.ensure_registered()
+                room_id = kwargs.get("room_id", None)
+                if not room_id:
+                    room_id = args[0]
+                await __self.ensure_joined(room_id)
                 return await __method(*args, **kwargs)
 
             setattr(self, method.__name__, wrapper)
@@ -342,17 +345,20 @@ class IntentAPI(ClientAPI):
             return
         await self.ensure_registered()
         try:
-            await self.join_room(room_id)
+            await self.join_room(room_id, max_retries=0)
             self.state_store.joined(room_id, self.mxid)
-        except MatrixRequestError as e:
-            if e.errcode != "M_FORBIDDEN" or not self.bot:
-                raise IntentError(f"Failed to join room {room_id} as {self.mxid}", e)
+        except MForbidden as e:
+            if not self.bot:
+                raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e
             try:
-                await self.bot.invite(room_id, self.mxid)
-                await self.join_room(room_id)
+                await self.bot.invite_user(room_id, self.mxid)
+                await self.join_room(room_id, max_retries=0)
                 self.state_store.joined(room_id, self.mxid)
+                return
             except MatrixRequestError as e2:
-                raise IntentError(f"Failed to join room {room_id} as {self.mxid}", e2)
+                raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e2
+        except MatrixRequestError as e:
+            raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e
 
     def _register(self) -> Awaitable[dict]:
         content = {"username": self.localpart}

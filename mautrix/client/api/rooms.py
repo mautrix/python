@@ -213,7 +213,7 @@ class RoomMethods(BaseClientAPI):
             raise MatrixResponseError("`room_id` not in response.")
 
     async def join_room(self, room_id_or_alias: Union[RoomID, RoomAlias], servers: List[str] = None,
-                        third_party_signed: JSON = None, max_retries: int = 5) -> RoomID:
+                        third_party_signed: JSON = None, max_retries: int = 4) -> RoomID:
         """
         Start participating in a room, i.e. join it by its ID or alias, with an optional list of
         servers to ask about the ID from.
@@ -227,31 +227,32 @@ class RoomMethods(BaseClientAPI):
             third_party_signed: A signature of an ``m.third_party_invite`` token to prove that this
                 user owns a third party identity which has been invited to the room.
             max_retries: The maximum number of retries. Used to circumvent a Synapse bug with
-                accepting invites over federation.
+                accepting invites over federation. 0 means only one join call will be attempted.
                 See: `matrix-org/synapse#2807 <https://github.com/matrix-org/synapse/issues/2807>`__
 
         Returns:
             The ID of the room the user joined.
         """
+        max_retries = max(0, max_retries)
         tries = 0
         content = {
             "third_party_signed": third_party_signed
         } if third_party_signed is not None else None
         query_params = {"servers": servers} if servers is not None else None
-        while tries < max_retries:
+        while tries <= max_retries:
             try:
                 content = await self.api.request(Method.POST, Path.join[room_id_or_alias],
                                                  content=content, query_params=query_params)
                 break
             except MatrixRequestError:
                 tries += 1
-                if tries < max_retries:
-                    wait = (tries + 1) * 10
+                if tries <= max_retries:
+                    wait = tries * 10
                     self.log.exception(
                         f"Failed to join room {room_id_or_alias}, retrying in {wait} seconds...")
                     await asyncio.sleep(wait, loop=self.loop)
                 else:
-                    self.log.exception(f"Failed to join room {room_id_or_alias}, giving up.")
+                    raise
         try:
             return content["room_id"]
         except KeyError:

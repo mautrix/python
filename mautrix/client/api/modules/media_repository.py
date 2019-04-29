@@ -42,8 +42,10 @@ class MediaRepositoryMethods(BaseClientAPI):
         """
         if magic:
             mime_type = mime_type or magic.from_buffer(data, mime=True)
-        resp = await self.api.request(Method.POST, MediaPath.upload, content=data,
-                                      headers={"Content-Type": mime_type})
+        headers = {}
+        if mime_type:
+            headers["Content-Type"] = mime_type
+        resp = await self.api.request(Method.POST, MediaPath.upload, content=data, headers=headers)
         try:
             return resp["content_uri"]
         except KeyError:
