@@ -24,7 +24,8 @@ class MediaRepositoryMethods(BaseClientAPI):
 
     See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#id112>`__"""
 
-    async def upload_media(self, data: bytes, mime_type: Optional[str] = None) -> ContentURI:
+    async def upload_media(self, data: bytes, mime_type: Optional[str] = None,
+                           filename: Optional[str] = None) -> ContentURI:
         """
         Upload a file to the content repository.
         
@@ -33,6 +34,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         Args:
             data: The data to upload.
             mime_type: The MIME type to send with the upload request.
+            filename: The filename to send with the upload request.
 
         Returns:
             The MXC URI to the uploaded file.
@@ -45,7 +47,11 @@ class MediaRepositoryMethods(BaseClientAPI):
         headers = {}
         if mime_type:
             headers["Content-Type"] = mime_type
-        resp = await self.api.request(Method.POST, MediaPath.upload, content=data, headers=headers)
+        query = {}
+        if filename:
+            query["filename"] = filename
+        resp = await self.api.request(Method.POST, MediaPath.upload, content=data,
+                                      headers=headers, query_params=query)
         try:
             return resp["content_uri"]
         except KeyError:

@@ -3,22 +3,24 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Union, Optional
 from abc import ABC, abstractmethod
 import time
 
-from ...types import (StateEvent, EventType, PowerLevelStateEventContent,
-                                 MemberStateEventContent, Member, Membership, RoomID, UserID)
+from ...types import (StateEvent, EventType, PowerLevelStateEventContent, EventID,
+                      MemberStateEventContent, Member, Membership, RoomID, UserID)
 
 
 class StateStore(ABC):
     presence: Dict[UserID, str]
     typing: Dict[Tuple[RoomID, UserID], int]
+    read: Dict[Tuple[RoomID, UserID], EventID]
 
     def __init__(self) -> None:
         # Non-persistent storage
         self.presence = {}
         self.typing = {}
+        self.read = {}
 
     @abstractmethod
     def get_member(self, room_id: RoomID, user_id: UserID) -> Member:
@@ -57,6 +59,15 @@ class StateStore(ABC):
             return self.presence[user_id] == presence
         except KeyError:
             return False
+
+    def set_read(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
+        self.read[(room_id, user_id)] = event_id
+
+    def get_read(self, room_id: RoomID, user_id: UserID) -> Optional[EventID]:
+        try:
+            return self.read[(room_id, user_id)]
+        except KeyError:
+            return None
 
     def set_typing(self, room_id: RoomID, user_id: UserID, is_typing: bool,
                    timeout: int = 0) -> None:

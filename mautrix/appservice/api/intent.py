@@ -335,6 +335,11 @@ class IntentAPI(ClientAPI):
             self.state_store.update_state(event)
         return state
 
+    async def mark_read(self, room_id: RoomID, event_id: EventID) -> None:
+        if self.state_store.get_read(room_id, self.mxid) != event_id:
+            await self.set_fully_read_marker(room_id, fully_read=event_id, read_receipt=event_id)
+            self.state_store.set_read(room_id, self.mxid, event_id)
+
     # endregion
     # region Ensure functions
 
