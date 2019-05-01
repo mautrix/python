@@ -12,8 +12,9 @@ from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaM
                       MatchedPassiveCommand, BaseFileInfo)
 from .state import (PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
-                    RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
-                    RoomAvatarStateEventContent, StateEventContent)
+                    RoomNameStateEventContent, RoomTopicStateEventContent,
+                    RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
+                    StateEventContent)
 from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                            RoomTagAccountDataEventContent)
 from .generic import Event, EventContent

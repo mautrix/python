@@ -7,6 +7,7 @@ from typing import Optional
 from attr import dataclass
 
 from ..util import SerializableAttrs
+from ..primitive import EventID
 from .base import BaseRoomEvent, BaseUnsigned
 
 
@@ -20,7 +21,7 @@ class RedactionEventContent(SerializableAttrs['RedactionEventContent']):
 class RedactionEvent(BaseRoomEvent, SerializableAttrs['RedactionEvent']):
     """A m.room.redaction event"""
     content: RedactionEventContent
-    redacts: str
+    redacts: EventID
     _unsigned: Optional[BaseUnsigned] = None
 
     @property

@@ -5,8 +5,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Dict, Awaitable, Union, Any, TYPE_CHECKING
 from datetime import datetime, timezone
+import asyncio
 
-from ...api import HTTPAPI
+from ...api import HTTPAPI, Method, PathBuilder
+from ...types import UserID
 from .intent import IntentAPI
 
 if TYPE_CHECKING:
@@ -21,11 +23,12 @@ class AppServiceAPI(HTTPAPI):
     such as child instances and easy access to IntentAPIs.
     """
 
-    def __init__(self, base_url: str, bot_mxid: str = None, token: str = None,
-                 identity: Optional[str] = None, log: 'Logger' = None,
+    def __init__(self, base_url: str, bot_mxid: UserID = None, token: str = None,
+                 identity: Optional[UserID] = None, log: 'Logger' = None,
                  state_store: 'StateStore' = None, client_session: 'ClientSession' = None,
                  child: bool = False, real_user: bool = False,
-                 real_user_content_key: Optional[str] = None) -> None:
+                 real_user_content_key: Optional[str] = None,
+                 loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         """
         Args:
             base_url: The base URL of the homeserver client-server API to use.
@@ -40,11 +43,11 @@ class AppServiceAPI(HTTPAPI):
             real_user_content_key: The key to inject in outgoing message events sent through real
                 users.
         """
-        super().__init__(base_url=base_url, token=token,
+        super().__init__(base_url=base_url, token=token, loop=loop,
                          log=log if real_user or child else log.getChild("api"),
                          client_session=client_session, txn_id=0 if not child else None)
-        self.identity: str = identity
-        self.bot_mxid: str = bot_mxid
+        self.identity: UserID = identity
+        self.bot_mxid: UserID = bot_mxid
         self._bot_intent: Optional[IntentAPI] = None
         self.state_store: 'StateStore' = state_store
         self.is_real_user: bool = real_user
@@ -57,7 +60,7 @@ class AppServiceAPI(HTTPAPI):
                 self.children: Dict[str, 'ChildAppServiceAPI'] = {}
                 self.real_users: Dict[str, 'AppServiceAPI'] = {}
 
-    def user(self, user: str) -> 'ChildAppServiceAPI':
+    def user(self, user: UserID) -> 'ChildAppServiceAPI':
         """
         Get the AppServiceAPI for an appservice-managed user.
 
@@ -117,8 +120,8 @@ class AppServiceAPI(HTTPAPI):
                                          log=self.intent_log)
         return self._bot_intent
 
-    def intent(self, user: str = None, token: Optional[str] = None, base_url: Optional[str] = None
-               ) -> 'IntentAPI':
+    def intent(self, user: UserID = None, token: Optional[str] = None,
+               base_url: Optional[str] = None) -> 'IntentAPI':
         """
         Get the intent API of a child user.
 
@@ -142,11 +145,10 @@ class AppServiceAPI(HTTPAPI):
         return IntentAPI(user, self.user(user), self.bot_intent(), self.state_store,
                          self.intent_log)
 
-    def request(self, method: str, path: str, content: Optional[Union[Dict, bytes, str]] = None,
-                timestamp: Optional[int] = None, external_url: Optional[str] = None,
-                headers: Optional[Dict[str, str]] = None,
-                query_params: Optional[Dict[str, Any]] = None,
-                api_path: str = "/_matrix/client/r0") -> Awaitable[Dict]:
+    def request(self, method: Method, path: PathBuilder,
+                content: Optional[Union[Dict, bytes, str]] = None, timestamp: Optional[int] = None,
+                external_url: Optional[str] = None, headers: Optional[Dict[str, str]] = None,
+                query_params: Optional[Dict[str, Any]] = None) -> Awaitable[Dict]:
         """
         Make a raw HTTP request, with optional AppService timestamp massaging and external_url
         setting.
@@ -177,8 +179,7 @@ class AppServiceAPI(HTTPAPI):
             query_params["user_id"] = self.identity
 
         return super(AppServiceAPI, self).request(method, path, content,
-                                                  headers, query_params,
-                                                  api_path)
+                                                  headers, query_params)
 
 
 class ChildAppServiceAPI(AppServiceAPI):
@@ -188,14 +189,14 @@ class ChildAppServiceAPI(AppServiceAPI):
 
     parent: AppServiceAPI
 
-    def __init__(self, user: str, parent: AppServiceAPI) -> None:
+    def __init__(self, user: UserID, parent: AppServiceAPI) -> None:
         """
         Args:
             user: The Matrix user ID of the child user.
             parent: The parent AppServiceAPI instance.
         """
         super().__init__(parent.base_url, parent.bot_mxid, parent.token, user, parent.log,
-                         parent.state_store, parent.session, child=True,
+                         parent.state_store, parent.session, loop=parent.loop, child=True,
                          real_user_content_key=parent.real_user_content_key)
         self.parent = parent
 

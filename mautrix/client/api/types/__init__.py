@@ -17,8 +17,9 @@ from .event import (EventType,
 
                     PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
-                    RoomNameStateEventContent, RoomTopicStateEventContent, StateUnsigned,
-                    RoomAvatarStateEventContent, StateEventContent,
+                    RoomNameStateEventContent, RoomTopicStateEventContent,
+                    RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
+                    StateEventContent,
 
                     AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                     RoomTagAccountDataEventContent,

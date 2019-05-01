@@ -41,7 +41,7 @@ class BaseClientAPI:
                 to create a HTTPAPI instance rather than creating the instance yourself.``
         """
         self.set_mxid(mxid)
-        self.loop = loop or asyncio.get_event_loop()
+        self.loop = loop or api.loop or asyncio.get_event_loop()
         kwargs["loop"] = self.loop
         self.api = api or HTTPAPI(*args, **kwargs)
         self.log = self.api.log

@@ -181,10 +181,7 @@ MediaInfo = Union[ImageInfo, VideoInfo, AudioInfo, FileInfo, Obj]
 class LocationInfo(SerializableAttrs['LocationInfo']):
     """Information about a location message."""
     thumbnail_url: ContentURI = None
-    thumbnail_info: ThumbnailInfo = attr.ib(default=None, metadata={"json": "h"})
-    width: int = attr.ib(default=None, metadata={"json": "w"})
-    duration: int = None
-    size: int = None
+    thumbnail_info: ThumbnailInfo = None
 
 
 # endregion

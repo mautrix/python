@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict
 import asyncio
 
 from ...errors import MatrixResponseError, MatrixRequestError, MRoomInUse
@@ -30,7 +30,7 @@ class RoomMethods(BaseClientAPI):
                           preset: RoomCreatePreset = RoomCreatePreset.PRIVATE,
                           name: Optional[str] = None, topic: Optional[str] = None,
                           is_direct: bool = False, invitees: Optional[List[UserID]] = None,
-                          initial_state: Optional[List[StateEvent]] = None,
+                          initial_state: Optional[List[Union[StateEvent, Dict]]] = None,
                           room_version: str = None, creation_content: JSON = None) -> RoomID:
         """
         Create a new room with various configuration options.
@@ -181,7 +181,7 @@ class RoomMethods(BaseClientAPI):
 
     async def get_joined_rooms(self) -> List[RoomID]:
         """Get the list of rooms the user is in."""
-        content = await self.api.request(Method.GET, "/joined_rooms")
+        content = await self.api.request(Method.GET, Path.joined_rooms)
         try:
             return content["joined_rooms"]
         except KeyError:
@@ -213,7 +213,7 @@ class RoomMethods(BaseClientAPI):
             raise MatrixResponseError("`room_id` not in response.")
 
     async def join_room(self, room_id_or_alias: Union[RoomID, RoomAlias], servers: List[str] = None,
-                        third_party_signed: JSON = None, max_retries: int = 5) -> RoomID:
+                        third_party_signed: JSON = None, max_retries: int = 4) -> RoomID:
         """
         Start participating in a room, i.e. join it by its ID or alias, with an optional list of
         servers to ask about the ID from.
@@ -227,31 +227,32 @@ class RoomMethods(BaseClientAPI):
             third_party_signed: A signature of an ``m.third_party_invite`` token to prove that this
                 user owns a third party identity which has been invited to the room.
             max_retries: The maximum number of retries. Used to circumvent a Synapse bug with
-                accepting invites over federation.
+                accepting invites over federation. 0 means only one join call will be attempted.
                 See: `matrix-org/synapse#2807 <https://github.com/matrix-org/synapse/issues/2807>`__
 
         Returns:
             The ID of the room the user joined.
         """
+        max_retries = max(0, max_retries)
         tries = 0
         content = {
             "third_party_signed": third_party_signed
         } if third_party_signed is not None else None
         query_params = {"servers": servers} if servers is not None else None
-        while tries < max_retries:
+        while tries <= max_retries:
             try:
                 content = await self.api.request(Method.POST, Path.join[room_id_or_alias],
                                                  content=content, query_params=query_params)
                 break
             except MatrixRequestError:
                 tries += 1
-                if tries < max_retries:
-                    wait = (tries + 1) * 10
+                if tries <= max_retries:
+                    wait = tries * 10
                     self.log.exception(
                         f"Failed to join room {room_id_or_alias}, retrying in {wait} seconds...")
                     await asyncio.sleep(wait, loop=self.loop)
                 else:
-                    self.log.exception(f"Failed to join room {room_id_or_alias}, giving up.")
+                    raise
         try:
             return content["room_id"]
         except KeyError:
