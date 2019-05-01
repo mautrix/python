@@ -35,7 +35,6 @@ ENSURE_REGISTERED_METHODS = (
     ClientAPI.create_room, ClientAPI.add_room_alias, ClientAPI.remove_room_alias,
     ClientAPI.get_room_alias, ClientAPI.get_joined_rooms, ClientAPI.join_room_by_id,
     ClientAPI.join_room, ClientAPI.set_room_directory_visibility, ClientAPI.forget_room,
-    ClientAPI.leave_room,
     # User data methods
     ClientAPI.search_users, ClientAPI.set_displayname, ClientAPI.set_avatar_url,
 )
@@ -299,12 +298,13 @@ class IntentAPI(ClientAPI):
                                                  state_key=state_key, timestamp=0, content=event))
         return event
 
-    def leave_room(self, room_id: RoomID) -> None:
+    async def leave_room(self, room_id: RoomID) -> None:
         if not room_id:
             raise ValueError("Room ID not given")
+        await self.ensure_registered()
         try:
             self.state_store.left(room_id, self.mxid)
-            super().leave_room(room_id)
+            await super().leave_room(room_id)
         except MatrixRequestError as e:
             if "not in room" not in e.message:
                 raise
