@@ -185,6 +185,12 @@ class SerializableAttrs(GenericSerializable[T]):
     def serialize(self) -> JSON:
         return _attrs_to_dict(self)
 
+    def get(self, item, default=None):
+        try:
+            return self[item]
+        except KeyError:
+            return default
+
     def __getitem__(self, item):
         try:
             return getattr(self, item)

@@ -38,6 +38,9 @@ class Obj(GenericSerializable['Obj']):
     def __contains__(self, item):
         return item in self.__dict__
 
+    def popitem(self):
+        return self.__dict__.popitem()
+
     def get(self, key, default=None):
         obj = self.__dict__.get(key)
         if obj is None:

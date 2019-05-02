@@ -17,4 +17,7 @@ from .state import (PowerLevelStateEventContent, Membership, MemberStateEventCon
                     StateEventContent)
 from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                            RoomTagAccountDataEventContent)
+from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
+                        PresenceEventContent, SingleReceiptEventContent, ReceiptEventContent,
+                        ReceiptEvent, ReceiptType)
 from .generic import Event, EventContent

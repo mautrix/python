@@ -8,7 +8,7 @@ from typing import Optional
 from ....errors import MatrixResponseError
 from ....api import Method, Path
 from ..base import BaseClientAPI
-from ..types import RoomID, UserID, EventID, Presence, PresenceState, SerializerError
+from ..types import RoomID, UserID, EventID, PresenceEventContent, PresenceState, SerializerError
 
 
 class MiscModuleMethods(BaseClientAPI):
@@ -114,7 +114,7 @@ class MiscModuleMethods(BaseClientAPI):
             content["status_msg"] = status
         await self.api.request(Method.PUT, Path.presence[self.mxid].status, content)
 
-    async def get_presence(self, user_id: UserID) -> Presence:
+    async def get_presence(self, user_id: UserID) -> PresenceEventContent:
         """
         Get the presence info of a user.
 
@@ -128,7 +128,7 @@ class MiscModuleMethods(BaseClientAPI):
         """
         content = await self.api.request(Method.GET, Path.presence[user_id].status)
         try:
-            return Presence.deserialize(content)
+            return PresenceEventContent.deserialize(content)
         except SerializerError:
             raise MatrixResponseError("Invalid presence in response")
 

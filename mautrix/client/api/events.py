@@ -10,7 +10,7 @@ from ...errors import MatrixResponseError
 from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
                     EventType, StateEventContent, MessageEventContent, Member, Event, ContentURI,
                     PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, ImageInfo,
-                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent)
+                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent, PresenceState)
 from .types.event.state import state_event_content_map
 from .types.util import Obj, Serializable
 from .base import BaseClientAPI
@@ -28,7 +28,7 @@ class EventMethods(BaseClientAPI):
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#syncing
 
     def sync(self, since: SyncToken = None, timeout: int = 30000, filter_id: FilterID = None,
-             full_state: bool = None, set_presence: str = None) -> Awaitable[JSON]:
+             full_state: bool = False, set_presence: PresenceState = None) -> Awaitable[JSON]:
         """
         Perform a sync request.
 
@@ -44,13 +44,13 @@ class EventMethods(BaseClientAPI):
         """
         request = {"timeout": timeout}
         if since:
-            request["since"] = since
+            request["since"] = str(since)
         if filter_id:
-            request["filter"] = filter_id
+            request["filter"] = str(filter_id)
         if full_state:
-            request["full_state"] = "true"
+            request["full_state"] = "true" if full_state else "false"
         if set_presence:
-            request["set_presence"] = set_presence
+            request["set_presence"] = str(set_presence)
         return self.api.request(Method.GET, Path.sync, query_params=request)
 
     # endregion

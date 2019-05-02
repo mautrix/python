@@ -8,7 +8,7 @@ from typing import List, NewType, NamedTuple
 from attr import dataclass
 
 from .primitive import RoomID, RoomAlias, SyncToken, ContentURI
-from .util import SerializableAttrs, SerializableEnum
+from .util import SerializableAttrs
 from .event import Event
 
 
@@ -64,17 +64,3 @@ class RoomDirectoryResponse(SerializableAttrs['RoomDirectoryResponse']):
 
 PaginatedMessages = NamedTuple("PaginatedMessages", start=SyncToken, end=SyncToken,
                                events=List[Event])
-
-
-class PresenceState(SerializableEnum):
-    ONLINE = "online"
-    OFFLINE = "offline"
-    UNAVAILABLE = "unavailable"
-
-
-@dataclass
-class Presence(SerializableAttrs['Presence']):
-    presence: PresenceState
-    last_active_ago: int = None
-    status_msg: str = None
-    currently_active: bool = None

@@ -24,10 +24,13 @@ from .event import (EventType,
                     AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                     RoomTagAccountDataEventContent,
 
+                    TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
+                    PresenceEventContent, SingleReceiptEventContent, ReceiptEventContent,
+                    ReceiptEvent, ReceiptType,
+
                     Event, EventContent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
-                   RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages, Presence,
-                   PresenceState)
+                   RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages)
 from .users import User, Member, UserSearchResults
 from .media import MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio
 from .util import (SerializerError, Serializable, SerializableEnum, SerializableAttrs,

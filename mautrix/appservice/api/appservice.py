@@ -44,7 +44,7 @@ class AppServiceAPI(HTTPAPI):
                 users.
         """
         super().__init__(base_url=base_url, token=token, loop=loop,
-                         log=log if real_user or child else log.getChild("api"),
+                         log=log if (real_user or child) else log.getChild("api"),
                          client_session=client_session, txn_id=0 if not child else None)
         self.identity: UserID = identity
         self.bot_mxid: UserID = bot_mxid
@@ -102,9 +102,10 @@ class AppServiceAPI(HTTPAPI):
         try:
             return self.real_users[mxid]
         except KeyError:
-            child = self.__class__(base_url or self.base_url, token, mxid, self.log,
-                                   self.state_store, self.session, real_user=True,
-                                   real_user_content_key=self.real_user_content_key)
+            child = self.__class__(base_url=base_url or self.base_url, token=token, identity=mxid,
+                                   log=self.log, state_store=self.state_store,
+                                   client_session=self.session, real_user=True,
+                                   real_user_content_key=self.real_user_content_key, loop=self.loop)
             self.real_users[mxid] = child
             return child
 
