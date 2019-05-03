@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
 from attr import dataclass
+import attr
 
 from ..util import SerializableAttrs
 from ..primitive import EventID
@@ -22,7 +23,7 @@ class RedactionEvent(BaseRoomEvent, SerializableAttrs['RedactionEvent']):
     """A m.room.redaction event"""
     content: RedactionEventContent
     redacts: EventID
-    _unsigned: Optional[BaseUnsigned] = None
+    _unsigned: Optional[BaseUnsigned] = attr.ib(default=None, metadata={"json": "unsigned"})
 
     @property
     def unsigned(self) -> BaseUnsigned:

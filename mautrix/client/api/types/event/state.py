@@ -116,6 +116,14 @@ StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
 
 
 @dataclass
+class StrippedStateUnsigned(BaseUnsigned, SerializableAttrs['StrippedStateUnsigned']):
+    """Unsigned information sent with state events."""
+    prev_content: StateEventContent = None
+    prev_sender: UserID = None
+    replaces_state: EventID = None
+
+
+@dataclass
 class StrippedStateEvent(SerializableAttrs['StrippedStateEvent']):
     """Stripped state events included with some invite events."""
     content: StateEventContent = None
@@ -123,33 +131,21 @@ class StrippedStateEvent(SerializableAttrs['StrippedStateEvent']):
     type: EventType = None
     state_key: str = None
 
-    _unsigned: Optional['StateUnsigned'] = None
-
-    @property
-    def unsigned(self) -> 'StateUnsigned':
-        if not self._unsigned:
-            self._unsigned = StateUnsigned()
-        return self._unsigned
-
-    @unsigned.setter
-    def unsigned(self, value: 'StateUnsigned') -> None:
-        self._unsigned = value
+    unsigned: Optional[StrippedStateUnsigned] = None
 
     @classmethod
     def deserialize(cls, data: JSON) -> 'StrippedStateEvent':
         try:
-            data.get("content", {})["__mautrix_event_type"] = EventType.find(data.get("type", None))
+            event_type = EventType.find(data.get("type", None))
+            data.get("content", {})["__mautrix_event_type"] = event_type
+            data.get("unsigned", {}).get("prev_content", {})["__mautrix_event_type"] = event_type
         except ValueError:
             pass
         return super().deserialize(data)
 
 
 @dataclass
-class StateUnsigned(BaseUnsigned, SerializableAttrs['StateUnsigned']):
-    """Unsigned information sent with state events."""
-    prev_content: StateEventContent = None
-    prev_sender: UserID = None
-    replaces_state: EventID = None
+class StateUnsigned(StrippedStateUnsigned, SerializableAttrs['StateUnsigned']):
     invite_room_state: Optional[List[StrippedStateEvent]] = None
 
 
@@ -170,17 +166,7 @@ class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
     """A room state event."""
     state_key: str
     content: StateEventContent
-    _unsigned: Optional[StateUnsigned] = None
-
-    @property
-    def unsigned(self) -> StateUnsigned:
-        if not self._unsigned:
-            self._unsigned = StateUnsigned()
-        return self._unsigned
-
-    @unsigned.setter
-    def unsigned(self, value: StateUnsigned) -> None:
-        self._unsigned = value
+    unsigned: Optional[StateUnsigned] = None
 
     @classmethod
     def deserialize(cls, data: JSON) -> 'StateEvent':

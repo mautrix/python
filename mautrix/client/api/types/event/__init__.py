@@ -8,8 +8,7 @@ from .redaction import RedactionEventContent, RedactionEvent
 from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
                       LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format,
                       MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
-                      TextMessageEventContent, BaseMessageEventContent, MatchedCommand, RelatesTo,
-                      MatchedPassiveCommand, BaseFileInfo)
+                      TextMessageEventContent, BaseMessageEventContent, RelatesTo, BaseFileInfo)
 from .state import (PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
                     RoomNameStateEventContent, RoomTopicStateEventContent,

@@ -251,7 +251,8 @@ class IntentAPI(ClientAPI):
         await super().set_typing(room_id, timeout if is_typing else 0)
         self.state_store.set_typing(room_id, self.mxid, is_typing, timeout)
 
-    async def error_and_leave(self, room_id: RoomID, text: str, html: Optional[str] = None):
+    async def error_and_leave(self, room_id: RoomID, text: Optional[str] = None,
+                              html: Optional[str] = None) -> None:
         await self.ensure_joined(room_id)
         await self.send_notice(room_id, text, html=html)
         await self.leave_room(room_id)

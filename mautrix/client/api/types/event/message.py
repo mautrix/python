@@ -77,24 +77,6 @@ class RelatesTo(SerializableAttrs['RelatesTo']):
 
 
 # endregion
-# region Matched commands
-
-@dataclass
-class MatchedCommand(SerializableAttrs['MatchedCommand']):
-    target: UserID = None
-    matched: str = None
-    arguments: Dict[str, str] = None
-
-
-@dataclass
-class MatchedPassiveCommand(SerializableAttrs['MatchedPassiveCommand']):
-    captured: List[List[str]] = None
-
-    command: str = None
-    arguments: Dict[str, str] = None
-
-
-# endregion
 # region Base event content
 
 class BaseMessageEventContentFuncs:
@@ -235,7 +217,6 @@ class TextMessageEventContent(BaseMessageEventContent,
     format: Format = None
     formatted_body: str = None
 
-    command: MatchedCommand = attr.ib(default=None, metadata={"json": "m.command"})
     _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
 
     def set_reply(self, in_reply_to: 'MessageEvent') -> None:
@@ -279,9 +260,6 @@ MessageEventContent = Union[TextMessageEventContent, MediaMessageEventContent,
 class MessageUnsigned(BaseUnsigned, SerializableAttrs['MessageUnsigned']):
     """Unsigned information sent with message events."""
     transaction_id: str = None
-    passive_command: Dict[str, MatchedPassiveCommand] = attr.ib(default=None,
-                                                                metadata={
-                                                                    "json": "m.passive_command"})
 
 
 html_reply_fallback_format = ("<mx-reply><blockquote>"
@@ -304,17 +282,7 @@ media_reply_fallback_body_map = {
 class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
     """An m.room.message event"""
     content: MessageEventContent
-    _unsigned: Optional[MessageUnsigned] = None
-
-    @property
-    def unsigned(self) -> MessageUnsigned:
-        if not self._unsigned:
-            self._unsigned = MessageUnsigned()
-        return self._unsigned
-
-    @unsigned.setter
-    def unsigned(self, value: MessageUnsigned) -> None:
-        self._unsigned = value
+    unsigned: Optional[MessageUnsigned] = None
 
     @staticmethod
     @deserializer(MessageEventContent)

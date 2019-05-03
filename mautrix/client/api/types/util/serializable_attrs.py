@@ -109,7 +109,7 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
         return _dict_to_attrs(cls, value, default, default_if_empty=True)
     elif cls == Any or cls == JSON:
         return value
-    elif type(cls) == type(Union):
+    elif getattr(cls, "__origin__", None) is Union:
         if len(cls.__args__) == 2 and isinstance(None, cls.__args__[1]):
             return _deserialize(cls.__args__[0], value, default)
     elif isinstance(cls, type):
