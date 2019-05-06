@@ -82,6 +82,10 @@ class AppService:
                                   self._http_handle_transaction)
         self.app.router.add_route("GET", "/rooms/{alias}", self._http_query_alias)
         self.app.router.add_route("GET", "/users/{user_id}", self._http_query_user)
+        self.app.router.add_route("PUT", "/_matrix/app/v1/transactions/{transaction_id}",
+                                  self._http_handle_transaction)
+        self.app.router.add_route("GET", "/_matrix/app/v1/rooms/{alias}", self._http_query_alias)
+        self.app.router.add_route("GET", "/_matrix/app/v1/users/{user_id}", self._http_query_user)
 
         async def update_state(event: Event):
             self.state_store.update_state(event)
@@ -102,14 +106,15 @@ class AppService:
         else:
             return self._intent
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> None:
         await self.start()
 
-    async def __aexit__(self):
+    async def __aexit__(self) -> None:
         await self.stop()
 
-    async def start(self, host: str = "127.0.0.1", port: int = 8080):
+    async def start(self, host: str = "127.0.0.1", port: int = 8080) -> None:
         connector = None
+        self.log.debug(f"Starting appservice web server on {host}:{port}")
         if self.server.startswith("https://") and not self.verify_ssl:
             connector = aiohttp.TCPConnector(verify_ssl=False)
         self._http_session = aiohttp.ClientSession(loop=self.loop, connector=connector)
@@ -121,6 +126,7 @@ class AppService:
         await self.loop.create_server(self.app.make_handler(), host, port)
 
     async def stop(self) -> None:
+        self.log.debug("Stopping appservice web server")
         self._intent = None
         await self._http_session.close()
         self._http_session = None
