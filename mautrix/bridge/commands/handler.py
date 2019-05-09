@@ -72,6 +72,7 @@ class CommandEvent:
     log: logging.Logger
     loop: asyncio.AbstractEventLoop
     config: BaseBridgeConfig
+    processor: 'CommandProcessor'
     command_prefix: str
     room_id: RoomID
     event_id: EventID
@@ -88,6 +89,7 @@ class CommandEvent:
         self.log = processor.log
         self.loop = processor.loop
         self.config = processor.config
+        self.processor = processor
         self.command_prefix = processor.command_prefix
         self.room_id = room_id
         self.event_id = event_id

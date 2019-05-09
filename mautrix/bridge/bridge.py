@@ -39,6 +39,7 @@ class Bridge:
     matrix_class: Type[BaseMatrixHandler]
     matrix: BaseMatrixHandler
     startup_actions: Optional[Iterable[Awaitable]]
+    shutdown_actions: Optional[Iterable[Awaitable]]
     name: str
     version: str
     command: str
@@ -74,6 +75,7 @@ class Bridge:
         if state_store_class:
             self.state_store_class = state_store_class
         self.startup_actions = None
+        self.shutdown_actions = None
 
     def run(self) -> None:
         self._prepare()
@@ -173,6 +175,7 @@ class Bridge:
 
     async def stop(self) -> None:
         await self.az.stop()
+        await asyncio.gather(*(self.startup_actions or []), loop=self.loop)
 
     def prepare_shutdown(self) -> None:
         pass

@@ -39,6 +39,7 @@ class ColorFormatter(Formatter):
                 return MAU_COLOR + module + RESET
         elif module.startswith("aiohttp"):
             return AIOHTTP_COLOR + module + RESET
+        return module
 
     def format(self, record: LogRecord):
         colored_record: LogRecord = copy(record)
