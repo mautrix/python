@@ -35,7 +35,7 @@ async def _get_help_text(evt: CommandEvent) -> str:
     if cache_key not in help_cache:
         help_sections: Dict[HelpSection, List[str]] = {}
         for handler in command_handlers.values():
-            if handler.has_help and handler.has_permission(*cache_key):
+            if handler.has_help and handler.has_permission(cache_key):
                 help_sections.setdefault(handler.help_section, [])
                 help_sections[handler.help_section].append(handler.help + "  ")
         help_sorted = sorted(help_sections.items(), key=lambda item: item[0].order)
