@@ -44,9 +44,10 @@ class Bridge:
     version: str
     command: str
     description: str
+    real_user_content_key: Optional[str] = None
 
     def __init__(self, name: str = None, description: str = None, command: str = None,
-                 version: str = None,
+                 version: str = None, real_user_content_key: Optional[str] = None,
                  config_class: Type[BaseBridgeConfig] = None,
                  matrix_class: Type[BaseMatrixHandler] = None,
                  state_store_class: Type[SQLStateStore] = None) -> None:
@@ -66,6 +67,8 @@ class Bridge:
 
         if name:
             self.name = name
+        if real_user_content_key:
+            self.real_user_content_key = real_user_content_key
         if version:
             self.version = version
         if config_class:
@@ -135,7 +138,7 @@ class Bridge:
 
                              state_store=self.state_store,
 
-                             real_user_content_key="net.maunium.facebook.puppet",
+                             real_user_content_key=self.real_user_content_key,
 
                              aiohttp_params={
                                  "client_max_size": self.config["appservice.max_body_size"] * mb
