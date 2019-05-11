@@ -184,9 +184,10 @@ class HTTPAPI:
         if method not in ["GET", "PUT", "DELETE", "POST"]:
             raise MatrixError("Unsupported HTTP method: %s" % method)
 
-        if "Content-Type" not in headers:
+        is_json_ish = isinstance(content, (dict, list, str, int, float, bool, type(None)))
+        if "Content-Type" not in headers and is_json_ish:
             headers["Content-Type"] = "application/json"
-        if headers.get("Content-Type", None) == "application/json":
+        if headers.get("Content-Type", None) == "application/json" and is_json_ish:
             content = json.dumps(content)
 
         if self.identity and not self.is_real_user:
