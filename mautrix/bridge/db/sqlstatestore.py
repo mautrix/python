@@ -24,13 +24,21 @@ class SQLStateStore(StateStore):
         self._registered = {}
 
     def is_registered(self, user_id: UserID) -> bool:
+        if not user_id:
+            raise ValueError("user_id is empty")
         return self._registered.get(user_id, False)
 
     def registered(self, user_id: UserID) -> None:
+        if not user_id:
+            raise ValueError("user_id is empty")
         self._registered[user_id] = True
 
     def _get_user_profile(self, room_id: RoomID, user_id: UserID, create: bool = True
                           ) -> UserProfile:
+        if not room_id:
+            raise ValueError("room_id is empty")
+        elif not user_id:
+            raise ValueError("user_id is empty")
         key = (room_id, user_id)
         try:
             return self._profile_cache[key]
@@ -47,9 +55,19 @@ class SQLStateStore(StateStore):
         return profile
 
     def get_member(self, room_id: RoomID, user_id: UserID) -> Member:
+        if not room_id:
+            raise ValueError("room_id is empty")
+        elif not user_id:
+            raise ValueError("user_id is empty")
         return self._get_user_profile(room_id, user_id).member()
 
     def set_member(self, room_id: RoomID, user_id: UserID, member: Member) -> None:
+        if not room_id:
+            raise ValueError("room_id is empty")
+        elif not user_id:
+            raise ValueError("user_id is empty")
+        elif not member:
+            raise ValueError("member info is empty")
         profile = self._get_user_profile(room_id, user_id)
         profile.membership = member.membership
         profile.displayname = member.displayname or profile.displayname
@@ -57,6 +75,12 @@ class SQLStateStore(StateStore):
         profile.update()
 
     def set_membership(self, room_id: RoomID, user_id: UserID, membership: Membership) -> None:
+        if not room_id:
+            raise ValueError("room_id is empty")
+        elif not user_id:
+            raise ValueError("user_id is empty")
+        elif not membership:
+            raise ValueError("membership is empty")
         self.set_member(room_id, user_id, Member(membership=membership))
 
     def _get_room_state(self, room_id: RoomID, create: bool = True) -> RoomState:
@@ -75,12 +99,20 @@ class SQLStateStore(StateStore):
         return room
 
     def has_power_levels(self, room_id: RoomID) -> bool:
+        if not room_id:
+            raise ValueError("room_id is empty")
         return self._get_room_state(room_id).has_power_levels
 
     def get_power_levels(self, room_id: RoomID) -> PowerLevelStateEventContent:
+        if not room_id:
+            raise ValueError("room_id is empty")
         return self._get_room_state(room_id).power_levels
 
     def set_power_level(self, room_id: RoomID, user_id: UserID, level: int) -> None:
+        if not room_id:
+            raise ValueError("room_id is empty")
+        elif not user_id:
+            raise ValueError("user_id is empty")
         room_state = self._get_room_state(room_id)
         power_levels = room_state.power_levels
         if not power_levels:
@@ -88,11 +120,15 @@ class SQLStateStore(StateStore):
                 "users": {},
                 "events": {},
             }
-        power_levels[room_id]["users"][user_id] = level
+        power_levels[room_id]["users"][user_id] = level or 0
         room_state.power_levels = power_levels
         room_state.update()
 
     def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
+        if not room_id:
+            raise ValueError("room_id is empty")
+        elif not content:
+            raise ValueError("content is empty")
         state = self._get_room_state(room_id)
         state.power_levels = content
         state.update()
