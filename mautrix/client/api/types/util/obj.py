@@ -16,9 +16,9 @@ class Obj(GenericSerializable['Obj']):
         name = name.rstrip('_')
         obj = self.__dict__.get(name)
         if obj is None:
-            raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
-        else:
-            return obj
+            obj = Obj()
+            self.__dict__[name] = obj
+        return obj
 
     def __getitem__(self, name):
         return self.__dict__.get(name)
