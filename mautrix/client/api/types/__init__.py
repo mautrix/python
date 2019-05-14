@@ -27,10 +27,10 @@ from .event import (EventType,
                     PresenceEventContent, SingleReceiptEventContent, ReceiptEventContent,
                     ReceiptEvent, ReceiptType,
 
-                    Event, EventContent)
+                    Event, EventContent, GenericEvent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
                    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages)
 from .users import User, Member, UserSearchResults
 from .media import MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio
-from .util import (SerializerError, Serializable, SerializableEnum, SerializableAttrs,
+from .util import (Obj, Lst, SerializerError, Serializable, SerializableEnum, SerializableAttrs,
                    serializer, deserializer)

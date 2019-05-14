@@ -19,4 +19,4 @@ from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInf
 from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
                         PresenceEventContent, SingleReceiptEventContent, ReceiptEventContent,
                         ReceiptEvent, ReceiptType)
-from .generic import Event, EventContent
+from .generic import Event, EventContent, GenericEvent

@@ -21,7 +21,8 @@ from .client.api.types import (
     StateEventContent, AccountDataEvent, AccountDataEventContent, RoomTagInfo,
     RoomTagAccountDataEventContent, Event, EventContent, BaseFileInfo, PresenceEventContent,
     PresenceState, TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
-    SingleReceiptEventContent, ReceiptEventContent, ReceiptEvent, ReceiptType,
+    SingleReceiptEventContent, ReceiptEventContent, ReceiptEvent, ReceiptType, GenericEvent,
+    Obj, Lst,
 
     User, Member, UserSearchResults,
 
