@@ -772,6 +772,8 @@ class IntentAPI:
 
         if self.client.is_real_user and self.client.real_user_content_key:
             content[self.client.real_user_content_key] = True
+        if content.get("m.relates_to", "not None") is None:
+            del content["m.relates_to"]
 
         txn_id = txn_id or str(self.client.txn_id) + str(int(time() * 1000))
         self.client.txn_id += 1
