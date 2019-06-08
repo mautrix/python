@@ -10,7 +10,7 @@ import asyncio
 
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent)
-from mautrix.errors import IntentError, MatrixError
+from mautrix.errors import IntentError, MatrixError, MForbidden
 from mautrix.appservice import AppService
 
 from .commands import CommandProcessor
@@ -34,6 +34,23 @@ class BaseMatrixHandler(ABC):
         self.commands = command_processor or CommandProcessor(az=az, config=config, loop=loop)
         self.az.matrix_event_handler(self.int_handle_event)
 
+    async def wait_for_connection(self) -> None:
+        self.log.info("Ensuring connectivity to homeserver")
+        errors = 0
+        while True:
+            try:
+                await self.az.intent.whoami()
+                break
+            except MForbidden:
+                raise
+            except Exception:
+                errors += 1
+                if errors <= 6:
+                    self.log.exception("Connection to homeserver failed, retrying in 10 seconds")
+                    await asyncio.sleep(10)
+                else:
+                    raise
+
     async def init_as_bot(self) -> None:
         self.log.debug("Initializing appservice bot")
         displayname = self.config["appservice.bot_displayname"]
@@ -41,15 +58,15 @@ class BaseMatrixHandler(ABC):
             try:
                 await self.az.intent.set_displayname(
                     displayname if displayname != "remove" else "")
-            except asyncio.TimeoutError:
-                self.log.exception("TimeoutError when trying to set displayname")
+            except Exception:
+                self.log.exception("Failed to set bot displayname")
 
         avatar = self.config["appservice.bot_avatar"]
         if avatar:
             try:
                 await self.az.intent.set_avatar_url(avatar if avatar != "remove" else "")
-            except asyncio.TimeoutError:
-                self.log.exception("TimeoutError when trying to set avatar")
+            except Exception:
+                self.log.exception("Failed to set bot avatar")
 
     @abstractmethod
     async def get_user(self, user_id: UserID) -> 'BaseUser':
