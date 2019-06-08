@@ -104,15 +104,23 @@ class RoomTopicStateEventContent(SerializableAttrs['RoomTopicStateEventContent']
 class RoomAvatarStateEventContent(SerializableAttrs['RoomAvatarStateEventContent']):
     url: ContentURI = None
 
+
 @dataclass
 class RoomPinnedEventsStateEventContent(SerializableAttrs['RoomPinnedEventsStateEventContent']):
     pinned: List[EventID] = None
 
 
+@dataclass
+class RoomTombstoneEventContent(SerializableAttrs['RoomTombstoneEventContent']):
+    body: str = None
+    replacement_room: RoomID = None
+
+
 StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
                           AliasesStateEventContent, CanonicalAliasStateEventContent,
                           RoomNameStateEventContent, RoomAvatarStateEventContent,
-                          RoomTopicStateEventContent, RoomPinnedEventsStateEventContent, Obj]
+                          RoomTopicStateEventContent, RoomPinnedEventsStateEventContent,
+                          RoomTombstoneEventContent, Obj]
 
 
 @dataclass
@@ -158,6 +166,7 @@ state_event_content_map = {
     EventType.ROOM_NAME: RoomNameStateEventContent,
     EventType.ROOM_AVATAR: RoomAvatarStateEventContent,
     EventType.ROOM_TOPIC: RoomTopicStateEventContent,
+    EventType.ROOM_TOMBSTONE: RoomTombstoneEventContent,
 }
 
 

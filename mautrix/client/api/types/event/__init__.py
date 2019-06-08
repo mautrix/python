@@ -13,7 +13,7 @@ from .state import (PowerLevelStateEventContent, Membership, MemberStateEventCon
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
                     RoomNameStateEventContent, RoomTopicStateEventContent,
                     RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
-                    StateEventContent)
+                    RoomTombstoneEventContent, StateEventContent)
 from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                            RoomTagAccountDataEventContent)
 from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, PresenceState,

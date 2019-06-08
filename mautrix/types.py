@@ -22,7 +22,7 @@ from .client.api.types import (
     RoomTagAccountDataEventContent, Event, EventContent, BaseFileInfo, PresenceEventContent,
     PresenceState, TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
     SingleReceiptEventContent, ReceiptEventContent, ReceiptEvent, ReceiptType, GenericEvent,
-    Obj, Lst,
+    Obj, Lst, RoomTombstoneEventContent,
 
     User, Member, UserSearchResults,
 

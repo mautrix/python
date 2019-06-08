@@ -35,6 +35,7 @@ class EventType(Serializable):
     ROOM_TOPIC: 'EventType'
     ROOM_AVATAR: 'EventType'
     ROOM_PINNED_EVENTS: 'EventType'
+    ROOM_TOMBSTONE: 'EventType'
 
     ROOM_REDACTION: 'EventType'
     ROOM_MESSAGE: 'EventType'
@@ -116,6 +117,7 @@ _standard_types = {
         "m.room.topic": "ROOM_TOPIC",
         "m.room.avatar": "ROOM_AVATAR",
         "m.room.pinned_events": "ROOM_PINNED_EVENTS",
+        "m.room.tombstone": "ROOM_TOMBSTONE",
     },
     EventType.Class.MESSAGE: {
         "m.room.redaction": "ROOM_REDACTION",

@@ -18,7 +18,7 @@ from .event import (EventType,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
                     RoomNameStateEventContent, RoomTopicStateEventContent,
                     RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
-                    StateEventContent,
+                    RoomTombstoneEventContent, StateEventContent,
 
                     AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                     RoomTagAccountDataEventContent,
