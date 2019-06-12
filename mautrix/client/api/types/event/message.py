@@ -3,15 +3,17 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Union, Dict, List, Pattern, TYPE_CHECKING
+from typing import Optional, Union, Pattern
 from html import escape
-from attr import dataclass
-import attr
+import warnings
 import re
 
+from attr import dataclass
+import attr
+
 from .....api import JSON
-from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
-from ..primitive import ContentURI, EventID, UserID
+from ..util import SerializableEnum, SerializableAttrs, Serializable, Obj, deserializer, serializer
+from ..primitive import ContentURI, EventID
 from .base import BaseRoomEvent, BaseUnsigned
 
 
@@ -59,21 +61,66 @@ class InReplyTo(SerializableAttrs['InReplyTo']):
     event_id: EventID = None
 
 
+class RelationType(SerializableEnum):
+    ANNOTATION = "m.annotation"
+    REFERENCE = "m.reference"
+    REPLACE = "m.replace"
+
+
 @dataclass
-class RelatesTo(SerializableAttrs['RelatesTo']):
-    """Message relations. Currently only used for replies, but will be used for reactions, edits,
-    threading, etc in the future."""
-    _in_reply_to: InReplyTo = attr.ib(default=None, metadata={"json": "m.in_reply_to"})
+class RelatesTo(Serializable):
+    """Message relations. Used for reactions, edits and replies."""
+    rel_type: RelationType = None
+    event_id: Optional[EventID] = None
+    key: Optional[str] = None
+
+    @classmethod
+    def deserialize(cls, data: JSON) -> Optional['RelatesTo']:
+        if not data:
+            return None
+        try:
+            return cls(rel_type=RelationType.deserialize(data["rel_type"]),
+                       event_id=data.get("event_id", None), key=data.get("key", None))
+        except KeyError:
+            pass
+        try:
+            return cls(rel_type=RelationType.REFERENCE, event_id=data["m.in_reply_to"]["event_id"])
+        except KeyError:
+            pass
+        return None
+
+    def serialize(self) -> JSON:
+        if self.rel_type == RelationType.REFERENCE:
+            return {
+                "m.in_reply_to": {
+                    "event_id": self.event_id,
+                },
+                "rel_type": "m.reference",
+                "event_id": self.event_id,
+            }
+        data = {
+            "rel_type": self.rel_type.json(),
+        }
+        if self.event_id:
+            data["event_id"] = self.event_id
+        if self.key:
+            data["key"] = self.key
+        return data
 
     @property
     def in_reply_to(self) -> InReplyTo:
-        if self._in_reply_to is None:
-            self._in_reply_to = InReplyTo()
-        return self._in_reply_to
+        warnings.warn("m.in_reply_to is deprecated. Use rel_type=RelationType.REFERENCE and "
+                      "event_id instead", category=DeprecationWarning)
+        if self.rel_type == RelationType.REFERENCE:
+            return InReplyTo(event_id=self.event_id)
+        return InReplyTo()
 
     @in_reply_to.setter
     def in_reply_to(self, in_reply_to: InReplyTo) -> None:
-        self._in_reply_to = in_reply_to
+        warnings.warn("m.in_reply_to is deprecated. Use rel_type=RelationType.REFERENCE and "
+                      "event_id instead", category=DeprecationWarning)
+        self.rel_type = RelationType.REFERENCE
+        self.event_id = in_reply_to.event_id
 
 
 # endregion
@@ -86,7 +133,12 @@ class BaseMessageEventContentFuncs:
     _relates_to: Optional[RelatesTo]
 
     def set_reply(self, in_reply_to: 'MessageEvent') -> None:
-        self.relates_to.in_reply_to.event_id = in_reply_to.event_id
+        self.relates_to.rel_type = RelationType.REFERENCE
+        self.relates_to.event_id = in_reply_to.event_id
+
+    def set_edit(self, edits: 'MessageEvent') -> None:
+        self.relates_to.rel_type = RelationType.REPLACE
+        self.relates_to.event_id = edits.event_id
 
     @property
     def relates_to(self) -> RelatesTo:
@@ -99,8 +151,13 @@ class BaseMessageEventContentFuncs:
         self._relates_to = relates_to
 
     def get_reply_to(self) -> Optional[EventID]:
-        if self._relates_to and self._relates_to._in_reply_to:
-            return self._relates_to._in_reply_to.event_id
+        if self._relates_to and self._relates_to.rel_type == RelationType.REFERENCE:
+            return self._relates_to.event_id
+        return None
+
+    def get_edit(self) -> Optional[EventID]:
+        if self._relates_to and self._relates_to.rel_type == RelationType.REPLACE:
+            return self._relates_to.event_id
         return None
 
     def trim_reply_fallback(self) -> None:
@@ -289,6 +346,10 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
     def deserialize_content(data: JSON) -> MessageEventContent:
         if not isinstance(data, dict):
             return Obj()
+        rel = (data.get("m.relates_to", None) or {})
+        if rel.get("rel_type", None) == RelationType.REPLACE.value:
+            data = data.get("m.new_content", data)
+            data["m.relates_to"] = rel
         msgtype = data.get("msgtype", None)
         if msgtype in TEXT_MESSAGE_TYPES:
             return TextMessageEventContent.deserialize(data)
@@ -299,6 +360,21 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
             return LocationMessageEventContent.deserialize(data)
         else:
             return Obj(**data)
+
+    @staticmethod
+    @serializer(MessageEventContent)
+    def serialize_content(content: MessageEventContent) -> JSON:
+        data = content.serialize()
+        evt = content.get_edit()
+        if evt:
+            new_content = {**data}
+            del new_content["m.relates_to"]
+            data["m.new_content"] = new_content
+            if "body" in data:
+                data["body"] = f"* {data['body']}"
+            if "formatted_body" in data:
+                data["formatted_body"] = f"* {data['formatted_body']}"
+        return data
 
     def make_reply_fallback_html(self) -> str:
         """Generate the HTML fallback for messages replying to this event."""
