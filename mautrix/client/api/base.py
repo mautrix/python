@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Pattern, Optional, Tuple
+import warnings
 import asyncio
 import logging
 import re
@@ -48,6 +49,12 @@ class BaseClientAPI:
 
     @classmethod
     def parse_mxid(cls, mxid: UserID) -> Tuple[str, str]:
+        warnings.warn("parse_mxid is deprecated, use parse_user_id instead",
+                      category=DeprecationWarning)
+        return cls.parse_user_id(mxid)
+
+    @classmethod
+    def parse_user_id(cls, mxid: UserID) -> Tuple[str, str]:
         """
         Parse the localpart and server name from a Matrix user ID.
 
@@ -55,12 +62,22 @@ class BaseClientAPI:
             mxid: The Matrix user ID.
 
         Returns:
-            A tuple of (localpart, server_name)
+            A tuple of (localpart, server_name).
+
+        Raises:
+            ValueError: if the given user ID is invalid.
         """
-        mxid_parts = cls.mxid_regex.match(mxid)
-        if not mxid_parts:
-            raise ValueError("invalid MXID")
-        return mxid_parts.group(1), mxid_parts.group(2)
+        if len(mxid) == 0:
+            raise ValueError("User ID is empty")
+        elif mxid[0] == "@":
+            raise ValueError("User IDs start with @")
+        try:
+            sep = mxid.index(":")
+        except ValueError as e:
+            raise ValueError("User ID must contain domain separator") from e
+        if sep == len(mxid) - 1:
+            raise ValueError("User ID must contain domain")
+        return mxid[1:sep], mxid[sep + 1:]
 
     def set_mxid(self, mxid: UserID) -> None:
         """
@@ -69,5 +86,5 @@ class BaseClientAPI:
         Args:
             mxid: The new Matrix user ID.
         """
-        self.localpart, self.domain = self.parse_mxid(mxid)
+        self.localpart, self.domain = self.parse_user_id(mxid)
         self.mxid = mxid
