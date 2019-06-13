@@ -53,12 +53,25 @@ class MessageType(SerializableEnum):
 # endregion
 # region Relations
 
-@dataclass
-class InReplyTo(SerializableAttrs['InReplyTo']):
-    """Message reply info. Currently only contains the ID of the event that an event is replying to.
-    Cross-room replies are not possible, as other users may not be able to view events in the other
-    room."""
-    event_id: EventID = None
+class InReplyTo:
+    def __init__(self, event_id: Optional[EventID] = None,
+                 proxy_target: Optional['RelatesTo'] = None) -> None:
+        self._event_id = event_id
+        self._proxy_target = proxy_target
+
+    @property
+    def event_id(self) -> EventID:
+        if self._proxy_target:
+            return self._proxy_target.event_id
+        return self._event_id
+
+    @event_id.setter
+    def event_id(self, event_id: EventID) -> None:
+        if self._proxy_target:
+            self._proxy_target.rel_type = RelationType.REFERENCE
+            self._proxy_target.event_id = event_id
+        else:
+            self._event_id = event_id
 
 
 class RelationType(SerializableEnum):
@@ -112,7 +125,7 @@ class RelatesTo(Serializable):
         warnings.warn("m.in_reply_to is deprecated. Use rel_type=RelationType.REFERENCE and "
                       "event_id instead", category=DeprecationWarning)
         if self.rel_type == RelationType.REFERENCE:
-            return InReplyTo(event_id=self.event_id)
+            return InReplyTo(proxy_target=self)
         return InReplyTo()
 
     @in_reply_to.setter
@@ -121,6 +134,7 @@ class RelatesTo(Serializable):
                       "event_id instead", category=DeprecationWarning)
         self.rel_type = RelationType.REFERENCE
         self.event_id = in_reply_to.event_id
+        in_reply_to._proxy_target = self
 
 
 # endregion
