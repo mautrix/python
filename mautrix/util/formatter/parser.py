@@ -124,7 +124,7 @@ class MatrixParser:
 
         room = cls.room_regex.match(href)
         if room:
-            new_msg = cls.room_pill_to_fstring(msg, RoomAlias(mention.group(1)))
+            new_msg = cls.room_pill_to_fstring(msg, RoomAlias(room.group(1)))
             if new_msg:
                 return new_msg
 
