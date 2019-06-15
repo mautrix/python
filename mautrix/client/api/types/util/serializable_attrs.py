@@ -106,6 +106,8 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
     except KeyError:
         pass
     if attr.has(cls):
+        if issubclass(cls, Serializable) and cls.deserialize.__func__ != SerializableAttrs.deserialize.__func__:
+            return cls.deserialize(value)
         return _dict_to_attrs(cls, value, default, default_if_empty=True)
     elif cls == Any or cls == JSON:
         return value
@@ -160,14 +162,14 @@ def _attrs_to_dict(data: T) -> JSON:
 
 
 def _serialize(val: Any) -> JSON:
-    if attr.has(val.__class__):
-        return _attrs_to_dict(val)
+    if isinstance(val, Serializable):
+        return val.serialize()
     elif isinstance(val, (tuple, list, set)):
         return [_serialize(subval) for subval in val]
     elif isinstance(val, dict):
         return {_serialize(subkey): _serialize(subval) for subkey, subval in val.items()}
-    elif isinstance(val, Serializable):
-        return val.serialize()
+    elif attr.has(val.__class__):
+        return _attrs_to_dict(val)
     return val
 
 

@@ -103,17 +103,13 @@ class RelatesTo(Serializable):
         return None
 
     def serialize(self) -> JSON:
-        if self.rel_type == RelationType.REFERENCE:
-            return {
-                "m.in_reply_to": {
-                    "event_id": self.event_id,
-                },
-                "rel_type": "m.reference",
-                "event_id": self.event_id,
-            }
         data = {
-            "rel_type": self.rel_type.json(),
+            "rel_type": self.rel_type.serialize(),
         }
+        if self.rel_type == RelationType.REFERENCE:
+            data["m.in_reply_to"] = {
+                "event_id": self.event_id
+            }
         if self.event_id:
             data["event_id"] = self.event_id
         if self.key:
@@ -299,10 +295,7 @@ class TextMessageEventContent(BaseMessageEventContent,
         self.body = in_reply_to.make_reply_fallback_text() + self.body
 
     def trim_reply_fallback(self) -> None:
-        has_reply = (self._relates_to and
-                     self._relates_to._in_reply_to and
-                     self._relates_to._in_reply_to.event_id)
-        if has_reply:
+        if self.get_reply_to():
             self._trim_reply_fallback_text()
             self._trim_reply_fallback_html()
 

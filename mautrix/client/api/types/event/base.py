@@ -39,7 +39,9 @@ class EventType(Serializable):
 
     ROOM_REDACTION: 'EventType'
     ROOM_MESSAGE: 'EventType'
+    ROOM_ENCRYPTED: 'EventType'
     STICKER: 'EventType'
+    REACTION: 'EventType'
 
     RECEIPT: 'EventType'
     TYPING: 'EventType'
@@ -122,7 +124,9 @@ _standard_types = {
     EventType.Class.MESSAGE: {
         "m.room.redaction": "ROOM_REDACTION",
         "m.room.message": "ROOM_MESSAGE",
+        "m.room.encrypted": "ROOM_ENCRYPTED",
         "m.sticker": "STICKER",
+        "m.reaction": "REACTION",
     },
     EventType.Class.EPHEMERAL: {
         "m.receipt": "RECEIPT",
