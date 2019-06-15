@@ -69,7 +69,7 @@ class BaseClientAPI:
         """
         if len(mxid) == 0:
             raise ValueError("User ID is empty")
-        elif mxid[0] == "@":
+        elif mxid[0] != "@":
             raise ValueError("User IDs start with @")
         try:
             sep = mxid.index(":")
