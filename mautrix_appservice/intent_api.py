@@ -803,7 +803,14 @@ class IntentAPI:
         has_pl = await self._ensure_has_power_level_for(room_id, event_type, is_state_event=True)
         if has_pl:
             url = self._get_state_url(room_id, event_type, state_key)
-            return await self.client.request("PUT", url, content, **kwargs)
+            resp = await self.client.request("PUT", url, content, **kwargs)
+            self.state_store.update_state({
+                "type": event_type,
+                "room_id": room_id,
+                "state_key": state_key,
+                "content": content,
+            })
+            return resp
 
     async def get_state_event(self, room_id: str, event_type: str, state_key: Optional[str] = ""
                               ) -> dict:
