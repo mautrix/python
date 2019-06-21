@@ -11,7 +11,7 @@ from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDire
                     EventType, StateEventContent, MessageEventContent, Member, Event, ContentURI,
                     PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, ImageInfo,
                     BaseFileInfo, TextMessageEventContent, MediaMessageEventContent, PresenceState,
-                    EventContent)
+                    EventContent, ReactionEventContent, RelationType)
 from .types.event.state import state_event_content_map
 from .types.util import Obj, Serializable
 from .base import BaseClientAPI
@@ -294,6 +294,12 @@ class EventMethods(BaseClientAPI):
             The ID of the event that was sent.
         """
         return self.send_message_event(room_id, EventType.ROOM_MESSAGE, content, **kwargs)
+
+    def react(self, room_id: RoomID, event_id: EventID, key: str) -> Awaitable[None]:
+        # TODO make this use the send_relation API instead.
+        content = ReactionEventContent(relates_to=RelatesTo(rel_type=RelationType.ANNOTATION,
+                                                            event_id=event_id, key=key))
+        return self.send_message_event(room_id, EventType.REACTION, content)
 
     def send_text(self, room_id: RoomID, text: str, html: Optional[str] = None,
                   msgtype: MessageType = MessageType.TEXT, relates_to: Optional[RelatesTo] = None,
