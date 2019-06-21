@@ -8,9 +8,10 @@ from .filter import Filter, EventFilter, RoomFilter, RoomEventFilter
 from .event import (EventType,
 
                     RedactionEvent, RedactionEventContent,
+                    ReactionEventContent, ReactionEvent,
 
                     MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
-                    LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format,
+                    LocationMessageEventContent, LocationInfo, RelationType, MessageType, Format,
                     MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
                     TextMessageEventContent, BaseMessageEventContent, RelatesTo, BaseFileInfo,
 

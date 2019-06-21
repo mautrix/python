@@ -6,9 +6,10 @@
 from .base import EventType
 from .redaction import RedactionEventContent, RedactionEvent
 from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
-                      LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format,
+                      LocationMessageEventContent, LocationInfo, RelationType, MessageType, Format,
                       MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
                       TextMessageEventContent, BaseMessageEventContent, RelatesTo, BaseFileInfo)
+from .reaction import ReactionEventContent, ReactionEvent
 from .state import (PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
                     RoomNameStateEventContent, RoomTopicStateEventContent,

@@ -10,7 +10,8 @@ from ...errors import MatrixResponseError
 from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
                     EventType, StateEventContent, MessageEventContent, Member, Event, ContentURI,
                     PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, ImageInfo,
-                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent, PresenceState)
+                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent, PresenceState,
+                    EventContent)
 from .types.event.state import state_event_content_map
 from .types.util import Obj, Serializable
 from .base import BaseClientAPI
@@ -248,7 +249,7 @@ class EventMethods(BaseClientAPI):
             raise MatrixResponseError("`event_id` not in response.")
 
     async def send_message_event(self, room_id: RoomID, event_type: EventType,
-                                 content: MessageEventContent, **kwargs) -> EventID:
+                                 content: EventContent, **kwargs) -> EventID:
         """
         Send a message event to a room. Message events allow access to historical events and
         pagination, making them suited for "once-off" activity in a room.

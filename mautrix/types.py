@@ -10,9 +10,9 @@ from .client.api.types import (
 
     Filter, EventFilter, RoomFilter, RoomEventFilter,
 
-    EventType, RedactionEvent, RedactionEventContent,
+    EventType, RedactionEvent, RedactionEventContent, ReactionEventContent, ReactionEvent,
     MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
-    LocationMessageEventContent, LocationInfo, InReplyTo, MessageType, Format, MediaInfo, FileInfo,
+    LocationMessageEventContent, LocationInfo, RelationType, MessageType, Format, MediaInfo, FileInfo,
     AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent,
     BaseMessageEventContent, RelatesTo, PowerLevelStateEventContent, Membership,
     MemberStateEventContent, StateEvent, AliasesStateEventContent, CanonicalAliasStateEventContent,

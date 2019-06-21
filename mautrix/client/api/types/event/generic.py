@@ -11,8 +11,9 @@ from mautrix.api import JSON
 from ..primitive import RoomID, EventID, UserID
 from ..util import deserializer, Obj, SerializableAttrs
 from .base import EventType, BaseEvent
-from .redaction import RedactionEvent
+from .redaction import RedactionEvent, RedactionEventContent
 from .message import MessageEvent, MessageEventContent
+from .reaction import ReactionEvent, ReactionEventContent
 from .state import StateEvent, StateEventContent
 from .account_data import AccountDataEvent, AccountDataEventContent
 from .ephemeral import (ReceiptEvent, PresenceEvent, TypingEvent, ReceiptEventContent,
@@ -36,11 +37,12 @@ class GenericEvent(BaseEvent, SerializableAttrs['GenericEvent']):
     readacts: Optional[EventID] = None
 
 
-Event = NewType("Event", Union[MessageEvent, RedactionEvent, StateEvent, ReceiptEvent,
+Event = NewType("Event", Union[MessageEvent,ReactionEvent, RedactionEvent, StateEvent, ReceiptEvent,
                                PresenceEvent, TypingEvent, GenericEvent])
 
-EventContent = Union[MessageEventContent, StateEventContent, AccountDataEventContent,
-                     ReceiptEventContent, TypingEventContent, Obj]
+EventContent = Union[MessageEventContent, RedactionEventContent, ReactionEventContent,
+                     StateEventContent, AccountDataEventContent, ReceiptEventContent,
+                     TypingEventContent, Obj]
 
 
 @deserializer(Event)
@@ -51,6 +53,8 @@ def deserialize_event(data: JSON) -> Event:
     elif event_type == EventType.STICKER:
         data.get("content", {})["msgtype"] = "m.sticker"
         return MessageEvent.deserialize(data)
+    elif event_type == EventType.REACTION:
+        return ReactionEvent.deserialize(data)
     elif event_type == EventType.ROOM_REDACTION:
         return RedactionEvent.deserialize(data)
     elif event_type.is_state:

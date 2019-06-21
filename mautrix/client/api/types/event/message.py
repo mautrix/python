@@ -116,22 +116,6 @@ class RelatesTo(Serializable):
             data["key"] = self.key
         return data
 
-    @property
-    def in_reply_to(self) -> InReplyTo:
-        warnings.warn("m.in_reply_to is deprecated. Use rel_type=RelationType.REFERENCE and "
-                      "event_id instead", category=DeprecationWarning)
-        if self.rel_type == RelationType.REFERENCE:
-            return InReplyTo(proxy_target=self)
-        return InReplyTo()
-
-    @in_reply_to.setter
-    def in_reply_to(self, in_reply_to: InReplyTo) -> None:
-        warnings.warn("m.in_reply_to is deprecated. Use rel_type=RelationType.REFERENCE and "
-                      "event_id instead", category=DeprecationWarning)
-        self.rel_type = RelationType.REFERENCE
-        self.event_id = in_reply_to.event_id
-        in_reply_to._proxy_target = self
-
 
 # endregion
 # region Base event content
