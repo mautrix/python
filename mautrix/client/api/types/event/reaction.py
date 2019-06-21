@@ -15,7 +15,17 @@ from .message import RelatesTo
 @dataclass
 class ReactionEventContent(SerializableAttrs['ReactionEventContent']):
     """The content of an m.reaction event"""
-    relates_to: RelatesTo
+    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
+
+    @property
+    def relates_to(self) -> RelatesTo:
+        if self._relates_to is None:
+            self._relates_to = RelatesTo()
+        return self._relates_to
+
+    @relates_to.setter
+    def relates_to(self, relates_to: RelatesTo) -> None:
+        self._relates_to = relates_to
 
 
 @dataclass
