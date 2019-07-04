@@ -311,8 +311,8 @@ class MessageUnsigned(BaseUnsigned, SerializableAttrs['MessageUnsigned']):
 
 
 html_reply_fallback_format = ("<mx-reply><blockquote>"
-                              "<a href='https://matrix.to/#/{room_id}/{event_id}'>In reply to</a>"
-                              "<a href='https://matrix.to/#/{sender}'>{displayname}</a>"
+                              "<a href='https://matrix.to/#/{room_id}/{event_id}'>In reply to</a> "
+                              "<a href='https://matrix.to/#/{sender}'>{displayname}</a><br/>"
                               "{content}"
                               "</blockquote></mx-reply>")
 
