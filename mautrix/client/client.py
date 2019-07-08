@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, List, Callable, Union, Optional, Awaitable
+from enum import Flag, auto
 import asyncio
 
 from ..errors import MUnknownToken
@@ -14,6 +15,17 @@ from .api import ClientAPI
 from .store import ClientStore, MemoryClientStore
 
 EventHandler = Callable[[Event], Awaitable[None]]
+
+
+class SyncStream(Flag):
+    JOINED_ROOM = auto()
+    INVITED_ROOM = auto()
+    LEFT_ROOM = auto()
+
+    TIMELINE = auto()
+    STATE = auto()
+    EPHEMERAL = auto()
+    ACCOUNT_DATA = auto()
 
 
 class Client(ClientAPI):
@@ -94,15 +106,27 @@ class Client(ClientAPI):
         except (KeyError, ValueError):
             pass
 
-    async def call_handlers(self, event: Event) -> None:
+    async def call_handlers(self, event: Event, source: SyncStream) -> None:
         """
         Send the given event to all applicable event handlers.
 
         Args:
             event: The event to send.
+            source: The sync stream the event was received in.
         """
         if isinstance(event, MessageEvent):
             event.content.trim_reply_fallback()
+        if event.type.is_state and event.state_key is None:
+            self.log.debug(f"Not sending {event.event_id} to handlers: expected state_key.")
+            return
+        elif event.type.is_account_data and not source & SyncStream.ACCOUNT_DATA:
+            self.log.debug(f"Not sending {event.event_id} to handlers: got account_data event type "
+                           f"in non-account_data sync stream.")
+            return
+        elif event.type.is_ephemeral and not source & SyncStream.EPHEMERAL:
+            self.log.debug(f"Not sending {event.event_id} to handlers: got ephemeral event type in"
+                           f"non-ephemeral sync stream.")
+            return
         for handler in self.global_event_handlers + self.event_handlers.get(event.type, []):
             try:
                 await handler(event)
@@ -120,24 +144,32 @@ class Client(ClientAPI):
         for room_id, room_data in rooms.get("join", {}).items():
             for raw_event in room_data.get("state", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                asyncio.ensure_future(self.call_handlers(StateEvent.deserialize(raw_event)),
-                                      loop=self.loop)
+                asyncio.ensure_future(
+                    self.call_handlers(StateEvent.deserialize(raw_event),
+                                       source=SyncStream.JOINED_ROOM | SyncStream.STATE),
+                    loop=self.loop)
 
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                asyncio.ensure_future(self.call_handlers(Event.deserialize(raw_event)),
-                                      loop=self.loop)
+                asyncio.ensure_future(
+                    self.call_handlers(Event.deserialize(raw_event),
+                                       source=SyncStream.JOINED_ROOM | SyncStream.TIMELINE),
+                    loop=self.loop)
         for room_id, room_data in rooms.get("invite", {}).items():
             for raw_event in room_data.get("invite_state", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                asyncio.ensure_future(self.call_handlers(StrippedStateEvent.deserialize(raw_event)),
-                                      loop=self.loop)
+                asyncio.ensure_future(
+                    self.call_handlers(StrippedStateEvent.deserialize(raw_event),
+                                       source=SyncStream.INVITED_ROOM | SyncStream.STATE),
+                    loop=self.loop)
         for room_id, room_data in rooms.get("leave", {}).items():
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 if "state_key" in raw_event:
                     raw_event["room_id"] = room_id
-                    asyncio.ensure_future(self.call_handlers(StateEvent.deserialize(raw_event)),
-                                          loop=self.loop)
+                    asyncio.ensure_future(
+                        self.call_handlers(StateEvent.deserialize(raw_event),
+                                           source=SyncStream.LEFT_ROOM | SyncStream.TIMELINE),
+                        loop=self.loop)
 
     def start(self, filter_data: Optional[Union[FilterID, Filter]]) -> asyncio.Future:
         """

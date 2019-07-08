@@ -203,6 +203,10 @@ class AppService:
         return web.json_response({})
 
     def handle_matrix_event(self, event: Event) -> None:
+        if event.type.is_state and event.state_key is None:
+            self.log.debug(f"Not sending {event.event_id} to handlers: expected state_key.")
+            return
+
         async def try_handle(handler_func: HandlerFunc):
             try:
                 await handler_func(event)
