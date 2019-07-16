@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Iterable, Awaitable, Optional, Type
+from time import time
 import argparse
 import logging
 import logging.config
@@ -85,6 +86,7 @@ class Bridge:
         self._run()
 
     def _prepare(self) -> None:
+        start_ts = time()
         args = self.parser.parse_args()
 
         self.prepare_config(args.config, args.registration, args.base_config)
@@ -98,6 +100,8 @@ class Bridge:
         self.prepare_appservice()
         self.prepare_db()
         self.prepare_bridge()
+        end_ts = time()
+        self.log.debug(f"Initialization complete in {round(end_ts - start_ts, 2)} seconds")
 
     def prepare_config(self, config: str, registration: str, base_config: str) -> None:
         self.config = self.config_class(config, registration, base_config)
@@ -157,8 +161,11 @@ class Bridge:
     def _run(self) -> None:
         try:
             self.log.debug("Running startup actions...")
+            start_ts = time()
             self.loop.run_until_complete(self.start())
-            self.log.debug("Startup actions complete, running forever")
+            end_ts = time()
+            self.log.debug(f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
+                           "now running forever")
             self.loop.run_forever()
         except KeyboardInterrupt:
             self.log.debug("Interrupt received, stopping...")
@@ -179,7 +186,7 @@ class Bridge:
 
     async def stop(self) -> None:
         await self.az.stop()
-        await asyncio.gather(*(self.startup_actions or []), loop=self.loop)
+        await asyncio.gather(*(self.shutdown_actions or []), loop=self.loop)
 
     def prepare_shutdown(self) -> None:
         pass
