@@ -114,6 +114,11 @@ class ConfigUpdateHelper:
             for key, value in self.source[from_path].items():
                 self.base[to_path][key] = value
 
+    def __iter__(self):
+        yield self.copy
+        yield self.copy_dict
+        yield self.base
+
 
 class BaseConfig(ABC, RecursiveDict[CommentedMap]):
     @abstractmethod
