@@ -3,11 +3,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Pattern, Optional, Tuple
+from typing import Optional, Tuple
 import warnings
 import asyncio
 import logging
-import re
 
 from ...api import HTTPAPI
 from .types import UserID
@@ -20,7 +19,6 @@ class BaseClientAPI:
     inherit this class).All those section-specific method classes are inherited by the main
     ClientAPI class to create the full class.
     """
-    mxid_regex: Pattern = re.compile("@(.+):(.+)")
 
     localpart: str
     domain: str
@@ -42,9 +40,10 @@ class BaseClientAPI:
                 to create a HTTPAPI instance rather than creating the instance yourself.``
         """
         self.set_mxid(mxid)
-        self.loop = loop or api.loop or asyncio.get_event_loop()
-        kwargs["loop"] = self.loop
+        if loop:
+            kwargs["loop"] = self.loop
         self.api = api or HTTPAPI(*args, **kwargs)
+        self.loop = self.api.loop
         self.log = self.api.log
 
     @classmethod
