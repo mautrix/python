@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Tulir Asokan
+# Copyright (c) 2019 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,8 +12,8 @@ from .client.api.types import (
 
     EventType, RedactionEvent, RedactionEventContent, ReactionEventContent, ReactionEvent,
     MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
-    LocationMessageEventContent, LocationInfo, RelationType, MessageType, Format, MediaInfo, FileInfo,
-    AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent,
+    LocationMessageEventContent, LocationInfo, RelationType, MessageType, Format, MediaInfo,
+    FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent,
     BaseMessageEventContent, RelatesTo, PowerLevelStateEventContent, Membership,
     MemberStateEventContent, StateEvent, AliasesStateEventContent, CanonicalAliasStateEventContent,
     StrippedStateEvent, RoomNameStateEventContent, RoomTopicStateEventContent,
@@ -23,6 +23,9 @@ from .client.api.types import (
     PresenceState, TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
     SingleReceiptEventContent, ReceiptEventContent, ReceiptEvent, ReceiptType, GenericEvent,
     Obj, Lst, RoomTombstoneEventContent,
+
+    RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
+    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages,
 
     User, Member, UserSearchResults,
 

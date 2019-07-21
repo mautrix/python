@@ -41,7 +41,7 @@ class BaseClientAPI:
         """
         self.set_mxid(mxid)
         if loop:
-            kwargs["loop"] = self.loop
+            kwargs["loop"] = loop
         self.api = api or HTTPAPI(*args, **kwargs)
         self.loop = self.api.loop
         self.log = self.api.log
