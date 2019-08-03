@@ -49,7 +49,7 @@ def _get_management_status(evt: CommandEvent) -> str:
         return "This is a management room: prefixing commands with `$cmdprefix` is not required."
     elif evt.is_portal:
         return ("**This is a portal room**: you must always prefix commands with `$cmdprefix`.\n"
-                "Management commands will not be sent to Messenger.")
+                "Management commands will not be bridged.")
     return "**This is not a management room**: you must prefix commands with `$cmdprefix`."
 
 

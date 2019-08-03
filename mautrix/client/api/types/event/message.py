@@ -164,6 +164,7 @@ class BaseMessageEventContent(BaseMessageEventContentFuncs):
     msgtype: MessageType = None
     body: str = ""
 
+    external_url: str = None
 
 # endregion
 # region Media info
@@ -179,6 +180,7 @@ class ThumbnailInfo(BaseFileInfo, SerializableAttrs['ThumbnailInfo']):
     """Information about the thumbnail for a document, video, image or location."""
     height: int = attr.ib(default=None, metadata={"json": "h"})
     width: int = attr.ib(default=None, metadata={"json": "w"})
+    orientation: int = None
 
 
 @dataclass
@@ -193,12 +195,14 @@ class ImageInfo(FileInfo, SerializableAttrs['ImageInfo']):
     """Information about an image message."""
     height: int = attr.ib(default=None, metadata={"json": "h"})
     width: int = attr.ib(default=None, metadata={"json": "w"})
+    orientation: int = None
 
 
 @dataclass
 class VideoInfo(ImageInfo, SerializableAttrs['VideoInfo']):
     """Information about a video message."""
     duration: int = None
+    orientation: int = None
 
 
 @dataclass

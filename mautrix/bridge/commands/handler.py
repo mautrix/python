@@ -184,6 +184,9 @@ class CommandEvent:
         return ensure_trailing_newline(html) if html else None
 
 
+CommandHandlerFunc = Callable[[CommandEvent], Awaitable[Any]]
+
+
 class CommandHandler:
     """A command which can be executed from a Matrix room.
 
@@ -204,9 +207,8 @@ class CommandHandler:
     _help_args: str
     help_section: HelpSection
 
-    def __init__(self, handler: Callable[[CommandEvent], Awaitable[Any]], management_only: bool,
-                 name: str, help_text: str, help_args: str, help_section: HelpSection, **kwargs
-                 ) -> None:
+    def __init__(self, handler: CommandHandlerFunc, management_only: bool, name: str,
+                 help_text: str, help_args: str, help_section: HelpSection, **kwargs) -> None:
         """
         Args:
             handler: The function handling the execution of this command.
@@ -277,15 +279,13 @@ class CommandHandler:
         return f"**{self.name}** {self._help_args} - {self._help_text}"
 
 
-def command_handler(_func: Optional[Callable[[CommandEvent], Awaitable[Dict]]] = None, *,
-                    management_only: bool = False, name: Optional[str] = None,
-                    help_text: str = "", help_args: str = "", help_section: HelpSection = None,
-                    _handler_class: Type[CommandHandler] = CommandHandler, **kwargs
-                    ) -> Callable[[Callable[[CommandEvent], Awaitable[Optional[Dict]]]],
-                                  CommandHandler]:
+def command_handler(_func: Optional[CommandHandlerFunc] = None, *, management_only: bool = False,
+                    name: Optional[str] = None, help_text: str = "", help_args: str = "",
+                    help_section: HelpSection = None, _handler_class: Type[CommandHandler] = CommandHandler, **kwargs
+                    ) -> Callable[[CommandHandlerFunc], CommandHandler]:
     """Decorator to create CommandHandlers"""
 
-    def decorator(func: Callable[[CommandEvent], Awaitable[Optional[Dict]]]) -> CommandHandler:
+    def decorator(func: CommandHandlerFunc) -> CommandHandler:
         actual_name = name or func.__name__.replace("_", "-")
         handler = _handler_class(func, management_only, actual_name, help_text, help_args,
                                  help_section, **kwargs)
@@ -323,6 +323,11 @@ class CommandProcessor:
         """
         self._ref_no += 1
         return self._ref_no
+
+    @staticmethod
+    def _run_handler(handler: Callable[[CommandEvent], Awaitable[Any]], evt: CommandEvent
+                     ) -> Awaitable[Any]:
+        return handler(evt)
 
     async def handle(self, room: RoomID, event_id: EventID, sender: 'BaseUser',
                      command: str, args: List[str], is_management: bool, is_portal: bool
@@ -363,7 +368,7 @@ class CommandProcessor:
             else:
                 handler = command_handlers["unknown-command"]
         try:
-            await handler(evt)
+            await self._run_handler(handler, evt)
         except Exception:
             ref_no = self.ref_no
             self.log.exception("Unhandled error while handling command "

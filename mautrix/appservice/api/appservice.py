@@ -148,7 +148,7 @@ class AppServiceAPI(HTTPAPI):
 
     def request(self, method: Method, path: PathBuilder,
                 content: Optional[Union[Dict, bytes, str]] = None, timestamp: Optional[int] = None,
-                external_url: Optional[str] = None, headers: Optional[Dict[str, str]] = None,
+                headers: Optional[Dict[str, str]] = None,
                 query_params: Optional[Dict[str, Any]] = None) -> Awaitable[Dict]:
         """
         Make a raw HTTP request, with optional AppService timestamp massaging and external_url
@@ -174,8 +174,6 @@ class AppServiceAPI(HTTPAPI):
             if isinstance(timestamp, datetime):
                 timestamp = int(timestamp.replace(tzinfo=timezone.utc).timestamp() * 1000)
             query_params["ts"] = timestamp
-        if isinstance(content, dict) and external_url is not None:
-            content["external_url"] = external_url
         if self.identity and not self.is_real_user:
             query_params["user_id"] = self.identity
 
