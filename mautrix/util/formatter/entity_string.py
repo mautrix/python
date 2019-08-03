@@ -95,7 +95,7 @@ class EntityString(FormattedString):
 
         offset = 0
         for part in text_parts:
-            msg = cls(part)
+            msg = type(self)(part)
             for entity in self.entities:
                 start_in_range = len(part) > entity.offset - offset >= 0
                 end_in_range = len(part) >= entity.offset - offset + entity.length > 0
