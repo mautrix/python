@@ -295,7 +295,7 @@ class EventMethods(BaseClientAPI):
         """
         return self.send_message_event(room_id, EventType.ROOM_MESSAGE, content, **kwargs)
 
-    def react(self, room_id: RoomID, event_id: EventID, key: str) -> Awaitable[None]:
+    def react(self, room_id: RoomID, event_id: EventID, key: str) -> Awaitable[EventID]:
         # TODO make this use the send_relation API instead.
         content = ReactionEventContent(relates_to=RelatesTo(rel_type=RelationType.ANNOTATION,
                                                             event_id=event_id, key=key))

@@ -64,7 +64,7 @@ class FormattedString:
         self.text = self.text.strip()
         return self
 
-    def split(self, separator, max_items: int = 0) -> List['FormattedString']:
+    def split(self, separator, max_items: int = -1) -> List['FormattedString']:
         return [FormattedString(text) for text in self.text.split(separator, max_items)]
 
     @classmethod

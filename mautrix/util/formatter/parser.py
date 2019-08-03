@@ -13,7 +13,7 @@ from .html_reader import HTMLNode, read_html
 
 class RecursionContext:
     strip_linebreaks: bool
-    ul_depth: bool
+    ul_depth: int
     _inited: bool
 
     def __init__(self, strip_linebreaks: bool = True, ul_depth: int = 0):
