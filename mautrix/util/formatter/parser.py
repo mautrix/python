@@ -8,12 +8,13 @@ import re
 
 from ...types import UserID, RoomAlias
 from .formatted_string import FormattedString, EntityType
+from .markdown_string import MarkdownString
 from .html_reader import HTMLNode, read_html
 
 
 class RecursionContext:
     strip_linebreaks: bool
-    ul_depth: bool
+    ul_depth: int
     _inited: bool
 
     def __init__(self, strip_linebreaks: bool = True, ul_depth: int = 0):
@@ -42,6 +43,7 @@ class MatrixParser:
                                    "div", "hr", "table")
     list_bullets: Tuple[str, ...] = ("●", "○", "■", "‣")
     e: Type[EntityType] = EntityType
+    fs: Type[FormattedString] = MarkdownString
 
     @classmethod
     def list_bullet(cls, depth: int) -> str:
@@ -75,35 +77,32 @@ class MatrixParser:
             child = child.prepend(prefix)
             parts = child.split("\n")
             parts = parts[:1] + [part.prepend(indent) for part in parts[1:]]
-            child = FormattedString.join(parts, "\n")
+            child = cls.fs.join(parts, "\n")
             children.append(child)
-        return FormattedString.join(children, "\n")
+        return cls.fs.join(children, "\n")
 
     @classmethod
     def blockquote_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
         msg = cls.tag_aware_parse_node(node, ctx)
-        children = msg.trim().split("\n")
-        children = [child.prepend("> ") for child in children]
-        return FormattedString.join(children, "\n")
+        return msg.format(cls.e.BLOCKQUOTE)
 
     @classmethod
     def header_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
         children = cls.node_to_fstrings(node, ctx)
         length = int(node.tag[1])
-        prefix = "#" * length + " "
-        return FormattedString.join(children, "").prepend(prefix).format(cls.e.BOLD)
+        return cls.fs.join(children, "").format(cls.e.HEADER, size=length)
 
     @classmethod
     def basic_format_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
         msg = cls.tag_aware_parse_node(node, ctx)
         if node.tag in ("b", "strong"):
-            msg.format(cls.e.BOLD)
+            msg = msg.format(cls.e.BOLD)
         elif node.tag in ("i", "em"):
-            msg.format(cls.e.ITALIC)
+            msg = msg.format(cls.e.ITALIC)
         elif node.tag in ("s", "strike", "del"):
-            msg.format(cls.e.STRIKETHROUGH)
+            msg = msg.format(cls.e.STRIKETHROUGH)
         elif node.tag in ("u", "ins"):
-            msg.format(cls.e.UNDERLINE)
+            msg = msg.format(cls.e.UNDERLINE)
         return msg
 
     @classmethod
@@ -114,7 +113,7 @@ class MatrixParser:
             return msg
 
         if href.startswith("mailto:"):
-            return FormattedString(href[len("mailto:"):]).format(cls.e.EMAIL)
+            return cls.fs(href[len("mailto:"):]).format(cls.e.EMAIL)
 
         mention = cls.mention_regex.match(href)
         if mention:
@@ -128,19 +127,17 @@ class MatrixParser:
             if new_msg:
                 return new_msg
 
-        return (msg.format(cls.e.URL)
-                if msg.text == href
-                else msg.format(cls.e.INLINE_URL, url=href))
+        return msg.format(cls.e.URL, url=href)
 
     @classmethod
     def user_pill_to_fstring(cls, msg: FormattedString, user_id: UserID
                              ) -> Optional[FormattedString]:
-        return msg
+        return msg.format(cls.e.USER_MENTION, user_id=user_id)
 
     @classmethod
     def room_pill_to_fstring(cls, msg: FormattedString, room_alias: RoomAlias
                              ) -> Optional[FormattedString]:
-        return FormattedString(room_alias)
+        return msg.format(cls.e.ROOM_MENTION, room_alias=room_alias)
 
     @classmethod
     def custom_node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext
@@ -161,7 +158,7 @@ class MatrixParser:
         elif node.tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
             return cls.header_to_fstring(node, ctx)
         elif node.tag == "br":
-            return FormattedString("\n")
+            return cls.fs("\n")
         elif node.tag in ("b", "strong", "i", "em", "s", "del", "u", "ins"):
             return cls.basic_format_to_fstring(node, ctx)
         elif node.tag == "a":
@@ -182,11 +179,11 @@ class MatrixParser:
             return cls.parse_node(node, ctx.enter_code_block()).format(cls.e.INLINE_CODE)
         return cls.tag_aware_parse_node(node, ctx)
 
-    @staticmethod
-    def text_to_fstring(text: str, ctx: RecursionContext) -> FormattedString:
+    @classmethod
+    def text_to_fstring(cls, text: str, ctx: RecursionContext) -> FormattedString:
         if ctx.strip_linebreaks:
             text = text.replace("\n", "")
-        return FormattedString(text)
+        return cls.fs(text)
 
     @classmethod
     def node_to_tagged_fstrings(cls, node: HTMLNode, ctx: RecursionContext
@@ -210,7 +207,7 @@ class MatrixParser:
     def tag_aware_parse_node(cls, node: HTMLNode, ctx: RecursionContext
                              ) -> FormattedString:
         msgs = cls.node_to_tagged_fstrings(node, ctx)
-        output = FormattedString()
+        output = cls.fs()
         prev_was_block = False
         for msg, tag in msgs:
             if tag in cls.block_tags:
@@ -223,7 +220,7 @@ class MatrixParser:
 
     @classmethod
     def parse_node(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
-        return FormattedString.join(cls.node_to_fstrings(node, ctx))
+        return cls.fs.join(cls.node_to_fstrings(node, ctx))
 
     @classmethod
     def parse(cls, data: str) -> FormattedString:

@@ -25,7 +25,7 @@ class EventType(Serializable):
         ACCOUNT_DATA = "account_data"
         EPHEMERAL = "ephemeral"
 
-    ROOM_CANONICAL_ALIAS: 'EventType'
+    ROOM_CANONICAL_ALIAS: 'EventType' = "m.room.canonical_alias"
     ROOM_ALIASES: 'EventType'
     ROOM_CREATE: 'EventType'
     ROOM_JOIN_RULES: 'EventType'

@@ -21,7 +21,7 @@ class RecursiveDict(Generic[T]):
         self._data: CommentedMap = data or self._dict_factory()
 
     @staticmethod
-    def _parse_key(key: str) -> Tuple[str, Optional[str]]:
+    def parse_key(key: str) -> Tuple[str, Optional[str]]:
         if '.' not in key:
             return key, None
         key, next_key = key.split('.', 1)
@@ -32,7 +32,7 @@ class RecursiveDict(Generic[T]):
         return key, next_key
 
     def _recursive_get(self, data: T, key: str, default_value: Any) -> Any:
-        key, next_key = self._parse_key(key)
+        key, next_key = self.parse_key(key)
         if next_key is not None:
             next_data = data.get(key, self._dict_factory())
             return self._recursive_get(next_data, next_key, default_value)
@@ -50,7 +50,7 @@ class RecursiveDict(Generic[T]):
         return self.get(key, None) is not None
 
     def _recursive_set(self, data: T, key: str, value: Any) -> None:
-        key, next_key = self._parse_key(key)
+        key, next_key = self.parse_key(key)
         if next_key is not None:
             if key not in data:
                 data[key] = self._dict_factory()
@@ -68,7 +68,7 @@ class RecursiveDict(Generic[T]):
         self.set(key, value)
 
     def _recursive_del(self, data: T, key: str) -> None:
-        key, next_key = self._parse_key(key)
+        key, next_key = self.parse_key(key)
         if next_key is not None:
             if key not in data:
                 return

@@ -1,10 +1,6 @@
 import setuptools
-import os
 
-path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "mautrix", "__meta__.py")
-__version__ = "UNKNOWN"
-with open(path) as f:
-    exec(f.read())
+from mautrix import __version__
 
 setuptools.setup(
     name="mautrix",

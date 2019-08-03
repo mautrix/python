@@ -4,74 +4,136 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import List, Sequence, Union
-from enum import Enum
+from abc import ABC, abstractmethod
+from enum import Enum, auto
 
 
 class EntityType(Enum):
-    BOLD = 1
-    ITALIC = 2
-    STRIKETHROUGH = 3
-    UNDERLINE = 4
-    URL = 5
-    INLINE_URL = 6
-    EMAIL = 7
-    PREFORMATTED = 8
-    INLINE_CODE = 9
-
-    def apply(self, text: str, **kwargs) -> str:
-        if self == EntityType.BOLD:
-            return f"**{text}**"
-        elif self == EntityType.ITALIC:
-            return f"_{text}_"
-        elif self == EntityType.STRIKETHROUGH:
-            return f"~~{text}~~"
-        elif self == EntityType.UNDERLINE:
-            return text
-        elif self == EntityType.URL:
-            return text
-        elif self == EntityType.INLINE_URL:
-            return f"{text} ({kwargs['url']})"
-        elif self == EntityType.EMAIL:
-            return text
-        elif self == EntityType.PREFORMATTED:
-            return f"```{kwargs['language']}\n{text}\n```"
-        elif self == EntityType.INLINE_CODE:
-            return f"`{text}`"
+    """EntityType is a Matrix formatting entity type."""
+    BOLD = auto()
+    ITALIC = auto()
+    STRIKETHROUGH = auto()
+    UNDERLINE = auto()
+    URL = auto()
+    EMAIL = auto()
+    USER_MENTION = auto()
+    ROOM_MENTION = auto()
+    PREFORMATTED = auto()
+    INLINE_CODE = auto()
+    BLOCKQUOTE = auto()
+    HEADER = auto()
 
 
-class FormattedString:
-    text: str
+class FormattedString(ABC):
+    """FormattedString is an abstract HTML parsing target."""
 
-    def __init__(self, text: str = "") -> None:
-        self.text = text
-
-    def __str__(self) -> str:
-        return self.text
-
+    @abstractmethod
     def append(self, *args: Union[str, 'FormattedString']) -> 'FormattedString':
-        self.text += "".join(str(arg) for arg in args)
-        return self
+        """
+        Append strings to this FormattedString.
 
+        This method may mutate the source object, but it is not required to do so.
+        Make sure to always use the return value when mutating and to duplicate strings if you don't
+        want the original to change.
+
+        Args:
+            *args: The strings to append.
+
+        Returns:
+            A FormattedString that is a concatenation of this string and the given strings.
+        """
+        pass
+
+    @abstractmethod
     def prepend(self, *args: Union[str, 'FormattedString']) -> 'FormattedString':
-        self.text = "".join(str(arg) for arg in args + (self.text,))
-        return self
+        """
+        Prepend strings to this FormattedString.
 
+        This method may mutate the source object, but it is not required to do so.
+        Make sure to always use the return value when mutating and to duplicate strings if you don't
+        want the original to change.
+
+        Args:
+            *args: The strings to prepend.
+
+        Returns:
+            A FormattedString that is a concatenation of the given strings and this string.
+        """
+        pass
+
+    @abstractmethod
     def format(self, entity_type: EntityType, **kwargs) -> 'FormattedString':
-        self.text = entity_type.apply(self.text, **kwargs)
-        return self
+        """
+        Apply formatting to this FormattedString.
 
+        This method may mutate the source object, but it is not required to do so.
+        Make sure to always use the return value when mutating and to duplicate strings if you don't
+        want the original to change.
+
+        Args:
+            entity_type: The type of formatting to apply to this string.
+            **kwargs: Additional metadata required by the formatting type.
+
+        Returns:
+            A FormattedString with the given formatting applied.
+        """
+        pass
+
+    @abstractmethod
     def trim(self) -> 'FormattedString':
-        self.text = self.text.strip()
-        return self
+        """
+        Trim surrounding whitespace from this FormattedString.
 
-    def split(self, separator, max_items: int = 0) -> List['FormattedString']:
-        return [FormattedString(text) for text in self.text.split(separator, max_items)]
+        This method may mutate the source object, but it is not required to do so.
+        Make sure to always use the return value when mutating and to duplicate strings if you don't
+        want the original to change.
+
+        Returns:
+            A FormattedString without surrounding whitespace.
+        """
+        pass
+
+    @abstractmethod
+    def split(self, separator, max_items: int = -1) -> List['FormattedString']:
+        """
+        Split this FormattedString by the given separator.
+
+        Args:
+            separator: The separator to split by.
+            max_items: The maximum number of items to return. If the limit is reached, the remaining
+                       string will be returned as one even if it contains the separator.
+
+        Returns:
+            The split strings.
+        """
+        pass
 
     @classmethod
     def concat(cls, *args: Union[str, 'FormattedString']) -> 'FormattedString':
+        """
+        Concatenate many FormattedStrings.
+
+        Args:
+            *args: The strings to concatenate.
+
+        Returns:
+            A FormattedString that is a concatenation of the given strings.
+        """
         return cls.join(items=args, separator="")
 
     @classmethod
+    @abstractmethod
     def join(cls, items: Sequence[Union[str, 'FormattedString']],
              separator: str = " ") -> 'FormattedString':
-        return cls(separator.join(str(item) for item in items))
+        """
+        Join a list of FormattedStrings with the given separator.
+
+        Args:
+            items: The strings to join.
+            separator: The separator to join them with.
+
+        Returns:
+            A FormattedString that is a combination of the given strings with the given separator
+            between each one.
+        """
+        pass
