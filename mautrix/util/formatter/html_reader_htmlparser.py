@@ -14,6 +14,10 @@ class HTMLNode(list):
     tail: str
     attrib: Dict[str, str]
 
+    def __repr__(self) -> str:
+        return (f"HTMLNode(tag='{self.tag}', attrs={self.attrib}, text='{self.text}', "
+                f"tail='{self.tail}', children={list(self)})")
+
     def __init__(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
         super().__init__()
         self.tag = tag

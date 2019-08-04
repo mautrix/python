@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Sequence, Union, Optional, Dict, Any
+from abc import ABC, abstractmethod
+from typing import List, Sequence, Union, Optional, Dict, Any, TypeVar, Type, Generic
 
 from attr import dataclass
 import attr
@@ -11,18 +12,27 @@ import attr
 from .formatted_string import FormattedString, EntityType
 
 
-@dataclass
-class Entity:
-    type: EntityType
+class AbstractEntity(ABC):
+    @abstractmethod
+    def copy(self) -> 'AbstractEntity':
+        pass
+
+    @abstractmethod
+    def adjust_offset(self, offset: int, max_length: int = -1) -> Optional['AbstractEntity']:
+        pass
+
+    @abstractmethod
+    def can_adjust_offset(self, offset: int, max_length: int = -1) -> bool:
+        pass
+
+
+class SemiAbstractEntity(AbstractEntity, ABC):
     offset: int
     length: int
-    extra_info: Dict[str, Any] = attr.ib(factory=dict)
 
-    def copy(self) -> 'Entity':
-        return attr.evolve(self)
-
-    def adjust_offset(self, offset: int, max_length: int = -1) -> Optional['Entity']:
-        entity = attr.evolve(self, offset=self.offset + offset)
+    def adjust_offset(self, offset: int, max_length: int = -1) -> Optional['SemiAbstractEntity']:
+        entity = self.copy()
+        entity.offset += offset
         if entity.offset < 0:
             entity.offset = 0
         elif entity.offset > max_length > -1:
@@ -31,12 +41,31 @@ class Entity:
             entity.length = max_length - entity.offset
         return entity
 
+    def can_adjust_offset(self, offset: int, max_length: int = -1) -> bool:
+        return self.offset + offset <= max_length
 
-class EntityString(FormattedString):
+
+@dataclass
+class SimpleEntity(SemiAbstractEntity):
+    type: EntityType
+    offset: int
+    length: int
+    extra_info: Dict[str, Any] = attr.ib(factory=dict)
+
+    def copy(self) -> 'SimpleEntity':
+        return attr.evolve(self)
+
+
+TEntity = TypeVar('TEntity', bound=AbstractEntity)
+TEntityType = TypeVar('TEntityType')
+
+
+class EntityString(Generic[TEntity, TEntityType], FormattedString):
     text: str
-    entities: List[Entity]
+    entities: List[TEntity]
+    entity_class: Type[AbstractEntity] = SimpleEntity
 
-    def __init__(self, text: str = "", entities: List[Entity] = None) -> None:
+    def __init__(self, text: str = "", entities: List[TEntity] = None) -> None:
         self.text = text
         self.entities = entities or []
 
@@ -51,7 +80,7 @@ class EntityString(FormattedString):
             return self
         self.entities = [entity.adjust_offset(offset, len(self.text))
                          for entity in self.entities if entity
-                         if entity.offset + offset <= len(self.text)]
+                         if entity.can_adjust_offset(offset, len(self.text))]
         return self
 
     def append(self, *args: Union[str, 'FormattedString']) -> 'EntityString':
@@ -75,10 +104,10 @@ class EntityString(FormattedString):
                 self.entities = [entity.adjust_offset(len(text)) for entity in self.entities]
         return self
 
-    def format(self, entity_type: EntityType, offset: int = None, length: int = None, **kwargs
+    def format(self, entity_type: TEntityType, offset: int = None, length: int = None, **kwargs
                ) -> 'EntityString':
-        self.entities.append(Entity(type=entity_type, offset=offset or 0,
-                                    length=length or len(self.text), extra_info=kwargs))
+        self.entities.append(self.entity_class(type=entity_type, offset=offset or 0,
+                                               length=length or len(self.text), extra_info=kwargs))
         return self
 
     def trim(self) -> 'EntityString':

@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Tuple, Pattern, Type, Optional
+from typing import List, Tuple, Pattern, Type, Optional, TypeVar, Generic, Callable
 import re
 
 from ...types import UserID, RoomAlias
@@ -34,7 +34,10 @@ class RecursionContext:
         return RecursionContext(strip_linebreaks=False, ul_depth=self.ul_depth)
 
 
-class MatrixParser:
+T = TypeVar('T', bound=FormattedString)
+
+
+class MatrixParser(Generic[T]):
     mention_regex: Pattern = re.compile("https://matrix.to/#/(@.+:.+)")
     room_regex: Pattern = re.compile("https://matrix.to/#/(#.+:.+)")
     block_tags: Tuple[str, ...] = ("p", "pre", "blockquote",
@@ -43,16 +46,17 @@ class MatrixParser:
                                    "div", "hr", "table")
     list_bullets: Tuple[str, ...] = ("●", "○", "■", "‣")
     e: Type[EntityType] = EntityType
-    fs: Type[FormattedString] = MarkdownString
+    fs: Type[T] = MarkdownString
+    read_html: Callable[[str], HTMLNode] = read_html
 
     @classmethod
     def list_bullet(cls, depth: int) -> str:
         return cls.list_bullets[(depth - 1) % len(cls.list_bullets)] + " "
 
     @classmethod
-    def list_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
+    def list_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         ordered: bool = node.tag == "ol"
-        tagged_children: List[Tuple[FormattedString, str]] = cls.node_to_tagged_fstrings(node, ctx)
+        tagged_children: List[Tuple[T, str]] = cls.node_to_tagged_fstrings(node, ctx)
         counter: int = 1
         indent_length: int = 0
         if ordered:
@@ -64,7 +68,7 @@ class MatrixParser:
             longest_index = counter - 1 + len(tagged_children)
             indent_length = len(str(longest_index))
         indent: str = (indent_length + 4) * " "
-        children: List[FormattedString] = []
+        children: List[T] = []
         for child, tag in tagged_children:
             if tag != "li":
                 continue
@@ -82,18 +86,18 @@ class MatrixParser:
         return cls.fs.join(children, "\n")
 
     @classmethod
-    def blockquote_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
+    def blockquote_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         msg = cls.tag_aware_parse_node(node, ctx)
         return msg.format(cls.e.BLOCKQUOTE)
 
     @classmethod
-    def header_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
+    def header_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         children = cls.node_to_fstrings(node, ctx)
         length = int(node.tag[1])
         return cls.fs.join(children, "").format(cls.e.HEADER, size=length)
 
     @classmethod
-    def basic_format_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
+    def basic_format_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         msg = cls.tag_aware_parse_node(node, ctx)
         if node.tag in ("b", "strong"):
             msg = msg.format(cls.e.BOLD)
@@ -106,7 +110,7 @@ class MatrixParser:
         return msg
 
     @classmethod
-    def link_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
+    def link_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         msg = cls.tag_aware_parse_node(node, ctx)
         href = node.attrib.get("href", "")
         if not href:
@@ -127,28 +131,31 @@ class MatrixParser:
             if new_msg:
                 return new_msg
 
-        return msg.format(cls.e.URL, url=href)
+        return cls.url_to_fstring(msg, href)
 
     @classmethod
-    def user_pill_to_fstring(cls, msg: FormattedString, user_id: UserID
-                             ) -> Optional[FormattedString]:
+    def url_to_fstring(cls, msg: T, url: str) -> Optional[T]:
+        return msg.format(cls.e.URL, url=url)
+
+    @classmethod
+    def user_pill_to_fstring(cls, msg: T, user_id: UserID) -> Optional[T]:
         return msg.format(cls.e.USER_MENTION, user_id=user_id)
 
     @classmethod
-    def room_pill_to_fstring(cls, msg: FormattedString, room_alias: RoomAlias
-                             ) -> Optional[FormattedString]:
+    def room_pill_to_fstring(cls, msg: T, room_alias: RoomAlias) -> Optional[T]:
         return msg.format(cls.e.ROOM_MENTION, room_alias=room_alias)
 
     @classmethod
-    def custom_node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext
-                               ) -> Optional[FormattedString]:
+    def custom_node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> Optional[T]:
         return None
 
     @classmethod
-    def node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
+    def node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         custom = cls.custom_node_to_fstring(node, ctx)
         if custom:
             return custom
+        elif node.tag == "mx-reply":
+            return cls.fs("")
         elif node.tag == "blockquote":
             return cls.blockquote_to_fstring(node, ctx)
         elif node.tag == "ol":
@@ -180,14 +187,13 @@ class MatrixParser:
         return cls.tag_aware_parse_node(node, ctx)
 
     @classmethod
-    def text_to_fstring(cls, text: str, ctx: RecursionContext) -> FormattedString:
+    def text_to_fstring(cls, text: str, ctx: RecursionContext) -> T:
         if ctx.strip_linebreaks:
             text = text.replace("\n", "")
         return cls.fs(text)
 
     @classmethod
-    def node_to_tagged_fstrings(cls, node: HTMLNode, ctx: RecursionContext
-                                ) -> List[Tuple[FormattedString, str]]:
+    def node_to_tagged_fstrings(cls, node: HTMLNode, ctx: RecursionContext) -> List[Tuple[T, str]]:
         output = []
 
         if node.text:
@@ -199,13 +205,11 @@ class MatrixParser:
         return output
 
     @classmethod
-    def node_to_fstrings(cls, node: HTMLNode, ctx: RecursionContext
-                         ) -> List[FormattedString]:
+    def node_to_fstrings(cls, node: HTMLNode, ctx: RecursionContext) -> List[T]:
         return [msg for (msg, tag) in cls.node_to_tagged_fstrings(node, ctx)]
 
     @classmethod
-    def tag_aware_parse_node(cls, node: HTMLNode, ctx: RecursionContext
-                             ) -> FormattedString:
+    def tag_aware_parse_node(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         msgs = cls.node_to_tagged_fstrings(node, ctx)
         output = cls.fs()
         prev_was_block = False
@@ -219,10 +223,10 @@ class MatrixParser:
         return output.trim()
 
     @classmethod
-    def parse_node(cls, node: HTMLNode, ctx: RecursionContext) -> FormattedString:
+    def parse_node(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         return cls.fs.join(cls.node_to_fstrings(node, ctx))
 
     @classmethod
-    def parse(cls, data: str) -> FormattedString:
-        msg = cls.node_to_fstring(read_html(f"<body>{data}</body>"), RecursionContext())
+    def parse(cls, data: str) -> T:
+        msg = cls.node_to_fstring(cls.read_html(f"<body>{data}</body>"), RecursionContext())
         return msg

@@ -3,9 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from .parser import MatrixParser
+from .parser import MatrixParser, RecursionContext
 from .formatted_string import FormattedString, EntityType
-from .entity_string import Entity, EntityString
+from .entity_string import AbstractEntity, SemiAbstractEntity, SimpleEntity, EntityString
 from .markdown_string import MarkdownString
 
 
