@@ -321,9 +321,10 @@ class EventMethods(BaseClientAPI):
         if html:
             if not text:
                 text = html
-            content = TextMessageEventContent(msgtype, text, Format.HTML, html)
+            content = TextMessageEventContent(msgtype=msgtype, body=text,
+                                              format=Format.HTML, formatted_body=html)
         else:
-            content = TextMessageEventContent(msgtype, text)
+            content = TextMessageEventContent(msgtype=msgtype, body=text)
         if relates_to:
             content.relates_to = relates_to
         return self.send_message(room_id, content, **kwargs)

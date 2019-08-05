@@ -5,7 +5,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Union, Pattern
 from html import escape
-import warnings
 import re
 
 from attr import dataclass
@@ -126,13 +125,13 @@ class BaseMessageEventContentFuncs:
     body: str
     _relates_to: Optional[RelatesTo]
 
-    def set_reply(self, in_reply_to: 'MessageEvent') -> None:
+    def set_reply(self, reply_to: Union[EventID, 'MessageEvent']) -> None:
         self.relates_to.rel_type = RelationType.REFERENCE
-        self.relates_to.event_id = in_reply_to.event_id
+        self.relates_to.event_id = reply_to if isinstance(reply_to, str) else reply_to.event_id
 
-    def set_edit(self, edits: 'MessageEvent') -> None:
+    def set_edit(self, edits: Union[EventID, 'MessageEvent']) -> None:
         self.relates_to.rel_type = RelationType.REPLACE
-        self.relates_to.event_id = edits.event_id
+        self.relates_to.event_id = edits if isinstance(edits, str) else edits.event_id
 
     @property
     def relates_to(self) -> RelatesTo:
@@ -165,6 +164,8 @@ class BaseMessageEventContent(BaseMessageEventContentFuncs):
     body: str = ""
 
     external_url: str = None
+    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
+
 
 # endregion
 # region Media info
@@ -231,8 +232,6 @@ class MediaMessageEventContent(BaseMessageEventContent,
     url: ContentURI = None
     info: Optional[MediaInfo] = None
 
-    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
-
     @staticmethod
     @deserializer(MediaInfo)
     def deserialize_info(data: JSON) -> MediaInfo:
@@ -257,8 +256,6 @@ class LocationMessageEventContent(BaseMessageEventContent,
     geo_uri: str = None
     info: LocationInfo = None
 
-    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
-
 
 html_reply_fallback_regex: Pattern = re.compile("^<mx-reply>"
                                                 r"[\s\S]+?"
@@ -272,15 +269,13 @@ class TextMessageEventContent(BaseMessageEventContent,
     format: Format = None
     formatted_body: str = None
 
-    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
-
-    def set_reply(self, in_reply_to: 'MessageEvent') -> None:
-        super().set_reply(in_reply_to)
+    def set_reply(self, reply_to: 'MessageEvent') -> None:
+        super().set_reply(reply_to)
         if not self.formatted_body or len(self.formatted_body) == 0 or self.format != Format.HTML:
             self.format = Format.HTML
             self.formatted_body = escape(self.body)
-        self.formatted_body = in_reply_to.make_reply_fallback_html() + self.formatted_body
-        self.body = in_reply_to.make_reply_fallback_text() + self.body
+        self.formatted_body = reply_to.make_reply_fallback_html() + self.formatted_body
+        self.body = reply_to.make_reply_fallback_text() + self.body
 
     def trim_reply_fallback(self) -> None:
         if self.get_reply_to():

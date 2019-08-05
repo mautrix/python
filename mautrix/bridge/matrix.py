@@ -162,7 +162,7 @@ class BaseMatrixHandler(ABC):
                     self.log.exception(f"Failed to join room {room_id}, giving up.")
                     return
 
-        if not self.allow_command(inviter):
+        if not await self.allow_command(inviter):
             await self.send_permission_error(room_id)
             await self.az.intent.leave_room(room_id)
             return
@@ -207,7 +207,7 @@ class BaseMatrixHandler(ABC):
     async def handle_message(self, room_id: RoomID, user_id: UserID, message: MessageEventContent,
                              event_id: EventID) -> None:
         sender = await self.get_user(user_id)
-        if not sender or not self.allow_message(sender):
+        if not sender or not await self.allow_message(sender):
             self.log.debug(f"Ignoring message \"{message}\" from {sender.mxid} to {room_id}:"
                            " User is not whitelisted.")
             return
@@ -219,7 +219,7 @@ class BaseMatrixHandler(ABC):
             await portal.handle_matrix_message(sender, message, event_id)
             return
 
-        if message.msgtype != MessageType.TEXT or not self.allow_command(sender):
+        if message.msgtype != MessageType.TEXT or not await self.allow_command(sender):
             return
 
         is_management = await self.is_management(room_id)

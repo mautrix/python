@@ -12,7 +12,8 @@ from ...types import (StateEvent, EventType, StateEventContent, EventID, Content
                       MessageEventContent, UserID, RoomID, PresenceState,
                       RoomAvatarStateEventContent, RoomNameStateEventContent,
                       RoomTopicStateEventContent, PowerLevelStateEventContent,
-                      RoomPinnedEventsStateEventContent, Membership, Member)
+                      RoomPinnedEventsStateEventContent, Membership, Member,
+                      MemberStateEventContent)
 from ...client import ClientAPI
 from ...errors import MForbidden, MatrixRequestError, IntentError
 from ..state_store import StateStore
@@ -257,14 +258,15 @@ class IntentAPI(ClientAPI):
         await self.send_notice(room_id, text, html=html)
         await self.leave_room(room_id)
 
-    def get_membership(self, room_id: RoomID, user_id: UserID) -> Awaitable[str]:
+    def get_membership(self, room_id: RoomID, user_id: UserID
+                       ) -> Awaitable[MemberStateEventContent]:
         return self.get_state_event(room_id, EventType.ROOM_MEMBER, state_key=user_id)
 
     def set_membership(self, room_id: RoomID, user_id: UserID, membership: Membership,
                        reason: Optional[str] = "", profile: Optional[dict] = None, **kwargs
                        ) -> Awaitable[dict]:
         body = {
-            "membership": membership,
+            "membership": membership.serialize(),
             "reason": reason
         }
         profile = profile or {}

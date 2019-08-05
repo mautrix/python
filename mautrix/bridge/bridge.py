@@ -181,6 +181,9 @@ class Bridge:
         self.log.debug("Starting appservice...")
         await self.az.start(self.config["appservice.hostname"], self.config["appservice.port"])
         await self.matrix.wait_for_connection()
+        await self._run_startup_actions()
+
+    async def _run_startup_actions(self) -> None:
         await asyncio.gather(self.matrix.init_as_bot(), *(self.startup_actions or []),
                              loop=self.loop)
 
