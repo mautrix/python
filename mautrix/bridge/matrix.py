@@ -250,7 +250,7 @@ class BaseMatrixHandler(ABC):
     async def try_handle_sync_event(self, evt: Event) -> None:
         try:
             if isinstance(evt, (ReceiptEvent, PresenceEvent, TypingEvent)):
-                await self.int_handle_event(evt)
+                await self.handle_ephemeral_event(evt)
             else:
                 self.log.debug("Unknown event type received from sync:", evt)
         except Exception:

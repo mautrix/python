@@ -136,6 +136,8 @@ class CustomPuppetMixin(ABC):
                 raise OnlyLoginSelf()
             raise InvalidAccessToken()
         if self.sync_with_custom_puppets:
+            if self._sync_task:
+                self._sync_task.cancel()
             self.log.info(f"Initialized custom mxid: {mxid}. Starting sync task")
             self._sync_task = asyncio.ensure_future(self._try_sync(), loop=self.loop)
         else:
@@ -229,9 +231,9 @@ class CustomPuppetMixin(ABC):
         try:
             await self._sync()
         except asyncio.CancelledError:
-            self.log.info("Syncing cancelled")
+            self.log.info(f"Syncing for {self.custom_mxid} cancelled")
         except Exception:
-            self.log.exception("Fatal error syncing")
+            self.log.exception(f"Fatal error syncing {self.custom_mxid}")
 
     async def _sync(self) -> None:
         if not self.is_real_user:
