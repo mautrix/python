@@ -22,6 +22,20 @@ class AppServiceAPI(HTTPAPI):
     AppServiceAPI is an extension to HTTPAPI that provides appservice-specific features,
     such as child instances and easy access to IntentAPIs.
     """
+    base_log: 'Logger'
+
+    identity: Optional[UserID]
+    bot_mxid: UserID
+
+    state_store: 'StateStore'
+    txn_id: int
+    children: Dict[str, 'ChildAppServiceAPI']
+    real_users: Dict[str, 'AppServiceAPI']
+
+    is_real_user: bool
+    real_user_content_key: Optional[str]
+
+    _bot_intent: Optional[IntentAPI]
 
     def __init__(self, base_url: str, bot_mxid: UserID = None, token: str = None,
                  identity: Optional[UserID] = None, log: 'Logger' = None,
@@ -43,22 +57,22 @@ class AppServiceAPI(HTTPAPI):
             real_user_content_key: The key to inject in outgoing message events sent through real
                 users.
         """
-        super().__init__(base_url=base_url, token=token, loop=loop,
-                         log=log if (real_user or child) else log.getChild("api"),
+        self.base_log = log
+        api_log = self.base_log.getChild("api").getChild(identity or "bot")
+        super().__init__(base_url=base_url, token=token, loop=loop, log=api_log,
                          client_session=client_session, txn_id=0 if not child else None)
-        self.identity: UserID = identity
-        self.bot_mxid: UserID = bot_mxid
-        self._bot_intent: Optional[IntentAPI] = None
-        self.state_store: 'StateStore' = state_store
-        self.is_real_user: bool = real_user
-        self.real_user_content_key: Optional[str] = real_user_content_key
+        self.identity = identity
+        self.bot_mxid = bot_mxid
+        self._bot_intent = None
+        self.state_store = state_store
+        self.is_real_user = real_user
+        self.real_user_content_key = real_user_content_key
 
         if not child:
-            self.txn_id: int = 0
-            self.intent_log: 'Logger' = log.getChild("intent")
+            self.txn_id = 0
             if not real_user:
-                self.children: Dict[str, 'ChildAppServiceAPI'] = {}
-                self.real_users: Dict[str, 'AppServiceAPI'] = {}
+                self.children = {}
+                self.real_users = {}
 
     def user(self, user: UserID) -> 'ChildAppServiceAPI':
         """
@@ -102,10 +116,10 @@ class AppServiceAPI(HTTPAPI):
         try:
             return self.real_users[mxid]
         except KeyError:
-            child = self.__class__(base_url=base_url or self.base_url, token=token, identity=mxid,
-                                   log=self.log, state_store=self.state_store,
-                                   client_session=self.session, real_user=True,
-                                   real_user_content_key=self.real_user_content_key, loop=self.loop)
+            child = type(self)(base_url=base_url or self.base_url, token=token, identity=mxid,
+                               log=self.base_log, state_store=self.state_store,
+                               client_session=self.session, real_user=True,
+                               real_user_content_key=self.real_user_content_key, loop=self.loop)
             self.real_users[mxid] = child
             return child
 
@@ -117,8 +131,7 @@ class AppServiceAPI(HTTPAPI):
             The IntentAPI object for the appservice bot
         """
         if not self._bot_intent:
-            self._bot_intent = IntentAPI(self.bot_mxid, self, state_store=self.state_store,
-                                         log=self.intent_log)
+            self._bot_intent = IntentAPI(self.bot_mxid, self, state_store=self.state_store)
         return self._bot_intent
 
     def intent(self, user: UserID = None, token: Optional[str] = None,
@@ -142,9 +155,8 @@ class AppServiceAPI(HTTPAPI):
             raise ValueError("Can't get child intent of real user")
         if token:
             return IntentAPI(user, self.real_user(user, token, base_url), self.bot_intent(),
-                             self.state_store, self.intent_log)
-        return IntentAPI(user, self.user(user), self.bot_intent(), self.state_store,
-                         self.intent_log)
+                             self.state_store)
+        return IntentAPI(user, self.user(user), self.bot_intent(), self.state_store)
 
     def request(self, method: Method, path: PathBuilder,
                 content: Optional[Union[Dict, bytes, str]] = None, timestamp: Optional[int] = None,
@@ -160,11 +172,8 @@ class AppServiceAPI(HTTPAPI):
                 Does not include the base path (e.g. /_matrix/client/r0).
             content: The content to post as a dict (json) or bytes/str (raw).
             timestamp: The timestamp query param used for timestamp massaging.
-            external_url: The external_url field to send in the content
-                (only applicable if content is dict).
             headers: The dict of HTTP headers to send.
             query_params: The dict of query parameters to send.
-            api_path: The base API path.
 
         Returns:
             The response as a dict.
@@ -194,8 +203,8 @@ class ChildAppServiceAPI(AppServiceAPI):
             user: The Matrix user ID of the child user.
             parent: The parent AppServiceAPI instance.
         """
-        super().__init__(parent.base_url, parent.bot_mxid, parent.token, user, parent.log,
-                         parent.state_store, parent.session, loop=parent.loop, child=True,
+        super().__init__(parent.base_url, parent.bot_mxid, parent.token, user, parent.base_log,
+                         parent.state_store, parent.session, child=True, loop=parent.loop,
                          real_user_content_key=parent.real_user_content_key)
         self.parent = parent
 

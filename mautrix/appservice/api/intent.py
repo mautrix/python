@@ -60,10 +60,10 @@ class IntentAPI(ClientAPI):
     api: 'AppServiceAPI'
 
     def __init__(self, mxid: UserID, api: 'AppServiceAPI', bot: 'IntentAPI' = None,
-                 state_store: StateStore = None, log: Logger = None):
+                 state_store: StateStore = None):
         super().__init__(mxid, api)
         self.bot = bot
-        self.log = log
+        self.log = api.base_log.getChild("intent")
         self.state_store = state_store
 
         for method in ENSURE_REGISTERED_METHODS:
