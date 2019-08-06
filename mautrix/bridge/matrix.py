@@ -263,7 +263,7 @@ class BaseMatrixHandler(ABC):
 
         if evt.type == EventType.ROOM_MEMBER:
             evt: StateEvent
-            prev_content = evt.unsigned.prev_content if evt.unsigned else None
+            prev_content = evt.unsigned.prev_content if evt.unsigned else MemberStateEventContent()
             prev_membership = prev_content.membership if prev_content else Membership.JOIN
             if evt.content.membership == Membership.INVITE:
                 await self.int_handle_invite(evt.room_id, UserID(evt.state_key), evt.sender,
