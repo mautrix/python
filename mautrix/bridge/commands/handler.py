@@ -329,7 +329,7 @@ class CommandProcessor:
                      ) -> Awaitable[Any]:
         return handler(evt)
 
-    async def handle(self, room: RoomID, event_id: EventID, sender: 'BaseUser',
+    async def handle(self, room_id: RoomID, event_id: EventID, sender: 'BaseUser',
                      command: str, args: List[str], is_management: bool, is_portal: bool
                      ) -> None:
         """Handles the raw commands issued by a user to the Matrix bot.
@@ -339,7 +339,7 @@ class CommandProcessor:
         senders command_status as "next".
 
         Args:
-            room: ID of the Matrix room in which the command was issued.
+            room_id: ID of the Matrix room in which the command was issued.
             event_id: ID of the event by which the command was issued.
             sender: The sender who issued the command.
             command: The issued command, case insensitive.
@@ -354,7 +354,7 @@ class CommandProcessor:
         if not command_handlers or "unknown-command" not in command_handlers:
             raise ValueError("command_handlers are not properly initialized.")
 
-        evt = self.event_class(self, room, event_id, sender, command, args,
+        evt = self.event_class(self, room_id, event_id, sender, command, args,
                                is_management, is_portal)
         orig_command = command
         command = command.lower()
