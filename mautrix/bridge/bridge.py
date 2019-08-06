@@ -100,10 +100,14 @@ class Bridge:
             sys.exit(0)
 
         self.prepare_log()
-        self.prepare_loop()
-        self.prepare_appservice()
-        self.prepare_db()
-        self.prepare_bridge()
+        try:
+            self.prepare_loop()
+            self.prepare_appservice()
+            self.prepare_db()
+            self.prepare_bridge()
+        except Exception:
+            self.log.critical("Unexpected error in initialization", exc_info=True)
+            sys.exit(1)
         end_ts = time()
         self.log.debug(f"Initialization complete in {round(end_ts - start_ts, 2)} seconds")
 
@@ -180,7 +184,7 @@ class Bridge:
             sys.exit(0)
         except Exception:
             self.log.critical("Unexpected error in main event loop", exc_info=True)
-            sys.exit(1)
+            sys.exit(2)
 
     async def start(self) -> None:
         self.log.debug("Starting appservice...")
