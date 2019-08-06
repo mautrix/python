@@ -182,7 +182,6 @@ class HTTPAPI:
             content: The content to post as a dict (json) or bytes/str (raw).
             headers: The dict of HTTP headers to send.
             query_params: The dict of query parameters to send.
-            api_path: The base API path.
 
         Returns:
             The response as a dict.

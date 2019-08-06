@@ -82,6 +82,10 @@ class Bridge:
         self.shutdown_actions = None
 
     def run(self) -> None:
+        """
+        Prepare and run the bridge. This is the main entrypoint and the only function that should
+        be called manually.
+        """
         self._prepare()
         self._run()
 
@@ -169,6 +173,7 @@ class Bridge:
             self.loop.run_forever()
         except KeyboardInterrupt:
             self.log.debug("Interrupt received, stopping...")
+            self.prepare_stop()
             self.loop.run_until_complete(self.stop())
             self.prepare_shutdown()
             self.log.info("Everything stopped, shutting down")
@@ -187,9 +192,17 @@ class Bridge:
         await asyncio.gather(self.matrix.init_as_bot(), *(self.startup_actions or []),
                              loop=self.loop)
 
+    def prepare_stop(self) -> None:
+        """
+        Lifecycle method that is called before awaiting :meth:`stop`.
+        Useful to fill shutdown_actions.
+        """
+        pass
+
     async def stop(self) -> None:
         await self.az.stop()
         await asyncio.gather(*(self.shutdown_actions or []), loop=self.loop)
 
     def prepare_shutdown(self) -> None:
+        """Lifecycle method that is called right before ``sys.exit(0)``."""
         pass
