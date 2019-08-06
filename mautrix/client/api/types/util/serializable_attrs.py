@@ -117,15 +117,19 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
     elif isinstance(cls, type):
         if issubclass(cls, Serializable):
             return cls.deserialize(value)
-        elif issubclass(cls, List):
-            item_cls, = getattr(cls, "__args__", (None,))
+    elif hasattr(cls, "_name"):
+        args = getattr(cls, "__args__", None)
+
+        if cls._name == "List" and List[args] == cls:
+            item_cls, = args
             return [_deserialize(item_cls, item) for item in value]
-        elif issubclass(cls, Set):
-            item_cls, = getattr(cls, "__args__", (None,))
+        elif cls._name == "Set" and Set[args] == cls:
+            item_cls, = args
             return {_deserialize(item_cls, item) for item in value}
-        elif issubclass(cls, Dict):
-            key_cls, val_cls = getattr(cls, "__args__", (None, None))
-            return {key: _deserialize(val_cls, item) for key, item in value.items()}
+        elif cls._name == "Dict" and Dict[args] == cls:
+            key_cls, val_cls = args
+            return {_deserialize(key_cls, key): _deserialize(val_cls, item)
+                    for key, item in value.items()}
     if isinstance(value, list):
         return Lst(value)
     elif isinstance(value, dict):
