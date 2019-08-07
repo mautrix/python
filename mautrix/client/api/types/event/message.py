@@ -383,7 +383,10 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
         if self.content.msgtype.is_text:
             body = self.content.body
         else:
-            body = media_reply_fallback_body_map[self.content.msgtype]
+            try:
+                body = media_reply_fallback_body_map[self.content.msgtype]
+            except KeyError:
+                body = "an unknown message type"
         lines = body.strip().split("\n")
         first_line, lines = lines[0], lines[1:]
         displayname = self.sender
