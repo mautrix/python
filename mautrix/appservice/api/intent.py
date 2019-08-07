@@ -38,6 +38,8 @@ ENSURE_REGISTERED_METHODS = (
     ClientAPI.join_room, ClientAPI.set_room_directory_visibility, ClientAPI.forget_room,
     # User data methods
     ClientAPI.search_users, ClientAPI.set_displayname, ClientAPI.set_avatar_url,
+
+    ClientAPI.upload_media,
 )
 
 ENSURE_JOINED_METHODS = (
