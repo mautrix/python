@@ -14,7 +14,7 @@ from aiohttp import ClientConnectionError
 from mautrix.types import (UserID, FilterID, Filter, RoomEventFilter, RoomFilter, EventFilter,
                            EventType, SyncToken, RoomID, Event, PresenceState)
 from mautrix.appservice import AppService, IntentAPI
-from mautrix.errors import IntentError, MatrixError, MatrixRequestError
+from mautrix.errors import IntentError, MatrixError, MatrixRequestError, MatrixInvalidToken
 
 from .matrix import BaseMatrixHandler
 
@@ -128,7 +128,10 @@ class CustomPuppetMixin(ABC):
         if not self.is_real_user:
             return
 
-        mxid = await self.intent.whoami()
+        try:
+            mxid = await self.intent.whoami()
+        except MatrixInvalidToken:
+            mxid = None
         if not mxid or mxid != self.custom_mxid:
             self.custom_mxid = None
             self.access_token = None
