@@ -162,6 +162,10 @@ class Bridge:
     def prepare_db(self) -> None:
         self.db = sql.create_engine(self.config["appservice.database"])
         Base.metadata.bind = self.db
+        if not self.db.has_table("alembic_version"):
+            self.log.critical("alembic_version table not found. "
+                              "Did you forget to `alembic upgrade head`?")
+            sys.exit(10)
 
     def prepare_bridge(self) -> None:
         self.matrix = self.matrix_class(az=self.az, config=self.config, loop=self.loop)
