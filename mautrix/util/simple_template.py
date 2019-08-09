@@ -27,7 +27,7 @@ class SimpleTemplate(Generic[T]):
         self._type = type
 
     def format(self, arg: T) -> str:
-        return self._template.format({self._keyword: arg})
+        return self._template.format(**{self._keyword: arg})
 
     def format_full(self, arg: T) -> str:
         return f"{self._prefix}{arg}{self._suffix}"
