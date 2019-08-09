@@ -28,8 +28,9 @@ class ColorFormatter(Formatter):
         super().__init__(*args, **kwargs)
 
     def _color_name(self, module: str) -> str:
-        if module.startswith("mau.as"):
-            return MAU_COLOR + module + RESET
+        as_api = "mau.as.api"
+        if module.startswith(as_api):
+            return f"{MAU_COLOR}{as_api}{RESET}.{MXID_COLOR}{module[len(as_api)+1:]}{RESET}"
         elif module.startswith("mau."):
             try:
                 next_dot = module.index(".", len("mau."))

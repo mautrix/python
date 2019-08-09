@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Iterable, Awaitable, Optional, Type
+from time import time
 import argparse
 import logging
 import logging.config
@@ -81,10 +82,15 @@ class Bridge:
         self.shutdown_actions = None
 
     def run(self) -> None:
+        """
+        Prepare and run the bridge. This is the main entrypoint and the only function that should
+        be called manually.
+        """
         self._prepare()
         self._run()
 
     def _prepare(self) -> None:
+        start_ts = time()
         args = self.parser.parse_args()
 
         self.prepare_config(args.config, args.registration, args.base_config)
@@ -94,10 +100,16 @@ class Bridge:
             sys.exit(0)
 
         self.prepare_log()
-        self.prepare_loop()
-        self.prepare_appservice()
-        self.prepare_db()
-        self.prepare_bridge()
+        try:
+            self.prepare_loop()
+            self.prepare_appservice()
+            self.prepare_db()
+            self.prepare_bridge()
+        except Exception:
+            self.log.critical("Unexpected error in initialization", exc_info=True)
+            sys.exit(1)
+        end_ts = time()
+        self.log.debug(f"Initialization complete in {round(end_ts - start_ts, 2)} seconds")
 
     def prepare_config(self, config: str, registration: str, base_config: str) -> None:
         self.config = self.config_class(config, registration, base_config)
@@ -157,29 +169,44 @@ class Bridge:
     def _run(self) -> None:
         try:
             self.log.debug("Running startup actions...")
+            start_ts = time()
             self.loop.run_until_complete(self.start())
-            self.log.debug("Startup actions complete, running forever")
+            end_ts = time()
+            self.log.debug(f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
+                           "now running forever")
             self.loop.run_forever()
         except KeyboardInterrupt:
             self.log.debug("Interrupt received, stopping...")
+            self.prepare_stop()
             self.loop.run_until_complete(self.stop())
             self.prepare_shutdown()
             self.log.info("Everything stopped, shutting down")
             sys.exit(0)
         except Exception:
             self.log.critical("Unexpected error in main event loop", exc_info=True)
-            sys.exit(1)
+            sys.exit(2)
 
     async def start(self) -> None:
         self.log.debug("Starting appservice...")
         await self.az.start(self.config["appservice.hostname"], self.config["appservice.port"])
         await self.matrix.wait_for_connection()
+        await self._run_startup_actions()
+
+    async def _run_startup_actions(self) -> None:
         await asyncio.gather(self.matrix.init_as_bot(), *(self.startup_actions or []),
                              loop=self.loop)
 
+    def prepare_stop(self) -> None:
+        """
+        Lifecycle method that is called before awaiting :meth:`stop`.
+        Useful to fill shutdown_actions.
+        """
+        pass
+
     async def stop(self) -> None:
         await self.az.stop()
-        await asyncio.gather(*(self.startup_actions or []), loop=self.loop)
+        await asyncio.gather(*(self.shutdown_actions or []), loop=self.loop)
 
     def prepare_shutdown(self) -> None:
+        """Lifecycle method that is called right before ``sys.exit(0)``."""
         pass

@@ -31,6 +31,7 @@ class EventType(Serializable):
     ROOM_JOIN_RULES: 'EventType'
     ROOM_MEMBER: 'EventType'
     ROOM_POWER_LEVELS: 'EventType'
+    ROOM_HISTORY_VISIBILITY: 'EventType'
     ROOM_NAME: 'EventType'
     ROOM_TOPIC: 'EventType'
     ROOM_AVATAR: 'EventType'
@@ -115,6 +116,7 @@ _standard_types = {
         "m.room.join_rules": "ROOM_JOIN_RULES",
         "m.room.member": "ROOM_MEMBER",
         "m.room.power_levels": "ROOM_POWER_LEVELS",
+        "m.room.history_visibility": "ROOM_HISTORY_VISIBILITY",
         "m.room.name": "ROOM_NAME",
         "m.room.topic": "ROOM_TOPIC",
         "m.room.avatar": "ROOM_AVATAR",

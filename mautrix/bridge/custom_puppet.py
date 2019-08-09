@@ -72,6 +72,7 @@ class CustomPuppetMixin(ABC):
     default_mxid_intent: IntentAPI
     custom_mxid: Optional[UserID]
     access_token: Optional[str]
+    next_batch: Optional[SyncToken]
 
     intent: IntentAPI
 
@@ -131,11 +132,14 @@ class CustomPuppetMixin(ABC):
         if not mxid or mxid != self.custom_mxid:
             self.custom_mxid = None
             self.access_token = None
+            self.next_batch = None
             self.intent = self._fresh_intent()
             if mxid != self.custom_mxid:
                 raise OnlyLoginSelf()
             raise InvalidAccessToken()
         if self.sync_with_custom_puppets:
+            if self._sync_task:
+                self._sync_task.cancel()
             self.log.info(f"Initialized custom mxid: {mxid}. Starting sync task")
             self._sync_task = asyncio.ensure_future(self._try_sync(), loop=self.loop)
         else:
@@ -220,7 +224,7 @@ class CustomPuppetMixin(ABC):
         presence_events = sync_resp.get("presence", {}).get("events", [])
 
         # Deserialize and handle all events
-        coro = asyncio.gather(*[self.mx.try_handle_event(Event.deserialize(event))
+        coro = asyncio.gather(*[self.mx.try_handle_sync_event(Event.deserialize(event))
                                 for event in chain(ephemeral_events, presence_events)],
                               loop=self.loop)
         asyncio.ensure_future(coro, loop=self.loop)
@@ -229,9 +233,9 @@ class CustomPuppetMixin(ABC):
         try:
             await self._sync()
         except asyncio.CancelledError:
-            self.log.info("Syncing cancelled")
+            self.log.info(f"Syncing for {self.custom_mxid} cancelled")
         except Exception:
-            self.log.exception("Fatal error syncing")
+            self.log.exception(f"Fatal error syncing {self.custom_mxid}")
 
     async def _sync(self) -> None:
         if not self.is_real_user:
@@ -240,17 +244,17 @@ class CustomPuppetMixin(ABC):
         custom_mxid: UserID = self.custom_mxid
         access_token_at_start: str = self.access_token
         errors: int = 0
-        next_batch: Optional[SyncToken] = None
         filter_id: FilterID = await self._create_sync_filter()
         self.log.debug(f"Starting syncer for {custom_mxid} with sync filter {filter_id}.")
         while access_token_at_start == self.access_token:
             try:
-                sync_resp = await self.intent.sync(filter_id=filter_id, since=next_batch,
+                cur_batch = self.next_batch
+                sync_resp = await self.intent.sync(filter_id=filter_id, since=cur_batch,
                                                    set_presence=PresenceState.OFFLINE)
+                self.next_batch = sync_resp.get("next_batch", None)
                 errors = 0
-                if next_batch is not None:
+                if cur_batch is not None:
                     self._handle_sync(sync_resp)
-                next_batch = sync_resp.get("next_batch", None)
             except (MatrixError, ClientConnectionError) as e:
                 errors += 1
                 wait = min(errors, 11) ** 2

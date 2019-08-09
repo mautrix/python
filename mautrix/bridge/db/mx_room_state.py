@@ -39,8 +39,7 @@ class RoomState(Base):
     __tablename__ = "mx_room_state"
 
     room_id: RoomID = Column(String(255), primary_key=True)
-    power_levels: PowerLevelStateEventContent = Column("power_levels", PowerLevelType,
-                                                       nullable=True)
+    power_levels: PowerLevelStateEventContent = Column(PowerLevelType, nullable=True)
 
     @property
     def has_power_levels(self) -> bool:

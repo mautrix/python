@@ -16,7 +16,7 @@ from .base import BaseRoomEvent, BaseUnsigned, EventType
 @dataclass
 class PowerLevelStateEventContent(SerializableAttrs['PowerLevelStateEventContent']):
     """The content of a power level event."""
-    users: Dict[str, int] = attr.ib(default={}, metadata={"omitempty": False})
+    users: Dict[UserID, int] = attr.ib(default={}, metadata={"omitempty": False})
     users_default: int = 0
 
     events: Dict[EventType, int] = attr.ib(default={}, metadata={"omitempty": False})

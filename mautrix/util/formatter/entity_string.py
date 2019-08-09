@@ -3,7 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Sequence, Union, Optional, Dict, Any
+from abc import ABC, abstractmethod
+from itertools import chain
+from typing import List, Sequence, Union, Optional, Dict, Any, TypeVar, Type, Generic, Iterable
 
 from attr import dataclass
 import attr
@@ -11,19 +13,29 @@ import attr
 from .formatted_string import FormattedString, EntityType
 
 
-@dataclass
-class Entity:
-    type: EntityType
+class AbstractEntity(ABC):
+    def __init__(self, type: EntityType, offset: int, length: int, extra_info: Dict[str, Any]
+                 ) -> None:
+        pass
+
+    @abstractmethod
+    def copy(self) -> 'AbstractEntity':
+        pass
+
+    @abstractmethod
+    def adjust_offset(self, offset: int, max_length: int = -1) -> Optional['AbstractEntity']:
+        pass
+
+
+class SemiAbstractEntity(AbstractEntity, ABC):
     offset: int
     length: int
-    extra_info: Dict[str, Any] = attr.ib(factory=dict)
 
-    def copy(self) -> 'Entity':
-        return attr.evolve(self)
-
-    def adjust_offset(self, offset: int, max_length: int = -1) -> Optional['Entity']:
-        entity = attr.evolve(self, offset=self.offset + offset)
+    def adjust_offset(self, offset: int, max_length: int = -1) -> Optional['SemiAbstractEntity']:
+        entity = self.copy()
+        entity.offset += offset
         if entity.offset < 0:
+            entity.length += entity.offset
             entity.offset = 0
         elif entity.offset > max_length > -1:
             return None
@@ -32,13 +44,29 @@ class Entity:
         return entity
 
 
-class EntityString(FormattedString):
-    text: str
-    entities: List[Entity]
+@dataclass
+class SimpleEntity(SemiAbstractEntity):
+    type: EntityType
+    offset: int
+    length: int
+    extra_info: Dict[str, Any] = attr.ib(factory=dict)
 
-    def __init__(self, text: str = "", entities: List[Entity] = None) -> None:
+    def copy(self) -> 'SimpleEntity':
+        return attr.evolve(self)
+
+
+TEntity = TypeVar('TEntity', bound=AbstractEntity)
+TEntityType = TypeVar('TEntityType')
+
+
+class EntityString(Generic[TEntity, TEntityType], FormattedString):
+    text: str
+    _entities: List[TEntity]
+    entity_class: Type[AbstractEntity] = SimpleEntity
+
+    def __init__(self, text: str = "", entities: List[TEntity] = None) -> None:
         self.text = text
-        self.entities = entities or []
+        self._entities = entities or []
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(text='{self.text}', entities={self.entities})"
@@ -46,18 +74,23 @@ class EntityString(FormattedString):
     def __str__(self) -> str:
         return self.text
 
+    @property
+    def entities(self) -> List[TEntity]:
+        return self._entities
+
+    @entities.setter
+    def entities(self, val: Iterable[TEntity]) -> None:
+        self._entities = [entity for entity in val if entity is not None]
+
     def _offset_entities(self, offset: int) -> 'EntityString':
-        if offset == 0:
-            return self
-        self.entities = [entity.adjust_offset(offset, len(self.text))
-                         for entity in self.entities if entity
-                         if entity.offset + offset <= len(self.text)]
+        self.entities = (entity.adjust_offset(offset, len(self.text))
+                         for entity in self.entities)
         return self
 
     def append(self, *args: Union[str, 'FormattedString']) -> 'EntityString':
         for msg in args:
             if isinstance(msg, EntityString):
-                self.entities += [entity.adjust_offset(len(self.text)) for entity in msg.entities]
+                self.entities += (entity.adjust_offset(len(self.text)) for entity in msg.entities)
                 self.text += msg.text
             else:
                 self.text += str(msg)
@@ -67,18 +100,18 @@ class EntityString(FormattedString):
         for msg in args:
             if isinstance(msg, EntityString):
                 self.text = msg.text + self.text
-                self.entities = msg.entities + [entity.adjust_offset(len(msg.text))
-                                                for entity in self.entities]
+                self.entities = chain(msg.entities, (entity.adjust_offset(len(msg.text))
+                                                     for entity in self.entities))
             else:
                 text = str(msg)
                 self.text = text + self.text
-                self.entities = [entity.adjust_offset(len(text)) for entity in self.entities]
+                self.entities = (entity.adjust_offset(len(text)) for entity in self.entities)
         return self
 
-    def format(self, entity_type: EntityType, offset: int = None, length: int = None, **kwargs
+    def format(self, entity_type: TEntityType, offset: int = None, length: int = None, **kwargs
                ) -> 'EntityString':
-        self.entities.append(Entity(type=entity_type, offset=offset or 0,
-                                    length=length or len(self.text), extra_info=kwargs))
+        self.entities.append(self.entity_class(type=entity_type, offset=offset or 0,
+                                               length=length or len(self.text), extra_info=kwargs))
         return self
 
     def trim(self) -> 'EntityString':
@@ -96,11 +129,7 @@ class EntityString(FormattedString):
         offset = 0
         for part in text_parts:
             msg = type(self)(part)
-            for entity in self.entities:
-                start_in_range = len(part) > entity.offset - offset >= 0
-                end_in_range = len(part) >= entity.offset - offset + entity.length > 0
-                if start_in_range and end_in_range:
-                    msg.entities.append(entity.adjust_offset(-offset))
+            msg.entities = (entity.adjust_offset(-offset, len(part)) for entity in self.entities)
             output.append(msg)
 
             offset += len(part)

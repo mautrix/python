@@ -158,8 +158,8 @@ class HTTPAPI:
         if not self.log_sync and path == Path.sync:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
-        as_user = f"as user {query_params['user_id']}" if "user_id" in query_params else ""
-        self.log.debug(f"{method} {path} {log_content} {as_user}".strip(" "),
+        as_user = query_params.get("user_id", None)
+        self.log.debug(f"{method} {path} {log_content}".strip(" "),
                        extra={"matrix_http_request": {
                            "method": str(method),
                            "path": str(path),
@@ -182,7 +182,6 @@ class HTTPAPI:
             content: The content to post as a dict (json) or bytes/str (raw).
             headers: The dict of HTTP headers to send.
             query_params: The dict of query parameters to send.
-            api_path: The base API path.
 
         Returns:
             The response as a dict.

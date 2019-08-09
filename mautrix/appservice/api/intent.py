@@ -12,7 +12,8 @@ from ...types import (StateEvent, EventType, StateEventContent, EventID, Content
                       MessageEventContent, UserID, RoomID, PresenceState,
                       RoomAvatarStateEventContent, RoomNameStateEventContent,
                       RoomTopicStateEventContent, PowerLevelStateEventContent,
-                      RoomPinnedEventsStateEventContent, Membership, Member)
+                      RoomPinnedEventsStateEventContent, Membership, Member,
+                      MemberStateEventContent)
 from ...client import ClientAPI
 from ...errors import MForbidden, MatrixRequestError, IntentError
 from ..state_store import StateStore
@@ -37,6 +38,8 @@ ENSURE_REGISTERED_METHODS = (
     ClientAPI.join_room, ClientAPI.set_room_directory_visibility, ClientAPI.forget_room,
     # User data methods
     ClientAPI.search_users, ClientAPI.set_displayname, ClientAPI.set_avatar_url,
+
+    ClientAPI.upload_media,
 )
 
 ENSURE_JOINED_METHODS = (
@@ -59,10 +62,10 @@ class IntentAPI(ClientAPI):
     api: 'AppServiceAPI'
 
     def __init__(self, mxid: UserID, api: 'AppServiceAPI', bot: 'IntentAPI' = None,
-                 state_store: StateStore = None, log: Logger = None):
+                 state_store: StateStore = None):
         super().__init__(mxid, api)
         self.bot = bot
-        self.log = log
+        self.log = api.base_log.getChild("intent")
         self.state_store = state_store
 
         for method in ENSURE_REGISTERED_METHODS:
@@ -257,14 +260,15 @@ class IntentAPI(ClientAPI):
         await self.send_notice(room_id, text, html=html)
         await self.leave_room(room_id)
 
-    def get_membership(self, room_id: RoomID, user_id: UserID) -> Awaitable[str]:
+    def get_membership(self, room_id: RoomID, user_id: UserID
+                       ) -> Awaitable[MemberStateEventContent]:
         return self.get_state_event(room_id, EventType.ROOM_MEMBER, state_key=user_id)
 
     def set_membership(self, room_id: RoomID, user_id: UserID, membership: Membership,
                        reason: Optional[str] = "", profile: Optional[dict] = None, **kwargs
                        ) -> Awaitable[dict]:
         body = {
-            "membership": membership,
+            "membership": membership.serialize(),
             "reason": reason
         }
         profile = profile or {}
@@ -325,7 +329,7 @@ class IntentAPI(ClientAPI):
                                ) -> List[UserID]:
         if len(allowed_memberships) == 1 and allowed_memberships[0] == Membership.JOIN:
             memberships = await self.get_room_joined_memberships(room_id)
-            return memberships["joined"].keys()
+            return list(memberships["joined"].keys())
         memberships = await self.get_room_memberships(room_id)
         return [membership["state_key"] for membership in memberships["chunk"] if
                 Membership(membership["content"]["membership"]) in allowed_memberships]
