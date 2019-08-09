@@ -5,7 +5,7 @@ from mautrix import __version__
 setuptools.setup(
     name="mautrix",
     version=__version__,
-    url="https://github.com/tulir/mautrix-python/tree/matrix-restructure",
+    url="https://github.com/tulir/mautrix-python",
 
     author="Tulir Asokan",
     author_email="tulir@maunium.net",
