@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 # Based on https://github.com/nhoad/aiomanhole Copyright (c) 2014, Nathan Hoad
-from typing import Any, Tuple, Optional, Dict, Union, List, Callable, Type
+from typing import Any, Tuple, Optional, Dict, Union, List, Set, Callable, Type
 from socket import SOL_SOCKET, SO_PEERCRED
 from abc import ABC, abstractmethod
 from io import BytesIO, StringIO
@@ -238,15 +238,18 @@ class InterpreterFactory:
     loop: asyncio.AbstractEventLoop
     interpreter_class: Type[Interpreter]
     clients: List[Interpreter]
+    whitelist: Set[int]
     _conn_id: int
 
     def __init__(self, namespace: Dict[str, Any], banner: Union[bytes, str],
-                 interpreter_class: Type[Interpreter], loop: asyncio.AbstractEventLoop) -> None:
+                 interpreter_class: Type[Interpreter], loop: asyncio.AbstractEventLoop,
+                 whitelist: Set[int]) -> None:
         self.namespace = namespace or {}
         self.banner = banner
         self.loop = loop
         self.interpreter_class = interpreter_class
         self.clients = []
+        self.whitelist = whitelist
         self._conn_id = 0
 
     @property
@@ -256,6 +259,18 @@ class InterpreterFactory:
 
     async def __call__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
                        ) -> None:
+        sock = writer.transport.get_extra_info("socket")
+        creds = sock.getsockopt(SOL_SOCKET, SO_PEERCRED, struct.calcsize('3i'))
+        pid, uid, gid = struct.unpack('3i', creds)
+        user_info = pwd.getpwuid(uid)
+        username = f"{user_info.pw_name} ({uid})" if user_info and user_info.pw_name else uid
+        if len(self.whitelist) > 0 and uid not in self.whitelist:
+            writer.write(b"You are not whitelisted to use the manhole.")
+            log.warning(f"Non-whitelisted user {username} tried to connect from PID {pid}")
+            await writer.drain()
+            writer.close()
+            return
+
         namespace = {**self.namespace}
         interpreter = self.interpreter_class(namespace=namespace, banner=self.banner,
                                              loop=self.loop)
@@ -263,11 +278,6 @@ class InterpreterFactory:
         self.clients.append(interpreter)
         conn_id = self.conn_id
 
-        sock = writer.transport.get_extra_info("socket")
-        creds = sock.getsockopt(SOL_SOCKET, SO_PEERCRED, struct.calcsize('3i'))
-        pid, uid, gid = struct.unpack('3i', creds)
-        user_info = pwd.getpwuid(uid)
-        username = user_info.pw_name if user_info and user_info.pw_name else uid
         log.info(f"Manhole connection OPENED: {conn_id} from PID {pid} by {username}")
         await asyncio.ensure_future(interpreter(reader, writer))
         log.info(f"Manhole connection CLOSED: {conn_id} from PID {pid} by {username}")
@@ -275,7 +285,7 @@ class InterpreterFactory:
 
 
 async def start_manhole(path: str, banner: str = "", namespace: Optional[Dict[str, Any]] = None,
-                        loop: asyncio.AbstractEventLoop = None
+                        loop: asyncio.AbstractEventLoop = None, whitelist: Set[int] = None,
                         ) -> Tuple[asyncio.AbstractServer, Callable[[], None]]:
     """
     Starts a manhole server on a given UNIX address.
@@ -285,10 +295,12 @@ async def start_manhole(path: str, banner: str = "", namespace: Optional[Dict[st
         banner: The banner to show when clients connect.
         namespace: The globals to provide to connected clients.
         loop: The asyncio event loop to use.
+        whitelist: List of user IDs to allow connecting.
     """
     loop = loop or asyncio.get_event_loop()
     factory = InterpreterFactory(namespace=namespace, banner=banner,
-                                 interpreter_class=AsyncInterpreter, loop=loop)
+                                 interpreter_class=AsyncInterpreter, loop=loop,
+                                 whitelist=whitelist)
     server = await asyncio.start_unix_server(factory, path=path, loop=loop)
 
     def stop():
