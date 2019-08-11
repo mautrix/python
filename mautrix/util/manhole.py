@@ -197,7 +197,7 @@ class AsyncInterpreter(Interpreter):
         writer = self.writer
 
         if value is not None:
-            writer.write(f"{value!r}".encode("utf-8"))
+            writer.write(f"{value!r}\n".encode("utf-8"))
 
         if stdout:
             writer.write(stdout.encode("utf-8"))
