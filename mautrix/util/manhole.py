@@ -132,7 +132,7 @@ async def __eval_async_expr():
     async def attempt_exec(self, codeobj: CodeType) -> Tuple[Any, str]:
         with contextlib.redirect_stdout(StringIO()) as buf:
             exec(codeobj, self.namespace)
-            value = await eval("_eval_async_expr()", self.namespace)
+            value = await eval("__eval_async_expr()", self.namespace)
 
         return value, buf.getvalue()
 
