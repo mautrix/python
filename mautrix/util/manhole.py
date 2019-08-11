@@ -82,7 +82,7 @@ class AsyncInterpreter(Interpreter):
     loop: asyncio.AbstractEventLoop
     running: bool
     wrapper: str = """
-async def _eval_async_expr():
+async def __eval_async_expr():
     try:
         pass
     finally:
@@ -145,6 +145,7 @@ async def _eval_async_expr():
 
             if codeobj is not None:
                 await self.run_command(codeobj)
+                return
 
     async def run_command(self, codeobj: CodeType) -> None:
         """Execute a compiled code object, and write the output back to the client."""
@@ -229,7 +230,9 @@ async def _eval_async_expr():
                 self.running = False
                 break
             except Exception:
-                traceback.print_exc()
+                log.exception("Exception in manhole REPL")
+                self.writer.write(traceback.format_exc())
+                await self.writer.drain()
 
 
 class InterpreterFactory:
@@ -238,6 +241,7 @@ class InterpreterFactory:
     loop: asyncio.AbstractEventLoop
     interpreter_class: Type[Interpreter]
     clients: List[Interpreter]
+    _conn_id: int
 
     def __init__(self, namespace: Dict[str, Any], banner: Union[bytes, str],
                  interpreter_class: Type[Interpreter], loop: asyncio.AbstractEventLoop) -> None:
@@ -246,6 +250,12 @@ class InterpreterFactory:
         self.loop = loop
         self.interpreter_class = interpreter_class
         self.clients = []
+        self._conn_id = 0
+
+    @property
+    def conn_id(self) -> int:
+        self._conn_id += 1
+        return self._conn_id
 
     async def __call__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
                        ) -> None:
@@ -254,7 +264,7 @@ class InterpreterFactory:
                                              loop=self.loop)
         namespace["exit"] = interpreter.close
         self.clients.append(interpreter)
-        conn_id = len(self.clients)
+        conn_id = self.conn_id
 
         sock = writer.transport.get_extra_info("socket")
         creds = sock.getsockopt(SOL_SOCKET, SO_PEERCRED, struct.calcsize('3i'))

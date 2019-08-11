@@ -181,14 +181,14 @@ class Bridge:
             self.loop.run_forever()
         except KeyboardInterrupt:
             self.log.debug("Interrupt received, stopping...")
-            self.prepare_stop()
-            self.loop.run_until_complete(self.stop())
-            self.prepare_shutdown()
-            self.log.info("Everything stopped, shutting down")
-            sys.exit(0)
         except Exception:
             self.log.critical("Unexpected error in main event loop", exc_info=True)
             sys.exit(2)
+        self.prepare_stop()
+        self.loop.run_until_complete(self.stop())
+        self.prepare_shutdown()
+        self.log.info("Everything stopped, shutting down")
+        sys.exit(0)
 
     async def start(self) -> None:
         self.log.debug("Starting appservice...")
