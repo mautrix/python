@@ -26,6 +26,14 @@ log = logging.getLogger("mau.manhole")
 class StatefulCommandCompiler(codeop.CommandCompiler):
     """A command compiler that buffers input until a full command is available."""
 
+    wrapper: str = """
+async def __eval_async_expr():
+    try:
+        pass
+    finally:
+        globals().update(locals())
+"""
+
     buf: BytesIO
 
     def __init__(self) -> None:
@@ -37,23 +45,42 @@ class StatefulCommandCompiler(codeop.CommandCompiler):
     def is_partial_command(self) -> bool:
         return bool(self.buf.getvalue())
 
-    def __call__(self, source: bytes, **kwargs: Any) -> ast.AST:
+    def __call__(self, source: bytes, **kwargs: Any) -> Optional[CodeType]:
         buf = self.buf
         if self.is_partial_command():
-            buf.write(b'\n')
+            buf.write(b"\n")
         buf.write(source)
 
-        code = self.buf.getvalue().decode('utf8')
-
+        code = self.buf.getvalue().decode("utf-8")
         codeobj = super().__call__(code, **kwargs)
 
         if codeobj:
             self.reset()
-        return codeobj
+            return self._asyncify(codeobj)
+        return None
 
     def reset(self) -> None:
         self.buf.seek(0)
         self.buf.truncate(0)
+
+    def _asyncify(self, tree: ast.AST) -> CodeType:
+        self._insert_returns(tree.body)
+        wrapper = ast.parse(self.wrapper, "<ast>", "single")
+        method_stmt = wrapper.body[0]
+        try_stmt = method_stmt.body[0]
+        try_stmt.body = tree.body
+        return compile(wrapper, "<ast>", "single")
+
+    # From https://gist.github.com/nitros12/2c3c265813121492655bc95aa54da6b9
+    def _insert_returns(self, body: List[ast.AST]) -> None:
+        if isinstance(body[-1], ast.Expr):
+            body[-1] = ast.Return(body[-1].value)
+            ast.fix_missing_locations(body[-1])
+        elif isinstance(body[-1], ast.If):
+            self._insert_returns(body[-1].body)
+            self._insert_returns(body[-1].orelse)
+        elif isinstance(body[-1], (ast.With, ast.AsyncWith)):
+            self._insert_returns(body[-1].body)
 
 
 class Interpreter(ABC):
@@ -81,13 +108,6 @@ class AsyncInterpreter(Interpreter):
     compiler: StatefulCommandCompiler
     loop: asyncio.AbstractEventLoop
     running: bool
-    wrapper: str = """
-async def __eval_async_expr():
-    try:
-        pass
-    finally:
-        globals().update(locals())
-"""
 
     def __init__(self, namespace: Dict[str, Any], banner: Union[bytes, str],
                  loop: asyncio.AbstractEventLoop) -> None:
@@ -97,39 +117,16 @@ async def __eval_async_expr():
         self.compiler = StatefulCommandCompiler()
         self.loop = loop
 
-    # From https://gist.github.com/nitros12/2c3c265813121492655bc95aa54da6b9
-    def _insert_returns(self, body: List[ast.AST]) -> None:
-        if isinstance(body[-1], ast.Expr):
-            body[-1] = ast.Return(body[-1].value)
-            ast.fix_missing_locations(body[-1])
-        elif isinstance(body[-1], ast.If):
-            self._insert_returns(body[-1].body)
-            self._insert_returns(body[-1].orelse)
-        elif isinstance(body[-1], (ast.With, ast.AsyncWith)):
-            self._insert_returns(body[-1].body)
-
-    def attempt_compile(self, line: bytes) -> Optional[CodeType]:
-        ast_obj = self.compiler(line)
-        if not ast_obj:
-            return None
-
-        self._insert_returns(ast_obj.body)
-        wrapper = ast.parse(self.wrapper, "<ast>", "single")
-        method_stmt = wrapper.body[0]
-        try_stmt = method_stmt.body[0]
-        try_stmt.body = ast_obj.body
-        return compile(wrapper, "<ast>", "single")
-
     async def send_exception(self) -> None:
         """When an exception has occurred, write the traceback to the user."""
         self.compiler.reset()
 
         exc = traceback.format_exc()
-        self.writer.write(exc.encode('utf8'))
+        self.writer.write(exc.encode("utf-8"))
 
         await self.writer.drain()
 
-    async def attempt_exec(self, codeobj: CodeType) -> Tuple[Any, str]:
+    async def execute(self, codeobj: CodeType) -> Tuple[Any, str]:
         with contextlib.redirect_stdout(StringIO()) as buf:
             exec(codeobj, self.namespace)
             value = await eval("__eval_async_expr()", self.namespace)
@@ -150,7 +147,7 @@ async def __eval_async_expr():
     async def run_command(self, codeobj: CodeType) -> None:
         """Execute a compiled code object, and write the output back to the client."""
         try:
-            value, stdout = await self.attempt_exec(codeobj)
+            value, stdout = await self.execute(codeobj)
         except Exception:
             await self.send_exception()
             return
@@ -176,12 +173,12 @@ async def __eval_async_expr():
         reader = self.reader
 
         line = await reader.readline()
-        if line == b'':  # lost connection
+        if line == b"":
             raise ConnectionResetError()
 
         try:
             # skip the newline to make CommandCompiler work as advertised
-            codeobj = self.attempt_compile(line.rstrip(b'\n'))
+            codeobj = self.compiler(line.rstrip(b"\n"))
         except SyntaxError:
             await self.send_exception()
             return None
@@ -200,10 +197,10 @@ async def __eval_async_expr():
         writer = self.writer
 
         if value is not None:
-            writer.write('{!r}\n'.format(value).encode('utf8'))
+            writer.write(f"{value!r}".encode("utf-8"))
 
         if stdout:
-            writer.write(stdout.encode('utf8'))
+            writer.write(stdout.encode("utf-8"))
 
         await writer.drain()
 
@@ -245,7 +242,7 @@ class InterpreterFactory:
 
     def __init__(self, namespace: Dict[str, Any], banner: Union[bytes, str],
                  interpreter_class: Type[Interpreter], loop: asyncio.AbstractEventLoop) -> None:
-        self.namespace = namespace
+        self.namespace = namespace or {}
         self.banner = banner
         self.loop = loop
         self.interpreter_class = interpreter_class
@@ -290,7 +287,6 @@ async def start_manhole(path: str, banner: str = "", namespace: Optional[Dict[st
         loop: The asyncio event loop to use.
     """
     loop = loop or asyncio.get_event_loop()
-    namespace = namespace or {}
     factory = InterpreterFactory(namespace=namespace, banner=banner,
                                  interpreter_class=AsyncInterpreter, loop=loop)
     server = await asyncio.start_unix_server(factory, path=path, loop=loop)
@@ -300,5 +296,4 @@ async def start_manhole(path: str, banner: str = "", namespace: Optional[Dict[st
             client.close()
         server.close()
 
-    namespace["stop"] = stop
     return server, stop
