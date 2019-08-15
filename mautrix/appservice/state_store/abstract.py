@@ -75,7 +75,10 @@ class StateStore(ABC):
             ts = int(round(time.time() * 1000))
             self.typing[(room_id, user_id)] = ts + timeout
         else:
-            del self.typing[(room_id, user_id)]
+            try:
+                del self.typing[(room_id, user_id)]
+            except KeyError:
+                pass
 
     def is_typing(self, room_id: RoomID, user_id: UserID) -> bool:
         ts = int(round(time.time() * 1000))
