@@ -27,6 +27,10 @@ class HTMLNode(list):
 
 
 class NodeifyingParser(HTMLParser):
+    # From https://www.w3.org/TR/html5/syntax.html#writing-html-documents-elements
+    void_tags = ("area", "base", "br", "col", "command", "embed", "hr", "img", "input", "link",
+                 "meta", "param", "source", "track", "wbr")
+
     stack: List[HTMLNode]
 
     def __init__(self) -> None:
@@ -36,7 +40,11 @@ class NodeifyingParser(HTMLParser):
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
         node = HTMLNode(tag, attrs)
         self.stack[-1].append(node)
-        self.stack.append(node)
+        if tag not in self.void_tags:
+            self.stack.append(node)
+
+    def handle_startendtag(self, tag, attrs):
+        self.stack[-1].append(HTMLNode(tag, attrs))
 
     def handle_endtag(self, tag: str) -> None:
         if tag == self.stack[-1].tag:
