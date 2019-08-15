@@ -8,11 +8,14 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 from abc import ABC, abstractmethod
 import io
+import logging
 
 yaml = YAML()
 yaml.indent(4)
 
 T = TypeVar('T')
+
+log: logging.Logger = logging.getLogger("mau.util.config")
 
 
 class RecursiveDict(Generic[T]):
@@ -209,5 +212,8 @@ class BaseFileConfig(BaseConfig, ABC):
         return None
 
     def save(self) -> None:
-        with open(self.path, 'w') as stream:
-            yaml.dump(self._data, stream)
+        try:
+            with open(self.path, 'w') as stream:
+                yaml.dump(self._data, stream)
+        except OSError:
+            log.exception(f"Failed to overwrite the config in {self.path}")
