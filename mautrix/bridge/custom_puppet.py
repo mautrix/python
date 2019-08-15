@@ -122,6 +122,12 @@ class CustomPuppetMixin(ABC):
             await self._leave_rooms_with_default_user()
         self.save()
 
+    async def try_start(self) -> None:
+        try:
+            await self.start()
+        except Exception:
+            self.log.exception("Failed to initialize custom mxid")
+
     async def start(self) -> None:
         """Initialize the custom account this puppet uses. Should be called at startup to start
         the /sync task. Is called by :meth:`switch_mxid` automatically."""
