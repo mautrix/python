@@ -52,20 +52,22 @@ class CommunityHelper:
         except MatrixStandardRequestError as e:
             self.az.intent.log.warning(f"Failed to invite {user_id} to {community_id}: {e}")
 
-    async def join(self, community_id: CommunityID, intent: IntentAPI) -> None:
+    async def join(self, community_id: CommunityID, intent: IntentAPI) -> bool:
         if not community_id or not intent:
-            return
+            return False
         await self.invite(community_id, intent.mxid)
         try:
             await intent.api.request(Method.PUT, Path.groups[community_id].self.accept_invite)
         except MatrixStandardRequestError as e:
             intent.log.warning(f"Failed to join {community_id}: {e}")
+        return True
 
-    async def add_room(self, community_id: CommunityID, room_id: RoomID) -> None:
+    async def add_room(self, community_id: CommunityID, room_id: RoomID) -> bool:
         if not community_id or not room_id:
-            return
+            return False
         try:
             await self.az.intent.api.request(Method.PUT,
                                              Path.groups[community_id].admin.rooms[room_id])
         except MatrixStandardRequestError as e:
             self.az.intent.log.warning(f"Failed to add {room_id} to {community_id}: {e}")
+        return True
