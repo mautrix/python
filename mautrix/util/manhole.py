@@ -20,6 +20,7 @@ import codeop
 import pwd
 import ast
 import sys
+import os
 
 log = logging.getLogger("mau.manhole")
 
@@ -340,6 +341,7 @@ async def start_manhole(path: str, banner: str = "", namespace: Optional[Dict[st
                                  interpreter_class=AsyncInterpreter, loop=loop,
                                  whitelist=whitelist)
     server = await asyncio.start_unix_server(factory, path=path, loop=loop)
+    os.chmod(path, 0o666)
 
     def stop():
         for client in factory.clients:
