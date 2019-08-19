@@ -17,7 +17,7 @@ T = TypeVar('T', bound='Base')
 
 
 @as_declarative()
-class Base():
+class Base:
     """
     Base class for SQLAlchemy models. Provides SQLAlchemy declarative base features and some
     additional utilities.

@@ -55,6 +55,7 @@ class CommunityHelper:
     async def join(self, community_id: CommunityID, intent: IntentAPI) -> bool:
         if not community_id or not intent:
             return False
+        await intent.ensure_registered()
         await self.invite(community_id, intent.mxid)
         try:
             await intent.api.request(Method.PUT, Path.groups[community_id].self.accept_invite)
