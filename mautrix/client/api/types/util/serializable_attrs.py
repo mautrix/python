@@ -7,6 +7,7 @@ from typing import (List, Set, Dict, Type, TypeVar, Any, Union, Optional, Tuple,
                     NewType)
 import attr
 import copy
+import sys
 
 from .....api import JSON
 from .serializable import SerializerError, Serializable, GenericSerializable
@@ -117,24 +118,39 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
     elif isinstance(cls, type):
         if issubclass(cls, Serializable):
             return cls.deserialize(value)
-    elif hasattr(cls, "_name"):
-        args = getattr(cls, "__args__", None)
 
-        if cls._name == "List" and List[args] == cls:
-            item_cls, = args
-            return [_deserialize(item_cls, item) for item in value]
-        elif cls._name == "Set" and Set[args] == cls:
-            item_cls, = args
-            return {_deserialize(item_cls, item) for item in value}
-        elif cls._name == "Dict" and Dict[args] == cls:
-            key_cls, val_cls = args
-            return {_deserialize(key_cls, key): _deserialize(val_cls, item)
-                    for key, item in value.items()}
+    type_class = get_type_class(cls)
+    args = getattr(cls, "__args__", None)
+    if type_class == list:
+        item_cls, = args
+        return [_deserialize(item_cls, item) for item in value]
+    elif type_class == set:
+        item_cls, = args
+        return {_deserialize(item_cls, item) for item in value}
+    elif type_class == dict:
+        key_cls, val_cls = args
+        return {_deserialize(key_cls, key): _deserialize(val_cls, item)
+                for key, item in value.items()}
+
     if isinstance(value, list):
         return Lst(value)
     elif isinstance(value, dict):
         return Obj(**value)
     return value
+
+
+if sys.version_info >= (3, 7):
+    def get_type_class(typ):
+        try:
+            return typ.__origin__
+        except AttributeError:
+            return None
+else:
+    def get_type_class(typ):
+        try:
+            return typ.__extra__
+        except AttributeError:
+            return None
 
 
 def _attrs_to_dict(data: T) -> JSON:
