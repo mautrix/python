@@ -19,8 +19,42 @@ import struct
 import codeop
 import pwd
 import ast
+import sys
 
 log = logging.getLogger("mau.manhole")
+
+
+class AwaitTransformer(ast.NodeTransformer):
+    def visit_Call(self, node: ast.Call) -> Union[ast.Call, ast.Await]:
+        if ((not isinstance(node.func, ast.Name) or node.func.id != AWAIT_FUNC_NAME
+             or len(node.args) != 1 or len(node.keywords) != 0)):
+            return node
+        return ast.copy_location(ast.Await(value=node.args[0]), node)
+
+
+class AwaitFallback:
+    def __str__(self) -> str:
+        return "magical await() AST transformer"
+
+    def __repr__(self) -> str:
+        return "magical await() AST transformer"
+
+    def __call__(self, *args, **kwargs) -> Any:
+        if len(args) != 1:
+            raise TypeError(f"{AWAIT_FUNC_NAME}() takes 1 positional argument "
+                            f"but {len(args)} were given")
+        elif len(kwargs) > 0:
+            raise TypeError(f"{AWAIT_FUNC_NAME}() got an unexpected keyword argument "
+                            f"'{list(kwargs.keys())[0]}'")
+        raise RuntimeError("AST transforming appears to have failed")
+
+
+# Python 3.6 doesn't even support parsing top-level awaits, so we use an AST transformer to
+# convert `await(coro)` into `await coro`.
+# Python 3.7 and up allow parsing top-level awaits and only throw errors if you try to execute them.
+AWAIT_TRANSFORM = sys.version_info < (3, 7)
+AWAIT_FUNC_NAME = "await"
+AWAIT_FALLBACK = AwaitFallback()
 
 
 class StatefulCommandCompiler(codeop.CommandCompiler):
@@ -64,6 +98,8 @@ async def __eval_async_expr():
         self.buf.truncate(0)
 
     def _asyncify(self, tree: ast.AST) -> CodeType:
+        if AWAIT_TRANSFORM:
+            AwaitTransformer().visit(tree)
         self._insert_returns(tree.body)
         wrapper = ast.parse(self.wrapper, "<ast>", "single")
         method_stmt = wrapper.body[0]
@@ -272,6 +308,8 @@ class InterpreterFactory:
             return
 
         namespace = {**self.namespace}
+        if AWAIT_TRANSFORM:
+            namespace[AWAIT_FUNC_NAME] = AWAIT_FALLBACK
         interpreter = self.interpreter_class(namespace=namespace, banner=self.banner,
                                              loop=self.loop)
         namespace["exit"] = interpreter.close
