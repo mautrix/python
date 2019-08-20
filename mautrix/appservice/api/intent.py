@@ -154,7 +154,7 @@ class IntentAPI(ClientAPI):
                 user is already invited.
         """
         try:
-            ok_states = ("invite", "join")
+            ok_states = (Membership.INVITE, Membership.JOIN)
             do_invite = (not check_cache
                          or self.state_store.get_membership(room_id, user_id) not in ok_states)
             if do_invite:
