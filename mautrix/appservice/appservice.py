@@ -4,14 +4,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
-from typing import Optional, Callable, Awaitable, Union, Iterator, List, Dict
+from typing import Optional, Callable, Awaitable, Union, List, Dict
 from aiohttp import web
 import aiohttp
 import asyncio
 import logging
 
 from ..api import JSON
-from ..types import UserID, RoomAlias, Event
+from ..types import UserID, RoomAlias, Event, SerializerError
 from .api import AppServiceAPI, IntentAPI
 from .state_store import StateStore, JSONStateStore
 
@@ -195,8 +195,13 @@ class AppService:
         except KeyError:
             return web.Response(status=400)
 
-        for event in events:
-            self.handle_matrix_event(Event.deserialize(event))
+        for raw_event in events:
+            try:
+                event = Event.deserialize(raw_event)
+            except SerializerError:
+                self.log.exception("Failed to deserialize event %s", raw_event)
+            else:
+                self.handle_matrix_event(event)
 
         self.transactions.append(transaction_id)
 
