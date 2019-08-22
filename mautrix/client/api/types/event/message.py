@@ -125,7 +125,7 @@ class BaseMessageEventContentFuncs:
     body: str
     _relates_to: Optional[RelatesTo]
 
-    def set_reply(self, reply_to: Union[EventID, 'MessageEvent']) -> None:
+    def set_reply(self, reply_to: Union[EventID, 'MessageEvent'], **kwargs) -> None:
         self.relates_to.rel_type = RelationType.REFERENCE
         self.relates_to.event_id = reply_to if isinstance(reply_to, str) else reply_to.event_id
 
@@ -269,13 +269,15 @@ class TextMessageEventContent(BaseMessageEventContent,
     format: Format = None
     formatted_body: str = None
 
-    def set_reply(self, reply_to: 'MessageEvent') -> None:
+    def set_reply(self, reply_to: 'MessageEvent', *, displayname: Optional[str] = None) -> None:
         super().set_reply(reply_to)
+        if isinstance(reply_to, str):
+            return
         if not self.formatted_body or len(self.formatted_body) == 0 or self.format != Format.HTML:
             self.format = Format.HTML
             self.formatted_body = escape(self.body)
-        self.formatted_body = reply_to.make_reply_fallback_html() + self.formatted_body
-        self.body = reply_to.make_reply_fallback_text() + self.body
+        self.formatted_body = reply_to.make_reply_fallback_html(displayname) + self.formatted_body
+        self.body = reply_to.make_reply_fallback_text(displayname) + self.body
 
     def trim_reply_fallback(self) -> None:
         if self.get_reply_to():
@@ -366,19 +368,19 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
                 data["formatted_body"] = f"* {data['formatted_body']}"
         return data
 
-    def make_reply_fallback_html(self) -> str:
+    def make_reply_fallback_html(self, displayname: Optional[str] = None) -> str:
         """Generate the HTML fallback for messages replying to this event."""
         if self.content.msgtype.is_text:
             body = self.content.formatted_body or escape(self.content.body)
         else:
             sent_type = media_reply_fallback_body_map[self.content.msgtype] or "a message"
             body = f"sent {sent_type}"
-        displayname = self.sender
+        displayname = escape(displayname) if displayname else self.sender
         return html_reply_fallback_format.format(room_id=self.room_id, event_id=self.event_id,
                                                  sender=self.sender, displayname=displayname,
                                                  content=body)
 
-    def make_reply_fallback_text(self) -> str:
+    def make_reply_fallback_text(self, displayname: Optional[str] = None) -> str:
         """Generate the plaintext fallback for messages replying to this event."""
         if self.content.msgtype.is_text:
             body = self.content.body
@@ -389,8 +391,7 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
                 body = "an unknown message type"
         lines = body.strip().split("\n")
         first_line, lines = lines[0], lines[1:]
-        displayname = self.sender
-        fallback_text = f"> <{displayname}> {first_line}"
+        fallback_text = f"> <{displayname or self.sender}> {first_line}"
         for line in lines:
             fallback_text += f"\n> {line}"
         fallback_text += "\n\n"
