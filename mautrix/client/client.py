@@ -222,11 +222,14 @@ class Client(ClientAPI):
                 filter_data = await self.create_filter(filter_data)
             await self._start(filter_data)
         except asyncio.CancelledError:
-            self.log.debug("Syncing stopped")
-            await self.dispatch_internal_event(InternalEventType.SYNC_STOPPED, error=None)
+            self.log.debug("Syncing cancelled")
         except Exception as e:
             self.log.exception("Fatal error while syncing")
             await self.dispatch_internal_event(InternalEventType.SYNC_STOPPED, error=e)
+            return
+        else:
+            self.log.debug("Syncing stopped")
+        await self.dispatch_internal_event(InternalEventType.SYNC_STOPPED, error=None)
 
     async def _start(self, filter_id: Optional[FilterID]) -> None:
         fail_sleep = 5
@@ -255,13 +258,12 @@ class Client(ClientAPI):
                 "is_initial": is_initial,
                 "is_first": is_first,
             }
-            is_first = False
             self.store.next_batch = data.get("next_batch")
             await self.dispatch_internal_event(InternalEventType.SYNC_SUCCESSFUL, data=data)
-            if self.ignore_first_sync and is_first:
-                return
-            elif self.ignore_initial_sync and is_initial:
-                return
+            if (self.ignore_first_sync and is_first) or (self.ignore_initial_sync and is_initial):
+                is_first = False
+                continue
+            is_first = False
             try:
                 self.handle_sync(data)
             except Exception:
