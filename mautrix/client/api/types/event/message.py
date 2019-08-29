@@ -11,7 +11,7 @@ from attr import dataclass
 import attr
 
 from .....api import JSON
-from ..util import SerializableEnum, SerializableAttrs, Serializable, Obj, deserializer, serializer
+from ..util import SerializableEnum, SerializableAttrs, Serializable, Obj, deserializer
 from ..primitive import ContentURI, EventID
 from .base import BaseRoomEvent, BaseUnsigned
 
@@ -132,6 +132,19 @@ class BaseMessageEventContentFuncs:
     def set_edit(self, edits: Union[EventID, 'MessageEvent']) -> None:
         self.relates_to.rel_type = RelationType.REPLACE
         self.relates_to.event_id = edits if isinstance(edits, str) else edits.event_id
+
+    def serialize(self) -> JSON:
+        data = SerializableAttrs.serialize(self)
+        evt = self.get_edit()
+        if evt:
+            new_content = {**data}
+            del new_content["m.relates_to"]
+            data["m.new_content"] = new_content
+            if "body" in data:
+                data["body"] = f"* {data['body']}"
+            if "formatted_body" in data:
+                data["formatted_body"] = f"* {data['formatted_body']}"
+        return data
 
     @property
     def relates_to(self) -> RelatesTo:
@@ -352,21 +365,6 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
             return LocationMessageEventContent.deserialize(data)
         else:
             return Obj(**data)
-
-    @staticmethod
-    @serializer(MessageEventContent)
-    def serialize_content(content: MessageEventContent) -> JSON:
-        data = content.serialize()
-        evt = content.get_edit()
-        if evt:
-            new_content = {**data}
-            del new_content["m.relates_to"]
-            data["m.new_content"] = new_content
-            if "body" in data:
-                data["body"] = f"* {data['body']}"
-            if "formatted_body" in data:
-                data["formatted_body"] = f"* {data['formatted_body']}"
-        return data
 
     def make_reply_fallback_html(self, displayname: Optional[str] = None) -> str:
         """Generate the HTML fallback for messages replying to this event."""
