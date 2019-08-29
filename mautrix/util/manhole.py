@@ -57,11 +57,7 @@ AWAIT_TRANSFORM = sys.version_info < (3, 7)
 AWAIT_FUNC_NAME = "await"
 AWAIT_FALLBACK = AwaitFallback()
 
-
-class StatefulCommandCompiler(codeop.CommandCompiler):
-    """A command compiler that buffers input until a full command is available."""
-
-    wrapper: str = """
+ASYNC_EVAL_WRAPPER: str = """
 async def __eval_async_expr():
     try:
         pass
@@ -69,7 +65,36 @@ async def __eval_async_expr():
         globals().update(locals())
 """
 
+
+def asyncify(tree: ast.AST, wrapper: str = ASYNC_EVAL_WRAPPER) -> CodeType:
+    # TODO in python 3.8+, switch to ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
+    if AWAIT_TRANSFORM:
+        AwaitTransformer().visit(tree)
+    insert_returns(tree.body)
+    wrapper_node: ast.AST = ast.parse(wrapper, "<ast>", "single")
+    method_stmt = wrapper_node.body[0]
+    try_stmt = method_stmt.body[0]
+    try_stmt.body = tree.body
+    return compile(wrapper_node, "<ast>", "single")
+
+
+# From https://gist.github.com/nitros12/2c3c265813121492655bc95aa54da6b9
+def insert_returns(body: List[ast.AST]) -> None:
+    if isinstance(body[-1], ast.Expr):
+        body[-1] = ast.Return(body[-1].value)
+        ast.fix_missing_locations(body[-1])
+    elif isinstance(body[-1], ast.If):
+        insert_returns(body[-1].body)
+        insert_returns(body[-1].orelse)
+    elif isinstance(body[-1], (ast.With, ast.AsyncWith)):
+        insert_returns(body[-1].body)
+
+
+class StatefulCommandCompiler(codeop.CommandCompiler):
+    """A command compiler that buffers input until a full command is available."""
+
     buf: BytesIO
+    wrapper: str = ASYNC_EVAL_WRAPPER
 
     def __init__(self) -> None:
         super().__init__()
@@ -91,33 +116,12 @@ async def __eval_async_expr():
 
         if codeobj:
             self.reset()
-            return self._asyncify(codeobj)
+            return asyncify(codeobj, wrapper=self.wrapper)
         return None
 
     def reset(self) -> None:
         self.buf.seek(0)
         self.buf.truncate(0)
-
-    def _asyncify(self, tree: ast.AST) -> CodeType:
-        if AWAIT_TRANSFORM:
-            AwaitTransformer().visit(tree)
-        self._insert_returns(tree.body)
-        wrapper = ast.parse(self.wrapper, "<ast>", "single")
-        method_stmt = wrapper.body[0]
-        try_stmt = method_stmt.body[0]
-        try_stmt.body = tree.body
-        return compile(wrapper, "<ast>", "single")
-
-    # From https://gist.github.com/nitros12/2c3c265813121492655bc95aa54da6b9
-    def _insert_returns(self, body: List[ast.AST]) -> None:
-        if isinstance(body[-1], ast.Expr):
-            body[-1] = ast.Return(body[-1].value)
-            ast.fix_missing_locations(body[-1])
-        elif isinstance(body[-1], ast.If):
-            self._insert_returns(body[-1].body)
-            self._insert_returns(body[-1].orelse)
-        elif isinstance(body[-1], (ast.With, ast.AsyncWith)):
-            self._insert_returns(body[-1].body)
 
 
 class Interpreter(ABC):
@@ -164,8 +168,8 @@ class AsyncInterpreter(Interpreter):
         await self.writer.drain()
 
     async def execute(self, codeobj: CodeType) -> Tuple[Any, str]:
+        exec(codeobj, self.namespace)
         with contextlib.redirect_stdout(StringIO()) as buf:
-            exec(codeobj, self.namespace)
             value = await eval("__eval_async_expr()", self.namespace)
 
         return value, buf.getvalue()
