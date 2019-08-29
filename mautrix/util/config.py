@@ -1,14 +1,15 @@
-# Copyright (c) 2018 Tulir Asokan
+# Copyright (c) 2019 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Optional, Tuple, NamedTuple, Callable, Generic, TypeVar, Type
+from typing import Any, Optional, Tuple, Callable, Generic, TypeVar, Type
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 from abc import ABC, abstractmethod
-import io
 import logging
+import copy
+import io
 
 yaml = YAML()
 yaml.indent(4)
@@ -22,6 +23,9 @@ class RecursiveDict(Generic[T]):
     def __init__(self, data: Optional[T] = None, dict_factory: Optional[Type[T]] = None) -> None:
         self._dict_factory = dict_factory or dict
         self._data: CommentedMap = data or self._dict_factory()
+
+    def clone(self) -> 'RecursiveDict':
+        return RecursiveDict(data=copy.deepcopy(self._data), dict_factory=self._dict_factory)
 
     @staticmethod
     def parse_key(key: str) -> Tuple[str, Optional[str]]:
