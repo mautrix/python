@@ -66,16 +66,16 @@ async def __eval_async_expr():
 """
 
 
-def asyncify(tree: ast.AST, wrapper: str = ASYNC_EVAL_WRAPPER) -> CodeType:
+def asyncify(tree: ast.AST, wrapper: str = ASYNC_EVAL_WRAPPER, module: str = "<ast>") -> CodeType:
     # TODO in python 3.8+, switch to ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
     if AWAIT_TRANSFORM:
         AwaitTransformer().visit(tree)
     insert_returns(tree.body)
-    wrapper_node: ast.AST = ast.parse(wrapper, "<ast>", "single")
+    wrapper_node: ast.AST = ast.parse(wrapper, "<async eval wrapper>", "single")
     method_stmt = wrapper_node.body[0]
     try_stmt = method_stmt.body[0]
     try_stmt.body = tree.body
-    return compile(wrapper_node, "<ast>", "single")
+    return compile(wrapper_node, module, "single")
 
 
 # From https://gist.github.com/nitros12/2c3c265813121492655bc95aa54da6b9
