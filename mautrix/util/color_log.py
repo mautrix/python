@@ -16,8 +16,8 @@ LEVEL_COLORS = {
     "CRITICAL": f"37;1m{PREFIX}41m",  # white on red bg
 }
 
-MAU_COLOR = PREFIX + "32;1m"  # green
-AIOHTTP_COLOR = PREFIX + "36;1m"  # cyan
+MAU_COLOR = PREFIX + "32m"  # green
+AIOHTTP_COLOR = PREFIX + "36m"  # cyan
 MXID_COLOR = PREFIX + "33m"  # yellow
 
 RESET = "\033[0m"
