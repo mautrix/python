@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Iterator, Optional, Generic, TypeVar, Type, Dict, List, Any
+from typing import Iterator, Optional, TypeVar, Type, Dict, List, Any
+from contextlib import contextmanager
 
 from sqlalchemy import Table, Constraint
 from sqlalchemy.engine.base import Engine, Connection
@@ -145,6 +146,25 @@ class Base:
         if _update_values:
             for key, value in values.items():
                 setattr(self, key, value)
+
+    @contextmanager
+    def edit_mode(self: T) -> None:
+        """
+        Edit this row in a fancy context manager way. This stores the current edit identity, then
+        yields to the context manager and finally puts the new values into the row using the old
+        edit identity in the WHERE clause.
+
+        >>> class TableClass(Base):
+        ...     ...
+        >>> db_instance = TableClass(id="something")
+
+        >>> with db_instance.edit_mode():
+        ...     db_instance.id = "new_id"
+        """
+        old_identity = self._edit_identity
+        yield old_identity
+        with self.db.begin() as conn:
+            conn.execute(self.t.update().where(old_identity).values(**self._insert_values))
 
     def delete(self: T) -> None:
         """Delete this row."""
