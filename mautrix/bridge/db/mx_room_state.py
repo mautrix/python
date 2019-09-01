@@ -10,8 +10,7 @@ from sqlalchemy import Column, String, types
 from sqlalchemy.engine.result import RowProxy
 
 from mautrix.types import RoomID, PowerLevelStateEventContent
-
-from .base import Base
+from mautrix.util.db import Base
 
 
 class PowerLevelType(types.TypeDecorator):

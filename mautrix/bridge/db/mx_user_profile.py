@@ -9,8 +9,7 @@ from sqlalchemy import Column, String, Enum, and_
 from sqlalchemy.engine.result import RowProxy
 
 from mautrix.types import RoomID, UserID, ContentURI, Member, Membership
-
-from .base import Base
+from mautrix.util.db import Base
 
 
 class UserProfile(Base):

@@ -7,7 +7,7 @@ from typing import Dict, Tuple
 
 from mautrix.types import UserID, RoomID, PowerLevelStateEventContent, Membership, Member
 from mautrix.appservice import StateStore
-
+ 
 from .mx_user_profile import UserProfile
 from .mx_room_state import RoomState
 

@@ -17,7 +17,8 @@ import sqlalchemy as sql
 from sqlalchemy.engine.base import Engine
 
 from mautrix.appservice import AppService
-from .db import SQLStateStore, Base
+from ..util.db import Base
+from .db import SQLStateStore
 from .config import BaseBridgeConfig
 from .matrix import BaseMatrixHandler
 
