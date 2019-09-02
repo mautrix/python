@@ -7,7 +7,6 @@ from typing import Dict, Optional
 import json
 
 from sqlalchemy import Column, String, types
-from sqlalchemy.engine.result import RowProxy
 
 from mautrix.types import RoomID, PowerLevelStateEventContent
 from mautrix.util.db import Base
@@ -45,22 +44,5 @@ class RoomState(Base):
         return bool(self.power_levels)
 
     @classmethod
-    def scan(cls, row: RowProxy) -> 'RoomState':
-        room_id, power_levels = row
-        return cls(room_id=room_id, power_levels=power_levels)
-
-    @classmethod
     def get(cls, room_id: RoomID) -> Optional['RoomState']:
         return cls._select_one_or_none(cls.c.room_id == room_id)
-
-    def update(self) -> None:
-        self.edit(power_levels=self.power_levels, _update_values=False)
-
-    @property
-    def _edit_identity(self):
-        return self.c.room_id == self.room_id
-
-    def insert(self) -> None:
-        with self.db.begin() as conn:
-            conn.execute(self.t.insert().values(room_id=self.room_id,
-                                                power_levels=self.power_levels))

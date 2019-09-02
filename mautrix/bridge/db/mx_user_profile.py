@@ -26,12 +26,6 @@ class UserProfile(Base):
                       avatar_url=self.avatar_url)
 
     @classmethod
-    def scan(cls, row: RowProxy) -> 'UserProfile':
-        room_id, user_id, membership, displayname, avatar_url = row
-        return cls(room_id=room_id, user_id=user_id, membership=membership, displayname=displayname,
-                   avatar_url=avatar_url)
-
-    @classmethod
     def get(cls, room_id: RoomID, user_id: UserID) -> Optional['UserProfile']:
         return cls._select_one_or_none(and_(cls.c.room_id == room_id, cls.c.user_id == user_id))
 
@@ -39,18 +33,3 @@ class UserProfile(Base):
     def delete_all(cls, room_id: RoomID) -> None:
         with cls.db.begin() as conn:
             conn.execute(cls.t.delete().where(cls.c.room_id == room_id))
-
-    def update(self) -> None:
-        super().edit(membership=self.membership, displayname=self.displayname,
-                     avatar_url=self.avatar_url, _update_values=False)
-
-    @property
-    def _edit_identity(self):
-        return and_(self.c.room_id == self.room_id, self.c.user_id == self.user_id)
-
-    def insert(self) -> None:
-        with self.db.begin() as conn:
-            conn.execute(self.t.insert().values(room_id=self.room_id, user_id=self.user_id,
-                                                membership=self.membership,
-                                                displayname=self.displayname,
-                                                avatar_url=self.avatar_url))

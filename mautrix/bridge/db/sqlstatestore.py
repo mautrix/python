@@ -7,7 +7,7 @@ from typing import Dict, Tuple
 
 from mautrix.types import UserID, RoomID, PowerLevelStateEventContent, Membership, Member
 from mautrix.appservice import StateStore
- 
+
 from .mx_user_profile import UserProfile
 from .mx_room_state import RoomState
 
@@ -69,10 +69,9 @@ class SQLStateStore(StateStore):
         elif not member:
             raise ValueError("member info is empty")
         profile = self._get_user_profile(room_id, user_id)
-        profile.membership = member.membership
-        profile.displayname = member.displayname or profile.displayname
-        profile.avatar_url = member.avatar_url or profile.avatar_url
-        profile.update()
+        profile.edit(membership=member.membership,
+                     displayname=member.displayname or profile.displayname,
+                     avatar_url=member.avatar_url or profile.avatar_url)
 
     def set_membership(self, room_id: RoomID, user_id: UserID, membership: Membership) -> None:
         if not room_id:
@@ -116,19 +115,13 @@ class SQLStateStore(StateStore):
         room_state = self._get_room_state(room_id)
         power_levels = room_state.power_levels
         if not power_levels:
-            power_levels = {
-                "users": {},
-                "events": {},
-            }
-        power_levels[room_id]["users"][user_id] = level or 0
-        room_state.power_levels = power_levels
-        room_state.update()
+            power_levels = PowerLevelStateEventContent()
+        power_levels.users[user_id] = level or 0
+        room_state.edit(power_levels=power_levels)
 
     def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
         if not room_id:
             raise ValueError("room_id is empty")
         elif not content:
             raise ValueError("content is empty")
-        state = self._get_room_state(room_id)
-        state.power_levels = content
-        state.update()
+        self._get_room_state(room_id).edit(power_levels=content)
