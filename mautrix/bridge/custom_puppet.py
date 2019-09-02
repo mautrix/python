@@ -233,10 +233,9 @@ class CustomPuppetMixin(ABC):
         presence_events = sync_resp.get("presence", {}).get("events", [])
 
         # Deserialize and handle all events
-        coro = asyncio.gather(*[self.mx.try_handle_sync_event(Event.deserialize(event))
-                                for event in chain(ephemeral_events, presence_events)],
-                              loop=self.loop)
-        asyncio.ensure_future(coro, loop=self.loop)
+        for event in chain(ephemeral_events, presence_events):
+            asyncio.ensure_future(self.mx.try_handle_sync_event(Event.deserialize(event)),
+                                  loop=self.loop)
 
     async def _try_sync(self) -> None:
         try:
