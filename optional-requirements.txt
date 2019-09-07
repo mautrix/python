@@ -1,1 +1,5 @@
 python-magic
+ruamel.yaml
+SQLAlchemy
+commonmark
+lxml

@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Tulir Asokan
+# Copyright (c) 2019 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,10 +19,11 @@ from .base import BaseClientAPI
 
 class EventMethods(BaseClientAPI):
     """
-    Methods in section 8 Events of the spec. Includes /syncing, getting messages and state, setting
-    state, sending messages and redacting messages.
+    Methods in section 8 Events of the spec. Includes ``/sync``ing, getting messages and state,
+    setting state, sending messages and redacting messages. See also: `Events API reference`_
 
-    See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#events>`__
+    .. _Events API reference:
+        https://matrix.org/docs/spec/client_server/r0.5.0#events
     """
 
     # region 8.2 Syncing
@@ -31,9 +32,7 @@ class EventMethods(BaseClientAPI):
     def sync(self, since: SyncToken = None, timeout: int = 30000, filter_id: FilterID = None,
              full_state: bool = False, set_presence: PresenceState = None) -> Awaitable[JSON]:
         """
-        Perform a sync request.
-
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-sync>`__
+        Perform a sync request. See also: `/sync API reference`_
 
         Args:
             since (str): Optional. A token which specifies where to continue a sync from.
@@ -42,6 +41,9 @@ class EventMethods(BaseClientAPI):
             full_state (bool): Return the full state for every room the user has joined
                 Defaults to false.
             set_presence (str): Should the client be marked as "online" or" offline"
+
+        .. _/sync API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-sync
         """
         request = {"timeout": timeout}
         if since:
@@ -62,8 +64,7 @@ class EventMethods(BaseClientAPI):
         """
         Get a single event based on ``room_id``/``event_id``. You must have permission to retrieve
         this event e.g. by being a member in the room for this event.
-
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#id247>`__
+        See also: `/event/{eventId} API reference`_
 
         Args:
             room_id: The ID of the room the event is in.
@@ -71,6 +72,9 @@ class EventMethods(BaseClientAPI):
 
         Returns:
             The event.
+
+        .. _/event/{eventId} API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-event-eventid
         """
         content = await self.api.request(Method.GET, Path.rooms[room_id].event[event_id])
         try:
@@ -84,8 +88,7 @@ class EventMethods(BaseClientAPI):
         Looks up the contents of a state event in a room. If the user is joined to the room then the
         state is taken from the current state of the room. If the user has left the room then the
         state is taken from the state of the room when they left.
-
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-state-eventtype-statekey>`__
+        See also: `GET /state/{eventType}/{stateKey} API reference`_
 
         Args:
             room_id: The ID of the room to look up the state in.
@@ -94,6 +97,9 @@ class EventMethods(BaseClientAPI):
 
         Returns:
             The state event.
+
+        .. _GET /state/{eventType}/{stateKey} API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
         content = await self.api.request(Method.GET,
                                          Path.rooms[room_id].state[event_type][state_key])
@@ -106,15 +112,16 @@ class EventMethods(BaseClientAPI):
 
     async def get_state(self, room_id: RoomID) -> List[StateEvent]:
         """
-        Get the state events for the current state of a room.
-
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-state>`__
+        Get the state events for the current state of a room. See also: `/state API reference`_
 
         Args:
             room_id: The ID of the room to look up the state for.
 
         Returns:
             A list of state events with the most recent of each event_type/state_key pair.
+
+        .. _/state API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-state
         """
         content = await self.api.request(Method.GET, Path.rooms[room_id].state)
         try:
@@ -124,15 +131,16 @@ class EventMethods(BaseClientAPI):
 
     async def get_members(self, room_id: RoomID) -> List[StateEvent]:
         """
-        Get the list of members for a room.
-
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-members>`__
+        Get the list of members for a room. See also: `/members API reference`_
 
         Args:
             room_id: The ID of the room to get the member events for.
 
         Returns:
             A list of most recent member events for each user.
+
+        .. _/members API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-members
         """
         content = await self.api.request(Method.GET, Path.rooms[room_id].members)
         try:
@@ -147,16 +155,19 @@ class EventMethods(BaseClientAPI):
         Get a user ID -> member info map for a room. The current user must be in the room for it to
         work, unless it is an Application Service in which case any of the AS's users must be in the
         room. This API is primarily for Application Services and should be faster to respond than
-        `/members <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-members>`__
-        as it can be implemented more efficiently on the server.
-
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-joined-members>`__
+        `/members`_ as it can be implemented more efficiently on the server.
+        See also: `/joined_members API reference`_
 
         Args:
             room_id: The ID of the room to get the members of.
 
         Returns:
             A dictionary from user IDs to Member info objects.
+
+        .. _/joined_members API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-joined-members
+        .. _/members:
+            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-members
         """
         content = await self.api.request(Method.GET, Path.rooms[room_id].members)
         try:
@@ -172,9 +183,7 @@ class EventMethods(BaseClientAPI):
                            ) -> PaginatedMessages:
         """
         Get a list of message and state events for a room. Pagination parameters are used to
-        paginate history in the room.
-
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-rooms-roomid-messages>`__
+        paginate history in the room. See also: `/messages API reference`_
 
         Args:
             room_id: The ID of the room to get events from.
@@ -188,8 +197,12 @@ class EventMethods(BaseClientAPI):
 
         Returns:
 
-        .. _RoomEventFilter: https://matrix.org/docs/spec/client_server/r0.4.0.html#filtering
-        .. _sync endpoint: https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-client-r0-sync
+        .. _RoomEventFilter:
+            https://matrix.org/docs/spec/client_server/r0.5.0#filtering
+        .. _sync endpoint:
+            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-sync
+        .. _/messages API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-messages
         """
         query_params = {
             "from": from_token,
@@ -225,20 +238,22 @@ class EventMethods(BaseClientAPI):
         """
         Send a state event to a room. State events with the same ``room_id``, ``event_type`` and
         ``state_key`` will be overridden.
-
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-rooms-roomid-state-eventtype-statekey>`__
+        See also: `PUT /state/{eventType}/{stateKey} API reference`_
 
         Args:
             room_id: The ID of the room to set the state in.
             event_type: The type of state to send.
             content: The content to send.
             state_key: The key for the state to send. Defaults to empty string.
-            **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method. Used by the
-                :class:`IntentAPI` to pass timestamp massaging and external URL fields to
+            **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method. Used by
+                :class:`IntentAPI` to pass the timestamp massaging field to
                 :meth:`AppServiceAPI.request`.
 
         Returns:
             The ID of the event that was sent.
+
+        .. _PUT /state/{eventType}/{stateKey} API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#put-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
         content = content.serialize() if isinstance(content, Serializable) else content
         resp = await self.api.request(Method.PUT, Path.rooms[room_id].state[event_type][state_key],
@@ -253,19 +268,21 @@ class EventMethods(BaseClientAPI):
         """
         Send a message event to a room. Message events allow access to historical events and
         pagination, making them suited for "once-off" activity in a room.
-
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-rooms-roomid-send-eventtype-txnid>`__
+        See also: `/send API reference`_
 
         Args:
             room_id: The ID of the room to send the message to.
             event_type: The type of message to send.
             content: The content to send.
-            **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method. Used by the
-                :class:`IntentAPI` to pass timestamp massaging and external URL fields to
+            **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method. Used by
+                :class:`IntentAPI` to pass the timestamp massaging field to
                 :meth:`AppServiceAPI.request`.
 
         Returns:
             The ID of the event that was sent.
+
+        .. _/send API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#put-matrix-client-r0-rooms-roomid-send-eventtype-txnid
         """
         if not room_id:
             raise ValueError("Room ID not given")
@@ -311,7 +328,8 @@ class EventMethods(BaseClientAPI):
             room_id: The ID of the room to send the message to.
             text: The text to send. If set to None, the given HTML is used instead.
             html: The HTML to send.
-            msgtype: The message type to send. Defaults to :const:`MessageType.TEXT` (normal text message)
+            msgtype: The message type to send.
+                Defaults to :attr:`MessageType.TEXT` (normal text message)
             relates_to: Message relation metadata used for things like replies.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method.
 
@@ -340,7 +358,8 @@ class EventMethods(BaseClientAPI):
             room_id: The ID of the room to send the message to.
             text: The text to send. If set to None, the given HTML is used instead.
             html: The HTML to send.
-            msgtype: The message type to send. Defaults to :const:`MessageType.TEXT` (normal text message)
+            msgtype: The message type to send.
+                Defaults to :attr:`MessageType.TEXT` (normal text message)
             relates_to: Message relation metadata used for things like replies.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method.
 
@@ -359,7 +378,8 @@ class EventMethods(BaseClientAPI):
             room_id: The ID of the room to send the message to.
             text: The text to send. If set to None, the given HTML is used instead.
             html: The HTML to send.
-            msgtype: The message type to send. Defaults to :const:`MessageType.TEXT` (normal text message)
+            msgtype: The message type to send.
+                Defaults to :attr:`MessageType.TEXT` (normal text message)
             relates_to: Message relation metadata used for things like replies.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method.
 
@@ -377,12 +397,12 @@ class EventMethods(BaseClientAPI):
         Args:
             room_id: The ID of the room to send the message to.
             url: The Matrix content repository URI of the file. You can upload files using
-                :meth:`MediaRepositoryMethods.upload_media`.
+                :meth:`~MediaRepositoryMethods.upload_media`.
             info: Additional metadata about the file, e.g. mimetype, image size, video duration, etc
             file_name: The name for the file to send.
             file_type: The general file type to send. The file type can be further specified by
                 setting the ``mimetype`` field of the ``info`` parameter. Defaults to
-                :const:`MessageType.FILE` (unspecified file type, e.g. document)
+                :attr:`MessageType.FILE` (unspecified file type, e.g. document)
             relates_to: Message relation metadata used for things like replies.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method.
 
@@ -404,7 +424,7 @@ class EventMethods(BaseClientAPI):
         Args:
             room_id: The ID of the room to send the message to.
             url: The Matrix content repository URI of the sticker. You can upload files using
-                :meth:`MediaRepositoryMethods.upload_media`.
+                :meth:`~MediaRepositoryMethods.upload_media`.
             info: Additional metadata about the sticker, e.g. mimetype and image size
             text: A textual description of the sticker.
             relates_to: Message relation metadata used for things like replies.
@@ -427,7 +447,7 @@ class EventMethods(BaseClientAPI):
         Args:
             room_id: The ID of the room to send the message to.
             url: The Matrix content repository URI of the image. You can upload files using
-                :meth:`MediaRepositoryMethods.upload_media`.
+                :meth:`~MediaRepositoryMethods.upload_media`.
             info: Additional metadata about the image, e.g. mimetype and image size
             file_name: The file name for the image to send.
             relates_to: Message relation metadata used for things like replies.
@@ -458,21 +478,24 @@ class EventMethods(BaseClientAPI):
         Users may redact their own events, and any user with a power level greater than or equal to
         the redact power level of the room may redact events there.
 
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#put-matrix-client-r0-rooms-roomid-redact-eventid-txnid>`__
+        See also: `/redact API reference`_
 
         Args:
             room_id: The ID of the room the event is in.
             event_id: The ID of the event to redact.
             reason: The reason for the event being redacted.
-            **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method. Used by the
-                :class:`IntentAPI` to pass timestamp massaging and external URL fields to
+            **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method. Used by
+                :class:`IntentAPI` to pass the timestamp massaging field to
                 :meth:`AppServiceAPI.request`.
 
         Returns:
             The ID of the event that was sent to redact the other event.
+
+        .. _/redact API reference:
+            https://matrix.org/docs/spec/client_server/r0.5.0#put-matrix-client-r0-rooms-roomid-redact-eventid-txnid
         """
         url = Path.rooms[room_id].redact[event_id][self.api.get_txn_id()]
-        resp = await self.api.request(Method.PUT, url, **kwargs)
+        resp = await self.api.request(Method.PUT, url, content={"reason": reason}, **kwargs)
         try:
             return resp["event_id"]
         except KeyError:

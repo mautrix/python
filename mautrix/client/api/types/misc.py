@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Tulir Asokan
+# Copyright (c) 2019 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,23 +13,51 @@ from .event import Event
 
 
 class RoomCreatePreset(Enum):
+    """
+    Room creation preset, as specified in the `createRoom endpoint`_
+
+    .. _createRoom endpoint:
+        https://matrix.org/docs/spec/client_server/r0.5.0#post-matrix-client-r0-createroom
+    """
     PRIVATE = "private_chat"
     TRUSTED_PRIVATE = "trusted_private_chat"
     PUBLIC = "public_chat"
 
 
 class RoomDirectoryVisibility(Enum):
+    """
+    Room directory visibility, as specified in the `createRoom endpoint`_
+
+    .. _createRoom endpoint:
+        https://matrix.org/docs/spec/client_server/r0.5.0#post-matrix-client-r0-createroom
+    """
     PRIVATE = "private"
     PUBLIC = "public"
 
 
 class PaginationDirection(Enum):
+    """
+    Pagination direction, as specified in the `pagination section`_.
+
+    .. _pagination section:
+        https://matrix.org/docs/spec/client_server/latest#pagination
+    """
     FORWARD = "f"
     BACKWARD = "b"
 
 
 @dataclass
 class RoomAliasInfo(SerializableAttrs['RoomAliasInfo']):
+    """
+    Room alias query result, as specified in the `alias resolve endpoint`_
+
+    Attributes:
+        room_id: The room ID for this room alias.
+        servers: A list of servers that are aware of this room alias.
+
+    .. _alias resolve endpoint:
+        https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-directory-room-roomalias
+    """
     room_id: RoomID = None
     servers: List[str] = None
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Tulir Asokan
+# Copyright (c) 2019 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -28,7 +28,7 @@ class MediaRepositoryMethods(BaseClientAPI):
                            filename: Optional[str] = None) -> ContentURI:
         """
         Upload a file to the content repository.
-        
+
         See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-media-r0-upload>`__
 
         Args:

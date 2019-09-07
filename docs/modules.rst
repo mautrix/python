@@ -1,8 +1,7 @@
-mautrix-python
-==============
+mautrix
+=======
 
 .. toctree::
    :maxdepth: 4
 
    mautrix
-   setup

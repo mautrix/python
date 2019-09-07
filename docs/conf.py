@@ -15,13 +15,13 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-from mautrix.__meta__ import __version__
+from mautrix import __version__
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'mautrix-python'
-copyright = '2018, Tulir Asokan'
+copyright = '2019, Tulir Asokan'
 author = 'Tulir Asokan'
 
 # The full version, including alpha/beta/rc tags
@@ -42,7 +42,7 @@ version = '.'.join(release.split('.')[:2])
 extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
-    'sphinx_autodoc_typehints',
+#    'sphinx_autodoc_typehints',
     'sphinx.ext.viewcode',
 ]
 

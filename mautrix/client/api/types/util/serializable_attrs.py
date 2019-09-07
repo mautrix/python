@@ -1,15 +1,14 @@
-# Copyright (c) 2018 Tulir Asokan
+# Copyright (c) 2019 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import (List, Set, Dict, Type, TypeVar, Any, Union, Optional, Tuple, Iterator, Callable,
-                    NewType)
+from typing import Dict, Type, TypeVar, Any, Union, Optional, Tuple, Iterator, Callable, NewType
 import attr
 import copy
 import sys
 
-from .....api import JSON
+from mautrix.api import JSON
 from .serializable import SerializerError, Serializable, GenericSerializable
 from .obj import Obj, Lst
 
@@ -23,6 +22,23 @@ deserializer_map: Dict[Type[T], Deserializer] = {}
 
 
 def serializer(elem_type: Type[T]) -> Callable[[Serializer], Serializer]:
+    """
+    Define a custom serialization function for the given type.
+
+    Args:
+        elem_type: The type to define the serializer for.
+
+    Returns:
+        Decorator for the function.
+
+    Examples:
+        >>> from datetime import datetime
+        >>> from mautrix.types import serializer, JSON
+        >>> @serializer(datetime)
+        ... def serialize_datetime(dt: datetime) -> JSON:
+        ...     return dt.timestamp()
+    """
+
     def decorator(func: Serializer) -> Serializer:
         serializer_map[elem_type] = func
         return func
@@ -31,6 +47,23 @@ def serializer(elem_type: Type[T]) -> Callable[[Serializer], Serializer]:
 
 
 def deserializer(elem_type: Type[T]) -> Callable[[Deserializer], Deserializer]:
+    """
+    Define a custom deserialization function for a given type hint.
+
+    Args:
+        elem_type: The type hint to define the deserializer for.
+
+    Returns:
+        Decorator for the function:
+
+    Examples:
+        >>> from datetime import datetime
+        >>> from mautrix.types import deserializer, JSON
+        >>> @deserializer(datetime)
+        ... def deserialize_datetime(data: JSON) -> datetime:
+        ...     return datetime.fromtimestamp(data)
+    """
+
     def decorator(func: Deserializer) -> Deserializer:
         deserializer_map[elem_type] = func
         return func
@@ -97,6 +130,12 @@ def _try_deserialize(cls: Type[T], value: JSON, default: Optional[T] = None,
             raise SerializerError("Unknown serialization error") from e
 
 
+def _has_custom_deserializer(cls) -> bool:
+    return (issubclass(cls, Serializable) and
+            getattr(cls.deserialize, '__func__')
+            != getattr(SerializableAttrs.deserialize, '__func__'))
+
+
 def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
     if value is None:
         return _safe_default(default)
@@ -107,7 +146,7 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
     except KeyError:
         pass
     if attr.has(cls):
-        if issubclass(cls, Serializable) and cls.deserialize.__func__ != SerializableAttrs.deserialize.__func__:
+        if _has_custom_deserializer(cls):
             return cls.deserialize(value)
         return _dict_to_attrs(cls, value, default, default_if_empty=True)
     elif cls == Any or cls == JSON:
@@ -119,7 +158,7 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
         if issubclass(cls, Serializable):
             return cls.deserialize(value)
 
-    type_class = get_type_class(cls)
+    type_class = _get_type_class(cls)
     args = getattr(cls, "__args__", None)
     if type_class == list:
         item_cls, = args
@@ -140,13 +179,13 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
 
 
 if sys.version_info >= (3, 7):
-    def get_type_class(typ):
+    def _get_type_class(typ):
         try:
             return typ.__origin__
         except AttributeError:
             return None
 else:
-    def get_type_class(typ):
+    def _get_type_class(typ):
         try:
             return typ.__extra__
         except AttributeError:
@@ -194,7 +233,17 @@ def _serialize(val: Any) -> JSON:
 
 
 class SerializableAttrs(GenericSerializable[T]):
-    """An abstract :class:`Serializable` that assumes the subclass"""
+    """
+    An abstract :class:`Serializable` that assumes the subclass is an attrs dataclass.
+
+    Examples:
+        >>> from attr import dataclass
+        >>> from mautrix.types import SerializableAttrs
+        >>> @dataclass
+        ... class Foo(SerializableAttrs['Foo']):
+        ...     index: int
+        ...     field: Optional[str] = None
+    """
     unrecognized_: Optional[JSON]
 
     def __init__(self):

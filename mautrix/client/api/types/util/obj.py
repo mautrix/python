@@ -2,11 +2,12 @@
 # Modified to add Serializable base
 from typing import Dict, List
 
-from .....api import JSON
+from mautrix.api import JSON
 from .serializable import GenericSerializable, Serializable
 
 
 class Obj(GenericSerializable['Obj']):
+    """"""
     def __init__(self, **kwargs):
         self.__dict__ = {k: Obj(**v) if isinstance(v, dict) else (
             Lst(v) if isinstance(v, list) else v) for k, v in kwargs.items()}
