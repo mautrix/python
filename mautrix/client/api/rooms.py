@@ -3,14 +3,18 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union, Dict, Any
 import asyncio
 
 from ...errors import MatrixResponseError, MatrixRequestError, MRoomInUse
 from ...api import Method, JSON, Path
 from .types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility, RoomAliasInfo,
-                    RoomCreatePreset, DirectoryPaginationToken, RoomDirectoryResponse, Serializable)
+                    RoomCreatePreset, DirectoryPaginationToken, RoomDirectoryResponse, Serializable,
+                    StrippedStateEvent)
 from .base import BaseClientAPI
+
+
+InitialState = List[Union[StateEvent, StrippedStateEvent, Dict[str, Any]]]
 
 
 class RoomMethods(BaseClientAPI):
@@ -30,7 +34,7 @@ class RoomMethods(BaseClientAPI):
                           preset: RoomCreatePreset = RoomCreatePreset.PRIVATE,
                           name: Optional[str] = None, topic: Optional[str] = None,
                           is_direct: bool = False, invitees: Optional[List[UserID]] = None,
-                          initial_state: Optional[List[Union[StateEvent, Dict]]] = None,
+                          initial_state: Optional[InitialState] = None,
                           room_version: str = None, creation_content: JSON = None) -> RoomID:
         """
         Create a new room with various configuration options.

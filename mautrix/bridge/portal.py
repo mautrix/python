@@ -5,7 +5,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import TYPE_CHECKING
 from abc import ABC, abstractmethod
+import asyncio
+import logging
 
+from mautrix.appservice import AppService
 from mautrix.types import EventID, MessageEventContent
 
 if TYPE_CHECKING:
@@ -13,6 +16,10 @@ if TYPE_CHECKING:
 
 
 class BasePortal(ABC):
+    log: logging.Logger = logging.getLogger("mau.portal")
+    az: AppService
+    loop: asyncio.AbstractEventLoop
+
     @abstractmethod
     async def handle_matrix_message(self, sender: 'BaseUser', message: MessageEventContent,
                                     event_id: EventID) -> None:

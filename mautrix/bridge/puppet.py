@@ -24,10 +24,8 @@ class BasePuppet(CustomPuppetMixin, ABC):
     mx: 'BaseMatrixHandler'
 
     is_registered: bool
-
-    intent: IntentAPI
-
     mxid: str
+    intent: IntentAPI
 
     @abstractmethod
     def save(self) -> None:

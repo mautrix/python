@@ -208,7 +208,7 @@ class BaseMatrixHandler(ABC):
                              event_id: EventID) -> None:
         sender = await self.get_user(user_id)
         if not sender or not await self.allow_message(sender):
-            self.log.debug(f"Ignoring message \"{message}\" from {sender.mxid} to {room_id}:"
+            self.log.debug(f"Ignoring message \"{message}\" from {user_id} to {room_id}:"
                            " User is not whitelisted.")
             return
         self.log.debug(f"Received Matrix event \"{message}\" from {sender.mxid} in {room_id}")

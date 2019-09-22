@@ -33,6 +33,11 @@ class SimpleTemplate(Generic[T]):
         return f"{self._prefix}{arg}{self._suffix}"
 
     def parse(self, val: str) -> Optional[T]:
-        if val[:len(self._prefix)] == self._prefix and val[-len(self._suffix):] == self._suffix:
-            return self._type(val[len(self._prefix):-len(self._suffix)])
+        prefix_ok = val[:len(self._prefix)] == self._prefix
+        has_suffix = len(self._suffix) > 0
+        suffix_ok = not has_suffix or val[-len(self._suffix):] == self._suffix
+        if prefix_ok and suffix_ok:
+            start = len(self._prefix)
+            end = -len(self._suffix) if has_suffix else len(val)
+            return self._type(val[start:end])
         return None
