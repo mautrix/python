@@ -5,7 +5,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Dict, Awaitable, List, Tuple, Union, TYPE_CHECKING
 from urllib.parse import quote as urllib_quote
-from logging import Logger
 
 from ...api import Method, Path
 from ...types import (StateEvent, EventType, StateEventContent, EventID, ContentURI,
@@ -15,7 +14,7 @@ from ...types import (StateEvent, EventType, StateEventContent, EventID, Content
                       RoomPinnedEventsStateEventContent, Membership, Member,
                       MemberStateEventContent)
 from ...client import ClientAPI
-from ...errors import MForbidden, MatrixRequestError, IntentError
+from ...errors import MForbidden, MBadState, MatrixRequestError, IntentError
 from ..state_store import StateStore
 
 try:
@@ -361,6 +360,17 @@ class IntentAPI(ClientAPI):
             if not self.bot:
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e
             try:
+                await self.bot.invite_user(room_id, self.mxid)
+                await self.join_room(room_id, max_retries=0)
+                self.state_store.joined(room_id, self.mxid)
+                return
+            except MatrixRequestError as e2:
+                raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e2
+        except MBadState as e:
+            if not self.bot:
+                raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e
+            try:
+                await self.bot.unban_user(room_id, self.mxid)
                 await self.bot.invite_user(room_id, self.mxid)
                 await self.join_room(room_id, max_retries=0)
                 self.state_store.joined(room_id, self.mxid)
