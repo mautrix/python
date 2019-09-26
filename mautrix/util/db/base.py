@@ -23,12 +23,30 @@ class Base:
     Base class for SQLAlchemy models. Provides SQLAlchemy declarative base features and some
     additional utilities.
     """
+    __tablename__: str
 
     db: Engine
     t: Table
     __table__: Table
     c: ImmutableColumnCollection
     column_names: List[str]
+
+    @classmethod
+    def bind(cls, db_engine: Engine) -> None:
+        cls.db = db_engine
+        cls.t = cls.__table__
+        cls.c = cls.t.columns
+        cls.column_names = cls.c.keys()
+
+    @classmethod
+    def copy(cls, bind: Optional[Engine] = None) -> Type[T]:
+        class Copy(cls):
+            pass
+
+        if bind is not None:
+            Copy.bind(db_engine=bind)
+
+        return Copy
 
     @classmethod
     def _one_or_none(cls: Type[T], rows: ResultProxy) -> Optional[T]:
