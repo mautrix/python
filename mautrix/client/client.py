@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, Callable, Union, Optional, Awaitable, Any
+from typing import Dict, List, Callable, Union, Optional, Awaitable, Any, Type, TYPE_CHECKING
 from enum import Enum, Flag, auto
 import asyncio
 
@@ -13,6 +13,9 @@ from .api.types import (EventType, MessageEvent, StateEvent, StrippedStateEvent,
                         Filter)
 from .api import ClientAPI
 from .store import ClientStore, MemoryClientStore
+
+if TYPE_CHECKING:
+    from .dispatcher import Dispatcher
 
 EventHandler = Callable[[Event], Awaitable[None]]
 
@@ -36,12 +39,22 @@ class InternalEventType(Enum):
     SYNC_SUCCESSFUL = auto()
     SYNC_STOPPED = auto()
 
+    JOIN = auto()
+    PROFILE_CHANGE = auto()
+    INVITE = auto()
+    DISINVITE = auto()
+    LEAVE = auto()
+    KICK = auto()
+    BAN = auto()
+    UNBAN = auto()
+
 
 class Client(ClientAPI):
     """Client is a high-level wrapper around the client API."""
     store: ClientStore
     global_event_handlers: List[EventHandler]
     event_handlers: Dict[Union[EventType, InternalEventType], List[EventHandler]]
+    dispatchers: Dict[Type['Dispatcher'], 'Dispatcher']
     syncing_task: Optional[asyncio.Future]
     ignore_initial_sync: bool
     ignore_first_sync: bool
@@ -51,6 +64,7 @@ class Client(ClientAPI):
         self.store = store or MemoryClientStore()
         self.global_event_handlers = []
         self.event_handlers = {}
+        self.dispatchers = {}
         self.syncing_task = None
         self.ignore_initial_sync = False
         self.ignore_first_sync = False
@@ -85,6 +99,18 @@ class Client(ClientAPI):
         else:
             self.add_event_handler(EventType.ALL, var)
             return var
+
+    def add_dispatcher(self, dispatcher_type: Type['Dispatcher']) -> None:
+        if dispatcher_type in self.dispatchers:
+            return
+        self.dispatchers[dispatcher_type] = dispatcher_type(self)
+        self.dispatchers[dispatcher_type].register()
+
+    def remove_dispatcher(self, dispatcher_type: Type['Dispatcher']) -> None:
+        if dispatcher_type not in self.dispatchers:
+            return
+        self.dispatchers[dispatcher_type].unregister()
+        del self.dispatchers[dispatcher_type]
 
     def add_event_handler(self, event_type: Union[InternalEventType, EventType],
                           handler: EventHandler) -> None:
@@ -125,7 +151,7 @@ class Client(ClientAPI):
         except (KeyError, ValueError):
             pass
 
-    async def dispatch_event(self, event: Event, source: SyncStream = SyncStream.INTERNAL) -> None:
+    async def dispatch_event(self, event: Event, source: SyncStream) -> None:
         """
         Send the given event to all applicable event handlers.
 
@@ -133,38 +159,36 @@ class Client(ClientAPI):
             event: The event to send.
             source: The sync stream the event was received in.
         """
-        if source == SyncStream.INTERNAL:
-            handlers = self.event_handlers.get(event["type"], [])
-        else:
-            handlers = self.global_event_handlers + self.event_handlers.get(event.type, [])
+        if isinstance(event, MessageEvent):
+            event.content.trim_reply_fallback()
+        if event.type.is_state and event.state_key is None:
+            self.log.debug(f"Not sending {event.event_id} to handlers: expected state_key.")
+            return
+        elif event.type.is_account_data and not source & SyncStream.ACCOUNT_DATA:
+            self.log.debug(f"Not sending {event.event_id} to handlers: got account_data event "
+                           f"type in non-account_data sync stream.")
+            return
+        elif event.type.is_ephemeral and not source & SyncStream.EPHEMERAL:
+            self.log.debug(f"Not sending {event.event_id} to handlers: got ephemeral event "
+                           f"type in non-ephemeral sync stream.")
+            return
 
-        if source != SyncStream.INTERNAL:
-            if isinstance(event, MessageEvent):
-                event.content.trim_reply_fallback()
-            if event.type.is_state and event.state_key is None:
-                self.log.debug(f"Not sending {event.event_id} to handlers: expected state_key.")
-                return
-            elif event.type.is_account_data and not source & SyncStream.ACCOUNT_DATA:
-                self.log.debug(f"Not sending {event.event_id} to handlers: got account_data event "
-                               f"type in non-account_data sync stream.")
-                return
-            elif event.type.is_ephemeral and not source & SyncStream.EPHEMERAL:
-                self.log.debug(f"Not sending {event.event_id} to handlers: got ephemeral event "
-                               f"type in non-ephemeral sync stream.")
-                return
+        await self.dispatch_manual_event(event.type, event, include_global_handlers=True)
 
+    async def dispatch_manual_event(self, event_type: Union[EventType, InternalEventType],
+                                    data: Any, include_global_handlers: bool = False) -> None:
+        handlers = self.event_handlers.get(event_type, [])
+        if include_global_handlers:
+            handlers = self.global_event_handlers + handlers
         for handler in handlers:
             try:
-                await handler(event)
+                await handler(data)
             except Exception:
                 self.log.exception("Failed to run handler")
 
     def dispatch_internal_event(self, event_type: InternalEventType, **kwargs: Any
                                 ) -> Awaitable[None]:
-        return self.dispatch_event({
-            "type": event_type,
-            **kwargs
-        }, source=SyncStream.INTERNAL)
+        return self.dispatch_manual_event(event_type, kwargs)
 
     def handle_sync(self, data: JSON) -> None:
         """
