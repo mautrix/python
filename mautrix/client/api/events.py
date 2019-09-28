@@ -169,9 +169,10 @@ class EventMethods(BaseClientAPI):
         .. _/members:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-members
         """
-        content = await self.api.request(Method.GET, Path.rooms[room_id].members)
+        content = await self.api.request(Method.GET, Path.rooms[room_id].joined_members)
         try:
-            return {user_id: Member.deserialize(event) for user_id, event in content["joined"]}
+            return {user_id: Member.deserialize(event)
+                    for user_id, event in content["joined"].items()}
         except KeyError:
             raise MatrixResponseError("`joined` not in response.")
         except SerializerError as e:

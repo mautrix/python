@@ -136,10 +136,17 @@ class StrippedStateEvent(SerializableAttrs['StrippedStateEvent']):
     """Stripped state events included with some invite events."""
     content: StateEventContent = None
     room_id: RoomID = None
+    sender: UserID = None
     type: EventType = None
     state_key: str = None
 
     unsigned: Optional[StrippedStateUnsigned] = None
+
+    @property
+    def prev_content(self) -> StateEventContent:
+        if self.unsigned and self.unsigned.prev_content:
+            return self.unsigned.prev_content
+        return state_event_content_map.get(self.type, Obj)()
 
     @classmethod
     def deserialize(cls, data: JSON) -> 'StrippedStateEvent':
@@ -176,6 +183,12 @@ class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
     state_key: str
     content: StateEventContent
     unsigned: Optional[StateUnsigned] = None
+
+    @property
+    def prev_content(self) -> StateEventContent:
+        if self.unsigned and self.unsigned.prev_content:
+            return self.unsigned.prev_content
+        return state_event_content_map.get(self.type, Obj)()
 
     @classmethod
     def deserialize(cls, data: JSON) -> 'StateEvent':

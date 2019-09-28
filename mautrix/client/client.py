@@ -5,7 +5,9 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, List, Callable, Union, Optional, Awaitable, Any, Type, TYPE_CHECKING
 from enum import Enum, Flag, auto
+from time import time
 import asyncio
+import inspect
 
 from ..errors import MUnknownToken
 from ..api import JSON
@@ -173,6 +175,7 @@ class Client(ClientAPI):
                            f"type in non-ephemeral sync stream.")
             return
 
+        setattr(event, "source", source)
         await self.dispatch_manual_event(event.type, event, include_global_handlers=True)
 
     async def dispatch_manual_event(self, event_type: Union[EventType, InternalEventType],
@@ -188,7 +191,9 @@ class Client(ClientAPI):
 
     def dispatch_internal_event(self, event_type: InternalEventType, **kwargs: Any
                                 ) -> Awaitable[None]:
-        return self.dispatch_manual_event(event_type, kwargs)
+        kwargs["source"] = SyncStream.INTERNAL
+        return self.dispatch_manual_event(event_type, kwargs,
+                                          include_global_handlers=False)
 
     def handle_sync(self, data: JSON) -> None:
         """
@@ -213,12 +218,23 @@ class Client(ClientAPI):
                                         source=SyncStream.JOINED_ROOM | SyncStream.TIMELINE),
                     loop=self.loop)
         for room_id, room_data in rooms.get("invite", {}).items():
-            for raw_event in room_data.get("invite_state", {}).get("events", []):
+            events: List[Dict[str, Any]] = room_data.get("invite_state", {}).get("events", [])
+            for raw_event in events:
                 raw_event["room_id"] = room_id
-                asyncio.ensure_future(
-                    self.dispatch_event(StrippedStateEvent.deserialize(raw_event),
-                                        source=SyncStream.INVITED_ROOM | SyncStream.STATE),
-                    loop=self.loop)
+            raw_invite = next(raw_event for raw_event in events
+                              if raw_event.get("type", "") == "m.room.member"
+                              and raw_event.get("state_key", "") == self.mxid)
+            # These aren't required by the spec, so make sure they're set
+            raw_invite.setdefault("event_id", None)
+            raw_invite.setdefault("origin_server_ts", int(time() * 1000))
+
+            invite = StateEvent.deserialize(raw_invite)
+            invite.unsigned.invite_room_state = [StrippedStateEvent.deserialize(raw_event)
+                                                 for raw_event in events
+                                                 if raw_event != raw_invite]
+            asyncio.ensure_future(
+                self.dispatch_event(invite, source=SyncStream.INVITED_ROOM | SyncStream.STATE),
+                loop=self.loop)
         for room_id, room_data in rooms.get("leave", {}).items():
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 if "state_key" in raw_event:

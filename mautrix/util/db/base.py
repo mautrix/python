@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Iterator, Optional, TypeVar, Type, Dict, List, Any
+from typing import Iterator, Optional, TypeVar, Type, Dict, List, Any, cast
 from contextlib import contextmanager
 
 from sqlalchemy import Table, Constraint
@@ -11,14 +11,13 @@ from sqlalchemy.engine.base import Engine, Connection
 from sqlalchemy.engine.result import RowProxy, ResultProxy
 from sqlalchemy.sql.base import ImmutableColumnCollection
 from sqlalchemy.sql.expression import Select, ClauseElement, and_
-from sqlalchemy.ext.declarative import as_declarative
+from sqlalchemy.ext.declarative import as_declarative, declarative_base
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-T = TypeVar('T', bound='Base')
+T = TypeVar('T', bound='BaseClass')
 
 
-@as_declarative()
-class Base:
+class BaseClass:
     """
     Base class for SQLAlchemy models. Provides SQLAlchemy declarative base features and some
     additional utilities.
@@ -39,14 +38,11 @@ class Base:
         cls.column_names = cls.c.keys()
 
     @classmethod
-    def copy(cls, bind: Optional[Engine] = None) -> Type[T]:
-        class Copy(cls):
-            pass
-
+    def copy(cls, bind: Optional[Engine] = None, rebase: Optional[declarative_base] = None) -> Type[T]:
+        copy = cast(Type[T], type(cls.__name__, (cls, rebase) if rebase else (cls, ), {}))
         if bind is not None:
-            Copy.bind(db_engine=bind)
-
-        return Copy
+            copy.bind(db_engine=bind)
+        return copy
 
     @classmethod
     def _one_or_none(cls: Type[T], rows: ResultProxy) -> Optional[T]:
@@ -229,3 +225,8 @@ class Base:
     def __iter__(self):
         for key in self.column_names:
             yield self.__dict__[key]
+
+
+@as_declarative()
+class Base(BaseClass):
+    pass

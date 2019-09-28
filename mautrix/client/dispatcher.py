@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 import asyncio
 
 from .api.types import EventType, StateEvent, Membership
-from .client import Client, InternalEventType
+from .client import Client, InternalEventType, SyncStream
 
 
 class Dispatcher(ABC):
@@ -41,7 +41,7 @@ class MembershipEventDispatcher(Dispatcher):
             return
 
         if evt.content.membership == Membership.JOIN:
-            if evt.unsigned.prev_content.membership != Membership.JOIN:
+            if evt.prev_content.membership != Membership.JOIN:
                 self._dispatch(InternalEventType.JOIN, evt)
             else:
                 self._dispatch(InternalEventType.PROFILE_CHANGE, evt)
@@ -50,9 +50,9 @@ class MembershipEventDispatcher(Dispatcher):
         elif evt.content.membership == Membership.LEAVE:
             if evt.state_key == evt.sender:
                 self._dispatch(InternalEventType.LEAVE, evt)
-            elif evt.unsigned.prev_content.membership == Membership.BAN:
+            elif evt.prev_content.membership == Membership.BAN:
                 self._dispatch(InternalEventType.UNBAN, evt)
-            elif evt.unsigned.prev_content.membership == Membership.INVITE:
+            elif evt.prev_content.membership == Membership.INVITE:
                 self._dispatch(InternalEventType.DISINVITE, evt)
             else:
                 self._dispatch(InternalEventType.KICK, evt)
