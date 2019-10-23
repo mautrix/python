@@ -179,6 +179,7 @@ class Bridge:
             end_ts = time()
             self.log.debug(f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
                            "now running forever")
+            self.az.ready = True
             self.loop.run_forever()
         except KeyboardInterrupt:
             self.log.debug("Interrupt received, stopping...")

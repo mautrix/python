@@ -35,6 +35,8 @@ class AppService:
 
     query_user: Callable[[UserID], JSON]
     query_alias: Callable[[RoomAlias], JSON]
+    ready: bool
+    live: bool
 
     loop: asyncio.AbstractEventLoop
     log: logging.Logger
@@ -74,6 +76,8 @@ class AppService:
 
         self.query_user = query_user or default_query_handler
         self.query_alias = query_alias or default_query_handler
+        self.live = True
+        self.ready = False
 
         self.event_handlers = []
 
@@ -86,6 +90,8 @@ class AppService:
                                   self._http_handle_transaction)
         self.app.router.add_route("GET", "/_matrix/app/v1/rooms/{alias}", self._http_query_alias)
         self.app.router.add_route("GET", "/_matrix/app/v1/users/{user_id}", self._http_query_user)
+        self.app.router.add_route("GET", "/_matrix/mau/live", self._liveness_probe)
+        self.app.router.add_route("GET", "/_matrix/mau/ready", self._readiness_probe)
 
         async def update_state(event: Event):
             self.state_store.update_state(event)
@@ -141,6 +147,12 @@ class AppService:
             return False
 
         return True
+
+    async def _liveness_probe(self, _: web.Request) -> web.Response:
+        return web.Response(status=200 if self.live else 500, text="{}")
+
+    async def _readiness_probe(self, _: web.Request) -> web.Response:
+        return web.Response(status=200 if self.ready else 500, text="{}")
 
     async def _http_query_user(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
