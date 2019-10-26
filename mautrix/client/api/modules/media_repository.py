@@ -3,9 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from typing import Optional, AsyncIterable, Union
 
-from ....api import APIPath, Method, MediaPath
+from ....api import Method, MediaPath
 from ....errors import MatrixResponseError
 from ..base import BaseClientAPI
 from ..types import ContentURI, MediaRepoConfig, SerializerError, MXOpenGraph
@@ -24,8 +24,9 @@ class MediaRepositoryMethods(BaseClientAPI):
 
     See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#id112>`__"""
 
-    async def upload_media(self, data: bytes, mime_type: Optional[str] = None,
-                           filename: Optional[str] = None) -> ContentURI:
+    async def upload_media(self, data: Union[bytes, AsyncIterable[bytes]],
+                           mime_type: Optional[str] = None, filename: Optional[str] = None,
+                           size: Optional[int] = None) -> ContentURI:
         """
         Upload a file to the content repository.
 
@@ -35,6 +36,7 @@ class MediaRepositoryMethods(BaseClientAPI):
             data: The data to upload.
             mime_type: The MIME type to send with the upload request.
             filename: The filename to send with the upload request.
+            size: The file size to send with the upload request.
 
         Returns:
             The MXC URI to the uploaded file.
@@ -42,11 +44,13 @@ class MediaRepositoryMethods(BaseClientAPI):
         Raises:
             MatrixResponseError: If the response does not contain a ``content_uri`` field.
         """
-        if magic:
+        if magic and isinstance(data, bytes):
             mime_type = mime_type or magic.from_buffer(data, mime=True)
         headers = {}
         if mime_type:
             headers["Content-Type"] = mime_type
+        if size:
+            headers["Content-Length"] = str(size)
         query = {}
         if filename:
             query["filename"] = filename
