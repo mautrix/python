@@ -10,7 +10,7 @@ import asyncio
 
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
-                           PresenceEvent, TypingEvent, ReceiptEvent)
+                           PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent)
 from mautrix.errors import IntentError, MatrixError, MForbidden
 from mautrix.appservice import AppService
 
@@ -213,6 +213,9 @@ class BaseMatrixHandler(ABC):
             return
         self.log.debug(f"Received Matrix event \"{message}\" from {sender.mxid} in {room_id}")
 
+        if isinstance(message, TextMessageEventContent):
+            message.trim_reply_fallback()
+
         is_command, text = self.is_command(message)
         portal = await self.get_portal(room_id)
         if not is_command and portal and await self.allow_bridging_message(sender, portal):
@@ -232,8 +235,8 @@ class BaseMatrixHandler(ABC):
                 # Not enough values to unpack, i.e. no arguments
                 command = text
                 args = []
-            await self.commands.handle(room_id, event_id, sender, command, args, is_management,
-                                       is_portal=portal is not None)
+            await self.commands.handle(room_id, event_id, sender, command, args, message,
+                                       is_management, is_portal=portal is not None)
 
     async def is_management(self, room_id: RoomID) -> bool:
         try:

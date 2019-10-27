@@ -11,7 +11,7 @@ import traceback
 
 import commonmark
 
-from mautrix.types import RoomID, EventID
+from mautrix.types import RoomID, EventID, MessageEventContent
 from mautrix.appservice import AppService
 from ..user import BaseUser
 from ..config import BaseBridgeConfig
@@ -62,6 +62,7 @@ class CommandEvent:
         sender: The user who issued the command.
         command: The issued command.
         args: Arguments given with the issued command.
+        content: The raw content in the command event.
         is_management: Determines whether the room in which the command wa
             issued is a management room.
         is_portal: Determines whether the room in which the command was issued
@@ -79,12 +80,13 @@ class CommandEvent:
     sender: 'BaseUser'
     command: str
     args: List[str]
+    content: MessageEventContent
     is_management: bool
     is_portal: bool
 
     def __init__(self, processor: 'CommandProcessor', room_id: RoomID, event_id: EventID,
-                 sender: 'BaseUser', command: str, args: List[str], is_management: bool,
-                 is_portal: bool) -> None:
+                 sender: 'BaseUser', command: str, args: List[str], content: MessageEventContent,
+                 is_management: bool, is_portal: bool) -> None:
         self.az = processor.az
         self.log = processor.log
         self.loop = processor.loop
@@ -96,6 +98,7 @@ class CommandEvent:
         self.sender = sender
         self.command = command
         self.args = args
+        self.content = content
         self.is_management = is_management
         self.is_portal = is_portal
 
@@ -281,8 +284,9 @@ class CommandHandler:
 
 def command_handler(_func: Optional[CommandHandlerFunc] = None, *, management_only: bool = False,
                     name: Optional[str] = None, help_text: str = "", help_args: str = "",
-                    help_section: HelpSection = None, _handler_class: Type[CommandHandler] = CommandHandler, **kwargs
-                    ) -> Callable[[CommandHandlerFunc], CommandHandler]:
+                    help_section: HelpSection = None,
+                    _handler_class: Type[CommandHandler] = CommandHandler,
+                    **kwargs) -> Callable[[CommandHandlerFunc], CommandHandler]:
     """Decorator to create CommandHandlers"""
 
     def decorator(func: CommandHandlerFunc) -> CommandHandler:
@@ -330,8 +334,8 @@ class CommandProcessor:
         return handler(evt)
 
     async def handle(self, room_id: RoomID, event_id: EventID, sender: 'BaseUser',
-                     command: str, args: List[str], is_management: bool, is_portal: bool
-                     ) -> None:
+                     command: str, args: List[str], content: MessageEventContent,
+                     is_management: bool, is_portal: bool) -> None:
         """Handles the raw commands issued by a user to the Matrix bot.
 
         If the command is not known, it might be a followup command and is
@@ -344,6 +348,7 @@ class CommandProcessor:
             sender: The sender who issued the command.
             command: The issued command, case insensitive.
             args: Arguments given with the command.
+            content: The raw content in the command event.
             is_management: Whether the room is a management room.
             is_portal: Whether the room is a portal.
 
@@ -354,7 +359,7 @@ class CommandProcessor:
         if not command_handlers or "unknown-command" not in command_handlers:
             raise ValueError("command_handlers are not properly initialized.")
 
-        evt = self.event_class(self, room_id, event_id, sender, command, args,
+        evt = self.event_class(self, room_id, event_id, sender, command, args, content,
                                is_management, is_portal)
         orig_command = command
         command = command.lower()
