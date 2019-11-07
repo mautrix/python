@@ -50,10 +50,6 @@ class MarkdownString(FormattedString):
         elif entity_type == EntityType.HEADER:
             prefix = "#" * kwargs["size"]
             self.text = f"{prefix} {self.text}"
-        elif entity_type == EntityType.USER_MENTION:
-            self.text = f"[{self.text}](https://matrix.to/#/{kwargs['user_id']})"
-        elif entity_type == EntityType.ROOM_MENTION:
-            self.text = f"[{self.text}](https://matrix.to/#/{kwargs['room_alias']})"
 
         return self
 

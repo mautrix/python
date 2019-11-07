@@ -77,6 +77,7 @@ class MemberStateEventContent(SerializableAttrs['MemberStateEventContent']):
     membership: Membership = Membership.LEAVE
     avatar_url: str = None
     displayname: str = None
+    is_direct: bool = False
     reason: str = None
     third_party_invite: JSON = None
 
