@@ -9,12 +9,11 @@ import asyncio
 import logging
 import traceback
 
-import commonmark
-
 from mautrix.types import RoomID, EventID, MessageEventContent
 from mautrix.appservice import AppService
 from ..user import BaseUser
 from ..config import BaseBridgeConfig
+from mautrix.util import markdown
 
 command_handlers: Dict[str, 'CommandHandler'] = {}
 
@@ -23,26 +22,6 @@ HelpCacheKey = NamedTuple('HelpCacheKey', is_management=bool, is_portal=bool)
 
 SECTION_GENERAL = HelpSection("General", 0, "")
 
-
-class HtmlEscapingRenderer(commonmark.HtmlRenderer):
-    def __init__(self, allow_html: bool = False):
-        super().__init__()
-        self.allow_html = allow_html
-
-    def lit(self, s):
-        if self.allow_html:
-            return super().lit(s)
-        return super().lit(s.replace("<", "&lt;").replace(">", "&gt;"))
-
-    def image(self, node, entering):
-        prev = self.allow_html
-        self.allow_html = True
-        super().image(node, entering)
-        self.allow_html = prev
-
-
-md_parser = commonmark.Parser()
-md_renderer = HtmlEscapingRenderer()
 
 
 def ensure_trailing_newline(s: str) -> str:
@@ -180,8 +159,7 @@ class CommandEvent:
         """
         html = ""
         if render_markdown:
-            md_renderer.allow_html = allow_html
-            html = md_renderer.render(md_parser.parse(message))
+            html = markdown.render(message, allow_html=allow_html)
         elif allow_html:
             html = message
         return ensure_trailing_newline(html) if html else None
