@@ -6,6 +6,8 @@
 from typing import Optional, List, Union, Dict, Any
 import asyncio
 
+from multidict import CIMultiDict
+
 from ...errors import MatrixResponseError, MatrixRequestError, MRoomInUse
 from ...api import Method, JSON, Path
 from .types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility, RoomAliasInfo,
@@ -242,7 +244,9 @@ class RoomMethods(BaseClientAPI):
         content = {
             "third_party_signed": third_party_signed
         } if third_party_signed is not None else None
-        query_params = {"servers": servers} if servers is not None else None
+        query_params = CIMultiDict()
+        for server_name in (servers or []):
+            query_params.add("server_name", server_name)
         while tries <= max_retries:
             try:
                 content = await self.api.request(Method.POST, Path.join[room_id_or_alias],
