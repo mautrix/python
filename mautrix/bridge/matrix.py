@@ -7,6 +7,7 @@ from typing import Tuple, Optional, Union, TYPE_CHECKING
 from abc import ABC, abstractmethod
 import logging
 import asyncio
+import time
 
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
@@ -263,6 +264,7 @@ class BaseMatrixHandler(ABC):
         if self.filter_matrix_event(evt):
             return
         self.log.debug("Received event: %s", evt)
+        start_time = time.time()
 
         if evt.type == EventType.ROOM_MEMBER:
             evt: StateEvent
@@ -298,3 +300,8 @@ class BaseMatrixHandler(ABC):
                 await self.handle_state_event(evt)
             else:
                 await self.handle_event(evt)
+
+        await self.log_event_handle_duration(evt, time.time() - start_time)
+
+    async def log_event_handle_duration(self, evt: Event, duration: float) -> None:
+        pass
