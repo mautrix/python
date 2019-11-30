@@ -8,7 +8,39 @@ from abc import ABC, abstractmethod
 import random
 import string
 
+import attr
+from attr import dataclass
+
 from mautrix.util.config import BaseFileConfig, ConfigUpdateHelper, yaml
+
+
+class ConfigValueError(ValueError):
+    def __init__(self, key: str, message: str) -> None:
+        super().__init__(f"{key} not configured. {message}" if message else f"{key} not configured")
+
+
+class ForbiddenKey(str):
+    pass
+
+
+@dataclass
+class ForbiddenDefault:
+    key: str
+    value: Any
+    error: Optional[str] = None
+    condition: Optional[str] = attr.ib(default=None, kw_only=True)
+
+    def check(self, config: 'BaseBridgeConfig') -> bool:
+        if self.condition and not config[self.condition]:
+            return False
+        elif isinstance(self.value, ForbiddenKey):
+            return str(self.value) in config[self.key]
+        else:
+            return config[self.key] == self.value
+
+    @property
+    def exception(self) -> ConfigValueError:
+        return ConfigValueError(self.key, self.error)
 
 
 class BaseBridgeConfig(BaseFileConfig, ABC):
@@ -29,6 +61,24 @@ class BaseBridgeConfig(BaseFileConfig, ABC):
     @staticmethod
     def _new_token() -> str:
         return "".join(random.choices(string.ascii_lowercase + string.digits, k=64))
+
+    @property
+    def forbidden_defaults(self) -> List[ForbiddenDefault]:
+        return [
+            ForbiddenDefault("homeserver.address", "https://example.com"),
+            ForbiddenDefault("homeserver.domain", "example.com"),
+            ForbiddenDefault("appservice.as_token",
+                             "This value is generated when generating the registration",
+                             "Did you forget to generate the registration?"),
+            ForbiddenDefault("appservice.hs_token",
+                             "This value is generated when generating the registration",
+                             "Did you forget to generate the registration?"),
+        ]
+
+    def check_default_values(self) -> None:
+        for default in self.forbidden_defaults:
+            if default.check(self):
+                raise default.exception
 
     def do_update(self, helper: ConfigUpdateHelper) -> None:
         copy = helper.copy

@@ -19,7 +19,7 @@ from sqlalchemy.engine.base import Engine
 from mautrix.appservice import AppService
 from ..util.db import Base
 from .db import SQLStateStore
-from .config import BaseBridgeConfig
+from .config import BaseBridgeConfig, ConfigValueError
 from .matrix import BaseMatrixHandler
 
 try:
@@ -95,12 +95,14 @@ class Bridge:
         args = self.parser.parse_args()
 
         self.prepare_config(args.config, args.registration, args.base_config)
+        self.prepare_log()
+        self.check_config()
 
         if args.generate_registration:
             self.generate_registration()
             sys.exit(0)
 
-        self.prepare_log()
+        self.log.debug(f"Initializing {self.name} {self.version}")
         try:
             self.prepare_loop()
             self.prepare_appservice()
@@ -117,6 +119,13 @@ class Bridge:
         self.config.load()
         self.config.update()
 
+    def check_config(self) -> None:
+        try:
+            self.config.check_default_values()
+        except ConfigValueError as e:
+            self.log.fatal(f"Configuration error: {e}")
+            sys.exit(11)
+
     def generate_registration(self) -> None:
         self.config.generate_registration()
         self.config.save()
@@ -125,7 +134,6 @@ class Bridge:
     def prepare_log(self) -> None:
         logging.config.dictConfig(copy.deepcopy(self.config["logging"]))
         self.log = logging.getLogger("mau.init")
-        self.log.debug(f"Initializing {self.name} {self.version}")
 
     def prepare_loop(self) -> None:
         if uvloop:
