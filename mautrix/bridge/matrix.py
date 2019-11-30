@@ -22,18 +22,24 @@ if TYPE_CHECKING:
     from .user import BaseUser
     from .portal import BasePortal
     from .puppet import BasePuppet
+    from .bridge import Bridge
 
 
 class BaseMatrixHandler(ABC):
     log: logging.Logger = logging.getLogger("mau.mx")
+    az: AppService
     commands: CommandProcessor
+    config: 'BaseBridgeConfig'
+    bridge: 'Bridge'
 
     def __init__(self, az: AppService, config: 'BaseBridgeConfig',
                  command_processor: Optional[CommandProcessor] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+                 loop: Optional[asyncio.AbstractEventLoop] = None,
+                 bridge: Optional['Bridge'] = None) -> None:
         self.az = az
         self.config = config
-        self.commands = command_processor or CommandProcessor(az=az, config=config, loop=loop)
+        self.commands = command_processor or CommandProcessor(az=az, config=config, loop=loop,
+                                                              bridge=bridge)
         self.az.matrix_event_handler(self.int_handle_event)
 
     async def wait_for_connection(self) -> None:

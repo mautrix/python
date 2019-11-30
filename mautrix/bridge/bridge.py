@@ -44,6 +44,8 @@ class Bridge:
     shutdown_actions: Optional[Iterable[Awaitable]]
     name: str
     version: str
+    repo_url: str
+    markdown_version: str
     command: str
     description: str
     real_user_content_key: Optional[str] = None
@@ -177,7 +179,7 @@ class Bridge:
             sys.exit(10)
 
     def prepare_bridge(self) -> None:
-        self.matrix = self.matrix_class(az=self.az, config=self.config, loop=self.loop)
+        self.matrix = self.matrix_class(az=self.az, config=self.config, loop=self.loop, bridge=self)
 
     def _run(self) -> None:
         try:

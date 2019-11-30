@@ -22,6 +22,16 @@ async def cancel(evt: CommandEvent) -> EventID:
         return await evt.reply("No ongoing command.")
 
 
+@command_handler(help_section=SECTION_GENERAL,
+                 help_text="Get the bridge version.")
+async def version(evt: CommandEvent) -> None:
+    if not evt.processor.bridge:
+        await evt.reply("Bridge version unknown")
+    else:
+        await evt.reply(f"[{evt.processor.bridge.name}]({evt.processor.bridge.repo_url}) "
+                        f"{evt.processor.bridge.markdown_version or evt.processor.bridge.version}")
+
+
 @command_handler()
 async def unknown_command(evt: CommandEvent) -> EventID:
     return await evt.reply("Unknown command. Try `$cmdprefix+sp help` for help.")

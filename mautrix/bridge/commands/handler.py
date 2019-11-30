@@ -3,17 +3,20 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Awaitable, Callable, Dict, List, Any, Type, NamedTuple, Optional
+from typing import Awaitable, Callable, Dict, List, Any, Type, NamedTuple, Optional, TYPE_CHECKING
 import time
 import asyncio
 import logging
 import traceback
 
+from mautrix.util import markdown
 from mautrix.types import RoomID, EventID, MessageEventContent
 from mautrix.appservice import AppService
 from ..user import BaseUser
 from ..config import BaseBridgeConfig
-from mautrix.util import markdown
+
+if TYPE_CHECKING:
+    from ..bridge import Bridge
 
 command_handlers: Dict[str, 'CommandHandler'] = {}
 
@@ -285,15 +288,17 @@ class CommandProcessor:
     config: BaseBridgeConfig
     loop: asyncio.AbstractEventLoop
     event_class: Type[CommandEvent]
+    bridge: 'Bridge'
     _ref_no: int
 
-    def __init__(self, az: AppService, config: BaseBridgeConfig,
+    def __init__(self, az: AppService, config: BaseBridgeConfig, bridge: 'Bridge',
                  event_class: Type[CommandEvent] = CommandEvent,
                  loop: asyncio.AbstractEventLoop = None) -> None:
         self.az = az
         self.config = config
         self.loop = loop or asyncio.get_event_loop()
         self.command_prefix = self.config["bridge.command_prefix"]
+        self.bridge = bridge
         self.event_class = event_class
         self._ref_no = int(time.time())
 
