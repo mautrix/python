@@ -46,11 +46,13 @@ class ForbiddenDefault:
 class BaseBridgeConfig(BaseFileConfig, ABC):
     registration_path: str
     _registration: Optional[Dict]
+    _check_tokens: bool
 
     def __init__(self, path: str, registration_path: str, base_path: str) -> None:
         super().__init__(path, base_path)
         self.registration_path = registration_path
         self._registration = None
+        self._check_tokens = True
 
     def save(self) -> None:
         super().save()
@@ -67,13 +69,14 @@ class BaseBridgeConfig(BaseFileConfig, ABC):
         return [
             ForbiddenDefault("homeserver.address", "https://example.com"),
             ForbiddenDefault("homeserver.domain", "example.com"),
+        ] + ([
             ForbiddenDefault("appservice.as_token",
                              "This value is generated when generating the registration",
                              "Did you forget to generate the registration?"),
             ForbiddenDefault("appservice.hs_token",
                              "This value is generated when generating the registration",
                              "Did you forget to generate the registration?"),
-        ]
+        ] if self._check_tokens else [])
 
     def check_default_values(self) -> None:
         for default in self.forbidden_defaults:

@@ -98,7 +98,7 @@ class Bridge:
 
         self.prepare_config(args.config, args.registration, args.base_config)
         self.prepare_log()
-        self.check_config()
+        self.check_config(check_tokens=not args.generate_registration)
 
         if args.generate_registration:
             self.generate_registration()
@@ -121,8 +121,9 @@ class Bridge:
         self.config.load()
         self.config.update()
 
-    def check_config(self) -> None:
+    def check_config(self, check_tokens: bool = True) -> None:
         try:
+            self.config._check_tokens = check_tokens
             self.config.check_default_values()
         except ConfigValueError as e:
             self.log.fatal(f"Configuration error: {e}")
