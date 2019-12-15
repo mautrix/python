@@ -8,6 +8,9 @@ from abc import ABC, abstractmethod
 from itertools import chain
 import asyncio
 import logging
+import hashlib
+import hmac
+import json
 
 from aiohttp import ClientConnectionError
 
@@ -15,6 +18,7 @@ from mautrix.types import (UserID, FilterID, Filter, RoomEventFilter, RoomFilter
                            EventType, SyncToken, RoomID, Event, PresenceState)
 from mautrix.appservice import AppService, IntentAPI
 from mautrix.errors import IntentError, MatrixError, MatrixRequestError, MatrixInvalidToken
+from mautrix.api import Path
 
 from .matrix import BaseMatrixHandler
 
@@ -60,6 +64,8 @@ class CustomPuppetMixin(ABC):
 
     sync_with_custom_puppets: bool = True
     only_handle_own_synced_events: bool = True
+    login_shared_secret: Optional[bytes] = None
+    login_device_name: Optional[str] = None
 
     az: AppService
     loop: asyncio.AbstractEventLoop
@@ -96,6 +102,33 @@ class CustomPuppetMixin(ABC):
         return (self.az.intent.user(self.custom_mxid, self.access_token)
                 if self.is_real_user else self.default_mxid_intent)
 
+    def can_auto_login(self, mxid: UserID) -> bool:
+        if not self.login_shared_secret:
+            return False
+        _, server = self.az.intent.parse_user_id(mxid)
+        if server != self.az.domain:
+            return False
+        return True
+
+    async def _login_with_shared_secret(self, mxid: UserID) -> Optional[str]:
+        if not self.can_auto_login(mxid):
+            return None
+        password = hmac.new(self.login_shared_secret, mxid.encode("utf-8"),
+                            hashlib.sha512).hexdigest()
+        url = self.az.intent.api.base_url + str(Path.login)
+        resp = await self.az.http_session.post(url, data=json.dumps({
+            "type": "m.login.password",
+            "initial_device_display_name": self.login_device_name,
+            "device_id": self.login_device_name,
+            "identifier": {
+                "type": "m.id.user",
+                "user": mxid,
+            },
+            "password": password
+        }), headers={"Content-Type": "application/json"})
+        data = await resp.json()
+        return data["access_token"]
+
     async def switch_mxid(self, access_token: Optional[str], mxid: Optional[UserID]) -> None:
         """
         Switch to a real Matrix user or away from one.
@@ -106,6 +139,11 @@ class CustomPuppetMixin(ABC):
             mxid: The expected Matrix user ID of the custom account, or ``None`` when
                   ``access_token`` is None.
         """
+        if access_token == "auto":
+            access_token = await self._login_with_shared_secret(mxid)
+            if not access_token:
+                raise ValueError("Failed to log in with shared secret")
+            self.log.debug(f"Logged in for {mxid} using shared secret")
         prev_mxid = self.custom_mxid
         self.custom_mxid = mxid
         self.access_token = access_token
