@@ -107,12 +107,12 @@ class BaseMatrixHandler(ABC):
                           event_id: EventID) -> None:
         pass
 
-    async def handle_raw_leave(self, room_id: RoomID, user_id: UserID, sender: UserID, reason: str,
-                               event_id: EventID) -> None:
-        pass
-
     async def handle_ban(self, room_id: RoomID, user_id: UserID, banned_by: UserID, reason: str,
                          event_id: EventID) -> None:
+        pass
+
+    async def handle_unban(self, room_id: RoomID, user_id: UserID, unbanned_by: UserID,
+                           reason: str, event_id: EventID) -> None:
         pass
 
     async def handle_join(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
@@ -128,8 +128,16 @@ class BaseMatrixHandler(ABC):
                                    invited_by: 'BaseUser', event_id: EventID) -> None:
         pass
 
-    async def handle_invite(self, room_id: RoomID, user_id: UserID, invited_by: 'BaseUser',
+    async def handle_invite(self, room_id: RoomID, user_id: UserID, invited_by: UserID,
                             event_id: EventID) -> None:
+        pass
+
+    async def handle_reject(self, room_id: RoomID, user_id: UserID, reason: str, event_id: EventID
+                            ) -> None:
+        pass
+
+    async def handle_disinvite(self, room_id: RoomID, user_id: UserID, disinvited_by: UserID,
+                               reason: str, event_id: EventID) -> None:
         pass
 
     async def handle_event(self, evt: Event) -> None:
@@ -280,13 +288,21 @@ class BaseMatrixHandler(ABC):
                 await self.int_handle_invite(evt.room_id, UserID(evt.state_key), evt.sender,
                                              evt.event_id)
             elif evt.content.membership == Membership.LEAVE:
-                await self.handle_raw_leave(evt.room_id, UserID(evt.state_key), evt.sender,
+                if prev_membership == Membership.BAN:
+                    await self.handle_unban(evt.room_id, UserID(evt.state_key), evt.sender,
                                             evt.content.reason, evt.event_id)
-                if evt.sender != evt.state_key:
+                elif prev_membership == Membership.INVITE:
+                    if evt.sender == evt.state_key:
+                        await self.handle_reject(evt.room_id, UserID(evt.state_key),
+                                                 evt.content.reason, evt.event_id)
+                    else:
+                        await self.handle_disinvite(evt.room_id, UserID(evt.state_key), evt.sender,
+                                                    evt.content.reason, evt.event_id)
+                elif evt.sender == evt.state_key:
+                    await self.handle_leave(evt.room_id, UserID(evt.state_key), evt.event_id)
+                else:
                     await self.handle_kick(evt.room_id, UserID(evt.state_key), evt.sender,
                                            evt.content.reason, evt.event_id)
-                else:
-                    await self.handle_leave(evt.room_id, UserID(evt.state_key), evt.event_id)
             elif evt.content.membership == Membership.BAN:
                 await self.handle_ban(evt.room_id, UserID(evt.state_key), evt.sender,
                                       evt.content.reason, evt.event_id)

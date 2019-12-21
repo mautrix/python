@@ -48,12 +48,15 @@ class MembershipEventDispatcher(Dispatcher):
         elif evt.content.membership == Membership.INVITE:
             self._dispatch(InternalEventType.INVITE, evt)
         elif evt.content.membership == Membership.LEAVE:
-            if evt.state_key == evt.sender:
-                self._dispatch(InternalEventType.LEAVE, evt)
-            elif evt.prev_content.membership == Membership.BAN:
+            if evt.prev_content.membership == Membership.BAN:
                 self._dispatch(InternalEventType.UNBAN, evt)
             elif evt.prev_content.membership == Membership.INVITE:
-                self._dispatch(InternalEventType.DISINVITE, evt)
+                if evt.state_key == evt.sender:
+                    self._dispatch(InternalEventType.REJECT_INVITE, evt)
+                else:
+                    self._dispatch(InternalEventType.DISINVITE, evt)
+            elif evt.state_key == evt.sender:
+                self._dispatch(InternalEventType.LEAVE, evt)
             else:
                 self._dispatch(InternalEventType.KICK, evt)
         elif evt.content.membership == Membership.BAN:

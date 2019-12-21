@@ -44,6 +44,7 @@ class InternalEventType(Enum):
     JOIN = auto()
     PROFILE_CHANGE = auto()
     INVITE = auto()
+    REJECT_INVITE = auto()
     DISINVITE = auto()
     LEAVE = auto()
     KICK = auto()
