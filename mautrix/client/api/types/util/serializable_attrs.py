@@ -140,11 +140,21 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
     if value is None:
         return _safe_default(default)
 
-    cls = getattr(cls, "__supertype__", None) or cls
     try:
-        return deserializer_map[cls](value)
+        deser = deserializer_map[cls]
     except KeyError:
         pass
+    else:
+        return deser(value)
+    supertype = getattr(cls, "__supertype__", None)
+    if supertype:
+        cls = supertype
+        try:
+            deser = deserializer_map[supertype]
+        except KeyError:
+            pass
+        else:
+            return deser(value)
     if attr.has(cls):
         if _has_custom_deserializer(cls):
             return cls.deserialize(value)
