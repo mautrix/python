@@ -13,6 +13,7 @@ import io
 
 yaml = YAML()
 yaml.indent(4)
+yaml.width = 200
 
 T = TypeVar('T')
 
