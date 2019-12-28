@@ -16,7 +16,7 @@ class ExtensibleEnumMeta(type):
     @classmethod
     def __prepare__(metacls: Type['ExtensibleEnumMeta'], cls: Type['ExtensibleEnum'],
                     bases: List[Type]) -> Dict[str, Any]:
-        if ExtensibleEnum not in bases or cls == ExtensibleEnum:
+        if 'ExtensibleEnum' not in bases or cls == 'ExtensibleEnum':
             return {}
         data = {}
         print(metacls)
