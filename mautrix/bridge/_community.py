@@ -58,7 +58,8 @@ class CommunityHelper:
         await intent.ensure_registered()
         await self.invite(community_id, intent.mxid)
         try:
-            await intent.api.request(Method.PUT, Path.groups[community_id].self.accept_invite)
+            await intent.api.request(Method.PUT, Path.groups[community_id].self.accept_invite,
+                                     {"m.visibility": {"type": "private"}})
         except MatrixStandardRequestError as e:
             intent.log.warning(f"Failed to join {community_id}: {e}")
         return True
@@ -68,7 +69,8 @@ class CommunityHelper:
             return False
         try:
             await self.az.intent.api.request(Method.PUT,
-                                             Path.groups[community_id].admin.rooms[room_id])
+                                             Path.groups[community_id].admin.rooms[room_id],
+                                             {"m.visibility": {"type": "private"}})
         except MatrixStandardRequestError as e:
             self.az.intent.log.warning(f"Failed to add {room_id} to {community_id}: {e}")
         return True
