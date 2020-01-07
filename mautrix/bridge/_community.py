@@ -16,7 +16,7 @@ CommunityID = NewType("CommunityID", str)
 class CommunityHelper:
     az: AppService
 
-    def  __init__(self, az: AppService) -> None:
+    def __init__(self, az: AppService) -> None:
         self.az = az
 
     async def create(self, localpart: str) -> Tuple[CommunityID, bool]:
