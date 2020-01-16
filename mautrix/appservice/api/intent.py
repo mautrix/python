@@ -381,9 +381,8 @@ class IntentAPI(ClientAPI):
             raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e
 
     def _register(self) -> Awaitable[dict]:
-        content = {"username": self.localpart}
-        query_params = {"kind": "user"}
-        return self.api.request(Method.POST, Path.register, content, query_params=query_params)
+        content = {"username": self.localpart, "type": "m.login.application_service"}
+        return self.api.request(Method.POST, Path.register, content)
 
     async def ensure_registered(self) -> None:
         if self.state_store.is_registered(self.mxid):
