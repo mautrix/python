@@ -197,7 +197,9 @@ class Bridge:
             self.log.debug(f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
                            "now running forever")
             self.az.ready = True
-            self.loop.run_forever()
+            self._stop_task = self.loop.create_future()
+            self.loop.run_until_complete(self._stop_task)
+            self.log.debug("manual_stop() called, stopping...")
         except KeyboardInterrupt:
             self.log.debug("Interrupt received, stopping...")
         except Exception:
@@ -233,3 +235,6 @@ class Bridge:
     def prepare_shutdown(self) -> None:
         """Lifecycle method that is called right before ``sys.exit(0)``."""
         pass
+
+    def manual_stop(self) -> None:
+        self._stop_task.set_result(None)
