@@ -43,6 +43,7 @@ class Bridge:
     startup_actions: Optional[Iterable[Awaitable]]
     shutdown_actions: Optional[Iterable[Awaitable]]
     name: str
+    args: argparse.Namespace
     version: str
     repo_url: str
     markdown_version: str
@@ -55,22 +56,12 @@ class Bridge:
                  config_class: Type[BaseBridgeConfig] = None,
                  matrix_class: Type[BaseMatrixHandler] = None,
                  state_store_class: Type[SQLStateStore] = None) -> None:
-        self.parser = argparse.ArgumentParser(description=description or self.description,
-                                              prog=command or self.command)
-        self.parser.add_argument("-c", "--config", type=str, default="config.yaml",
-                                 metavar="<path>", help="the path to your config file")
-        self.parser.add_argument("-b", "--base-config", type=str, default="example-config.yaml",
-                                 metavar="<path>", help="the path to the example config "
-                                                        "(for automatic config updates)")
-        self.parser.add_argument("-g", "--generate-registration", action="store_true",
-                                 help="generate registration and quit")
-        self.parser.add_argument("-r", "--registration", type=str, default="registration.yaml",
-                                 metavar="<path>",
-                                 help="the path to save the generated registration to (not needed "
-                                      "for running the bridge)")
-
         if name:
             self.name = name
+        if description:
+            self.description = description
+        if command:
+            self.command = command
         if real_user_content_key:
             self.real_user_content_key = real_user_content_key
         if version:
@@ -92,15 +83,30 @@ class Bridge:
         self._prepare()
         self._run()
 
+    def prepare_arg_parser(self) -> None:
+        self.parser = argparse.ArgumentParser(description=self.description, prog=self.command)
+        self.parser.add_argument("-c", "--config", type=str, default="config.yaml",
+                                 metavar="<path>", help="the path to your config file")
+        self.parser.add_argument("-b", "--base-config", type=str, default="example-config.yaml",
+                                 metavar="<path>", help="the path to the example config "
+                                                        "(for automatic config updates)")
+        self.parser.add_argument("-g", "--generate-registration", action="store_true",
+                                 help="generate registration and quit")
+        self.parser.add_argument("-r", "--registration", type=str, default="registration.yaml",
+                                 metavar="<path>",
+                                 help="the path to save the generated registration to (not needed "
+                                      "for running the bridge)")
+
     def _prepare(self) -> None:
         start_ts = time()
-        args = self.parser.parse_args()
+        self.prepare_arg_parser()
+        self.args = self.parser.parse_args()
 
-        self.prepare_config(args.config, args.registration, args.base_config)
+        self.prepare_config(self.args.config, self.args.registration, self.args.base_config)
         self.prepare_log()
-        self.check_config(check_tokens=not args.generate_registration)
+        self.check_config(check_tokens=not self.args.generate_registration)
 
-        if args.generate_registration:
+        if self.args.generate_registration:
             self.generate_registration()
             sys.exit(0)
 
