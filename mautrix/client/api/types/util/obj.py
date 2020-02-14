@@ -33,6 +33,12 @@ class Obj(GenericSerializable['Obj']):
     def __repr__(self):
         return repr(self.serialize())
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     def __bool__(self):
         return bool(self.__dict__)
 
