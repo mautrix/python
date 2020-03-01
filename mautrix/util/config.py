@@ -13,6 +13,7 @@ import io
 
 yaml = YAML()
 yaml.indent(4)
+yaml.width = 200
 
 T = TypeVar('T')
 
@@ -43,7 +44,10 @@ class RecursiveDict(Generic[T]):
         if next_key is not None:
             next_data = data.get(key, self._dict_factory())
             return self._recursive_get(next_data, next_key, default_value)
-        return data.get(key, default_value)
+        try:
+            return data[key]
+        except (AttributeError, KeyError):
+            return default_value
 
     def get(self, key: str, default_value: Any, allow_recursion: bool = True) -> Any:
         if allow_recursion and '.' in key:
