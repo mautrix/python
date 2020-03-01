@@ -16,7 +16,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
 
     install_requires=[
-        "aiohttp>=3.0.1,<4",
+        "aiohttp>=3,<4",
         "attrs>=18.1.0",
     ],
     extras_require={
