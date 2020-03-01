@@ -11,34 +11,34 @@ from attr import dataclass
 import attr
 
 from .....api import JSON
-from ..util import SerializableEnum, SerializableAttrs, Serializable, Obj, deserializer
+from ..util import ExtensibleEnum, SerializableAttrs, Serializable, Obj, deserializer
 from ..primitive import ContentURI, EventID
 from .base import BaseRoomEvent, BaseUnsigned
 
 
 # region Message types
 
-class Format(SerializableEnum):
+class Format(ExtensibleEnum):
     """A message format. Currently only ``org.matrix.custom.html`` is available.
     This will probably be deprecated when extensible events are implemented."""
-    HTML = "org.matrix.custom.html"
+    HTML: 'Format' = "org.matrix.custom.html"
 
 
 TEXT_MESSAGE_TYPES = ("m.text", "m.emote", "m.notice")
 MEDIA_MESSAGE_TYPES = ("m.image", "m.sticker", "m.video", "m.audio", "m.file")
 
 
-class MessageType(SerializableEnum):
+class MessageType(ExtensibleEnum):
     """A message type."""
-    TEXT = "m.text"
-    EMOTE = "m.emote"
-    NOTICE = "m.notice"
-    IMAGE = "m.image"
-    STICKER = "m.sticker"
-    VIDEO = "m.video"
-    AUDIO = "m.audio"
-    FILE = "m.file"
-    LOCATION = "m.location"
+    TEXT: 'MessageType' = "m.text"
+    EMOTE: 'MessageType' = "m.emote"
+    NOTICE: 'MessageType' = "m.notice"
+    IMAGE: 'MessageType' = "m.image"
+    STICKER: 'MessageType' = "m.sticker"
+    VIDEO: 'MessageType' = "m.video"
+    AUDIO: 'MessageType' = "m.audio"
+    FILE: 'MessageType' = "m.file"
+    LOCATION: 'MessageType' = "m.location"
 
     @property
     def is_text(self) -> bool:
@@ -73,10 +73,10 @@ class InReplyTo:
             self._event_id = event_id
 
 
-class RelationType(SerializableEnum):
-    ANNOTATION = "m.annotation"
-    REFERENCE = "m.reference"
-    REPLACE = "m.replace"
+class RelationType(ExtensibleEnum):
+    ANNOTATION: 'RelationType' = "m.annotation"
+    REFERENCE: 'RelationType' = "m.reference"
+    REPLACE: 'RelationType' = "m.replace"
 
 
 @dataclass
