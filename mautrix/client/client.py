@@ -7,12 +7,11 @@ from typing import Dict, List, Callable, Union, Optional, Awaitable, Any, Type, 
 from enum import Enum, Flag, auto
 from time import time
 import asyncio
-import inspect
 
 from ..errors import MUnknownToken
 from ..api import JSON
 from .api.types import (EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID,
-                        Filter)
+                        Filter, PresenceState)
 from .api import ClientAPI
 from .store import ClientStore, MemoryClientStore
 
@@ -61,6 +60,7 @@ class Client(ClientAPI):
     syncing_task: Optional[asyncio.Future]
     ignore_initial_sync: bool
     ignore_first_sync: bool
+    presence: PresenceState
 
     def __init__(self, *args, store: ClientStore = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -71,6 +71,7 @@ class Client(ClientAPI):
         self.syncing_task = None
         self.ignore_initial_sync = False
         self.ignore_first_sync = False
+        self.presence = PresenceState.ONLINE
 
     def on(self, var: Union[EventHandler, EventType, InternalEventType]
            ) -> Union[EventHandler, Callable[[EventHandler], EventHandler]]:
@@ -280,7 +281,8 @@ class Client(ClientAPI):
         await self.dispatch_internal_event(InternalEventType.SYNC_STARTED)
         while True:
             try:
-                data = await self.sync(since=self.store.next_batch, filter_id=filter_id)
+                data = await self.sync(since=self.store.next_batch, filter_id=filter_id,
+                                       set_presence=self.presence)
                 fail_sleep = 5
             except (asyncio.CancelledError, MUnknownToken):
                 raise

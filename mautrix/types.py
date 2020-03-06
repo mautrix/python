@@ -8,7 +8,7 @@ from .api.http import JSON, Method, APIPath
 from .client.api.types import (
     UserID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken,
 
-    Filter, EventFilter, RoomFilter, RoomEventFilter,
+    Filter, EventFilter, RoomFilter, RoomEventFilter, StateFilter,
 
     EventType, RedactionEvent, RedactionEventContent, ReactionEventContent, ReactionEvent,
     MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,

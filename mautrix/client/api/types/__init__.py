@@ -1,5 +1,5 @@
 from .primitive import UserID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken
-from .filter import Filter, EventFilter, RoomFilter, RoomEventFilter
+from .filter import Filter, EventFilter, RoomFilter, StateFilter, RoomEventFilter
 from .event import (EventType,
 
                     RedactionEvent, RedactionEventContent,
