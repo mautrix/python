@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Union, Pattern
+from typing import Optional, Union, Pattern, Dict, Any
 from html import escape
 import re
 
@@ -85,14 +85,16 @@ class RelatesTo(Serializable):
     rel_type: RelationType = None
     event_id: Optional[EventID] = None
     key: Optional[str] = None
+    _extra: Dict[str, Any] = attr.ib(factory=lambda: {})
 
     @classmethod
     def deserialize(cls, data: JSON) -> Optional['RelatesTo']:
         if not data:
             return None
         try:
-            return cls(rel_type=RelationType.deserialize(data["rel_type"]),
-                       event_id=data.get("event_id", None), key=data.get("key", None))
+            return cls(rel_type=RelationType.deserialize(data.pop("rel_type")),
+                       event_id=data.pop("event_id", None), key=data.pop("key", None),
+                       extra=data)
         except KeyError:
             pass
         try:
@@ -103,6 +105,7 @@ class RelatesTo(Serializable):
 
     def serialize(self) -> JSON:
         data = {
+            **self._extra,
             "rel_type": self.rel_type.serialize(),
         }
         if self.rel_type == RelationType.REFERENCE:
@@ -114,6 +117,16 @@ class RelatesTo(Serializable):
         if self.key:
             data["key"] = self.key
         return data
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        if key in ("rel_type", "event_id", "key"):
+            return setattr(self, key, value)
+        self._extra[key] = value
+
+    def __getitem__(self, item: str) -> None:
+        if item in ("rel_type", "event_id", "key"):
+            return getattr(self, item)
+        return self._extra[item]
 
 
 # endregion
