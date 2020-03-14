@@ -8,42 +8,11 @@ from abc import ABC, abstractmethod
 import random
 import string
 
-import attr
-from attr import dataclass
-
 from mautrix.util.config import BaseFileConfig, ConfigUpdateHelper, yaml
+from mautrix.util.config.config_validation import BaseValidatableConfig, ForbiddenDefault
 
 
-class ConfigValueError(ValueError):
-    def __init__(self, key: str, message: str) -> None:
-        super().__init__(f"{key} not configured. {message}" if message else f"{key} not configured")
-
-
-class ForbiddenKey(str):
-    pass
-
-
-@dataclass
-class ForbiddenDefault:
-    key: str
-    value: Any
-    error: Optional[str] = None
-    condition: Optional[str] = attr.ib(default=None, kw_only=True)
-
-    def check(self, config: 'BaseBridgeConfig') -> bool:
-        if self.condition and not config[self.condition]:
-            return False
-        elif isinstance(self.value, ForbiddenKey):
-            return str(self.value) in config[self.key]
-        else:
-            return config[self.key] == self.value
-
-    @property
-    def exception(self) -> ConfigValueError:
-        return ConfigValueError(self.key, self.error)
-
-
-class BaseBridgeConfig(BaseFileConfig, ABC):
+class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
     registration_path: str
     _registration: Optional[Dict]
     _check_tokens: bool
@@ -77,11 +46,6 @@ class BaseBridgeConfig(BaseFileConfig, ABC):
                              "This value is generated when generating the registration",
                              "Did you forget to generate the registration?"),
         ] if self._check_tokens else [])
-
-    def check_default_values(self) -> None:
-        for default in self.forbidden_defaults:
-            if default.check(self):
-                raise default.exception
 
     def do_update(self, helper: ConfigUpdateHelper) -> None:
         copy = helper.copy
