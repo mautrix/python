@@ -8,8 +8,8 @@ from abc import ABC, abstractmethod
 import random
 import string
 
-from mautrix.util.config import BaseFileConfig, ConfigUpdateHelper, yaml
-from mautrix.util.config.config_validation import BaseValidatableConfig, ForbiddenDefault
+from mautrix.util.config import (BaseFileConfig, ConfigUpdateHelper, BaseValidatableConfig,
+                                 ForbiddenDefault, yaml)
 
 
 class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):

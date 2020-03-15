@@ -42,8 +42,8 @@ class ForbiddenDefault:
 
 
 class BaseValidatableConfig(BaseConfig, ABC):
-    @abstractmethod
     @property
+    @abstractmethod
     def forbidden_defaults(self) -> List[ForbiddenDefault]:
         pass
 

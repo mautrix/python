@@ -3,9 +3,11 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Iterable, Awaitable, Optional, Type
+from typing import Iterable, Awaitable, Optional, Type, Union, Tuple
+from itertools import chain
 from time import time
 import argparse
+import inspect
 import logging
 import logging.config
 import asyncio
@@ -13,12 +15,16 @@ import signal
 import copy
 import sys
 
-from .config import BaseFileConfig, BaseValidatableConfig, ConfigValueError
+from .config import BaseFileConfig, BaseValidatableConfig, ConfigValueError, BaseMissingError
 
 try:
     import uvloop
 except ImportError:
     uvloop = None
+
+
+NewTask = Union[Awaitable[None], Iterable[Awaitable[None]]]
+TaskList = Iterable[Awaitable[None]]
 
 
 class Program:
@@ -35,8 +41,8 @@ class Program:
     config_class: Type[BaseFileConfig]
     config: BaseFileConfig
 
-    startup_actions: Optional[Iterable[Awaitable]]
-    shutdown_actions: Optional[Iterable[Awaitable]]
+    startup_actions: TaskList
+    shutdown_actions: TaskList
 
     module: str
     name: str
@@ -60,8 +66,8 @@ class Program:
             self.version = version
         if config_class:
             self.config_class = config_class
-        self.startup_actions = None
-        self.shutdown_actions = None
+        self.startup_actions = []
+        self.shutdown_actions = []
 
     def run(self) -> None:
         """
@@ -76,14 +82,14 @@ class Program:
 
         self.preinit()
 
-        self.log.debug(f"Initializing {self.name} {self.version}")
+        self.log.info(f"Initializing {self.name} {self.version}")
         try:
             self.prepare()
         except Exception:
             self.log.critical("Unexpected error in initialization", exc_info=True)
             sys.exit(1)
         end_ts = time()
-        self.log.debug(f"Initialization complete in {round(end_ts - start_ts, 2)} seconds")
+        self.log.info(f"Initialization complete in {round(end_ts - start_ts, 2)} seconds")
 
     def preinit(self) -> None:
         """
@@ -113,8 +119,16 @@ class Program:
     def prepare_config(self) -> None:
         """Pre-init lifecycle method. Extend this if you want to customize config loading."""
         self.config = self.config_class(self.args.config, self.args.base_config)
+        self.load_and_update_config()
+
+    def load_and_update_config(self) -> None:
         self.config.load()
-        self.config.update(save=not self.args.no_update)
+        try:
+            self.config.update(save=not self.args.no_update)
+        except BaseMissingError:
+            self.log.exception("Failed to read base config. Try specifying the correct path with "
+                               "the --base-config flag.")
+            sys.exit(12)
 
     def check_config(self) -> None:
         """Pre-init lifecycle method. Extend this if you want to customize config validation."""
@@ -155,7 +169,7 @@ class Program:
             start_ts = time()
             self.loop.run_until_complete(self.start())
             end_ts = time()
-            self.log.debug(f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
+            self.log.info(f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
                            "now running forever")
             self._stop_task = self.loop.create_future()
             self.loop.run_until_complete(self._stop_task)
@@ -197,3 +211,26 @@ class Program:
     def manual_stop(self) -> None:
         """Tell the event loop to cleanly stop and run the stop lifecycle steps."""
         self._stop_task.set_result(None)
+
+    def add_startup_actions(self, *actions: NewTask) -> None:
+        self.startup_actions = self._add_actions(self.startup_actions, actions)
+
+    def add_shutdown_actions(self, *actions: NewTask) -> None:
+        self.startup_actions = self._add_actions(self.startup_actions, actions)
+
+    @staticmethod
+    def _add_actions(to: TaskList, add: Tuple[NewTask, ...]) -> TaskList:
+        for item in add:
+            if inspect.isawaitable(item):
+                if isinstance(to, list):
+                    to.append(item)
+                else:
+                    to = chain(to, [item])
+            elif isinstance(item, list):
+                if isinstance(to, list):
+                    to += item
+                else:
+                    to = chain(to, item)
+            else:
+                to = chain(to, item)
+        return to

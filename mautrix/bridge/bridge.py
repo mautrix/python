@@ -74,8 +74,9 @@ class Bridge(Program):
     def prepare_config(self) -> None:
         self.config = self.config_class(self.args.config, self.args.registration,
                                         self.args.base_config)
-        self.config.load()
-        self.config.update(save=not self.args.no_update)
+        if self.args.generate_registration:
+            self.config._check_tokens = False
+        self.load_and_update_config()
 
     def generate_registration(self) -> None:
         self.config.generate_registration()
@@ -120,7 +121,8 @@ class Bridge(Program):
         self.log.debug("Starting appservice...")
         await self.az.start(self.config["appservice.hostname"], self.config["appservice.port"])
         await self.matrix.wait_for_connection()
-        self.startup_actions = chain(self.startup_actions, self.matrix.init_as_bot())
+        self.add_startup_actions(self.matrix.init_as_bot())
+        self.startup_actions = chain(self.startup_actions, [self.matrix.init_as_bot()])
         await super().start()
         self.az.ready = True
 
