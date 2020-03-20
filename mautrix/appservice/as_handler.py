@@ -52,7 +52,10 @@ class AppServiceServerMixin:
         try:
             token = request.rel_url.query["access_token"]
         except KeyError:
-            return False
+            try:
+                token = request.headers["Authorization"].lstrip("Bearer ")
+            except (KeyError, AttributeError):
+                return False
 
         if token != self.hs_token:
             return False
