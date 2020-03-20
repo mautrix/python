@@ -115,6 +115,16 @@ class AppServiceServerMixin:
         except KeyError:
             return web.Response(status=400)
 
+        try:
+            await self.handle_transaction(transaction_id, events)
+        except Exception:
+            self.log.exception("Exception in transaction handler")
+
+        self.transactions.add(transaction_id)
+
+        return web.json_response({})
+
+    async def handle_transaction(self, txn_id: str, events: List[JSON]) -> None:
         for raw_event in events:
             try:
                 event = Event.deserialize(raw_event)
@@ -122,10 +132,6 @@ class AppServiceServerMixin:
                 self.log.exception("Failed to deserialize event %s", raw_event)
             else:
                 self.handle_matrix_event(event)
-
-        self.transactions.add(transaction_id)
-
-        return web.json_response({})
 
     def handle_matrix_event(self, event: Event) -> None:
         if event.type.is_state and event.state_key is None:
