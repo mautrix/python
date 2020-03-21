@@ -9,7 +9,7 @@ import random
 import string
 
 from mautrix.util.config import (BaseFileConfig, ConfigUpdateHelper, BaseValidatableConfig,
-                                 ForbiddenDefault, yaml)
+                                 ForbiddenDefault, ForbiddenKey, yaml)
 
 
 class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
