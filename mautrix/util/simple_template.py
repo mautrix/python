@@ -39,5 +39,8 @@ class SimpleTemplate(Generic[T]):
         if prefix_ok and suffix_ok:
             start = len(self._prefix)
             end = -len(self._suffix) if has_suffix else len(val)
-            return self._type(val[start:end])
+            try:
+                return self._type(val[start:end])
+            except ValueError:
+                pass
         return None
