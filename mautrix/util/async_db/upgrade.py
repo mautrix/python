@@ -30,20 +30,20 @@ class UpgradeTable:
         self.allow_unsupported = allow_unsupported
         self.log = log or logging.getLogger("mau.db.upgrade")
 
-    def register(self, _index: int = -1, _description: str = "", _outer_fn: Optional[Upgrade] = None
+    def register(self, index: int = -1, description: str = "", _outer_fn: Optional[Upgrade] = None
                  ) -> Union[Upgrade, Callable[[Upgrade], Upgrade]]:
-        if isinstance(_index, str):
-            _description = _index
-            _index = -1
+        if isinstance(index, str):
+            description = index
+            index = -1
 
         def actually_register(fn: Upgrade) -> Upgrade:
-            fn.__mau_db_upgrade_description__ = _description
-            if _index == -1:
+            fn.__mau_db_upgrade_description__ = description
+            if index == -1:
                 self.upgrades.append(fn)
             else:
-                if len(self.upgrades) <= _index:
-                    self.upgrades += [noop_upgrade] * (_index - len(self.upgrades) + 1)
-                self.upgrades[_index] = fn
+                if len(self.upgrades) <= index:
+                    self.upgrades += [noop_upgrade] * (index - len(self.upgrades) + 1)
+                self.upgrades[index] = fn
             return fn
 
         return actually_register(_outer_fn) if _outer_fn else actually_register
