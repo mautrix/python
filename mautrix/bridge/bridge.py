@@ -122,7 +122,6 @@ class Bridge(Program):
         await self.az.start(self.config["appservice.hostname"], self.config["appservice.port"])
         await self.matrix.wait_for_connection()
         self.add_startup_actions(self.matrix.init_as_bot())
-        self.startup_actions = chain(self.startup_actions, [self.matrix.init_as_bot()])
         await super().start()
         self.az.ready = True
 
