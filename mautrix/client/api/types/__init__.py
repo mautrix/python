@@ -23,6 +23,8 @@ from .event import (EventType,
                     PresenceEventContent, SingleReceiptEventContent, ReceiptEventContent,
                     ReceiptEvent, ReceiptType,
 
+                    EncryptedEvent, EncryptionAlgorithm, EncryptedEventContent,
+
                     Event, EventContent, GenericEvent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
                    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages)

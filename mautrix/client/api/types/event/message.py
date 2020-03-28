@@ -302,8 +302,10 @@ class TextMessageEventContent(BaseMessageEventContent,
         if not self.formatted_body or len(self.formatted_body) == 0 or self.format != Format.HTML:
             self.format = Format.HTML
             self.formatted_body = escape(self.body)
-        self.formatted_body = reply_to.make_reply_fallback_html(displayname) + self.formatted_body
-        self.body = reply_to.make_reply_fallback_text(displayname) + self.body
+        if isinstance(reply_to, MessageEvent):
+            self.formatted_body = reply_to.make_reply_fallback_html(
+                displayname) + self.formatted_body
+            self.body = reply_to.make_reply_fallback_text(displayname) + self.body
 
     def trim_reply_fallback(self) -> None:
         if self.get_reply_to():

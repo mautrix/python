@@ -14,6 +14,7 @@ from .base import EventType, BaseEvent
 from .redaction import RedactionEvent, RedactionEventContent
 from .message import MessageEvent, MessageEventContent
 from .reaction import ReactionEvent, ReactionEventContent
+from .encrypted import EncryptedEvent, EncryptedEventContent
 from .state import StateEvent, StateEventContent
 from .account_data import AccountDataEvent, AccountDataEventContent
 from .ephemeral import (ReceiptEvent, PresenceEvent, TypingEvent, ReceiptEventContent,
@@ -38,11 +39,11 @@ class GenericEvent(BaseEvent, SerializableAttrs['GenericEvent']):
 
 
 Event = NewType("Event", Union[MessageEvent,ReactionEvent, RedactionEvent, StateEvent, ReceiptEvent,
-                               PresenceEvent, TypingEvent, GenericEvent])
+                               PresenceEvent, TypingEvent, EncryptedEvent, GenericEvent])
 
 EventContent = Union[MessageEventContent, RedactionEventContent, ReactionEventContent,
                      StateEventContent, AccountDataEventContent, ReceiptEventContent,
-                     TypingEventContent, Obj]
+                     TypingEventContent, EncryptedEventContent, Obj]
 
 
 @deserializer(Event)
@@ -67,6 +68,8 @@ def deserialize_event(data: JSON) -> Event:
         return TypingEvent.deserialize(data)
     elif event_type == EventType.PRESENCE:
         return PresenceEvent.deserialize(data)
+    elif event_type == EventType.ROOM_ENCRYPTED:
+        return EncryptedEvent.deserialize(data)
     else:
         return GenericEvent.deserialize(data)
 

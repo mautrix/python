@@ -25,7 +25,7 @@ class EventType(Serializable):
         ACCOUNT_DATA = "account_data"
         EPHEMERAL = "ephemeral"
 
-    ROOM_CANONICAL_ALIAS: 'EventType' = "m.room.canonical_alias"
+    ROOM_CANONICAL_ALIAS: 'EventType'
     ROOM_ALIASES: 'EventType'
     ROOM_CREATE: 'EventType'
     ROOM_JOIN_RULES: 'EventType'
@@ -37,6 +37,7 @@ class EventType(Serializable):
     ROOM_AVATAR: 'EventType'
     ROOM_PINNED_EVENTS: 'EventType'
     ROOM_TOMBSTONE: 'EventType'
+    ROOM_ENCRYPTION: 'EventType'
 
     ROOM_REDACTION: 'EventType'
     ROOM_MESSAGE: 'EventType'
@@ -122,6 +123,7 @@ _standard_types = {
         "m.room.avatar": "ROOM_AVATAR",
         "m.room.pinned_events": "ROOM_PINNED_EVENTS",
         "m.room.tombstone": "ROOM_TOMBSTONE",
+        "m.room.encryption": "ROOM_ENCRYPTION",
     },
     EventType.Class.MESSAGE: {
         "m.room.redaction": "ROOM_REDACTION",
