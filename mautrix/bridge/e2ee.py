@@ -71,7 +71,7 @@ class EncryptionManager:
                             hashlib.sha512).hexdigest()
         resp = await self.client.login(password, device_name="Telegram bridge")
         if isinstance(resp, LoginError):
-            raise resp
+            raise Exception(f"Failed to log in with bridge bot: {resp}")
         self.sync_task = self.loop.create_task(self.client.sync_forever(
             timeout=30000, sync_filter=self._filter.serialize()))
         self.log.info("End-to-bridge encryption support is enabled")
