@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Optional, Union, TYPE_CHECKING
+from typing import Tuple, Optional, Union, List, TYPE_CHECKING
 from abc import ABC, abstractmethod
 import logging
 import asyncio
@@ -11,7 +11,8 @@ import time
 
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
-                           PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent)
+                           PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent,
+                           EncryptedEvent)
 from mautrix.errors import IntentError, MatrixError, MForbidden
 from mautrix.appservice import AppService
 
@@ -24,6 +25,11 @@ if TYPE_CHECKING:
     from .puppet import BasePuppet
     from .bridge import Bridge
 
+try:
+    from .e2ee import EncryptionManager
+except ImportError:
+    EncryptionManager = None
+
 
 class BaseMatrixHandler(ABC):
     log: logging.Logger = logging.getLogger("mau.mx")
@@ -31,6 +37,7 @@ class BaseMatrixHandler(ABC):
     commands: CommandProcessor
     config: 'BaseBridgeConfig'
     bridge: 'Bridge'
+    e2ee: Optional[EncryptionManager]
 
     def __init__(self, az: AppService, config: 'BaseBridgeConfig',
                  command_processor: Optional[CommandProcessor] = None,
@@ -41,6 +48,18 @@ class BaseMatrixHandler(ABC):
         self.commands = command_processor or CommandProcessor(az=az, config=config, loop=loop,
                                                               bridge=bridge)
         self.az.matrix_event_handler(self.int_handle_event)
+
+        self.e2ee = None
+        if self.config["bridge.encryption.allow"]:
+            if not EncryptionManager:
+                self.log.error("Encryption enabled in config, but dependencies not installed.")
+            elif not self.config["bridge.login_shared_secret"]:
+                self.log.warning("Encryption enabled in config, but login_shared_secret not set.")
+            else:
+                self.e2ee = EncryptionManager(
+                    bot_mxid=self.az.bot_mxid,
+                    login_shared_secret=self.config["bridge.login_shared_secret"],
+                    homeserver_address=self.config["homeserver.address"], loop=loop)
 
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")
@@ -75,6 +94,9 @@ class BaseMatrixHandler(ABC):
                 await self.az.intent.set_avatar_url(avatar if avatar != "remove" else "")
             except Exception:
                 self.log.exception("Failed to set bot avatar")
+
+        if self.e2ee:
+            await self.e2ee.start()
 
     @abstractmethod
     async def get_user(self, user_id: UserID) -> 'BaseUser':
@@ -274,7 +296,28 @@ class BaseMatrixHandler(ABC):
         except Exception:
             self.log.exception("Error handling manually received Matrix event")
 
+    async def handle_encrypted(self, evt: EncryptedEvent) -> None:
+        await self.int_handle_event(self.e2ee.decrypt(evt))
+
+    async def enable_dm_encryption(self, portal: 'BasePortal', members: List[UserID]) -> bool:
+        try:
+            await portal.main_intent.invite_user(portal.mxid, self.az.bot_mxid)
+            await self.az.intent.join_room_by_id(portal.mxid)
+            await portal.main_intent.send_state_event(portal.mxid, EventType.ROOM_ENCRYPTION, {
+                "algorithm": "m.megolm.v1.aes-sha2"
+            })
+        except Exception:
+            self.log.warning(f"Failed to enable end-to-bridge encryption in {portal.mxid}",
+                             exc_info=True)
+            return False
+
+        portal.encrypted = True
+        await self.e2ee.add_room(portal.mxid, members=members + [self.az.bot_mxid], encrypted=True)
+        return True
+
     async def int_handle_event(self, evt: Event) -> None:
+        if isinstance(evt, StateEvent) and evt.type == EventType.ROOM_MEMBER and self.e2ee:
+            await self.e2ee.handle_room_membership(evt)
         if self.filter_matrix_event(evt):
             return
         self.log.debug("Received event: %s", evt)
@@ -317,6 +360,10 @@ class BaseMatrixHandler(ABC):
             if evt.type != EventType.ROOM_MESSAGE:
                 evt.content.msgtype = MessageType(str(evt.type))
             await self.handle_message(evt.room_id, evt.sender, evt.content, evt.event_id)
+        elif evt.type == EventType.ROOM_ENCRYPTION and self.e2ee:
+            await self.e2ee.handle_room_encryption(evt)
+        elif evt.type == EventType.ROOM_ENCRYPTED and self.e2ee:
+            await self.handle_encrypted(evt)
         else:
             if evt.type.is_state and isinstance(evt, StateEvent):
                 await self.handle_state_event(evt)

@@ -3,16 +3,18 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union, Optional, List
 import logging
 import asyncio
 import hashlib
 import hmac
 
-from nio import AsyncClient, Event as NioEvent, GroupEncryptionError, LoginError
+from nio import (AsyncClient, Event as NioEvent, GroupEncryptionError, LoginError,
+                 MatrixRoom as NioRoom, RoomMemberEvent as NioMemberEvent)
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter,
-                           EventType, RoomID, Serializable, JSON, MessageEvent, Event, UserID)
+                           EventType, RoomID, Serializable, JSON, MessageEvent, Event, UserID,
+                           EncryptedEvent, StateEvent)
 
 
 class EncryptionManager:
@@ -32,6 +34,46 @@ class EncryptionManager:
         self.login_shared_secret = login_shared_secret.encode("utf-8")
         self.client = AsyncClient(homeserver=homeserver_address, user=bot_mxid,
                                   device_id="Telegram bridge", store_path="nio_store")
+
+    async def handle_room_membership(self, evt: StateEvent) -> None:
+        try:
+            room = self.client.rooms[evt.room_id]
+        except KeyError:
+            room = self.client.rooms[evt.room_id] = NioRoom(evt.room_id, self.bot_mxid)
+            await self.client.joined_members(evt.room_id)
+        nio_evt = NioMemberEvent.from_dict(evt.serialize())
+        if room.handle_membership(nio_evt):
+            self.client._invalidate_session_for_member_event(evt.room_id)
+
+    async def handle_room_encryption(self, evt: StateEvent) -> None:
+        self.client.encrypted_rooms.add(evt.room_id)
+        try:
+            room = self.client.rooms[evt.room_id]
+            room.encrypted = True
+        except KeyError:
+            self.client.rooms[evt.room_id] = NioRoom(evt.room_id, self.bot_mxid, encrypted=True)
+            await self.client.joined_members(evt.room_id)
+
+    async def add_room(self, room_id: RoomID, members: Optional[List[UserID]] = None,
+                       encrypted: bool = False) -> None:
+        if encrypted:
+            self.client.encrypted_rooms.add(room_id)
+        if room_id in self.client.invited_rooms:
+            del self.client.invited_rooms[room_id]
+        try:
+            room = self.client.rooms[room_id]
+            room.encrypted = encrypted
+        except KeyError:
+            room = self.client.rooms[room_id] = NioRoom(room_id, self.bot_mxid,
+                                                        room_id in self.client.encrypted_rooms)
+        if members:
+            update = False
+            for member in members:
+                update = room.add_member(member, "", "") or update
+            if update:
+                self.client._invalidate_session_for_member_event(room_id)
+        else:
+            await self.client.joined_members(room_id)
 
     async def encrypt(self, room_id: RoomID, event_type: EventType,
                       content: Union[Serializable, JSON]) -> Tuple[EventType, JSON]:
@@ -56,7 +98,7 @@ class EncryptionManager:
             pass
         return event_type, encrypted
 
-    def decrypt(self, event: MessageEvent) -> MessageEvent:
+    def decrypt(self, event: EncryptedEvent) -> MessageEvent:
         serialized = event.serialize()
         event = self.client.decrypt_event(NioEvent.parse_encrypted_event(serialized))
         try:
@@ -87,8 +129,8 @@ class EncryptionManager:
             presence=EventFilter(not_types=[all_events]),
             room=RoomFilter(
                 include_leave=False,
-                state=StateFilter(types=[EventType.ROOM_MEMBER, EventType.ROOM_ENCRYPTION]),
-                timeline=RoomEventFilter(types=[EventType.ROOM_MEMBER, EventType.ROOM_ENCRYPTION]),
+                state=StateFilter(not_types=[all_events]),
+                timeline=RoomEventFilter(not_types=[all_events]),
                 account_data=RoomEventFilter(not_types=[all_events]),
                 ephemeral=RoomEventFilter(not_types=[all_events]),
             ),
