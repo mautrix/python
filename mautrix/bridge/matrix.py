@@ -150,7 +150,7 @@ class BaseMatrixHandler(ABC):
                                    invited_by: 'BaseUser', event_id: EventID) -> None:
         pass
 
-    async def handle_invite(self, room_id: RoomID, user_id: UserID, invited_by: UserID,
+    async def handle_invite(self, room_id: RoomID, user_id: UserID, inviter: 'BaseUser',
                             event_id: EventID) -> None:
         pass
 

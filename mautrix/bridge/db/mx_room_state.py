@@ -19,12 +19,12 @@ class PowerLevelType(types.TypeDecorator):
     def python_type(self):
         return PowerLevelStateEventContent
 
-    def process_bind_param(self, value: PowerLevelStateEventContent, dialect) -> Optional[Dict]:
+    def process_bind_param(self, value: PowerLevelStateEventContent, dialect) -> Optional[str]:
         if value is not None:
             return json.dumps(value.serialize())
         return None
 
-    def process_result_value(self, value: Dict, dialect) -> Optional[PowerLevelStateEventContent]:
+    def process_result_value(self, value: str, dialect) -> Optional[PowerLevelStateEventContent]:
         if value is not None:
             return PowerLevelStateEventContent.deserialize(json.loads(value))
         return None
