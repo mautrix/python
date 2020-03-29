@@ -10,11 +10,12 @@ import hashlib
 import hmac
 
 from nio import (AsyncClient, Event as NioEvent, GroupEncryptionError, LoginError,
-                 MatrixRoom as NioRoom, RoomMemberEvent as NioMemberEvent)
+                 MatrixRoom as NioRoom, RoomMemberEvent as NioMemberEvent, MatrixUser as NioUser)
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter,
                            EventType, RoomID, Serializable, JSON, MessageEvent, Event, UserID,
-                           EncryptedEvent, StateEvent)
+                           EncryptedEvent, StateEvent, Membership)
+from mautrix.bridge.db import UserProfile
 
 
 class EncryptionManager:
@@ -24,29 +25,53 @@ class EncryptionManager:
 
     bot_mxid: UserID
     login_shared_secret: bytes
+    _id_prefix: str
+    _id_suffix: str
 
     sync_task: asyncio.Task
 
     def __init__(self, bot_mxid: UserID, login_shared_secret: str, homeserver_address: str,
+                 user_id_prefix: str, user_id_suffix: str,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         self.loop = loop or asyncio.get_event_loop()
         self.bot_mxid = bot_mxid
+        self._id_prefix = user_id_prefix
+        self._id_suffix = user_id_suffix
         self.login_shared_secret = login_shared_secret.encode("utf-8")
         self.client = AsyncClient(homeserver=homeserver_address, user=bot_mxid,
                                   device_id="Telegram bridge", store_path="nio_store")
 
+    def _init_load_profiles(self) -> None:
+        self.log.debug("Loading room and member list into encryption client")
+        for profile in UserProfile.all_except(self._id_prefix, self._id_suffix, self.bot_mxid):
+            try:
+                room = self.client.rooms[profile.room_id]
+            except KeyError:
+                room = self.client.rooms[profile.room_id] = NioRoom(profile.room_id, self.bot_mxid,
+                                                                    encrypted=True)
+            user = NioUser(profile.user_id, profile.displayname, profile.avatar_url)
+            if profile.membership == Membership.JOIN:
+                room.users[profile.user_id] = user
+            elif profile.membership == Membership.INVITE:
+                room.invited_users[profile.user_id] = user
+
+    def _ignore_user(self, user_id: str) -> bool:
+        return user_id.startswith(self._id_prefix) and user_id.endswith(self._id_suffix)
+
     async def handle_room_membership(self, evt: StateEvent) -> None:
+        if self._ignore_user(evt.state_key):
+            return
         try:
             room = self.client.rooms[evt.room_id]
         except KeyError:
-            room = self.client.rooms[evt.room_id] = NioRoom(evt.room_id, self.bot_mxid)
+            room = self.client.rooms[evt.room_id] = NioRoom(evt.room_id, self.bot_mxid,
+                                                            encrypted=True)
             await self.client.joined_members(evt.room_id)
         nio_evt = NioMemberEvent.from_dict(evt.serialize())
         if room.handle_membership(nio_evt):
             self.client._invalidate_session_for_member_event(evt.room_id)
 
     async def handle_room_encryption(self, evt: StateEvent) -> None:
-        self.client.encrypted_rooms.add(evt.room_id)
         try:
             room = self.client.rooms[evt.room_id]
             room.encrypted = True
@@ -56,20 +81,18 @@ class EncryptionManager:
 
     async def add_room(self, room_id: RoomID, members: Optional[List[UserID]] = None,
                        encrypted: bool = False) -> None:
-        if encrypted:
-            self.client.encrypted_rooms.add(room_id)
         if room_id in self.client.invited_rooms:
             del self.client.invited_rooms[room_id]
         try:
             room = self.client.rooms[room_id]
             room.encrypted = encrypted
         except KeyError:
-            room = self.client.rooms[room_id] = NioRoom(room_id, self.bot_mxid,
-                                                        room_id in self.client.encrypted_rooms)
+            room = self.client.rooms[room_id] = NioRoom(room_id, self.bot_mxid, encrypted=True)
         if members:
             update = False
             for member in members:
-                update = room.add_member(member, "", "") or update
+                if not self._ignore_user(member):
+                    update = room.add_member(member, "", "") or update
             if update:
                 self.client._invalidate_session_for_member_event(room_id)
         else:
@@ -114,6 +137,7 @@ class EncryptionManager:
         resp = await self.client.login(password, device_name="Telegram bridge")
         if isinstance(resp, LoginError):
             raise Exception(f"Failed to log in with bridge bot: {resp}")
+        self._init_load_profiles()
         self.sync_task = self.loop.create_task(self.client.sync_forever(
             timeout=30000, sync_filter=self._filter.serialize()))
         self.log.info("End-to-bridge encryption support is enabled")

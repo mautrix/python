@@ -39,6 +39,9 @@ class BaseMatrixHandler(ABC):
     bridge: 'Bridge'
     e2ee: Optional[EncryptionManager]
 
+    user_id_prefix: str
+    user_id_suffix: str
+
     def __init__(self, az: AppService, config: 'BaseBridgeConfig',
                  command_processor: Optional[CommandProcessor] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -58,6 +61,7 @@ class BaseMatrixHandler(ABC):
             else:
                 self.e2ee = EncryptionManager(
                     bot_mxid=self.az.bot_mxid,
+                    user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
                     login_shared_secret=self.config["bridge.login_shared_secret"],
                     homeserver_address=self.config["homeserver.address"], loop=loop)
 

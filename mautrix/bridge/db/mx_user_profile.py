@@ -3,10 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from typing import Optional, Iterable
 
-from sqlalchemy import Column, String, Enum, and_
-from sqlalchemy.engine.result import RowProxy
+from sqlalchemy import Column, String, Enum
 
 from mautrix.types import RoomID, UserID, ContentURI, Member, Membership
 from mautrix.util.db import Base
@@ -27,7 +26,15 @@ class UserProfile(Base):
 
     @classmethod
     def get(cls, room_id: RoomID, user_id: UserID) -> Optional['UserProfile']:
-        return cls._select_one_or_none(and_(cls.c.room_id == room_id, cls.c.user_id == user_id))
+        return cls._select_one_or_none((cls.c.room_id == room_id) & (cls.c.user_id == user_id))
+
+    @classmethod
+    def all_except(cls, prefix: str, suffix: str, bot: str) -> Iterable['UserProfile']:
+        return cls._select_all(~(cls.c.user_id.startswith(prefix, autoescape=True)
+                                 & cls.c.user_id.endswith(suffix, autoescape=True)
+                                 & (cls.c.user_id != bot))
+                               & ((cls.c.membership == Membership.JOIN)
+                                  | (cls.c.membership == Membership.INVITE)))
 
     @classmethod
     def delete_all(cls, room_id: RoomID) -> None:
