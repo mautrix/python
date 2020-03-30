@@ -11,9 +11,9 @@ from .client.api.types import (
     Filter, EventFilter, RoomFilter, RoomEventFilter, StateFilter,
 
     EventType, RedactionEvent, RedactionEventContent, ReactionEventContent, ReactionEvent,
-    MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
+    MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent, EncryptedFile,
     LocationMessageEventContent, LocationInfo, RelationType, MessageType, Format, MediaInfo,
-    FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent,
+    FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo, TextMessageEventContent, JSONWebKey,
     BaseMessageEventContent, RelatesTo, PowerLevelStateEventContent, Membership,
     MemberStateEventContent, StateEvent, AliasesStateEventContent, CanonicalAliasStateEventContent,
     StrippedStateEvent, RoomNameStateEventContent, RoomTopicStateEventContent,

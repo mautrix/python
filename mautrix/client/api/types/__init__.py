@@ -9,6 +9,7 @@ from .event import (EventType,
                     LocationMessageEventContent, LocationInfo, RelationType, MessageType, Format,
                     MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
                     TextMessageEventContent, BaseMessageEventContent, RelatesTo, BaseFileInfo,
+                    EncryptedFile, JSONWebKey,
 
                     PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,

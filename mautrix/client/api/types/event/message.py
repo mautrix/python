@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Union, Pattern, Dict, Any
+from typing import Optional, Union, Pattern, Dict, Any, List
 from html import escape
 import re
 
@@ -196,6 +196,25 @@ class BaseMessageEventContent(BaseMessageEventContentFuncs):
 # endregion
 # region Media info
 
+
+@dataclass
+class JSONWebKey(SerializableAttrs['JSONWebKey']):
+    key: str = attr.ib(metadata={"json": "k"})
+    algorithm: str = attr.ib(default="A256CTR", metadata={"json": "alg"})
+    extractable: bool = attr.ib(default=True, metadata={"json": "ext"})
+    key_type: str = attr.ib(default="oct", metadata={"json": "kty"})
+    key_ops: List[str] = attr.ib(factory=lambda: ["encrypt", "decrypt"])
+
+
+@dataclass
+class EncryptedFile(SerializableAttrs['EncryptedFile']):
+    key: JSONWebKey
+    iv: str
+    hashes: Dict[str, str]
+    url: Optional[ContentURI] = None
+    version: str = attr.ib(default="v2", metadata={"json": "v"})
+
+
 @dataclass
 class BaseFileInfo(SerializableAttrs['BaseFileInfo']):
     mimetype: str = None
@@ -213,8 +232,9 @@ class ThumbnailInfo(BaseFileInfo, SerializableAttrs['ThumbnailInfo']):
 @dataclass
 class FileInfo(BaseFileInfo, SerializableAttrs['FileInfo']):
     """Information about a document message."""
-    thumbnail_info: ThumbnailInfo = None
-    thumbnail_url: ContentURI = None
+    thumbnail_info: Optional[ThumbnailInfo] = None
+    thumbnail_file: Optional[EncryptedFile] = None
+    thumbnail_url: Optional[ContentURI] = None
 
 
 @dataclass
@@ -244,8 +264,9 @@ MediaInfo = Union[ImageInfo, VideoInfo, AudioInfo, FileInfo, Obj]
 @dataclass
 class LocationInfo(SerializableAttrs['LocationInfo']):
     """Information about a location message."""
-    thumbnail_url: ContentURI = None
-    thumbnail_info: ThumbnailInfo = None
+    thumbnail_url: Optional[ContentURI] = None
+    thumbnail_info: Optional[ThumbnailInfo] = None
+    thumbnail_file: Optional[EncryptedFile] = None
 
 
 # endregion
@@ -255,8 +276,9 @@ class LocationInfo(SerializableAttrs['LocationInfo']):
 class MediaMessageEventContent(BaseMessageEventContent,
                                SerializableAttrs['MediaMessageEventContent']):
     """The content of a media message event (m.image, m.audio, m.video, m.file)"""
-    url: ContentURI = None
+    url: Optional[ContentURI] = None
     info: Optional[MediaInfo] = None
+    file: Optional[EncryptedFile] = None
 
     @staticmethod
     @deserializer(MediaInfo)
