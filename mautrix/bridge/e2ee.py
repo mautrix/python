@@ -31,7 +31,7 @@ class EncryptionManager:
     sync_task: asyncio.Task
 
     def __init__(self, bot_mxid: UserID, login_shared_secret: str, homeserver_address: str,
-                 user_id_prefix: str, user_id_suffix: str,
+                 user_id_prefix: str, user_id_suffix: str, device_id: str,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         self.loop = loop or asyncio.get_event_loop()
         self.bot_mxid = bot_mxid
@@ -39,7 +39,7 @@ class EncryptionManager:
         self._id_suffix = user_id_suffix
         self.login_shared_secret = login_shared_secret.encode("utf-8")
         self.client = AsyncClient(homeserver=homeserver_address, user=bot_mxid,
-                                  device_id="Telegram bridge", store_path="nio_store")
+                                  device_id=device_id, store_path="nio_store")
 
     def _init_load_profiles(self) -> None:
         self.log.debug("Loading room and member list into encryption client")
@@ -134,7 +134,7 @@ class EncryptionManager:
         self.log.debug("Logging in with bridge bot user")
         password = hmac.new(self.login_shared_secret, self.bot_mxid.encode("utf-8"),
                             hashlib.sha512).hexdigest()
-        resp = await self.client.login(password, device_name="Telegram bridge")
+        resp = await self.client.login(password, device_name=self.client.device_id)
         if isinstance(resp, LoginError):
             raise Exception(f"Failed to log in with bridge bot: {resp}")
         self._init_load_profiles()

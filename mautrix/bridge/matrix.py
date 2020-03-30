@@ -60,7 +60,7 @@ class BaseMatrixHandler(ABC):
                 self.log.warning("Encryption enabled in config, but login_shared_secret not set.")
             else:
                 self.e2ee = EncryptionManager(
-                    bot_mxid=self.az.bot_mxid,
+                    bot_mxid=self.az.bot_mxid, device_id=bridge.name,
                     user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
                     login_shared_secret=self.config["bridge.login_shared_secret"],
                     homeserver_address=self.config["homeserver.address"], loop=loop)
