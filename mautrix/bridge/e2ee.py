@@ -10,12 +10,14 @@ import hashlib
 import hmac
 
 from nio import (AsyncClient, Event as NioEvent, GroupEncryptionError, LoginError,
-                 MatrixRoom as NioRoom, RoomMemberEvent as NioMemberEvent, MatrixUser as NioUser)
+                 MatrixRoom as NioRoom, RoomMemberEvent as NioMemberEvent, MatrixUser as NioUser,
+                 AsyncClientConfig)
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter,
                            EventType, RoomID, Serializable, JSON, MessageEvent, Event, UserID,
                            EncryptedEvent, StateEvent, Membership)
 from mautrix.bridge.db import UserProfile
+from mautrix.bridge.db.nio_state_store import NioStore
 
 
 class EncryptionManager:
@@ -38,8 +40,10 @@ class EncryptionManager:
         self._id_prefix = user_id_prefix
         self._id_suffix = user_id_suffix
         self.login_shared_secret = login_shared_secret.encode("utf-8")
+        config = AsyncClientConfig(store=NioStore, encryption_enabled=True,
+                                   pickle_key="mautrix-python", store_sync_tokens=True)
         self.client = AsyncClient(homeserver=homeserver_address, user=bot_mxid,
-                                  device_id=device_id, store_path="nio_store")
+                                  device_id=device_id, config=config, store_path="3:<")
 
     def _init_load_profiles(self) -> None:
         self.log.debug("Loading room and member list into encryption client")
