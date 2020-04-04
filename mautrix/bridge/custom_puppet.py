@@ -157,7 +157,10 @@ class CustomPuppetMixin(ABC):
             pass
         if self.mxid != self.default_mxid:
             self.by_custom_mxid[self.mxid] = self
-            await self._leave_rooms_with_default_user()
+            try:
+                await self._leave_rooms_with_default_user()
+            except Exception:
+                self.log.warning("Error when leaving rooms with default user", exc_info=True)
         self.save()
 
     async def try_start(self) -> None:

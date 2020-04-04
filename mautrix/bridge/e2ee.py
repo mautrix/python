@@ -72,8 +72,11 @@ class EncryptionManager:
                                                             encrypted=True)
             await self.client.joined_members(evt.room_id)
         nio_evt = NioMemberEvent.from_dict(evt.serialize())
-        if room.handle_membership(nio_evt):
-            self.client._invalidate_session_for_member_event(evt.room_id)
+        try:
+            if room.handle_membership(nio_evt):
+                self.client._invalidate_session_for_member_event(evt.room_id)
+        except Exception:
+            self.log.exception("matrix-nio failed to handle membership event")
 
     async def handle_room_encryption(self, evt: StateEvent) -> None:
         try:
