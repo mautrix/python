@@ -93,6 +93,9 @@ class Bridge(Program):
                              as_token=self.config["appservice.as_token"],
                              hs_token=self.config["appservice.hs_token"],
 
+                             tls_cert=self.config.get("appservice.tls_cert", None),
+                             tls_key=self.config.get("appservice.tls_key", None),
+
                              bot_localpart=self.config["appservice.bot_username"],
 
                              log="mau.as",

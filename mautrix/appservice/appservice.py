@@ -16,6 +16,11 @@ from .api import AppServiceAPI, IntentAPI
 from .state_store import StateStore, JSONStateStore
 from .as_handler import AppServiceServerMixin
 
+try:
+    import ssl
+except ImportError:
+    ssl = None
+
 QueryFunc = Callable[[web.Request], Awaitable[Optional[web.Response]]]
 
 
@@ -25,6 +30,8 @@ class AppService(AppServiceServerMixin):
     server: str
     domain: str
     verify_ssl: bool
+    tls_cert: str
+    tls_key: str
     as_token: str
     hs_token: str
     bot_mxid: UserID
@@ -46,6 +53,7 @@ class AppService(AppServiceServerMixin):
     def __init__(self, server: str, domain: str, as_token: str, hs_token: str, bot_localpart: str,
                  loop: Optional[asyncio.AbstractEventLoop] = None,
                  log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
+                 tls_cert: Optional[str] = None, tls_key: Optional[str] = None,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
                  state_store: StateStore = None, aiohttp_params: Dict = None) -> None:
@@ -53,6 +61,8 @@ class AppService(AppServiceServerMixin):
         self.server = server
         self.domain = domain
         self.verify_ssl = verify_ssl
+        self.tls_cert = tls_cert
+        self.tls_key = tls_key
         self.as_token = as_token
         self.hs_token = hs_token
         self.bot_mxid = UserID(f"@{bot_localpart}:{domain}")
@@ -116,9 +126,13 @@ class AppService(AppServiceServerMixin):
                                      token=self.as_token, state_store=self.state_store,
                                      real_user_content_key=self.real_user_content_key,
                                      client_session=self._http_session).bot_intent()
+        ssl_ctx = None
+        if self.tls_cert and self.tls_key:
+            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+            ssl_ctx.load_cert_chain(self.tls_cert, self.tls_key)
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
-        site = web.TCPSite(self.runner, host, port)
+        site = web.TCPSite(self.runner, host, port, ssl_context=ssl_ctx)
         await site.start()
 
     async def stop(self) -> None:
