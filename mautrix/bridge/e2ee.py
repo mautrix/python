@@ -60,7 +60,8 @@ class EncryptionManager:
                 room.invited_users[profile.user_id] = user
 
     def _ignore_user(self, user_id: str) -> bool:
-        return user_id.startswith(self._id_prefix) and user_id.endswith(self._id_suffix)
+        return (user_id.startswith(self._id_prefix) and user_id.endswith(self._id_suffix)
+                and user_id != self.bot_mxid)
 
     async def handle_room_membership(self, evt: StateEvent) -> None:
         if self._ignore_user(evt.state_key):
