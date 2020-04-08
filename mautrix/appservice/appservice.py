@@ -128,7 +128,7 @@ class AppService(AppServiceServerMixin):
                                      client_session=self._http_session).bot_intent()
         ssl_ctx = None
         if self.tls_cert and self.tls_key:
-            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+            ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
             ssl_ctx.load_cert_chain(self.tls_cert, self.tls_key)
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
