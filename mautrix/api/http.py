@@ -8,6 +8,7 @@ from urllib.parse import quote as urllib_quote
 from json.decoder import JSONDecodeError
 from enum import Enum
 from time import time
+from yarl import URL
 import json
 import logging
 import asyncio
@@ -130,7 +131,7 @@ class HTTPAPI:
     async def _send(self, method: Method, endpoint: str, content: Union[bytes, str],
                     query_params: Dict[str, str], headers: Dict[str, str]) -> JSON:
         while True:
-            request = self.session.request(str(method), endpoint, data=content,
+            request = self.session.request(str(method), URL(endpoint, encoded=True), data=content,
                                            params=query_params, headers=headers)
             async with request as response:
                 if response.status < 200 or response.status >= 300:
