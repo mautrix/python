@@ -67,7 +67,7 @@ class AppServiceServerMixin:
             return web.Response(status=401)
 
         try:
-            user_id = request.match_info["userId"]
+            user_id = request.match_info["user_id"]
         except KeyError:
             return web.Response(status=400)
 
