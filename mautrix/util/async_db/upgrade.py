@@ -38,7 +38,7 @@ class UpgradeTable:
 
         def actually_register(fn: Upgrade) -> Upgrade:
             fn.__mau_db_upgrade_description__ = description
-            if index == -1:
+            if index == -1 or index == len(self.upgrades):
                 self.upgrades.append(fn)
             else:
                 if len(self.upgrades) <= index:
