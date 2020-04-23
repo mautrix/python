@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
 from typing import Optional, Callable, Awaitable, List, Set
+from json import JSONDecodeError
 from aiohttp import web
 import asyncio
 import logging
@@ -108,7 +109,10 @@ class AppServiceServerMixin:
         if transaction_id in self.transactions:
             return web.json_response({})
 
-        json = await request.json()
+        try:
+            json = await request.json()
+        except JSONDecodeError:
+            return web.Response(status=400)
 
         try:
             events = json["events"]
