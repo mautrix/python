@@ -183,8 +183,8 @@ class AppServiceAPI(HTTPAPI):
             if isinstance(timestamp, datetime):
                 timestamp = int(timestamp.replace(tzinfo=timezone.utc).timestamp() * 1000)
             query_params["ts"] = timestamp
-        if self.identity and not self.is_real_user:
-            query_params["user_id"] = self.identity
+        if not self.is_real_user:
+            query_params["user_id"] = self.identity or self.bot_mxid
 
         return super(AppServiceAPI, self).request(method, path, content,
                                                   headers, query_params)
