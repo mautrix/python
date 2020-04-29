@@ -17,7 +17,7 @@ from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, Sta
                            EventType, RoomID, Serializable, JSON, MessageEvent, Event, UserID,
                            EncryptedEvent, StateEvent, Membership)
 from mautrix.bridge.db import UserProfile
-from mautrix.bridge.db.nio_state_store import NioStore
+from mautrix.bridge.db.nio_state_store import NioStore, DBAccount
 
 
 class EncryptionManager:
@@ -33,15 +33,17 @@ class EncryptionManager:
     sync_task: asyncio.Task
 
     def __init__(self, bot_mxid: UserID, login_shared_secret: str, homeserver_address: str,
-                 user_id_prefix: str, user_id_suffix: str, device_id: str,
+                 user_id_prefix: str, user_id_suffix: str, device_name: str,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         self.loop = loop or asyncio.get_event_loop()
         self.bot_mxid = bot_mxid
+        self.device_name = device_name
         self._id_prefix = user_id_prefix
         self._id_suffix = user_id_suffix
         self.login_shared_secret = login_shared_secret.encode("utf-8")
         config = AsyncClientConfig(store=NioStore, encryption_enabled=True,
                                    pickle_key="mautrix-python", store_sync_tokens=True)
+        device_id = DBAccount.first_device_id(self.bot_mxid)
         self.client = AsyncClient(homeserver=homeserver_address, user=bot_mxid,
                                   device_id=device_id, config=config, store_path="3:<")
 
@@ -142,7 +144,7 @@ class EncryptionManager:
         self.log.debug("Logging in with bridge bot user")
         password = hmac.new(self.login_shared_secret, self.bot_mxid.encode("utf-8"),
                             hashlib.sha512).hexdigest()
-        resp = await self.client.login(password, device_name=self.client.device_id)
+        resp = await self.client.login(password, device_name=self.device_name)
         if isinstance(resp, LoginError):
             raise Exception(f"Failed to log in with bridge bot: {resp}")
         self._init_load_profiles()

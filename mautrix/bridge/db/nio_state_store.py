@@ -25,6 +25,13 @@ class DBAccount(Base):
     account: bytes = Column(LargeBinary, nullable=False)
 
     @classmethod
+    def first_device_id(cls, user_id: UserID) -> Optional[str]:
+        acc = cls._one_or_none(cls.c.user_id == user_id)
+        if not acc:
+            return None
+        return acc.device_id
+
+    @classmethod
     def get(cls, user_id: UserID, device_id: str) -> Optional['DBAccount']:
         return cls._select_one_or_none((cls.c.user_id == user_id) & (cls.c.device_id == device_id))
 
