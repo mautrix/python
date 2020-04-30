@@ -26,7 +26,7 @@ class DBAccount(Base):
 
     @classmethod
     def first_device_id(cls, user_id: UserID) -> Optional[str]:
-        acc = cls._one_or_none(cls.c.user_id == user_id)
+        acc = cls._select_one_or_none(cls.c.user_id == user_id)
         if not acc:
             return None
         return acc.device_id

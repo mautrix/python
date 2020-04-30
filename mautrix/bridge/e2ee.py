@@ -44,6 +44,8 @@ class EncryptionManager:
         config = AsyncClientConfig(store=NioStore, encryption_enabled=True,
                                    pickle_key="mautrix-python", store_sync_tokens=True)
         device_id = DBAccount.first_device_id(self.bot_mxid)
+        if device_id:
+            self.log.debug(f"Found device ID in database: {device_id}")
         self.client = AsyncClient(homeserver=homeserver_address, user=bot_mxid,
                                   device_id=device_id, config=config, store_path="3:<")
 
