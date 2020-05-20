@@ -1,2 +1,2 @@
 from .color import ColorFormatter
-from .trace import TRACE
+from .trace import TRACE, TraceLogger

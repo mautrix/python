@@ -9,12 +9,18 @@ import logging
 TRACE = logging.TRACE = 5
 logging.addLevelName(TRACE, "TRACE")
 
+SILLY = logging.SILLY = 1
+logging.addLevelName(SILLY, "SILLY")
+
 OldLogger: Type[logging.Logger] = cast(Type[logging.Logger], logging.getLoggerClass())
 
 
 class TraceLogger(OldLogger):
     def trace(self, msg, *args, **kwargs) -> None:
         self.log(TRACE, msg, *args, **kwargs)
+
+    def silly(self, msg, *args, **kwargs) -> None:
+        self.log(SILLY, msg, *args, **kwargs)
 
 
 logging.setLoggerClass(TraceLogger)

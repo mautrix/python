@@ -15,6 +15,7 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
                            EncryptedEvent)
 from mautrix.errors import IntentError, MatrixError, MForbidden
 from mautrix.appservice import AppService
+from mautrix.util.logging import TraceLogger
 
 from .commands import CommandProcessor
 
@@ -32,7 +33,7 @@ except ImportError:
 
 
 class BaseMatrixHandler(ABC):
-    log: logging.Logger = logging.getLogger("mau.mx")
+    log: TraceLogger = logging.getLogger("mau.mx")
     az: AppService
     commands: CommandProcessor
     config: 'BaseBridgeConfig'
@@ -249,10 +250,11 @@ class BaseMatrixHandler(ABC):
                              event_id: EventID) -> None:
         sender = await self.get_user(user_id)
         if not sender or not await self.allow_message(sender):
-            self.log.debug(f"Ignoring message \"{message}\" from {user_id} to {room_id}:"
+            self.log.debug(f"Ignoring message {event_id} from {user_id} to {room_id}:"
                            " User is not whitelisted.")
             return
-        self.log.debug(f"Received Matrix event \"{message}\" from {sender.mxid} in {room_id}")
+        self.log.debug(f"Received Matrix event {event_id} from {sender.mxid} in {room_id}")
+        self.log.trace("Event %s content: %s", event_id, message)
 
         if isinstance(message, TextMessageEventContent):
             message.trim_reply_fallback()
@@ -296,7 +298,7 @@ class BaseMatrixHandler(ABC):
             if isinstance(evt, (ReceiptEvent, PresenceEvent, TypingEvent)):
                 await self.handle_ephemeral_event(evt)
             else:
-                self.log.debug("Unknown event type received from sync:", evt)
+                self.log.trace("Unknown event type received from sync: %s", evt)
         except Exception:
             self.log.exception("Error handling manually received Matrix event")
 
@@ -324,7 +326,7 @@ class BaseMatrixHandler(ABC):
             await self.e2ee.handle_room_membership(evt)
         if self.filter_matrix_event(evt):
             return
-        self.log.debug("Received event: %s", evt)
+        self.log.trace("Received event: %s", evt)
         start_time = time.time()
 
         if evt.type == EventType.ROOM_MEMBER:

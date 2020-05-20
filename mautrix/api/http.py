@@ -123,7 +123,6 @@ class HTTPAPI:
         self.log: Optional[logging.Logger] = log or logging.getLogger("mautrix.api")
         self.loop = loop or asyncio.get_event_loop()
         self.session: ClientSession = client_session or ClientSession(loop=self.loop)
-        self.log_sync = False
         if txn_id is not None:
             self.txn_id: int = txn_id
 
@@ -155,18 +154,17 @@ class HTTPAPI:
                      orig_content, query_params: Dict[str, str]) -> None:
         if not self.log:
             return
-        if not self.log_sync and path == Path.sync:
-            return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = query_params.get("user_id", None)
-        self.log.debug(f"{method} {path} {log_content}".strip(" "),
-                       extra={"matrix_http_request": {
-                           "method": str(method),
-                           "path": str(path),
-                           "content": (orig_content if isinstance(orig_content, (dict, list))
-                                       else log_content),
-                           "user": as_user,
-                       }})
+        level = 1 if path == Path.sync else 5
+        self.log.log(level, f"{method} {path} {log_content}".strip(" "),
+                     extra={"matrix_http_request": {
+                         "method": str(method),
+                         "path": str(path),
+                         "content": (orig_content if isinstance(orig_content, (dict, list))
+                                     else log_content),
+                         "user": as_user,
+                     }})
 
     async def request(self, method: Method, path: PathBuilder,
                       content: Optional[Union[JSON, bytes, str]] = None,
