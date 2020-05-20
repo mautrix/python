@@ -114,14 +114,16 @@ class AppServiceAPI(HTTPAPI):
             raise ValueError("Can't get child of real user")
 
         try:
-            return self.real_users[mxid]
+            child = self.real_users[mxid]
+            child.base_url = base_url or child.base_url
+            child.token = token or child.token
         except KeyError:
             child = type(self)(base_url=base_url or self.base_url, token=token, identity=mxid,
                                log=self.base_log, state_store=self.state_store,
                                client_session=self.session, real_user=True,
                                real_user_content_key=self.real_user_content_key, loop=self.loop)
             self.real_users[mxid] = child
-            return child
+        return child
 
     def bot_intent(self) -> 'IntentAPI':
         """
