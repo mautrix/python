@@ -6,7 +6,7 @@
 #
 # Based on https://github.com/nhoad/aiomanhole Copyright (c) 2014, Nathan Hoad
 from typing import Any, Tuple, Optional, Dict, Union, List, Set, Callable, Type
-from socket import SOL_SOCKET, SO_PEERCRED
+from socket import SOL_SOCKET
 from abc import ABC, abstractmethod
 from io import BytesIO, StringIO
 from types import CodeType
@@ -21,6 +21,11 @@ import pwd
 import ast
 import sys
 import os
+
+try:
+    from socket import SO_PEERCRED
+except ImportError:
+    SO_PEERCRED = None
 
 log = logging.getLogger("mau.manhole")
 
@@ -301,6 +306,8 @@ class InterpreterFactory:
     async def __call__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
                        ) -> None:
         sock = writer.transport.get_extra_info("socket")
+        # TODO support non-linux OSes
+        # I think FreeBSD uses SCM_CREDS
         creds = sock.getsockopt(SOL_SOCKET, SO_PEERCRED, struct.calcsize('3i'))
         pid, uid, gid = struct.unpack('3i', creds)
         user_info = pwd.getpwuid(uid)
@@ -340,6 +347,8 @@ async def start_manhole(path: str, banner: str = "", namespace: Optional[Dict[st
         loop: The asyncio event loop to use.
         whitelist: List of user IDs to allow connecting.
     """
+    if not SO_PEERCRED:
+        raise ValueError("SO_PEERCRED is not supported on this platform")
     loop = loop or asyncio.get_event_loop()
     factory = InterpreterFactory(namespace=namespace, banner=banner,
                                  interpreter_class=AsyncInterpreter, loop=loop,
