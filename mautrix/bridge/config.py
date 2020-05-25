@@ -59,6 +59,9 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("appservice.port")
         copy("appservice.max_body_size")
 
+        copy("appservice.tls_cert")
+        copy("appservice.tls_key")
+
         copy("appservice.database")
 
         copy("appservice.id")
