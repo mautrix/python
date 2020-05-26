@@ -7,6 +7,7 @@ from typing import Dict, Optional, List, Any
 from abc import ABC, abstractmethod
 import random
 import string
+import re
 
 from mautrix.util.config import (BaseFileConfig, ConfigUpdateHelper, BaseValidatableConfig,
                                  ForbiddenDefault, ForbiddenKey, yaml)
@@ -87,12 +88,18 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         self["appservice.as_token"] = self._new_token()
         self["appservice.hs_token"] = self._new_token()
 
+        namespaces = self.namespaces
+        namespaces.setdefault("users", []).append({
+            "exclusive": True,
+            "regex": re.escape(self["appservice.bot_username"]),
+        })
+
         self._registration = {
             "id": self["appservice.id"],
             "as_token": self["appservice.as_token"],
             "hs_token": self["appservice.hs_token"],
-            "namespaces": self.namespaces,
+            "namespaces": namespaces,
             "url": self["appservice.address"],
-            "sender_localpart": self["appservice.bot_username"],
+            "sender_localpart": self._new_token(),
             "rate_limited": False
         }
