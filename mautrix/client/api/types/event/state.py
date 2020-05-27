@@ -104,7 +104,7 @@ class RoomTopicStateEventContent(SerializableAttrs['RoomTopicStateEventContent']
 
 @dataclass
 class RoomAvatarStateEventContent(SerializableAttrs['RoomAvatarStateEventContent']):
-    url: ContentURI = None
+    url: Optional[ContentURI] = None
 
 
 @dataclass

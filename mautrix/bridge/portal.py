@@ -10,13 +10,14 @@ import logging
 
 from mautrix.appservice import AppService, IntentAPI
 from mautrix.types import RoomID, EventID, MessageEventContent
+from mautrix.util.logging import TraceLogger
 
 if TYPE_CHECKING:
     from .user import BaseUser
 
 
 class BasePortal(ABC):
-    log: logging.Logger = logging.getLogger("mau.portal")
+    log: TraceLogger = logging.getLogger("mau.portal")
     az: AppService
     loop: asyncio.AbstractEventLoop
     main_intent: IntentAPI

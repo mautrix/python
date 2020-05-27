@@ -10,6 +10,7 @@ import logging
 
 from mautrix.types import UserID
 from mautrix.appservice import AppService, IntentAPI
+from mautrix.util.logging import TraceLogger
 
 from .custom_puppet import CustomPuppetMixin
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class BasePuppet(CustomPuppetMixin, ABC):
-    log: logging.Logger = logging.getLogger("mau.puppet")
+    log: TraceLogger = logging.getLogger("mau.puppet")
     az: AppService
     loop: asyncio.AbstractEventLoop
     mx: 'BaseMatrixHandler'

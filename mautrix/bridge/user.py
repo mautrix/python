@@ -10,10 +10,11 @@ import asyncio
 
 from mautrix.appservice import AppService
 from mautrix.types import UserID
+from mautrix.util.logging import TraceLogger
 
 
 class BaseUser(ABC):
-    log: logging.Logger = logging.getLogger("mau.user")
+    log: TraceLogger = logging.getLogger("mau.user")
     az: AppService
     loop: asyncio.AbstractEventLoop
 
