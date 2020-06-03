@@ -89,9 +89,11 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         self["appservice.hs_token"] = self._new_token()
 
         namespaces = self.namespaces
+        bot_username = self["appservice.bot_username"]
+        homeserver_domain = self["homeserver.domain"]
         namespaces.setdefault("users", []).append({
             "exclusive": True,
-            "regex": re.escape(self["appservice.bot_username"]),
+            "regex": re.escape(f"@{bot_username}:{homeserver_domain}"),
         })
 
         self._registration = {
