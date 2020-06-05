@@ -100,6 +100,7 @@ class BaseMatrixHandler(ABC):
             except Exception:
                 self.log.exception("Failed to set bot avatar")
 
+    async def init_encryption(self) -> None:
         if self.e2ee:
             await self.e2ee.start()
 

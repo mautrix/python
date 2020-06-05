@@ -123,6 +123,7 @@ class Bridge(Program):
         self.log.debug("Starting appservice...")
         await self.az.start(self.config["appservice.hostname"], self.config["appservice.port"])
         await self.matrix.wait_for_connection()
+        await self.matrix.init_encryption()
         self.add_startup_actions(self.matrix.init_as_bot())
         await super().start()
         self.az.ready = True
