@@ -36,3 +36,8 @@ class BasePuppet(CustomPuppetMixin, ABC):
     @abstractmethod
     def get_by_mxid(cls, mxid: UserID) -> 'BasePuppet':
         pass
+
+    @classmethod
+    @abstractmethod
+    def get_by_custom_mxid(cls, mxid: UserID) -> 'BasePuppet':
+        pass

@@ -25,10 +25,16 @@ class SimpleLock:
         if self._future is None or self._future.done():
             self._future = self._loop.create_future()
 
+    async def __aenter__(self) -> None:
+        self.__enter__()
+
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         if self._future is not None:
             self._future.set_result(None)
             self._future = None
+
+    def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.__exit__(exc_type, exc_val, exc_tb)
 
     @property
     def locked(self) -> bool:
