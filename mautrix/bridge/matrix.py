@@ -69,12 +69,19 @@ class BaseMatrixHandler(ABC):
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")
         errors = 0
+        tried_to_register = False
         while True:
             try:
                 await self.az.intent.whoami()
                 break
-            except MForbidden:
-                raise
+            except MForbidden as e:
+                if "has not registered this user" in e.message and not tried_to_register:
+                    self.log.debug("Whoami endpoint returned M_FORBIDDEN, "
+                                   "trying to register bridge bot before retrying...")
+                    await self.az.intent.ensure_registered()
+                    tried_to_register = True
+                else:
+                    raise
             except Exception:
                 errors += 1
                 if errors <= 6:
