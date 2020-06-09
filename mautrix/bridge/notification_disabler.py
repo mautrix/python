@@ -28,8 +28,7 @@ class NotificationDisabler:
         self.room_id = room_id
         self.enabled = False
         puppet = self.puppet_cls.get_by_custom_mxid(user.mxid)
-        if puppet and puppet.is_real_user:
-            self.intent = puppet.intent
+        self.intent = puppet.intent if puppet and puppet.is_real_user else None
 
     @property
     def _path(self) -> PathBuilder:
