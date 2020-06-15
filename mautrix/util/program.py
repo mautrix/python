@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Iterable, Awaitable, Optional, Type, Union, Tuple
+from typing import Iterable, Awaitable, Optional, Type, Union, Tuple, Any
 from itertools import chain
 from time import time
 import argparse
@@ -23,8 +23,8 @@ except ImportError:
     uvloop = None
 
 
-NewTask = Union[Awaitable[None], Iterable[Awaitable[None]]]
-TaskList = Iterable[Awaitable[None]]
+NewTask = Union[Awaitable[Any], Iterable[Awaitable[Any]]]
+TaskList = Iterable[Awaitable[Any]]
 
 
 class Program:

@@ -19,12 +19,12 @@ if TYPE_CHECKING:
     from ..bridge import Bridge
 
 command_handlers: Dict[str, 'CommandHandler'] = {}
+command_aliases: Dict[str, 'CommandHandler'] = {}
 
 HelpSection = NamedTuple('HelpSection', name=str, order=int, description=str)
 HelpCacheKey = NamedTuple('HelpCacheKey', is_management=bool, is_portal=bool)
 
 SECTION_GENERAL = HelpSection("General", 0, "")
-
 
 
 def ensure_trailing_newline(s: str) -> str:
@@ -265,7 +265,7 @@ class CommandHandler:
 
 def command_handler(_func: Optional[CommandHandlerFunc] = None, *, management_only: bool = False,
                     name: Optional[str] = None, help_text: str = "", help_args: str = "",
-                    help_section: HelpSection = None,
+                    help_section: HelpSection = None, aliases: Optional[List[str]] = None,
                     _handler_class: Type[CommandHandler] = CommandHandler,
                     **kwargs) -> Callable[[CommandHandlerFunc], CommandHandler]:
     """Decorator to create CommandHandlers"""
@@ -275,6 +275,9 @@ def command_handler(_func: Optional[CommandHandlerFunc] = None, *, management_on
         handler = _handler_class(func, management_only, actual_name, help_text, help_args,
                                  help_section, **kwargs)
         command_handlers[handler.name] = handler
+        if aliases:
+            for alias in aliases:
+                command_aliases[alias] = handler
         return handler
 
     return decorator if _func is None else decorator(_func)
@@ -349,12 +352,15 @@ class CommandProcessor:
         try:
             handler = command_handlers[command]
         except KeyError:
-            if sender.command_status and "next" in sender.command_status:
-                args.insert(0, orig_command)
-                evt.command = ""
-                handler = sender.command_status["next"]
-            else:
-                handler = command_handlers["unknown-command"]
+            try:
+                handler = command_aliases[command]
+            except KeyError:
+                if sender.command_status and "next" in sender.command_status:
+                    args.insert(0, orig_command)
+                    evt.command = ""
+                    handler = sender.command_status["next"]
+                else:
+                    handler = command_handlers["unknown-command"]
         try:
             await self._run_handler(handler, evt)
         except Exception:
