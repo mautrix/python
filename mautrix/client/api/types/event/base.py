@@ -69,11 +69,11 @@ class EventType(Serializable):
         return cls.find(raw)
 
     @classmethod
-    def find(cls, t: str) -> 'EventType':
+    def find(cls, t: str, t_class: Class = Class.UNKNOWN) -> 'EventType':
         try:
             return cls.by_event_type[t]
         except KeyError:
-            return EventType(t)
+            return EventType(t, t_class=t_class)
 
     def json(self) -> str:
         return json.dumps(self.serialize())
