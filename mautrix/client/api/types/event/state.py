@@ -90,6 +90,7 @@ class AliasesStateEventContent(SerializableAttrs['AliasesStateEventContent']):
 @dataclass
 class CanonicalAliasStateEventContent(SerializableAttrs['CanonicalAliasStateEventContent']):
     canonical_alias: str = attr.ib(default=None, metadata={"json": "alias"})
+    alt_aliases: List[str] = attr.ib(factory=lambda: [])
 
 
 @dataclass
