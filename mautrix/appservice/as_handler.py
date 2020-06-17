@@ -128,9 +128,20 @@ class AppServiceServerMixin:
 
         return web.json_response({})
 
+    @staticmethod
+    def _fix_prev_content(raw_event: JSON) -> None:
+        try:
+            raw_event["unsigned"]["prev_content"]
+        except KeyError:
+            try:
+                raw_event.setdefault("unsigned", {})["prev_content"] = raw_event["prev_content"]
+            except KeyError:
+                pass
+
     async def handle_transaction(self, txn_id: str, events: List[JSON]) -> None:
         for raw_event in events:
             try:
+                self._fix_prev_content(raw_event)
                 event = Event.deserialize(raw_event)
             except SerializerError:
                 self.log.exception("Failed to deserialize event %s", raw_event)
