@@ -32,6 +32,7 @@ class SyncStream(Flag):
     STATE = auto()
     EPHEMERAL = auto()
     ACCOUNT_DATA = auto()
+    TO_DEVICE = auto()
 
 
 class InternalEventType(Enum):
@@ -165,18 +166,16 @@ class Client(ClientAPI):
         """
         if isinstance(event, MessageEvent):
             event.content.trim_reply_fallback()
-        if event.type.is_state and event.state_key is None:
-            self.log.debug(f"Not sending {event.event_id} to handlers: expected state_key.")
-            return
-        elif event.type.is_account_data and not source & SyncStream.ACCOUNT_DATA:
-            self.log.debug(f"Not sending {event.event_id} to handlers: got account_data event "
-                           f"type in non-account_data sync stream.")
-            return
-        elif event.type.is_ephemeral and not source & SyncStream.EPHEMERAL:
-            self.log.debug(f"Not sending {event.event_id} to handlers: got ephemeral event "
-                           f"type in non-ephemeral sync stream.")
-            return
-
+        if event.state_key is not None:
+            event.type = event.type.with_class(EventType.Class.STATE)
+        elif source & SyncStream.EPHEMERAL:
+            event.type = event.type.with_class(EventType.Class.EPHEMERAL)
+        elif source & SyncStream.ACCOUNT_DATA:
+            event.type = event.type.with_class(EventType.Class.ACCOUNT_DATA)
+        elif source & SyncStream.TO_DEVICE:
+            event.type = event.type.with_class(EventType.Class.TO_DEVICE)
+        else:
+            event.type = event.type.with_class(EventType.Class.MESSAGE)
         setattr(event, "source", source)
         await self.dispatch_manual_event(event.type, event, include_global_handlers=True)
 

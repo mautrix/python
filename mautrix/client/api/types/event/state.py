@@ -8,7 +8,7 @@ from attr import dataclass
 import attr
 
 from .....api import JSON
-from ..primitive import UserID, EventID, ContentURI, RoomID
+from ..primitive import UserID, EventID, ContentURI, RoomID, RoomAlias
 from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
 from .base import BaseRoomEvent, BaseUnsigned, EventType
 
@@ -84,13 +84,13 @@ class MemberStateEventContent(SerializableAttrs['MemberStateEventContent']):
 
 @dataclass
 class AliasesStateEventContent(SerializableAttrs['AliasesStateEventContent']):
-    aliases: List[str] = None
+    aliases: List[RoomAlias] = None
 
 
 @dataclass
 class CanonicalAliasStateEventContent(SerializableAttrs['CanonicalAliasStateEventContent']):
-    canonical_alias: str = attr.ib(default=None, metadata={"json": "alias"})
-    alt_aliases: List[str] = attr.ib(factory=lambda: [])
+    canonical_alias: RoomAlias = attr.ib(default=None, metadata={"json": "alias"})
+    alt_aliases: List[RoomAlias] = attr.ib(factory=lambda: [])
 
 
 @dataclass
