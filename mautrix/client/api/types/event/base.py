@@ -3,11 +3,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from typing import Optional
+
 from attr import dataclass
 import attr
 
 from ..primitive import RoomID, UserID, EventID
-from ..util import Obj
+from ..util import Obj, SerializableAttrs
 from .type import EventType
 
 
@@ -32,3 +34,20 @@ class BaseRoomEvent(BaseEvent):
     event_id: EventID
     sender: UserID
     timestamp: int = attr.ib(metadata={"json": "origin_server_ts"})
+
+
+@dataclass
+class GenericEvent(BaseEvent, SerializableAttrs['GenericEvent']):
+    """
+    An event class that contains all possible top-level event keys and uses generic Obj's for object
+    keys (content and unsigned)
+    """
+    content: Obj
+    type: EventType
+    room_id: Optional[RoomID] = None
+    event_id: Optional[EventID] = None
+    sender: Optional[UserID] = None
+    timestamp: Optional[int] = None
+    state_key: Optional[str] = None
+    unsigned: Obj = None
+    redacts: Optional[EventID] = None

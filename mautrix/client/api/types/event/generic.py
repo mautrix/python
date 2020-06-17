@@ -3,14 +3,11 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, NewType, Optional
-
-from attr import dataclass
+from typing import Union, NewType
 
 from mautrix.api import JSON
-from ..primitive import RoomID, EventID, UserID
-from ..util import deserializer, Obj, SerializableAttrs
-from .base import EventType, BaseEvent
+from ..util import deserializer, Obj
+from .base import EventType, GenericEvent
 from .redaction import RedactionEvent, RedactionEventContent
 from .message import MessageEvent, MessageEventContent
 from .reaction import ReactionEvent, ReactionEventContent
@@ -18,28 +15,10 @@ from .encrypted import EncryptedEvent, EncryptedEventContent
 from .state import StateEvent, StateEventContent
 from .account_data import AccountDataEvent, AccountDataEventContent
 from .ephemeral import (ReceiptEvent, PresenceEvent, TypingEvent, ReceiptEventContent,
-                        TypingEventContent)
+                        TypingEventContent, EphemeralEvent)
 
-
-@dataclass
-class GenericEvent(BaseEvent, SerializableAttrs['GenericEvent']):
-    """
-    An event class that contains all possible top-level event keys and uses generic Obj's for object
-    keys (content and unsigned)
-    """
-    content: Obj
-    type: EventType
-    room_id: Optional[RoomID] = None
-    event_id: Optional[EventID] = None
-    sender: Optional[UserID] = None
-    timestamp: Optional[int] = None
-    state_key: Optional[str] = None
-    unsigned: Obj = None
-    readacts: Optional[EventID] = None
-
-
-Event = NewType("Event", Union[MessageEvent,ReactionEvent, RedactionEvent, StateEvent, ReceiptEvent,
-                               PresenceEvent, TypingEvent, EncryptedEvent, GenericEvent])
+Event = NewType("Event", Union[MessageEvent, ReactionEvent, RedactionEvent, StateEvent, TypingEvent,
+                               ReceiptEvent, PresenceEvent, EncryptedEvent, GenericEvent])
 
 EventContent = Union[MessageEventContent, RedactionEventContent, ReactionEventContent,
                      StateEventContent, AccountDataEventContent, ReceiptEventContent,
@@ -58,18 +37,14 @@ def deserialize_event(data: JSON) -> Event:
         return ReactionEvent.deserialize(data)
     elif event_type == EventType.ROOM_REDACTION:
         return RedactionEvent.deserialize(data)
+    elif event_type == EventType.ROOM_ENCRYPTED:
+        return EncryptedEvent.deserialize(data)
     elif event_type.is_state:
         return StateEvent.deserialize(data)
     elif event_type.is_account_data:
         return AccountDataEvent.deserialize(data)
-    elif event_type == EventType.RECEIPT:
-        return ReceiptEvent.deserialize(data)
-    elif event_type == EventType.TYPING:
-        return TypingEvent.deserialize(data)
-    elif event_type == EventType.PRESENCE:
-        return PresenceEvent.deserialize(data)
-    elif event_type == EventType.ROOM_ENCRYPTED:
-        return EncryptedEvent.deserialize(data)
+    elif event_type.is_ephemeral:
+        return EphemeralEvent.deserialize(data)
     else:
         return GenericEvent.deserialize(data)
 

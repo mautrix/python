@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from .base import EventType
+from .type import EventType
+from .base import GenericEvent
 from .redaction import RedactionEventContent, RedactionEvent
 from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
                       LocationMessageEventContent, LocationInfo, RelationType, MessageType, Format,
@@ -20,6 +21,7 @@ from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInf
                            RoomTagAccountDataEventContent)
 from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
                         PresenceEventContent, SingleReceiptEventContent, ReceiptEventContent,
-                        ReceiptEvent, ReceiptType)
-from .encrypted import EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm
-from .generic import Event, EventContent, GenericEvent
+                        ReceiptEvent, ReceiptType, EphemeralEvent)
+from .encrypted import (EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm,
+                        EncryptedOlmEventContent, EncryptedMegolmEventContent)
+from .generic import Event, EventContent

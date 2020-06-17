@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, Callable, Union, Optional, Awaitable, Any, Type, TYPE_CHECKING
+from typing import (Dict, List, Callable, Union, Optional, Awaitable, Any, Type, NamedTuple,
+                    TYPE_CHECKING)
 from enum import Enum, Flag, auto
 from time import time
 import asyncio
@@ -11,7 +12,8 @@ import asyncio
 from ..errors import MUnknownToken
 from ..api import JSON
 from .api.types import (EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID,
-                        Filter, PresenceState)
+                        Filter, PresenceState, AccountDataEvent, UserID, EphemeralEvent,
+                        ToDeviceEvent)
 from .api import ClientAPI
 from .store import ClientStore, MemoryClientStore
 
@@ -19,6 +21,8 @@ if TYPE_CHECKING:
     from .dispatcher import Dispatcher
 
 EventHandler = Callable[[Event], Awaitable[None]]
+DeviceLists = NamedTuple("DeviceLists", changed=List[UserID], left=List[UserID])
+DeviceOTKCount = NamedTuple("DeviceOTKCount", curve25519=int, signed_curve25519=int)
 
 
 class SyncStream(Flag):
@@ -50,6 +54,9 @@ class InternalEventType(Enum):
     KICK = auto()
     BAN = auto()
     UNBAN = auto()
+
+    DEVICE_LISTS = auto()
+    DEVICE_OTK_COUNT = auto()
 
 
 class Client(ClientAPI):
@@ -166,7 +173,7 @@ class Client(ClientAPI):
         """
         if isinstance(event, MessageEvent):
             event.content.trim_reply_fallback()
-        if event.state_key is not None:
+        if getattr(event, "state_key", None) is not None:
             event.type = event.type.with_class(EventType.Class.STATE)
         elif source & SyncStream.EPHEMERAL:
             event.type = event.type.with_class(EventType.Class.EPHEMERAL)
@@ -203,21 +210,41 @@ class Client(ClientAPI):
         Args:
             data: The data from a /sync request.
         """
+        for raw_event in data.get("account_data", {}).get("events", []):
+            self.loop.create_task(self.dispatch_event(
+                AccountDataEvent.deserialize(raw_event), source=SyncStream.ACCOUNT_DATA))
+        for raw_event in data.get("ephemeral", {}).get("events", []):
+            self.loop.create_task(self.dispatch_event(
+                EphemeralEvent.deserialize(raw_event), source=SyncStream.EPHEMERAL))
+        for raw_event in data.get("to_device", {}).get("events", []):
+            self.loop.create_task(self.dispatch_event(
+                ToDeviceEvent.deserialize(raw_event), source=SyncStream.TO_DEVICE))
+
+        device_lists = data.get("device_lists", {})
+        self.loop.create_task(self.dispatch_internal_event(
+            InternalEventType.DEVICE_LISTS,
+            data=DeviceLists(changed=device_lists.get("changed", []),
+                             left=device_lists.get("left", []))))
+
+        otk_count = data.get("device_one_time_keys_count", {})
+        self.loop.create_task(self.dispatch_internal_event(
+            InternalEventType.DEVICE_OTK_COUNT,
+            data=DeviceOTKCount(curve25519=otk_count.get("curve25519", 0),
+                                signed_curve25519=otk_count.get("signed_curve25519", 0))))
+
         rooms = data.get("rooms", {})
         for room_id, room_data in rooms.get("join", {}).items():
             for raw_event in room_data.get("state", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                asyncio.ensure_future(
+                self.loop.create_task(
                     self.dispatch_event(StateEvent.deserialize(raw_event),
-                                        source=SyncStream.JOINED_ROOM | SyncStream.STATE),
-                    loop=self.loop)
+                                        source=SyncStream.JOINED_ROOM | SyncStream.STATE))
 
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                asyncio.ensure_future(
+                self.loop.create_task(
                     self.dispatch_event(Event.deserialize(raw_event),
-                                        source=SyncStream.JOINED_ROOM | SyncStream.TIMELINE),
-                    loop=self.loop)
+                                        source=SyncStream.JOINED_ROOM | SyncStream.TIMELINE))
         for room_id, room_data in rooms.get("invite", {}).items():
             events: List[Dict[str, Any]] = room_data.get("invite_state", {}).get("events", [])
             for raw_event in events:
@@ -233,17 +260,15 @@ class Client(ClientAPI):
             invite.unsigned.invite_room_state = [StrippedStateEvent.deserialize(raw_event)
                                                  for raw_event in events
                                                  if raw_event != raw_invite]
-            asyncio.ensure_future(
-                self.dispatch_event(invite, source=SyncStream.INVITED_ROOM | SyncStream.STATE),
-                loop=self.loop)
+            self.loop.create_task(
+                self.dispatch_event(invite, source=SyncStream.INVITED_ROOM | SyncStream.STATE))
         for room_id, room_data in rooms.get("leave", {}).items():
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 if "state_key" in raw_event:
                     raw_event["room_id"] = room_id
-                    asyncio.ensure_future(
+                    self.loop.create_task(
                         self.dispatch_event(StateEvent.deserialize(raw_event),
-                                            source=SyncStream.LEFT_ROOM | SyncStream.TIMELINE),
-                        loop=self.loop)
+                                            source=SyncStream.LEFT_ROOM | SyncStream.TIMELINE))
 
     def start(self, filter_data: Optional[Union[FilterID, Filter]]) -> asyncio.Future:
         """
@@ -254,7 +279,7 @@ class Client(ClientAPI):
         """
         if self.syncing_task is not None:
             self.syncing_task.cancel()
-        self.syncing_task = asyncio.ensure_future(self._try_start(filter_data), loop=self.loop)
+        self.syncing_task = self.loop.create_task(self._try_start(filter_data))
         return self.syncing_task
 
     async def _try_start(self, filter_data: Optional[Union[FilterID, Filter]]) -> None:

@@ -1,6 +1,6 @@
 from .primitive import UserID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken
 from .filter import Filter, EventFilter, RoomFilter, StateFilter, RoomEventFilter
-from .event import (EventType,
+from .event import (EventType, GenericEvent,
 
                     RedactionEvent, RedactionEventContent,
                     ReactionEventContent, ReactionEvent,
@@ -22,11 +22,12 @@ from .event import (EventType,
 
                     TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
                     PresenceEventContent, SingleReceiptEventContent, ReceiptEventContent,
-                    ReceiptEvent, ReceiptType,
+                    ReceiptEvent, ReceiptType, EphemeralEvent,
 
                     EncryptedEvent, EncryptionAlgorithm, EncryptedEventContent,
+                    EncryptedOlmEventContent, EncryptedMegolmEventContent,
 
-                    Event, EventContent, GenericEvent)
+                    Event, EventContent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
                    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages)
 from .users import User, Member, UserSearchResults

@@ -11,6 +11,7 @@ from .....api import JSON
 from ..primitive import UserID, EventID, ContentURI, RoomID, RoomAlias
 from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
 from .base import BaseRoomEvent, BaseUnsigned, EventType
+from .encrypted import EncryptionAlgorithm
 
 
 @dataclass
@@ -119,11 +120,18 @@ class RoomTombstoneEventContent(SerializableAttrs['RoomTombstoneEventContent']):
     replacement_room: RoomID = None
 
 
+@dataclass
+class EncryptionEventContent(SerializableAttrs['EncryptionEventContent']):
+    algorithm: EncryptionAlgorithm = None
+    rotation_period_ms: int = 604800000
+    rotation_period_msgs: int = 100
+
+
 StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
                           AliasesStateEventContent, CanonicalAliasStateEventContent,
                           RoomNameStateEventContent, RoomAvatarStateEventContent,
                           RoomTopicStateEventContent, RoomPinnedEventsStateEventContent,
-                          RoomTombstoneEventContent, Obj]
+                          RoomTombstoneEventContent, EncryptionEventContent, Obj]
 
 
 @dataclass
@@ -177,6 +185,7 @@ state_event_content_map = {
     EventType.ROOM_AVATAR: RoomAvatarStateEventContent,
     EventType.ROOM_TOPIC: RoomTopicStateEventContent,
     EventType.ROOM_TOMBSTONE: RoomTombstoneEventContent,
+    EventType.ROOM_ENCRYPTION: EncryptionEventContent,
 }
 
 

@@ -3,13 +3,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Dict
+from typing import List, Dict, NewType, Union
 
 from attr import dataclass
 
-from ..util import SerializableAttrs, SerializableEnum
+from mautrix.api import JSON
+from ..util import SerializableAttrs, SerializableEnum, deserializer
 from ..primitive import UserID, RoomID, EventID
-from .base import BaseEvent
+from .type import EventType
+from .base import BaseEvent, GenericEvent
 
 
 @dataclass
@@ -59,3 +61,22 @@ ReceiptEventContent = Dict[EventID, Dict[ReceiptType, Dict[UserID, SingleReceipt
 class ReceiptEvent(BaseEvent, SerializableAttrs['ReceiptEvent']):
     room_id: RoomID
     content: ReceiptEventContent
+
+
+EphemeralEvent = NewType("EphemeralEvent", Union[PresenceEvent, TypingEvent, ReceiptEvent])
+
+
+@deserializer(EphemeralEvent)
+def deserialize_ephemeral_event(data: JSON) -> EphemeralEvent:
+    event_type = EventType.find(data.get("type", None))
+    if event_type == EventType.RECEIPT:
+        return ReceiptEvent.deserialize(data)
+    elif event_type == EventType.TYPING:
+        return TypingEvent.deserialize(data)
+    elif event_type == EventType.PRESENCE:
+        return PresenceEvent.deserialize(data)
+    else:
+        return GenericEvent.deserialize(data)
+
+
+setattr(EphemeralEvent, "deserialize", deserialize_ephemeral_event)
