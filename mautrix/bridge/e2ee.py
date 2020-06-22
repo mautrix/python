@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Union, Optional, List
+from typing import Tuple, Union, Optional, List, Dict
 import logging
 import asyncio
 import hashlib
@@ -30,6 +30,7 @@ class EncryptionManager:
     login_shared_secret: bytes
     _id_prefix: str
     _id_suffix: str
+    _share_session_waiters: Dict[RoomID, List[asyncio.Future]]
 
     sync_task: asyncio.Task
 
@@ -41,6 +42,7 @@ class EncryptionManager:
         self.device_name = device_name
         self._id_prefix = user_id_prefix
         self._id_suffix = user_id_suffix
+        self._share_session_waiters = {}
         self.login_shared_secret = login_shared_secret.encode("utf-8")
         config = AsyncClientConfig(store=NioStore, encryption_enabled=True,
                                    pickle_key="mautrix-python", store_sync_tokens=True)
@@ -49,6 +51,23 @@ class EncryptionManager:
             self.log.debug(f"Found device ID in database: {device_id}")
         self.client = AsyncClient(homeserver=homeserver_address, user=bot_mxid,
                                   device_id=device_id, config=config, store_path="3:<")
+
+    async def share_session_lock(self, room_id: RoomID) -> bool:
+        try:
+            waiters = self._share_session_waiters[room_id]
+        except KeyError:
+            self._share_session_waiters[room_id] = []
+            return True
+        else:
+            fut = self.loop.create_future()
+            waiters.append(fut)
+            await fut
+            return False
+
+    def share_session_unlock(self, room_id: RoomID) -> None:
+        for fut in self._share_session_waiters[room_id]:
+            fut.set_result(None)
+        del self._share_session_waiters[room_id]
 
     def _init_load_profiles(self) -> None:
         self.log.debug("Loading room and member list into encryption client")
@@ -126,7 +145,12 @@ class EncryptionManager:
                     raise
                 retries += 1
                 self.log.debug("Got GroupEncryptionError, sharing group session and trying again")
-                await self.client.share_group_session(room_id, ignore_unverified_devices=True)
+                if await self.share_session_lock(room_id):
+                    try:
+                        await self.client.share_group_session(room_id,
+                                                              ignore_unverified_devices=True)
+                    finally:
+                        self.share_session_unlock(room_id)
         event_type = EventType.find(type_str)
         try:
             encrypted["m.relates_to"] = serialized["m.relates_to"]
