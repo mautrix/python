@@ -11,18 +11,19 @@ import hmac
 
 from nio import (AsyncClient, Event as NioEvent, GroupEncryptionError, LoginError,
                  MatrixRoom as NioRoom, RoomMemberEvent as NioMemberEvent, MatrixUser as NioUser,
-                 AsyncClientConfig)
+                 AsyncClientConfig, RoomMessageUnknown)
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter,
                            EventType, RoomID, Serializable, JSON, MessageEvent, Event, UserID,
                            EncryptedEvent, StateEvent, Membership)
 from mautrix.bridge.db import UserProfile
 from mautrix.bridge.db.nio_state_store import NioStore, DBAccount
+from mautrix.util.logging import TraceLogger
 
 
 class EncryptionManager:
     loop: asyncio.AbstractEventLoop
-    log: logging.Logger = logging.getLogger("mau.e2ee")
+    log: TraceLogger = logging.getLogger("mau.e2ee")
     client: AsyncClient
 
     bot_mxid: UserID
@@ -140,6 +141,9 @@ class EncryptionManager:
             event.source["content"]["m.relates_to"] = serialized["content"]["m.relates_to"]
         except KeyError:
             pass
+        self.log.trace("Decrypted event %s: %s", event.event_id, event.source)
+        if isinstance(event, RoomMessageUnknown) and "content" not in event.source:
+            event.source["content"] = event.content
         return Event.deserialize(event.source)
 
     async def start(self) -> None:
