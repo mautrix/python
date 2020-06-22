@@ -23,7 +23,7 @@ from .client.api.types import (
     PresenceState, TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
     SingleReceiptEventContent, ReceiptEventContent, ReceiptEvent, ReceiptType, GenericEvent,
     Obj, Lst, RoomTombstoneEventContent, EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm,
-    EncryptedOlmEventContent, EncryptedMegolmEventContent,
+    EncryptedOlmEventContent, EncryptedMegolmEventContent, ToDeviceEvent, ToDeviceEventContent,
 
     RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
     RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages,

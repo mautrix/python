@@ -27,6 +27,8 @@ from .event import (EventType, GenericEvent,
                     EncryptedEvent, EncryptionAlgorithm, EncryptedEventContent,
                     EncryptedOlmEventContent, EncryptedMegolmEventContent,
 
+                    ToDeviceEvent, ToDeviceEventContent,
+
                     Event, EventContent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
                    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages)
