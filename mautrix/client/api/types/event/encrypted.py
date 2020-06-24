@@ -4,9 +4,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Dict, Union
-from enum import IntEnum
+from enum import IntEnum, Enum
 from attr import dataclass
 import attr
+import sys
 
 from mautrix.api import JSON
 from ..util import SerializableAttrs, Serializable, ExtensibleEnum, Obj, deserializer
@@ -19,7 +20,8 @@ class EncryptionAlgorithm(ExtensibleEnum):
     MEGOLM_V1: 'EncryptionAlgorithm' = "m.megolm.v1.aes-sha2"
 
 
-class OlmMsgType(Serializable, IntEnum):
+# IntEnum had a bug in Python 3.6 where it broke when using mixins
+class OlmMsgType(Serializable, IntEnum if sys.version_info >= (3, 7) else Enum):
     PREKEY = 0
     MESSAGE = 1
 
