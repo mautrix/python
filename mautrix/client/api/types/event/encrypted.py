@@ -20,6 +20,12 @@ class EncryptionAlgorithm(ExtensibleEnum):
     MEGOLM_V1: 'EncryptionAlgorithm' = "m.megolm.v1.aes-sha2"
 
 
+class EncryptionKeyAlgorithm(ExtensibleEnum):
+    CURVE25519: 'EncryptionKeyAlgorithm' = "curve25519"
+    ED25519: 'EncryptionKeyAlgorithm' = "ed25519"
+    SIGNED_CURVE25519: 'EncryptionKeyAlgorithm' = "signed_curve25519"
+
+
 # IntEnum had a bug in Python 3.6 where it broke when using mixins
 class OlmMsgType(Serializable, IntEnum if sys.version_info >= (3, 7) else Enum):
     PREKEY = 0

@@ -23,6 +23,7 @@ from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, Presence
                         PresenceEventContent, SingleReceiptEventContent, ReceiptEventContent,
                         ReceiptEvent, ReceiptType, EphemeralEvent)
 from .encrypted import (EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm,
-                        EncryptedOlmEventContent, EncryptedMegolmEventContent)
+                        EncryptedOlmEventContent, EncryptedMegolmEventContent,
+                        EncryptionKeyAlgorithm)
 from .to_device import ToDeviceEvent, ToDeviceEventContent
 from .generic import Event, EventContent

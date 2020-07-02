@@ -79,6 +79,7 @@ class ClientAuthenticationMethods(BaseClientAPI):
         resp_data = LoginResponse.deserialize(resp)
         if store_access_token:
             self.mxid = resp_data.user_id
+            self.device_id = resp_data.device_id
             self.api.token = resp_data.access_token
             base_url = resp_data.well_known.homeserver.base_url
             if base_url and base_url != self.api.base_url:
@@ -102,6 +103,7 @@ class ClientAuthenticationMethods(BaseClientAPI):
         await self.api.request(Method.POST, Path.logout)
         if clear_access_token:
             self.api.token = ""
+            self.device_id = ""
 
     async def logout_all(self, clear_access_token: bool = True) -> None:
         """
@@ -125,6 +127,7 @@ class ClientAuthenticationMethods(BaseClientAPI):
         await self.api.request(Method.POST, Path.logout.all)
         if clear_access_token:
             self.api.token = ""
+            self.device_id = ""
 
     # endregion
 

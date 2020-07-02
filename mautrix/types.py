@@ -6,7 +6,7 @@
 from .api.http import JSON, Method, APIPath
 
 from .client.api.types import (
-    UserID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken,
+    UserID, DeviceID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken,
 
     Filter, EventFilter, RoomFilter, RoomEventFilter, StateFilter,
 
@@ -24,11 +24,16 @@ from .client.api.types import (
     SingleReceiptEventContent, ReceiptEventContent, ReceiptEvent, ReceiptType, GenericEvent,
     Obj, Lst, RoomTombstoneEventContent, EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm,
     EncryptedOlmEventContent, EncryptedMegolmEventContent, ToDeviceEvent, ToDeviceEventContent,
+    EncryptionKeyAlgorithm,
 
     RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
     RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages,
 
     User, Member, UserSearchResults,
+
+    LoginType, UserIdentifierType, MatrixUserIdentifier, ThirdPartyIdentifier, PhoneIdentifier,
+    UserIdentifier, LoginResponse, DiscoveryInformation, DiscoveryServer, DiscoveryIntegrations,
+    DiscoveryIntegrationServer, LoginFlow,
 
     MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio,
 

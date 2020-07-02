@@ -1,4 +1,4 @@
-from .primitive import UserID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken
+from .primitive import UserID, DeviceID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken
 from .filter import Filter, EventFilter, RoomFilter, StateFilter, RoomEventFilter
 from .event import (EventType, GenericEvent,
 
@@ -25,7 +25,7 @@ from .event import (EventType, GenericEvent,
                     ReceiptEvent, ReceiptType, EphemeralEvent,
 
                     EncryptedEvent, EncryptionAlgorithm, EncryptedEventContent,
-                    EncryptedOlmEventContent, EncryptedMegolmEventContent,
+                    EncryptedOlmEventContent, EncryptedMegolmEventContent, EncryptionKeyAlgorithm,
 
                     ToDeviceEvent, ToDeviceEventContent,
 
@@ -37,6 +37,7 @@ from .auth import (LoginType, UserIdentifierType, MatrixUserIdentifier, ThirdPar
                    PhoneIdentifier, UserIdentifier, LoginResponse, DiscoveryInformation,
                    DiscoveryServer, DiscoveryIntegrations, DiscoveryIntegrationServer,
                    LoginFlow)
+from .crypto import UnsignedDeviceInfo, DeviceKeys, ClaimKeysResponse, QueryKeysResponse
 from .media import MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio
 from .util import (Obj, Lst, SerializerError, Serializable, SerializableEnum, SerializableAttrs,
                    serializer, deserializer)

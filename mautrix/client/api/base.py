@@ -8,8 +8,9 @@ import warnings
 import asyncio
 import logging
 
-from ...api import HTTPAPI
-from .types import UserID
+from mautrix.api import HTTPAPI
+
+from .types import UserID, DeviceID
 
 
 class BaseClientAPI:
@@ -23,11 +24,12 @@ class BaseClientAPI:
     localpart: str
     domain: str
     _mxid: UserID
+    device_id: DeviceID
     api: HTTPAPI
     loop: asyncio.AbstractEventLoop
     log: logging.Logger
 
-    def __init__(self, mxid: UserID = "", api: HTTPAPI = None,
+    def __init__(self, mxid: UserID = "", device_id: DeviceID = "", api: HTTPAPI = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, *args, **kwargs) -> None:
         """
         Initialize a ClientAPI. You must either provide the
@@ -45,6 +47,7 @@ class BaseClientAPI:
             self._mxid = None
             self.localpart = None
             self.domain = None
+        self.device_id = device_id
         if loop:
             kwargs["loop"] = loop
         self.api = api or HTTPAPI(*args, **kwargs)

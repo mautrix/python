@@ -5,9 +5,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from .media_repository import MediaRepositoryMethods
 from .misc import MiscModuleMethods
+from .crypto import CryptoMethods
 
 
-class ModuleMethods(MediaRepositoryMethods, MiscModuleMethods):
+class ModuleMethods(MediaRepositoryMethods, CryptoMethods, MiscModuleMethods):
     """
     Methods in section 13 Modules of the spec.
 
