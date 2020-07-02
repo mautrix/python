@@ -107,7 +107,7 @@ IdentityPath = PathBuilder(APIPath.IDENTITY)
 class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
 
-    def __init__(self, base_url: str, token: str, *, client_session: ClientSession = None,
+    def __init__(self, base_url: str, token: str = "", *, client_session: ClientSession = None,
                  txn_id: int = 0, log: Optional[logging.Logger] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         """
@@ -186,7 +186,8 @@ class HTTPAPI:
         """
         content = content or {}
         headers = headers or {}
-        headers["Authorization"] = f"Bearer {self.token}"
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
         query_params = query_params or {}
 
         if "Content-Type" not in headers:

@@ -6,4 +6,5 @@ from .request import (MatrixRequestError, MatrixUnknownRequestError, MatrixStand
                       MLimitExceeded, MUnknown, MUnrecognized, MUnauthorized, MUserInUse,
                       MInvalidUsername, MRoomInUse, MInvalidRoomState, MUnsupportedRoomVersion,
                       MIncompatibleRoomVersion, MBadState, MGuestAccessForbidden, MCaptchaNeeded,
-                      MCaptchaInvalid, MMissingParam, MInvalidParam, MTooLarge, MExclusive)
+                      MCaptchaInvalid, MMissingParam, MInvalidParam, MTooLarge, MExclusive,
+                      MUserDeactivated)

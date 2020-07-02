@@ -22,12 +22,12 @@ class BaseClientAPI:
 
     localpart: str
     domain: str
-    mxid: UserID
+    _mxid: UserID
     api: HTTPAPI
     loop: asyncio.AbstractEventLoop
     log: logging.Logger
 
-    def __init__(self, mxid: UserID, api: HTTPAPI = None,
+    def __init__(self, mxid: UserID = "", api: HTTPAPI = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, *args, **kwargs) -> None:
         """
         Initialize a ClientAPI. You must either provide the
@@ -39,7 +39,12 @@ class BaseClientAPI:
             api: The :class:`HTTPAPI` instance to use. You can also pass the ``args`` and ``kwargs``
                 to create a HTTPAPI instance rather than creating the instance yourself.``
         """
-        self.set_mxid(mxid)
+        if mxid:
+            self.mxid = mxid
+        else:
+            self._mxid = None
+            self.localpart = None
+            self.domain = None
         if loop:
             kwargs["loop"] = loop
         self.api = api or HTTPAPI(*args, **kwargs)
@@ -78,12 +83,11 @@ class BaseClientAPI:
             raise ValueError("User ID must contain domain")
         return mxid[1:sep], mxid[sep + 1:]
 
-    def set_mxid(self, mxid: UserID) -> None:
-        """
-        Update the Matrix user ID used by this ClientAPI.
+    @property
+    def mxid(self) -> UserID:
+        return self._mxid
 
-        Args:
-            mxid: The new Matrix user ID.
-        """
+    @mxid.setter
+    def mxid(self, mxid: UserID) -> None:
         self.localpart, self.domain = self.parse_user_id(mxid)
-        self.mxid = mxid
+        self._mxid = mxid

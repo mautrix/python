@@ -5,8 +5,9 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
 
-from ....errors import MatrixResponseError
-from ....api import Method, Path
+from mautrix.errors import MatrixResponseError
+from mautrix.api import Method, Path
+
 from ..base import BaseClientAPI
 from ..types import RoomID, UserID, EventID, PresenceEventContent, PresenceState, SerializerError
 

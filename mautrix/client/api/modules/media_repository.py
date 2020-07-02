@@ -5,8 +5,9 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, AsyncIterable, Union
 
-from ....api import Method, MediaPath
-from ....errors import MatrixResponseError
+from mautrix.api import Method, MediaPath
+from mautrix.errors import MatrixResponseError
+
 from ..base import BaseClientAPI
 from ..types import ContentURI, MediaRepoConfig, SerializerError, MXOpenGraph
 

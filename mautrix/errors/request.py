@@ -77,6 +77,11 @@ class MForbidden(MatrixStandardRequestError):
     pass
 
 
+@standard_error("M_USER_DEACTIVATED")
+class MUserDeactivated(MForbidden):
+    pass
+
+
 class MatrixInvalidToken(MatrixStandardRequestError):
     pass
 

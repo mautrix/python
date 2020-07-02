@@ -33,6 +33,10 @@ from .event import (EventType, GenericEvent,
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
                    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages)
 from .users import User, Member, UserSearchResults
+from .auth import (LoginType, UserIdentifierType, MatrixUserIdentifier, ThirdPartyIdentifier,
+                   PhoneIdentifier, UserIdentifier, LoginResponse, DiscoveryInformation,
+                   DiscoveryServer, DiscoveryIntegrations, DiscoveryIntegrationServer,
+                   LoginFlow)
 from .media import MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio
 from .util import (Obj, Lst, SerializerError, Serializable, SerializableEnum, SerializableAttrs,
                    serializer, deserializer)
