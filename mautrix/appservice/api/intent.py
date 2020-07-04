@@ -62,7 +62,7 @@ class IntentAPI(ClientAPI):
 
     def __init__(self, mxid: UserID, api: 'AppServiceAPI', bot: 'IntentAPI' = None,
                  state_store: StateStore = None):
-        super().__init__(mxid, api)
+        super().__init__(mxid=mxid, api=api)
         self.bot = bot
         self.log = api.base_log.getChild("intent")
         self.state_store = state_store
