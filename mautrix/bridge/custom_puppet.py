@@ -304,7 +304,7 @@ class CustomPuppetMixin(ABC):
                 errors = 0
                 if cur_batch is not None:
                     self._handle_sync(sync_resp)
-            except (MatrixError, ClientConnectionError) as e:
+            except (MatrixError, ClientConnectionError, asyncio.TimeoutError) as e:
                 errors += 1
                 wait = min(errors, 11) ** 2
                 self.log.warning(f"Syncer for {custom_mxid} errored: {e}. "
