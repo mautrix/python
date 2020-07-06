@@ -30,7 +30,6 @@ class DeviceKeys(SerializableAttrs['DeviceKeys']):
 class QueryKeysResponse(SerializableAttrs['QueryKeysResponse']):
     failures: Dict[str, Any]
     device_keys: Dict[UserID, Dict[DeviceID, DeviceKeys]]
-    one_time_keys: Dict[UserID, Dict[DeviceID, Dict[str, Any]]]
 
 
 @dataclass

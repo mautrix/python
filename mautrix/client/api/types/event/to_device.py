@@ -7,13 +7,23 @@ from typing import Dict, Union
 from attr import dataclass
 import attr
 
-from .....api import JSON
+from mautrix.api import JSON
+
 from ..util import SerializableAttrs, Obj, deserializer
+from .encrypted import EncryptionAlgorithm, OlmCiphertext
 from .base import EventType, BaseEvent
 
-ToDeviceEventContent = Union[Obj]
-to_device_event_content_map = {
 
+@dataclass
+class EncryptedToDeviceEventContent(SerializableAttrs['EncryptedToDeviceEventContent']):
+    ciphertext: Dict[str, OlmCiphertext]
+    sender_key: str
+    algorithm: EncryptionAlgorithm = EncryptionAlgorithm.OLM_V1
+
+
+ToDeviceEventContent = Union[Obj, EncryptedToDeviceEventContent]
+to_device_event_content_map = {
+    EventType.TO_DEVICE_ENCRYPTED: EncryptedToDeviceEventContent
 }
 
 
@@ -27,7 +37,8 @@ class ToDeviceEvent(BaseEvent, SerializableAttrs['ToDeviceEvent']):
     @classmethod
     def deserialize(cls, data: JSON) -> 'ToDeviceEvent':
         try:
-            data.get("content", {})["__mautrix_event_type"] = EventType.find(data.get("type"))
+            evt_type = EventType.find(data.get("type"), t_class=EventType.Class.TO_DEVICE)
+            data.get("content", {})["__mautrix_event_type"] = evt_type
         except ValueError:
             return Obj(**data)
         return super().deserialize(data)

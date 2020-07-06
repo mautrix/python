@@ -207,6 +207,8 @@ class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
         try:
             event_type = EventType.find(data.get("type"))
             data.get("content", {})["__mautrix_event_type"] = event_type
+            if "prev_content" in data and "prev_content" not in data.get("unsigned", {}):
+                data.setdefault("unsigned", {})["prev_content"] = data["prev_content"]
             data.get("unsigned", {}).get("prev_content", {})["__mautrix_event_type"] = event_type
         except ValueError:
             return Obj(**data)

@@ -197,10 +197,10 @@ class Client(ClientAPI):
             except Exception:
                 self.log.exception("Failed to run handler")
 
-    def dispatch_internal_event(self, event_type: InternalEventType, **kwargs: Any
-                                ) -> Awaitable[None]:
+    def dispatch_internal_event(self, event_type: InternalEventType, custom_type: Any = None,
+                                **kwargs: Any) -> Awaitable[None]:
         kwargs["source"] = SyncStream.INTERNAL
-        return self.dispatch_manual_event(event_type, kwargs,
+        return self.dispatch_manual_event(event_type, custom_type or kwargs,
                                           include_global_handlers=False)
 
     def handle_sync(self, data: JSON) -> None:
@@ -223,14 +223,14 @@ class Client(ClientAPI):
         device_lists = data.get("device_lists", {})
         self.loop.create_task(self.dispatch_internal_event(
             InternalEventType.DEVICE_LISTS,
-            data=DeviceLists(changed=device_lists.get("changed", []),
-                             left=device_lists.get("left", []))))
+            custom_type=DeviceLists(changed=device_lists.get("changed", []),
+                                    left=device_lists.get("left", []))))
 
         otk_count = data.get("device_one_time_keys_count", {})
         self.loop.create_task(self.dispatch_internal_event(
             InternalEventType.DEVICE_OTK_COUNT,
-            data=DeviceOTKCount(curve25519=otk_count.get("curve25519", 0),
-                                signed_curve25519=otk_count.get("signed_curve25519", 0))))
+            custom_type=DeviceOTKCount(curve25519=otk_count.get("curve25519", 0),
+                                       signed_curve25519=otk_count.get("signed_curve25519", 0))))
 
         rooms = data.get("rooms", {})
         for room_id, room_data in rooms.get("join", {}).items():

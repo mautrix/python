@@ -62,6 +62,9 @@ class EventType(Serializable):
     is_account_data: bool
     is_to_device: bool
 
+    t: str
+    t_class: Class
+
     @classmethod
     def find(cls, t: str, t_class: Optional[Class] = None) -> 'EventType': ...
 
