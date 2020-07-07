@@ -1,4 +1,5 @@
-from .primitive import UserID, DeviceID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken
+from .primitive import (UserID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken,
+                        DeviceID, SessionID, SigningKey, IdentityKey)
 from .filter import Filter, EventFilter, RoomFilter, StateFilter, RoomEventFilter
 from .event import (EventType, GenericEvent,
 

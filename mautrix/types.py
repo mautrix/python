@@ -6,7 +6,8 @@
 from .api.http import JSON, Method, APIPath
 
 from .client.api.types import (
-    UserID, DeviceID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken,
+    UserID, DeviceID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken, SessionID,
+    SigningKey, IdentityKey,
 
     Filter, EventFilter, RoomFilter, RoomEventFilter, StateFilter,
 
@@ -38,3 +39,5 @@ from .client.api.types import (
     MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio,
 
     SerializerError, Serializable, SerializableEnum, SerializableAttrs, serializer, deserializer)
+
+from .crypto.types import TrustState, DeviceIdentity

@@ -22,12 +22,14 @@ async def noop_upgrade(_: asyncpg.Connection) -> None:
 class UpgradeTable:
     upgrades: List[Upgrade]
     allow_unsupported: bool
+    version_table_name: str
     log: logging.Logger
 
-    def __init__(self, allow_unsupported: bool = False, log: Optional[logging.Logger] = None
-                 ) -> None:
+    def __init__(self, allow_unsupported: bool = False, version_table_name: str = "version",
+                 log: Optional[logging.Logger] = None) -> None:
         self.upgrades = [noop_upgrade]
         self.allow_unsupported = allow_unsupported
+        self.version_table_name = version_table_name
         self.log = log or logging.getLogger("mau.db.upgrade")
 
     def register(self, index: int = -1, description: str = "", _outer_fn: Optional[Upgrade] = None
@@ -50,10 +52,11 @@ class UpgradeTable:
 
     async def upgrade(self, pool: asyncpg.pool.Pool) -> None:
         async with pool.acquire() as conn:
-            await conn.execute("""CREATE TABLE IF NOT EXISTS version (
+            await conn.execute(f"""CREATE TABLE IF NOT EXISTS {self.version_table_name} (
                 version INTEGER PRIMARY KEY
             )""")
-            row: asyncpg.Record = await conn.fetchrow("SELECT version FROM version LIMIT 1")
+            row: asyncpg.Record = await conn.fetchrow("SELECT version FROM "
+                                                      f"{self.version_table_name} LIMIT 1")
             version = row["version"] if row else 0
 
             if len(self.upgrades) < version:
@@ -78,8 +81,9 @@ class UpgradeTable:
 
             async with conn.transaction():
                 self.log.debug(f"Saving current version (v{version}) to database")
-                await conn.execute("DELETE FROM version")
-                await conn.execute("INSERT INTO version (version) VALUES ($1)", version)
+                await conn.execute(f"DELETE FROM {self.version_table_name}")
+                await conn.execute(f"INSERT INTO {self.version_table_name} (version) VALUES ($1)",
+                                   version)
 
 
 upgrade_tables: Dict[str, UpgradeTable] = {}

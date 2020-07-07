@@ -9,7 +9,7 @@ import attr
 
 from .primitive import UserID, DeviceID
 from .util import SerializableAttrs
-from .event.encrypted import EncryptionKeyAlgorithm
+from .event.encrypted import EncryptionAlgorithm
 
 
 @dataclass
@@ -21,7 +21,7 @@ class UnsignedDeviceInfo(SerializableAttrs['UnsignedDeviceInfo']):
 class DeviceKeys(SerializableAttrs['DeviceKeys']):
     user_id: UserID
     device_id: DeviceID
-    algorithms: List[EncryptionKeyAlgorithm]
+    algorithms: List[EncryptionAlgorithm]
     signatures: Dict[UserID, Dict[str, str]]
     unsigned: UnsignedDeviceInfo = attr.ib(factory=UnsignedDeviceInfo)
 
