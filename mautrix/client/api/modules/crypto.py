@@ -3,14 +3,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union, Iterable
 
 from mautrix.errors import MatrixResponseError
 from mautrix.api import Method, Path
 
-from ..types import (UserID, DeviceID, EncryptionAlgorithm, EncryptionKeyAlgorithm,
-                     ClaimKeysResponse, QueryKeysResponse, EventType, ToDeviceEventContent,
-                     Serializable)
+from ..types import (UserID, DeviceID, EncryptionKeyAlgorithm, ClaimKeysResponse, QueryKeysResponse,
+                     EventType, ToDeviceEventContent, SyncToken)
 from ..base import BaseClientAPI
 
 
@@ -39,9 +38,7 @@ class CryptoMethods(BaseClientAPI):
         })
 
     async def upload_keys(self, one_time_keys: Optional[Dict[str, Any]] = None,
-                          algorithms: Optional[List[EncryptionAlgorithm]] = None,
-                          device_keys: Optional[Dict[str, str]] = None,
-                          device_key_signatures: Optional[Dict[str, Any]] = None
+                          device_keys: Optional[Dict[str, Any]] = None,
                           ) -> Dict[EncryptionKeyAlgorithm, int]:
         """
         Publishes end-to-end encryption keys for the device.
@@ -52,28 +49,19 @@ class CryptoMethods(BaseClientAPI):
             one_time_keys: One-time public keys for "pre-key" messages. The names of the properties
                 should be in the format ``<algorithm>:<key_id>``. The format of the key is
                 determined by the key algorithm.
-            algorithms: The encryption algorithms supported by this device.
-            device_keys: Public identity keys. The names of the properties should be in the format
-                ``<algorithm>:<device_id>``. The keys themselves should be encoded as specified by
-                the key algorithm.
-            device_key_signatures: Signatures for the device key object. A map from user ID, to a
-                map from ``<algorithm>:<device_id>`` to the signature.
+            device_keys: Identity keys for the device. May be absent if no new identity keys are
+                required.
 
         Returns:
             For each key algorithm, the number of unclaimed one-time keys of that type currently
             held on the server for this device.
         """
-        resp = await self.api.request(Method.POST, Path.keys.upload, {
-            "device_keys": {
-                "user_id": self.mxid,
-                "device_id": self.device_id,
-                "algorithms": [alg.serialize() if isinstance(alg, Serializable) else alg
-                               for alg in algorithms],
-                "keys": device_keys,
-                "signatures": device_key_signatures,
-            } if algorithms and device_key_signatures and device_key_signatures else None,
-            "one_time_keys": one_time_keys or {},
-        })
+        data = {}
+        if device_keys:
+            data["device_keys"] = device_keys
+        if one_time_keys:
+            data["one_time_keys"] = one_time_keys
+        resp = await self.api.request(Method.POST, Path.keys.upload, data)
         try:
             return {EncryptionKeyAlgorithm.deserialize(alg): count
                     for alg, count in resp["one_time_key_counts"].items()}
@@ -82,8 +70,8 @@ class CryptoMethods(BaseClientAPI):
         except AttributeError as e:
             raise MatrixResponseError("Invalid `one_time_key_counts` field in response.") from e
 
-    async def query_keys(self, device_keys: Dict[UserID, List[DeviceID]], timeout: int = 10000
-                         ) -> QueryKeysResponse:
+    async def query_keys(self, device_keys: Union[Iterable[UserID], Dict[UserID, List[DeviceID]]],
+                         token: SyncToken = "", timeout: int = 10000) -> QueryKeysResponse:
         """
         Fetch devices and their identity keys for the given users.
 
@@ -92,15 +80,24 @@ class CryptoMethods(BaseClientAPI):
         Args:
             device_keys: The keys to be downloaded. A map from user ID, to a list of device IDs, or
                 to an empty list to indicate all devices for the corresponding user.
+            token: If the client is fetching keys as a result of a device update received in a sync
+                request, this should be the 'since' token of that sync request, or any later sync
+                token. This allows the server to ensure its response contains the keys advertised by
+                the notification in that sync.
             timeout: The time (in milliseconds) to wait when downloading keys from remote servers.
 
         Returns:
             Information on the queried devices and errors for homeservers that could not be reached.
         """
-        resp = await self.api.request(Method.POST, Path.keys.query, {
+        if isinstance(device_keys, (list, set)):
+            device_keys = {user_id: [] for user_id in device_keys}
+        data = {
             "timeout": timeout,
             "device_keys": device_keys,
-        })
+        }
+        if token:
+            data["token"] = token
+        resp = await self.api.request(Method.POST, Path.keys.query, data)
         return QueryKeysResponse.deserialize(resp)
 
     async def claim_keys(self, one_time_keys: Dict[UserID, Dict[DeviceID, EncryptionKeyAlgorithm]],

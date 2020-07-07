@@ -1,4 +1,4 @@
-from .abstract import CryptoStore
+from .abstract import CryptoStore, StateStore
 try:
     from .asyncpg import PgCryptoStore
 except ImportError:

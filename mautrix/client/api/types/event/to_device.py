@@ -3,13 +3,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 from attr import dataclass
-import attr
 
 from mautrix.api import JSON
 
-from ..util import SerializableAttrs, Obj, deserializer
+from ..util import SerializableAttrs, Obj, deserializer, ExtensibleEnum
+from ..primitive import UserID, RoomID, SessionID, IdentityKey
 from .encrypted import EncryptionAlgorithm, OlmCiphertext
 from .base import EventType, BaseEvent
 
@@ -21,9 +21,38 @@ class EncryptedToDeviceEventContent(SerializableAttrs['EncryptedToDeviceEventCon
     algorithm: EncryptionAlgorithm = EncryptionAlgorithm.OLM_V1
 
 
-ToDeviceEventContent = Union[Obj, EncryptedToDeviceEventContent]
+class RoomKeyWithheldCode(ExtensibleEnum):
+    BLACKLISTED: 'RoomKeyWithheldCode' = "m.blacklisted"
+    UNVERIFIED: 'RoomKeyWithheldCode' = "m.unverified"
+    UNAUTHORIZED: 'RoomKeyWithheldCode' = "m.unauthorized"
+    UNAVAILABLE: 'RoomKeyWithheldCode' = "m.unavailable"
+    NO_OLM_SESSION: 'RoomKeyWithheldCode' = "m.no_olm"
+
+
+@dataclass
+class RoomKeyWithheldEventContent(SerializableAttrs['RoomKeyWithheldEventContent']):
+    algorithm: EncryptionAlgorithm
+    sender_key: IdentityKey
+    code: RoomKeyWithheldCode
+    reason: Optional[str] = None
+    room_id: Optional[RoomID] = None
+    session_id: Optional[SessionID] = None
+
+
+@dataclass
+class RoomKeyEventContent(SerializableAttrs['RoomKeyEventContent']):
+    algorithm: EncryptionAlgorithm
+    room_id: RoomID
+    session_id: SessionID
+    session_key: str
+
+
+ToDeviceEventContent = Union[Obj, EncryptedToDeviceEventContent, RoomKeyWithheldEventContent,
+                             RoomKeyEventContent]
 to_device_event_content_map = {
-    EventType.TO_DEVICE_ENCRYPTED: EncryptedToDeviceEventContent
+    EventType.TO_DEVICE_ENCRYPTED: EncryptedToDeviceEventContent,
+    EventType.ROOM_KEY_WITHHELD: RoomKeyWithheldEventContent,
+    EventType.ROOM_KEY: RoomKeyEventContent,
 }
 
 
@@ -32,6 +61,7 @@ to_device_event_content_map = {
 
 @dataclass
 class ToDeviceEvent(BaseEvent, SerializableAttrs['ToDeviceEvent']):
+    sender: UserID
     content: ToDeviceEventContent
 
     @classmethod

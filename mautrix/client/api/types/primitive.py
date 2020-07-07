@@ -18,5 +18,5 @@ SyncToken = NewType("SyncToken", str)
 
 DeviceID = NewType("DeviceID", str)
 SessionID = NewType("SessionID", str)
-SigningKey = NewType("SigningKey", str)
-IdentityKey = NewType("IdentityKey", str)
+SigningKey = NewType("SigningKey", str)  # ed25519
+IdentityKey = NewType("IdentityKey", str)  # curve25519

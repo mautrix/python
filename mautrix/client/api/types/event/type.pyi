@@ -51,6 +51,7 @@ class EventType(Serializable):
 
     TO_DEVICE_ENCRYPTED: 'EventType'
     ROOM_KEY: 'EventType'
+    ROOM_KEY_WITHHELD: 'EventType'
     ROOM_KEY_REQUEST: 'EventType'
     FORWARDED_ROOM_KEY: 'EventType'
 

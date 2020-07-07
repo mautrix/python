@@ -3,12 +3,20 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Iterable, Optional, Dict
+from typing import Optional, Dict, List
 from abc import ABC, abstractmethod
 
-from mautrix.types import (SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID,
-                           DeviceIdentity)
-from mautrix.crypto.types import OlmAccount, Session, InboundGroupSession, OutboundGroupSession
+from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
+
+from .. import OlmAccount, Session, InboundGroupSession, OutboundGroupSession, DeviceIdentity
+
+
+class StateStore(ABC):
+    @abstractmethod
+    async def is_encrypted(self, room_id: RoomID) -> bool: ...
+
+    @abstractmethod
+    async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]: ...
 
 
 class CryptoStore(ABC):
@@ -31,7 +39,7 @@ class CryptoStore(ABC):
     async def has_session(self, key: IdentityKey) -> bool: ...
 
     @abstractmethod
-    async def get_sessions(self, key: IdentityKey) -> Iterable[Session]: ...
+    async def get_sessions(self, key: IdentityKey) -> List[Session]: ...
 
     @abstractmethod
     async def get_latest_session(self, key: IdentityKey) -> Optional[Session]: ...
@@ -79,4 +87,4 @@ class CryptoStore(ABC):
                           ) -> None: ...
 
     @abstractmethod
-    async def filter_tracked_users(self, users: Iterable[UserID]) -> Iterable[UserID]: ...
+    async def filter_tracked_users(self, users: List[UserID]) -> List[UserID]: ...

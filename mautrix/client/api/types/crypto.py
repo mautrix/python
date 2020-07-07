@@ -7,9 +7,9 @@ from typing import Any, Dict, List, Optional
 from attr import dataclass
 import attr
 
-from .primitive import UserID, DeviceID
+from .primitive import UserID, DeviceID, IdentityKey, SigningKey
 from .util import SerializableAttrs
-from .event.encrypted import EncryptionAlgorithm
+from .event.encrypted import EncryptionAlgorithm, EncryptionKeyAlgorithm
 
 
 @dataclass
@@ -22,8 +22,17 @@ class DeviceKeys(SerializableAttrs['DeviceKeys']):
     user_id: UserID
     device_id: DeviceID
     algorithms: List[EncryptionAlgorithm]
+    keys: Dict[str, str]
     signatures: Dict[UserID, Dict[str, str]]
     unsigned: UnsignedDeviceInfo = attr.ib(factory=UnsignedDeviceInfo)
+
+    @property
+    def ed25519(self) -> SigningKey:
+        return self.keys[f"{EncryptionKeyAlgorithm.ED25519}:{self.device_id}"]
+
+    @property
+    def curve25519(self) -> IdentityKey:
+        return self.keys[f"{EncryptionKeyAlgorithm.CURVE25519}:{self.device_id}"]
 
 
 @dataclass

@@ -3,16 +3,16 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Iterable, Optional, List, Any
+from typing import Dict, Optional, List, Any
 import logging
 import asyncio
 
-from mautrix.types import (SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID,
-                           DeviceIdentity)
+from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
 from mautrix.util.async_db import Database
 from mautrix.util.logging import TraceLogger
 
-from ...types import OlmAccount, Session, InboundGroupSession, OutboundGroupSession, TrustState
+from ... import (OlmAccount, Session, InboundGroupSession, OutboundGroupSession, TrustState,
+                 DeviceIdentity)
 from .. import CryptoStore
 from .upgrade import upgrade_table
 
@@ -208,7 +208,7 @@ class PgCryptoStore(CryptoStore, Database):
             await conn.execute("DELETE FROM crypto_device WHERE user_id=$1", (user_id,))
             await conn.copy_records_to_table("crypto_device", records=data, columns=columns)
 
-    async def filter_tracked_users(self, users: Iterable[UserID]) -> Iterable[UserID]:
+    async def filter_tracked_users(self, users: List[UserID]) -> List[UserID]:
         rows = await self.fetch("SELECT user_id FROM crypto_tracked_user "
                                 "WHERE user_id = ANY($1)", (users,))
-        return (row["user_id"] for row in rows)
+        return [row["user_id"] for row in rows]

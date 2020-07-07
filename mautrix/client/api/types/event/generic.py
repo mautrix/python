@@ -14,15 +14,17 @@ from .reaction import ReactionEvent, ReactionEventContent
 from .encrypted import EncryptedEvent, EncryptedEventContent
 from .state import StateEvent, StateEventContent
 from .account_data import AccountDataEvent, AccountDataEventContent
+from .to_device import ToDeviceEvent, ToDeviceEventContent
 from .ephemeral import (ReceiptEvent, PresenceEvent, TypingEvent, ReceiptEventContent,
                         TypingEventContent, EphemeralEvent)
 
 Event = NewType("Event", Union[MessageEvent, ReactionEvent, RedactionEvent, StateEvent, TypingEvent,
-                               ReceiptEvent, PresenceEvent, EncryptedEvent, GenericEvent])
+                               ReceiptEvent, PresenceEvent, EncryptedEvent, ToDeviceEvent,
+                               GenericEvent])
 
 EventContent = Union[MessageEventContent, RedactionEventContent, ReactionEventContent,
                      StateEventContent, AccountDataEventContent, ReceiptEventContent,
-                     TypingEventContent, EncryptedEventContent, Obj]
+                     TypingEventContent, EncryptedEventContent, ToDeviceEventContent, Obj]
 
 
 @deserializer(Event)
@@ -39,6 +41,8 @@ def deserialize_event(data: JSON) -> Event:
         return RedactionEvent.deserialize(data)
     elif event_type == EventType.ROOM_ENCRYPTED:
         return EncryptedEvent.deserialize(data)
+    elif event_type.is_to_device:
+        return ToDeviceEvent.deserialize(data)
     elif event_type.is_state:
         return StateEvent.deserialize(data)
     elif event_type.is_account_data:

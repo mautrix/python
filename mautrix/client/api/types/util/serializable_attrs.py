@@ -73,7 +73,8 @@ def deserializer(elem_type: Type[T]) -> Callable[[Deserializer], Deserializer]:
 
 def _fields(attrs_type: Type[T], only_if_flatten: bool = None) -> Iterator[Tuple[str, Type[T2]]]:
     return ((field.metadata.get("json", field.name), field) for field in attr.fields(attrs_type)
-            if only_if_flatten is None or field.metadata.get("flatten", False) == only_if_flatten)
+            if only_if_flatten is None or field.metadata.get("flatten", False) == only_if_flatten
+            and not field.metadata.get("hidden", False))
 
 
 immutable = (int, str, float, bool, type(None))

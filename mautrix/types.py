@@ -25,7 +25,8 @@ from .client.api.types import (
     SingleReceiptEventContent, ReceiptEventContent, ReceiptEvent, ReceiptType, GenericEvent,
     Obj, Lst, RoomTombstoneEventContent, EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm,
     EncryptedOlmEventContent, EncryptedMegolmEventContent, ToDeviceEvent, ToDeviceEventContent,
-    EncryptionKeyAlgorithm,
+    EncryptionKeyAlgorithm, OlmMsgType, OlmCiphertext, EncryptedToDeviceEventContent,
+    RoomKeyWithheldCode, RoomKeyWithheldEventContent, RoomKeyEventContent,
 
     RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
     RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages,
@@ -36,8 +37,8 @@ from .client.api.types import (
     UserIdentifier, LoginResponse, DiscoveryInformation, DiscoveryServer, DiscoveryIntegrations,
     DiscoveryIntegrationServer, LoginFlow,
 
+    UnsignedDeviceInfo, DeviceKeys, ClaimKeysResponse, QueryKeysResponse,
+
     MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio,
 
     SerializerError, Serializable, SerializableEnum, SerializableAttrs, serializer, deserializer)
-
-from .crypto.types import TrustState, DeviceIdentity
