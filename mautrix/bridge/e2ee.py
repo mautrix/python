@@ -55,6 +55,7 @@ class EncryptionManager:
                 raise RuntimeError("Database URL is set to postgres, but asyncpg is not installed")
             crypto_store = PgCryptoStore(None, pickle_key, db_url, loop=self.loop)
             self.state_store = PgCryptoStateStore(crypto_store, get_portal)
+            self.crypto_store = crypto_store
         elif db_url.startswith("pickle://"):
             self.crypto_store = PickleCryptoStore(None, pickle_key, db_url[len("pickle://"):])
             self.state_store = SQLCryptoStateStore(get_portal)
