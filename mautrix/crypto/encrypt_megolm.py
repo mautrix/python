@@ -3,27 +3,37 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, NewType
+from collections import defaultdict
 import json
 
 from mautrix.types import (EncryptedMegolmEventContent, EventType, UserID, DeviceID, Serializable,
-                           EncryptionAlgorithm, RoomID, EncryptedToDeviceEventContent, SessionID,
+                           EncryptionAlgorithm, RoomID, EncryptedOlmEventContent, SessionID,
                            RoomKeyWithheldEventContent, RoomKeyWithheldCode, IdentityKey,
                            SigningKey, RelatesTo)
 
-from .types import DeviceIdentity, TrustState, EncryptionError
+from .types import DeviceIdentity, TrustState, EncryptionError, SessionShareError
 from .encrypt_olm import OlmEncryptionMachine
+from .device_lists import DeviceListMachine
 from .sessions import OutboundGroupSession, InboundGroupSession
 
+
+class Sentinel:
+    pass
+
+
+already_shared = Sentinel()
+key_missing = Sentinel()
+
 SessionEncryptResult = Union[
-    type(None),
-    EncryptedToDeviceEventContent,  # share successful
+    type(already_shared),  # already shared
+    EncryptedOlmEventContent,  # share successful
     RoomKeyWithheldEventContent,  # won't share
-    DeviceIdentity,  # missing device
+    type(key_missing),  # missing device
 ]
 
 
-class MegolmEncryptionMachine(OlmEncryptionMachine):
+class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
     async def encrypt_megolm_event(self, room_id: RoomID, event_type: EventType, content: Any
                                    ) -> EncryptedMegolmEventContent:
         self.log.trace(f"Encrypting event of type {event_type} for {room_id}")
@@ -48,8 +58,60 @@ class MegolmEncryptionMachine(OlmEncryptionMachine):
                                            ciphertext=ciphertext, relates_to=relates_to)
 
     async def share_group_session(self, room_id: RoomID, users: List[UserID]) -> None:
-        # TODO
-        pass
+        self.log.trace(f"Sharing group session for room {room_id} with {users}")
+        session = await self.crypto_store.get_outbound_group_session(room_id)
+        if session and session.shared and not session.expired:
+            raise SessionShareError("Group session has already been shared")
+        if not session or session.expired:
+            session = await self._new_outbound_group_session(room_id)
+
+        share_key_msgs = defaultdict(lambda: {})
+        withhold_key_msgs = defaultdict(lambda: {})
+        missing_sessions: Dict[UserID, Dict[DeviceID, DeviceIdentity]] = defaultdict(lambda: {})
+        fetch_keys = []
+
+        for user_id in users:
+            devices = await self.crypto_store.get_devices(user_id)
+            if devices is None:
+                self.log.trace(f"get_devices returned nil for {user_id}, will fetch keys and retry")
+                fetch_keys.append(user_id)
+            elif len(devices) == 0:
+                self.log.trace(f"{user_id} has no devices, skipping")
+            else:
+                self.log.trace(f"Trying to encrypt group session {session.id} for {user_id}")
+                for device_id, device in devices.items():
+                    result = await self._encrypt_group_session_for_device(session, user_id,
+                                                                          device_id, device)
+                    if isinstance(result, EncryptedOlmEventContent):
+                        share_key_msgs[user_id][device_id] = result
+                    elif isinstance(result, RoomKeyWithheldEventContent):
+                        withhold_key_msgs[user_id][device_id] = result
+                    elif result == key_missing:
+                        missing_sessions[user_id][device_id] = device
+
+        if fetch_keys:
+            self.log.trace(f"Fetching missing keys for {fetch_keys}")
+            await self._fetch_keys(users, include_untracked=True)
+
+        if missing_sessions:
+            self.log.trace(f"Creating missing outbound sessions {missing_sessions}")
+            await self._create_outbound_sessions(missing_sessions)
+
+        for user_id, devices in missing_sessions.items():
+            for device_id, device in devices.items():
+                result = await self._encrypt_group_session_for_device(session, user_id, device_id,
+                                                                      device)
+                if isinstance(result, EncryptedOlmEventContent):
+                    share_key_msgs[user_id][device_id] = result
+                elif isinstance(result, RoomKeyWithheldEventContent):
+                    withhold_key_msgs[user_id][device_id] = result
+                # We don't care about missing keys at this point
+
+        await self.client.send_to_device(EventType.TO_DEVICE_ENCRYPTED, share_key_msgs)
+        await self.client.send_to_device(EventType.ROOM_KEY_WITHHELD, withhold_key_msgs)
+        self.log.debug(f"Group session for {room_id} successfully shared")
+        session.shared = True
+        await self.crypto_store.add_outbound_group_session(session)
 
     async def _new_outbound_group_session(self, room_id: RoomID) -> OutboundGroupSession:
         session = OutboundGroupSession(room_id)
@@ -77,10 +139,10 @@ class MegolmEncryptionMachine(OlmEncryptionMachine):
                                                 device: DeviceIdentity) -> SessionEncryptResult:
         key = (user_id, device_id)
         if key in session.users_ignored or key in session.users_shared_with:
-            return None
+            return already_shared
         elif user_id == self.client.mxid and device_id == self.client.device_id:
             session.users_ignored.add(key)
-            return None
+            return already_shared
 
         if device.trust == TrustState.BLACKLISTED:
             self.log.debug(f"Not encrypting group session {session.id} for {device_id} "
@@ -101,7 +163,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine):
                                                             "messages for unverified devices")
         device_session = await self.crypto_store.get_latest_session(device.identity_key)
         if not device_session:
-            return device
+            return key_missing
         encrypted = await self._encrypt_olm_event(device_session, device, EventType.ROOM_KEY,
                                                   session.share_content)
         session.users_shared_with.add(key)

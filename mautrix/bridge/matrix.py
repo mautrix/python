@@ -64,7 +64,8 @@ class BaseMatrixHandler(ABC):
                     bot_mxid=self.az.bot_mxid, device_name=bridge.name,
                     user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
                     login_shared_secret=self.config["bridge.login_shared_secret"],
-                    homeserver_address=self.config["homeserver.address"], loop=loop)
+                    homeserver_address=self.config["homeserver.address"],
+                    db_url=config["appservice.database"], get_portal=self.get_portal, loop=loop)
 
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")

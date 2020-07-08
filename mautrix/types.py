@@ -25,8 +25,8 @@ from .client.api.types import (
     SingleReceiptEventContent, ReceiptEventContent, ReceiptEvent, ReceiptType, GenericEvent,
     Obj, Lst, RoomTombstoneEventContent, EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm,
     EncryptedOlmEventContent, EncryptedMegolmEventContent, ToDeviceEvent, ToDeviceEventContent,
-    EncryptionKeyAlgorithm, OlmMsgType, OlmCiphertext, EncryptedToDeviceEventContent,
-    RoomKeyWithheldCode, RoomKeyWithheldEventContent, RoomKeyEventContent,
+    EncryptionKeyAlgorithm, OlmMsgType, OlmCiphertext, RoomKeyWithheldCode,
+    RoomKeyWithheldEventContent, RoomKeyEventContent,
 
     RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
     RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages,

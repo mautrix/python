@@ -3,19 +3,81 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Dict, List, Union
 import json
 
-from mautrix.types import (EncryptedMegolmEventContent, EventType, UserID, DeviceID, Serializable,
-                           EncryptionAlgorithm, RoomID, EncryptedToDeviceEventContent, SessionID,
-                           RoomKeyWithheldEventContent, RoomKeyWithheldCode, IdentityKey,
-                           SigningKey, RelatesTo, MessageEvent)
+import olm
 
-from .types import DeviceIdentity, TrustState, EncryptionError
+from mautrix.types import EncryptedMegolmEventContent, EncryptionAlgorithm, Event, EncryptedEvent
+
+from .types import TrustState, DecryptionError
 from .base import BaseOlmMachine
-from .sessions import OutboundGroupSession, InboundGroupSession
 
 
 class MegolmDecryptionMachine(BaseOlmMachine):
-    async def decrypt_megolm_event(self, evt: MessageEvent) -> MessageEvent:
-        pass
+    async def decrypt_megolm_event(self, evt: EncryptedEvent) -> Event:
+        if not isinstance(evt.content, EncryptedMegolmEventContent):
+            raise DecryptionError("Unsupported event content class")
+        elif evt.content.algorithm != EncryptionAlgorithm.MEGOLM_V1:
+            raise DecryptionError("Unsupported event encryption algorithm")
+        session = await self.crypto_store.get_group_session(evt.room_id, evt.content.sender_key,
+                                                            evt.content.session_id)
+        if session is None:
+            # TODO check if olm session is wedged
+            raise DecryptionError("Failed to decrypt megolm event: no session with given ID found")
+        try:
+            plaintext, index = session.decrypt(evt.content.ciphertext)
+        except olm.OlmGroupSessionError as e:
+            raise DecryptionError("Failed to decrypt megolm event") from e
+        if not await self.crypto_store.validate_message_index(evt.content.sender_key,
+                                                              evt.content.session_id,
+                                                              evt.event_id, index, evt.timestamp):
+            raise DecryptionError("Duplicate message index")
+
+        verified = False
+        if ((evt.content.device_id == self.client.device_id
+             and session.signing_key == self.account.signing_key
+             and evt.content.sender_key == self.account.identity_key)):
+            verified = True
+        else:
+            device = await self.crypto_store.get_device(evt.sender, evt.content.device_id)
+            if device and device.trust == TrustState.VERIFIED and not session.forwarding_chain:
+                if ((device.signing_key != session.signing_key
+                     or device.identity_key != evt.content.sender_key)):
+                    raise DecryptionError("Device keys in event and verified device info "
+                                          "do not match")
+                verified = True
+            # else: TODO query device keys?
+
+        try:
+            data = json.loads(plaintext)
+            room_id = data["room_id"]
+            event_type = data["type"]
+            content = data["content"]
+        except json.JSONDecodeError as e:
+            raise DecryptionError("Failed to parse megolm payload") from e
+        except KeyError as e:
+            raise DecryptionError("Megolm payload is missing fields") from e
+
+        if room_id != evt.room_id:
+            raise DecryptionError("Encrypted megolm event is not intended for this room")
+
+        result = Event.deserialize({
+            "room_id": evt.room_id,
+            "event_id": evt.event_id,
+            "sender": evt.sender,
+            "origin_server_ts": evt.timestamp,
+            "type": event_type,
+            "content": content,
+            "unsigned": evt.unsigned,
+        })
+        if evt.content.relates_to:
+            if hasattr(result.content, "relates_to"):
+                if not result.content.relates_to:
+                    result.content.relates_to = evt.content.relates_to
+            elif "m.relates_to" not in result.content:
+                result.content["m.relates_to"] = evt.content.relates_to.serialize()
+        result.type = result.type.with_class(evt.type.t_class)
+        result["mautrix"] = {
+            "verified": verified,
+        }
+        return result

@@ -36,6 +36,9 @@ class PgCryptoStore(CryptoStore, Database):
         self._sync_token = None
         self._account = None
 
+    async def find_first_device_id(self) -> Optional[DeviceID]:
+        return await self.fetchval("SELECT device_id FROM crypto_account LIMIT 1")
+
     async def put_next_batch(self, next_batch: SyncToken) -> None:
         self._sync_token = next_batch
         await self.execute("UPDATE crypto_account SET sync_token=$1 WHERE device_id=$2",
@@ -172,7 +175,11 @@ class PgCryptoStore(CryptoStore, Database):
             return True
         return row["event_id"] == event_id and row["timestamp"] == timestamp
 
-    async def get_devices(self, user_id: UserID) -> Dict[DeviceID, DeviceIdentity]:
+    async def get_devices(self, user_id: UserID) -> Optional[Dict[DeviceID, DeviceIdentity]]:
+        tracked_user_id = await self.fetchval("SELECT user_id FROM crypto_tracked_user "
+                                              "WHERE user_id=$1", (user_id,))
+        if tracked_user_id is None:
+            return None
         rows = await self.fetch("SELECT device_id, identity_key, signing_key, trust, deleted, "
                                 "name FROM crypto_device WHERE user_id=$1", (user_id,))
         result = {}

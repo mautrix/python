@@ -25,6 +25,6 @@ from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, Presence
 from .encrypted import (EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm,
                         EncryptedOlmEventContent, EncryptedMegolmEventContent,
                         EncryptionKeyAlgorithm, OlmMsgType, OlmCiphertext)
-from .to_device import (ToDeviceEvent, ToDeviceEventContent, EncryptedToDeviceEventContent,
-                        RoomKeyWithheldCode, RoomKeyWithheldEventContent, RoomKeyEventContent)
+from .to_device import (ToDeviceEvent, ToDeviceEventContent,  RoomKeyWithheldCode,
+                        RoomKeyWithheldEventContent, RoomKeyEventContent)
 from .generic import Event, EventContent

@@ -41,6 +41,10 @@ class EncryptionError(CryptoError):
     pass
 
 
+class SessionShareError(CryptoError):
+    pass
+
+
 class DecryptionError(CryptoError):
     pass
 

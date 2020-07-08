@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Any, Dict
 
-from mautrix.types import (EncryptedOlmEventContent, EventType, UserID, DeviceID, OlmCiphertext,
+from mautrix.types import (EncryptedOlmEventContent, EventType, UserID, DeviceID,
                            EncryptionKeyAlgorithm)
 
 from .base import BaseOlmMachine, verify_signature_json

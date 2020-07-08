@@ -45,8 +45,22 @@ class OlmCiphertext(SerializableAttrs['OlmCiphertext']):
     type: OlmMsgType
 
 
-class BaseEncryptedEventContent:
-    _relates_to: Optional[RelatesTo]
+@dataclass
+class EncryptedOlmEventContent(SerializableAttrs['EncryptedOlmEventContent']):
+    ciphertext: Dict[str, OlmCiphertext]
+    sender_key: str
+    algorithm: EncryptionAlgorithm = EncryptionAlgorithm.OLM_V1
+
+
+@dataclass
+class EncryptedMegolmEventContent(SerializableAttrs['EncryptedMegolmEventContent']):
+    """The content of an m.room.encrypted event"""
+    ciphertext: str
+    sender_key: str
+    device_id: str
+    session_id: str
+    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
+    algorithm: EncryptionAlgorithm = EncryptionAlgorithm.MEGOLM_V1
 
     @property
     def relates_to(self) -> RelatesTo:
@@ -57,26 +71,6 @@ class BaseEncryptedEventContent:
     @relates_to.setter
     def relates_to(self, relates_to: RelatesTo) -> None:
         self._relates_to = relates_to
-
-
-@dataclass
-class EncryptedOlmEventContent(SerializableAttrs['EncryptedOlmEventContent'],
-                               BaseEncryptedEventContent):
-    ciphertext: Dict[str, OlmCiphertext]
-    sender_key: str
-    algorithm: EncryptionAlgorithm = EncryptionAlgorithm.OLM_V1
-
-
-@dataclass
-class EncryptedMegolmEventContent(SerializableAttrs['EncryptedMegolmEventContent'],
-                                  BaseEncryptedEventContent):
-    """The content of an m.room.encrypted event"""
-    ciphertext: str
-    sender_key: str
-    device_id: str
-    session_id: str
-    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
-    algorithm: EncryptionAlgorithm = EncryptionAlgorithm.MEGOLM_V1
 
 
 EncryptedEventContent = Union[EncryptedOlmEventContent, EncryptedMegolmEventContent]

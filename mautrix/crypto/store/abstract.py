@@ -20,7 +20,34 @@ class StateStore(ABC):
 
 
 class CryptoStore(ABC):
+    device_id: DeviceID
+    pickle_key: str
+
+    async def find_first_device_id(self) -> Optional[DeviceID]:
+        """
+        Find the first device ID stored with put_account. This is used by things like bridges that
+        only ever want one device, and implementing it is not required otherwise.
+
+        Returns:
+            First device ID in the store.
+        """
+        raise NotImplementedError()
+
+    async def start(self) -> None:
+        """
+        Open the store. If the store doesn't require opening any resources beforehand or only opens
+        when flushing, this can be a no-op
+        """
+        pass
+
+    async def stop(self) -> None:
+        """
+        Close the store when it will no longer be used. If the store doesn't keep any persistent
+        resources, this can be a no-op.
+        """
+
     async def flush(self) -> None:
+        """Flush the store. If all the methods persist data immediately, this can be a no-op."""
         pass
 
     @abstractmethod
@@ -76,7 +103,7 @@ class CryptoStore(ABC):
                                      event_id: EventID, index: int, timestamp: int) -> bool: ...
 
     @abstractmethod
-    async def get_devices(self, user_id: UserID) -> Dict[DeviceID, DeviceIdentity]: ...
+    async def get_devices(self, user_id: UserID) -> Optional[Dict[DeviceID, DeviceIdentity]]: ...
 
     @abstractmethod
     async def get_device(self, user_id: UserID, device_id: DeviceID

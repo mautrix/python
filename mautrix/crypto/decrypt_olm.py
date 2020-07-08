@@ -8,7 +8,7 @@ from typing import Optional
 import olm
 
 from mautrix.types import (EncryptionAlgorithm, ToDeviceEvent, UserID, IdentityKey, OlmCiphertext,
-                           OlmMsgType)
+                           OlmMsgType, EncryptedOlmEventContent)
 
 from .base import BaseOlmMachine
 from .types import DecryptionError, DecryptedOlmEvent, MatchingSessionDecryptionError
@@ -17,7 +17,9 @@ from .sessions import Session
 
 class OlmDecryptionMachine(BaseOlmMachine):
     async def _decrypt_olm_event(self, evt: ToDeviceEvent) -> DecryptedOlmEvent:
-        if evt.content.algorithm != EncryptionAlgorithm.OLM_V1:
+        if not isinstance(evt.content, EncryptedOlmEventContent):
+            raise DecryptionError("unsupported event content class")
+        elif evt.content.algorithm != EncryptionAlgorithm.OLM_V1:
             raise DecryptionError("unsupported event encryption algorithm")
         try:
             own_content = evt.content.ciphertext[self.account.identity_key]

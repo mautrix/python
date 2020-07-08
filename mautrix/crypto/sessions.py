@@ -135,10 +135,10 @@ class OutboundGroupSession(olm.OutboundGroupSession):
 
     def encrypt(self, plaintext):
         if not self.shared:
-            raise EncryptionError("Session has not been shared")
+            raise EncryptionError("Group session has not been shared")
 
         if self.expired:
-            raise EncryptionError("Session has expired")
+            raise EncryptionError("Group session has expired")
 
         self.message_count += 1
         self.use_time = datetime.now()

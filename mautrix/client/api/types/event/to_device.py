@@ -10,15 +10,8 @@ from mautrix.api import JSON
 
 from ..util import SerializableAttrs, Obj, deserializer, ExtensibleEnum
 from ..primitive import UserID, RoomID, SessionID, IdentityKey
-from .encrypted import EncryptionAlgorithm, OlmCiphertext
+from .encrypted import EncryptionAlgorithm, OlmCiphertext, EncryptedOlmEventContent
 from .base import EventType, BaseEvent
-
-
-@dataclass
-class EncryptedToDeviceEventContent(SerializableAttrs['EncryptedToDeviceEventContent']):
-    ciphertext: Dict[str, OlmCiphertext]
-    sender_key: str
-    algorithm: EncryptionAlgorithm = EncryptionAlgorithm.OLM_V1
 
 
 class RoomKeyWithheldCode(ExtensibleEnum):
@@ -47,10 +40,10 @@ class RoomKeyEventContent(SerializableAttrs['RoomKeyEventContent']):
     session_key: str
 
 
-ToDeviceEventContent = Union[Obj, EncryptedToDeviceEventContent, RoomKeyWithheldEventContent,
+ToDeviceEventContent = Union[Obj, EncryptedOlmEventContent, RoomKeyWithheldEventContent,
                              RoomKeyEventContent]
 to_device_event_content_map = {
-    EventType.TO_DEVICE_ENCRYPTED: EncryptedToDeviceEventContent,
+    EventType.TO_DEVICE_ENCRYPTED: EncryptedOlmEventContent,
     EventType.ROOM_KEY_WITHHELD: RoomKeyWithheldEventContent,
     EventType.ROOM_KEY: RoomKeyEventContent,
 }

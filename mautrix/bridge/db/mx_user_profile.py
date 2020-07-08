@@ -29,12 +29,14 @@ class UserProfile(Base):
         return cls._select_one_or_none((cls.c.room_id == room_id) & (cls.c.user_id == user_id))
 
     @classmethod
-    def all_except(cls, prefix: str, suffix: str, bot: str) -> Iterable['UserProfile']:
+    def all_except(cls, room_id: RoomID, prefix: str, suffix: str, bot: str
+                   ) -> Iterable['UserProfile']:
         return cls._select_all(~(cls.c.user_id.startswith(prefix, autoescape=True)
                                  & cls.c.user_id.endswith(suffix, autoescape=True)
                                  & (cls.c.user_id != bot))
                                & ((cls.c.membership == Membership.JOIN)
-                                  | (cls.c.membership == Membership.INVITE)))
+                                  | (cls.c.membership == Membership.INVITE))
+                               & (cls.c.room_id == room_id))
 
     @classmethod
     def delete_all(cls, room_id: RoomID) -> None:

@@ -87,6 +87,9 @@ class RelatesTo(Serializable):
     key: Optional[str] = None
     _extra: Dict[str, Any] = attr.ib(factory=lambda: {})
 
+    def __bool__(self) -> bool:
+        return bool(self.rel_type) and bool(self.event_id)
+
     @classmethod
     def deserialize(cls, data: JSON) -> Optional['RelatesTo']:
         if not data:

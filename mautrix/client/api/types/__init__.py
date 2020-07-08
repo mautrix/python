@@ -29,8 +29,8 @@ from .event import (EventType, GenericEvent,
                     EncryptedOlmEventContent, EncryptedMegolmEventContent, EncryptionKeyAlgorithm,
                     OlmMsgType, OlmCiphertext,
 
-                    ToDeviceEvent, ToDeviceEventContent, EncryptedToDeviceEventContent,
-                    RoomKeyWithheldCode, RoomKeyWithheldEventContent, RoomKeyEventContent,
+                    ToDeviceEvent, ToDeviceEventContent, RoomKeyWithheldCode,
+                    RoomKeyWithheldEventContent, RoomKeyEventContent,
 
                     Event, EventContent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,

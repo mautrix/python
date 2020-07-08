@@ -22,6 +22,7 @@ class BasePortal(ABC):
     loop: asyncio.AbstractEventLoop
     main_intent: IntentAPI
     mxid: Optional[RoomID]
+    encrypted: bool
 
     @abstractmethod
     async def handle_matrix_message(self, sender: 'BaseUser', message: MessageEventContent,
