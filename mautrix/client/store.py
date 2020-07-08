@@ -12,21 +12,11 @@ from .api.types import SyncToken
 class ClientStore(ABC):
     """ClientStore persists high-level client stuff."""
 
-    async def put_next_batch(self, next_batch: SyncToken) -> None:
-        self.next_batch = next_batch
+    @abstractmethod
+    async def put_next_batch(self, next_batch: SyncToken) -> None: ...
 
-    async def get_next_batch(self) -> SyncToken:
-        return self.next_batch
-
-    @property
-    def next_batch(self) -> SyncToken:
-        """Deprecated: Override the async methods instead"""
-        return SyncToken("")
-
-    @next_batch.setter
-    def next_batch(self, value: SyncToken) -> None:
-        """Deprecate: Override the async methods instead"""
-        pass
+    @abstractmethod
+    async def get_next_batch(self) -> SyncToken: ...
 
 
 class MemoryClientStore(ClientStore):
@@ -35,10 +25,8 @@ class MemoryClientStore(ClientStore):
     def __init__(self, next_batch: Optional[SyncToken] = None) -> None:
         self._next_batch: Optional[SyncToken] = next_batch
 
-    @property
-    def next_batch(self) -> Optional[SyncToken]:
-        return self._next_batch
+    async def put_next_batch(self, next_batch: SyncToken) -> None:
+        self._next_batch = next_batch
 
-    @next_batch.setter
-    def next_batch(self, value: SyncToken) -> None:
-        self._next_batch = value
+    async def get_next_batch(self) -> SyncToken:
+        return self._next_batch

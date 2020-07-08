@@ -39,6 +39,10 @@ class UserProfile(Base):
                                & (cls.c.room_id == room_id))
 
     @classmethod
+    def find_rooms_with_user(cls, user_id: UserID) -> Iterable['UserProfile']:
+        return cls._select_all(cls.c.user_id == user_id)
+
+    @classmethod
     def delete_all(cls, room_id: RoomID) -> None:
         with cls.db.begin() as conn:
             conn.execute(cls.t.delete().where(cls.c.room_id == room_id))

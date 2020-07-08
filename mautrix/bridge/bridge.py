@@ -131,3 +131,5 @@ class Bridge(Program):
     async def stop(self) -> None:
         await self.az.stop()
         await super().stop()
+        if self.matrix.e2ee:
+            await self.matrix.e2ee.stop()

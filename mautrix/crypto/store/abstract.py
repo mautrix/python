@@ -31,24 +31,23 @@ class CryptoStore(ABC):
         Returns:
             First device ID in the store.
         """
-        raise NotImplementedError()
 
     async def start(self) -> None:
         """
         Open the store. If the store doesn't require opening any resources beforehand or only opens
         when flushing, this can be a no-op
         """
-        pass
 
     async def stop(self) -> None:
         """
-        Close the store when it will no longer be used. If the store doesn't keep any persistent
-        resources, this can be a no-op.
+        Close the store when it will no longer be used. The default implementation will simply call
+        .flush(). If the store doesn't keep any persistent resources, the default implementation is
+        sufficient.
         """
+        await self.flush()
 
     async def flush(self) -> None:
         """Flush the store. If all the methods persist data immediately, this can be a no-op."""
-        pass
 
     @abstractmethod
     async def put_next_batch(self, next_batch: SyncToken) -> None: ...

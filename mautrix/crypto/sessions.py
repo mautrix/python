@@ -77,7 +77,7 @@ class InboundGroupSession(olm.InboundGroupSession):
                     sender_key: IdentityKey, room_id: RoomID,
                     forwarding_chain: Optional[List[str]] = None) -> 'InboundGroupSession':
         session = super().from_pickle(pickle, passphrase)
-        session.ed25519 = signing_key
+        session.signing_key = signing_key
         session.sender_key = sender_key
         session.room_id = room_id
         session.forwarding_chain = forwarding_chain or []
@@ -88,7 +88,7 @@ class InboundGroupSession(olm.InboundGroupSession):
                        room_id: RoomID, forwarding_chain: Optional[List[str]] = None
                        ) -> 'InboundGroupSession':
         session = super().import_session(session_key)
-        session.ed25519 = signing_key
+        session.signing_key = signing_key
         session.sender_key = sender_key
         session.room_id = room_id
         session.forwarding_chain = forwarding_chain or []

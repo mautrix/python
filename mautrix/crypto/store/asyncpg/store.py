@@ -14,7 +14,7 @@ from mautrix.util.logging import TraceLogger
 
 from ... import (OlmAccount, Session, InboundGroupSession, OutboundGroupSession, TrustState,
                  DeviceIdentity)
-from .. import CryptoStore
+from ..abstract import CryptoStore
 from .upgrade import upgrade_table
 
 
@@ -36,14 +36,6 @@ class PgCryptoStore(Database, CryptoStore, ClientStore):
 
         self._sync_token = None
         self._account = None
-
-    @property
-    def next_batch(self) -> SyncToken:
-        raise NotImplementedError("Use get_next_batch instead")
-
-    @next_batch.setter
-    def next_batch(self, value: SyncToken) -> None:
-        raise NotImplementedError("Use put_next_batch instead")
 
     async def find_first_device_id(self) -> Optional[DeviceID]:
         return await self.fetchval("SELECT device_id FROM crypto_account LIMIT 1")

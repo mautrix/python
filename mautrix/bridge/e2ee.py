@@ -3,45 +3,22 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Union, Optional, List, Dict, Callable, Awaitable, cast
+from typing import Tuple, Union, Optional, List, Dict
 import logging
 import asyncio
 import hashlib
 import hmac
 
-# We currently only support postgres, so we want an ImportError if asyncpg is not installed
-import asyncpg
-
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
                            RoomID, Serializable, JSON, MessageEvent, UserID, EncryptedEvent,
                            EncryptedMegolmEventContent)
-from mautrix.client import Client
-from mautrix.crypto import OlmMachine, CryptoStore, StateStore, PgCryptoStore, EncryptionError
-from mautrix.bridge.portal import BasePortal
-from mautrix.bridge.db import UserProfile
-from mautrix.util.async_db import Database
+from mautrix.client import Client, ClientStore
+from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore, EncryptionError,
+                            PickleCryptoStore)
 from mautrix.util.logging import TraceLogger
 
-GetPortalFunc = Callable[[RoomID], Awaitable[BasePortal]]
-
-
-class PgStateStore(StateStore):
-    db: Database
-    get_portal: GetPortalFunc
-
-    def __init__(self, db: Database, get_portal: GetPortalFunc) -> None:
-        self.db = db
-        self.get_portal = get_portal
-
-    async def is_encrypted(self, room_id: RoomID) -> bool:
-        portal = await self.get_portal(room_id)
-        return portal.encrypted if portal else False
-
-    async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]:
-        rows = await self.db.fetch("SELECT room_id FROM mx_user_profile "
-                                   "LEFT JOIN portal ON portal.mxid=mx_user_profile.room_id "
-                                   "WHERE user_id=$1 AND portal.encrypted=true", user_id)
-        return [row["room_id"] for row in rows]
+from .db import UserProfile, PgCryptoStateStore, SQLCryptoStateStore
+from .db.crypto_state_store import GetPortalFunc
 
 
 class EncryptionManager:
@@ -50,7 +27,7 @@ class EncryptionManager:
 
     client: Client
     crypto: OlmMachine
-    crypto_store: CryptoStore
+    crypto_store: Union[CryptoStore, ClientStore]
     state_store: StateStore
 
     bot_mxid: UserID
@@ -72,10 +49,19 @@ class EncryptionManager:
         self._id_suffix = user_id_suffix
         self._share_session_waiters = {}
         self.login_shared_secret = login_shared_secret.encode("utf-8")
-        self.crypto_store = PgCryptoStore(None, "mautrix.bridge.e2ee", db_url, loop=self.loop)
+        pickle_key = "mautrix.bridge.e2ee"
+        if db_url.startswith("postgres://"):
+            if not PgCryptoStore or not PgCryptoStateStore:
+                raise RuntimeError("Database URL is set to postgres, but asyncpg is not installed")
+            crypto_store = PgCryptoStore(None, pickle_key, db_url, loop=self.loop)
+            self.state_store = PgCryptoStateStore(crypto_store, get_portal)
+        elif db_url.startswith("pickle://"):
+            self.crypto_store = PickleCryptoStore(None, pickle_key, db_url[len("pickle://"):])
+            self.state_store = SQLCryptoStateStore(get_portal)
+        else:
+            raise RuntimeError("Unsupported database scheme")
         self.client = Client(base_url=homeserver_address, mxid=self.bot_mxid, loop=self.loop,
                              store=self.crypto_store)
-        self.state_store = PgStateStore(cast(PgCryptoStore, self.crypto_store), get_portal)
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
 
     async def share_session_lock(self, room_id: RoomID) -> bool:
