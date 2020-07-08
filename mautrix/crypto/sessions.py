@@ -23,7 +23,7 @@ class Session(olm.Session):
         self.creation_time = datetime.now()
         self.use_time = datetime.now()
 
-    def __new__(cls, *args):
+    def __new__(cls, *args, **kwargs):
         return super().__new__(cls)
 
     @property

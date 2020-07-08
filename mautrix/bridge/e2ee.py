@@ -9,6 +9,9 @@ import asyncio
 import hashlib
 import hmac
 
+# We currently only support postgres, so we want an ImportError if asyncpg is not installed
+import asyncpg
+
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
                            RoomID, Serializable, JSON, MessageEvent, UserID, EncryptedEvent,
                            EncryptedMegolmEventContent)

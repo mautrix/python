@@ -10,6 +10,7 @@ import attr
 import sys
 
 from mautrix.api import JSON
+from ..primitive import IdentityKey, SessionID, DeviceID
 from ..util import SerializableAttrs, Serializable, ExtensibleEnum, Obj, deserializer
 from .base import BaseRoomEvent, BaseUnsigned
 from .message import RelatesTo
@@ -56,9 +57,9 @@ class EncryptedOlmEventContent(SerializableAttrs['EncryptedOlmEventContent']):
 class EncryptedMegolmEventContent(SerializableAttrs['EncryptedMegolmEventContent']):
     """The content of an m.room.encrypted event"""
     ciphertext: str
-    sender_key: str
-    device_id: str
-    session_id: str
+    sender_key: IdentityKey
+    device_id: DeviceID
+    session_id: SessionID
     _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
     algorithm: EncryptionAlgorithm = EncryptionAlgorithm.MEGOLM_V1
 
