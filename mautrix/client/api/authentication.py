@@ -59,6 +59,8 @@ class ClientAuthenticationMethods(BaseClientAPI):
             password: The user's password. Required when `type` is `m.login.password`.
             store_access_token: Whether or not mautrix-python should store the returned access token
                 in this ClientAPI instance for future requests.
+            update_hs_url: Whether or not mautrix-python should use the returned homeserver URL
+                in this ClientAPI instance for future requests.
             **kwargs: Additional arguments for other login types.
 
         Returns:
