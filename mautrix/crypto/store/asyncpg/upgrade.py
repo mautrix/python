@@ -3,6 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from typing import List
 import logging
 
 from asyncpg import Connection
@@ -69,3 +70,21 @@ async def upgrade_v1(conn: Connection) -> None:
         created_at    timestamp    NOT NULL,
         last_used     timestamp    NOT NULL
     )""")
+
+
+@upgrade_table.register(description="Add account_id primary key column")
+async def upgrade_v2(conn: Connection) -> None:
+    async def add_account_id_column(table: str, pkey_columns: List[str]) -> None:
+        await conn.execute(f"ALTER TABLE {table} ADD COLUMN account_id VARCHAR(255)")
+        await conn.execute(f"UPDATE {table} SET account_id=''")
+        await conn.execute(f"ALTER TABLE {table} ALTER COLUMN account_id SET NOT NULL")
+        await conn.execute(f"ALTER TABLE {table} DROP CONSTRAINT {table}_pkey")
+        pkey_columns.append("account_id")
+        pkey_columns_str = ", ".join(f'"{col}"' for col in pkey_columns)
+        await conn.execute(f"ALTER TABLE {table} ADD CONSTRAINT {table}_pkey "
+                           f"PRIMARY KEY ({pkey_columns_str})")
+
+    await add_account_id_column("crypto_account", [])
+    await add_account_id_column("crypto_olm_session", ["session_id"])
+    await add_account_id_column("crypto_megolm_inbound_session", ["session_id"])
+    await add_account_id_column("crypto_megolm_outbound_session", ["room_id"])

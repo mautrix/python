@@ -45,22 +45,17 @@ if TYPE_CHECKING:
 
 class PickleCryptoStore(MemoryCryptoStore):
     log: TraceLogger
-    device_id: DeviceID
     path: str
     save_interval: float
     _last_save: float
 
-    def __init__(self, device_id: DeviceID, pickle_key: str, path: str, save_interval: float = 60.0,
+    def __init__(self, account_id: str, pickle_key: str, path: str, save_interval: float = 60.0,
                  log: Optional[TraceLogger] = None) -> None:
-        super().__init__(pickle_key)
-        self.device_id = device_id
+        super().__init__(account_id, pickle_key)
         self.path = path
         self._last_save = time.monotonic()
         self.save_interval = save_interval
         self.log = log or logging.getLogger("mau.crypto.pickle")
-
-    async def find_first_device_id(self) -> Optional[DeviceID]:
-        return self.device_id
 
     async def start(self) -> None:
         try:
@@ -69,7 +64,9 @@ class PickleCryptoStore(MemoryCryptoStore):
         except FileNotFoundError:
             return
         self.log.debug(f"Reading data in pickled crypto store {self.path}")
-        self.device_id = data["device_id"]
+        if data.get("version", 0) != 1:
+            raise ValueError("Unsupported pickled crypto store version")
+        self._device_id = data["device_id"]
         self._sync_token = data["sync_token"]
         self._account = self._from_pickle(OlmAccount, data["account"])
         self._message_indices = data["message_indices"]
@@ -90,7 +87,7 @@ class PickleCryptoStore(MemoryCryptoStore):
         self.log.debug(f"Writing data to pickled crypto store {self.path}")
         data: 'PickledStore' = {
             "version": 1,
-            "device_id": self.device_id,
+            "device_id": self._device_id,
             "sync_token": self._sync_token,
             "account": {
                 "pickle": self._account.pickle(self.pickle_key),
@@ -126,6 +123,14 @@ class PickleCryptoStore(MemoryCryptoStore):
         if self._last_save + self.save_interval < time.monotonic():
             await self.flush()
             self._last_save = time.monotonic()
+
+    async def put_device_id(self, device_id: DeviceID) -> None:
+        await super().put_device_id(device_id)
+        await self._time_limited_flush()
+
+    async def put_next_batch(self, next_batch: SyncToken) -> None:
+        await super().put_next_batch(next_batch)
+        await self._time_limited_flush()
 
     async def put_account(self, account: OlmAccount) -> None:
         await super().put_account(account)

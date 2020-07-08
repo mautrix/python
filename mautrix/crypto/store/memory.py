@@ -13,8 +13,7 @@ from .abstract import CryptoStore
 
 
 class MemoryCryptoStore(CryptoStore, ClientStore):
-    pickle_key: str
-
+    _device_id: Optional[DeviceID]
     _sync_token: Optional[SyncToken]
     _account: Optional[OlmAccount]
     _message_indices: Dict[Tuple[IdentityKey, SessionID, int], Tuple[EventID, int]]
@@ -23,10 +22,12 @@ class MemoryCryptoStore(CryptoStore, ClientStore):
     _inbound_sessions: Dict[Tuple[RoomID, IdentityKey, SessionID], InboundGroupSession]
     _outbound_sessions: Dict[RoomID, OutboundGroupSession]
 
-    def __init__(self, pickle_key: str) -> None:
+    def __init__(self, account_id: str, pickle_key: str) -> None:
+        self.account_id = account_id
         self.pickle_key = pickle_key
 
         self._sync_token = None
+        self._device_id = None
         self._account = None
         self._message_indices = {}
         self._devices = {}
@@ -34,8 +35,11 @@ class MemoryCryptoStore(CryptoStore, ClientStore):
         self._inbound_sessions = {}
         self._outbound_sessions = {}
 
-    async def find_first_device_id(self) -> Optional[DeviceID]:
-        raise NotImplementedError()
+    async def get_device_id(self) -> Optional[DeviceID]:
+        return self._device_id
+
+    async def put_device_id(self, device_id: DeviceID) -> None:
+        self._device_id = device_id
 
     async def put_next_batch(self, next_batch: SyncToken) -> None:
         self._sync_token = next_batch

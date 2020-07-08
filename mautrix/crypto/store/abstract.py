@@ -20,17 +20,20 @@ class StateStore(ABC):
 
 
 class CryptoStore(ABC):
-    device_id: DeviceID
+    account_id: str
     pickle_key: str
 
-    async def find_first_device_id(self) -> Optional[DeviceID]:
+    @abstractmethod
+    async def get_device_id(self) -> Optional[DeviceID]:
         """
-        Find the first device ID stored with put_account. This is used by things like bridges that
-        only ever want one device, and implementing it is not required otherwise.
+        Get the device ID corresponding to this account_id
 
         Returns:
-            First device ID in the store.
+            The device ID in the store.
         """
+
+    @abstractmethod
+    async def put_device_id(self, device_id: DeviceID) -> None: ...
 
     async def start(self) -> None:
         """

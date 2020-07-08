@@ -28,7 +28,7 @@ class Database:
     loop: asyncio.AbstractEventLoop
     log: logging.Logger
 
-    pool: asyncpg.pool.Pool
+    _pool: Optional[asyncpg.pool.Pool]
     db_args: Dict[str, Any]
     upgrade_table: UpgradeTable
 
@@ -48,18 +48,25 @@ class Database:
             self.upgrade_table = UpgradeTable()
         else:
             raise ValueError(f"Can't use {type(upgrade_table)} as the upgrade table")
+        self._pool = None
         self.log = log or logging.getLogger("mau.db")
         self.loop = loop or asyncio.get_event_loop()
 
     async def start(self) -> None:
         self.db_args["loop"] = self.loop
         self.log.debug(f"Connecting to {self.url}")
-        self.pool = await asyncpg.create_pool(self.url, **self.db_args)
+        self._pool = await asyncpg.create_pool(self.url, **self.db_args)
         try:
             await self.upgrade_table.upgrade(self.pool)
         except Exception:
             self.log.critical("Failed to upgrade database", exc_info=True)
             sys.exit(25)
+
+    @property
+    def pool(self) -> asyncpg.pool.Pool:
+        if not self._pool:
+            raise RuntimeError("Database has not been started")
+        return self._pool
 
     async def stop(self) -> None:
         await self.pool.close()

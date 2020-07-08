@@ -20,6 +20,11 @@ from mautrix.util.logging import TraceLogger
 from .db import UserProfile, PgCryptoStateStore, SQLCryptoStateStore
 from .db.crypto_state_store import GetPortalFunc
 
+try:
+    from mautrix.util.async_db import Database
+except ImportError:
+    Database = None
+
 
 class EncryptionManager:
     loop: asyncio.AbstractEventLoop
@@ -28,6 +33,7 @@ class EncryptionManager:
     client: Client
     crypto: OlmMachine
     crypto_store: Union[CryptoStore, ClientStore]
+    crypto_db: Optional[Database]
     state_store: StateStore
 
     bot_mxid: UserID
@@ -53,11 +59,13 @@ class EncryptionManager:
         if db_url.startswith("postgres://"):
             if not PgCryptoStore or not PgCryptoStateStore:
                 raise RuntimeError("Database URL is set to postgres, but asyncpg is not installed")
-            crypto_store = PgCryptoStore(None, pickle_key, db_url, loop=self.loop)
-            self.state_store = PgCryptoStateStore(crypto_store, get_portal)
-            self.crypto_store = crypto_store
+            self.crypto_db = Database(url=db_url, upgrade_table=PgCryptoStore.upgrade_table,
+                                      log=logging.getLogger("mau.crypto.db"), loop=self.loop)
+            self.crypto_store = PgCryptoStore("", pickle_key, self.crypto_db)
+            self.state_store = PgCryptoStateStore(self.crypto_db, get_portal)
         elif db_url.startswith("pickle://"):
-            self.crypto_store = PickleCryptoStore(None, pickle_key, db_url[len("pickle://"):])
+            self.crypto_db = None
+            self.crypto_store = PickleCryptoStore("", pickle_key, db_url[len("pickle://"):])
             self.state_store = SQLCryptoStateStore(get_portal)
         else:
             raise RuntimeError("Unsupported database scheme")
@@ -113,15 +121,16 @@ class EncryptionManager:
         self.log.debug("Logging in with bridge bot user")
         password = hmac.new(self.login_shared_secret, self.bot_mxid.encode("utf-8"),
                             hashlib.sha512).hexdigest()
+        if self.crypto_db:
+            await self.crypto_db.start()
         await self.crypto_store.start()
-        device_id = await self.crypto_store.find_first_device_id()
+        device_id = await self.crypto_store.get_device_id()
         if device_id:
             self.log.debug(f"Found device ID in database: {device_id}")
-        self.crypto_store.device_id = device_id
         await self.client.login(password=password, device_name=self.device_name,
-                                device_id=device_id)
+                                device_id=device_id, store_access_token=True, update_hs_url=False)
         if not device_id:
-            self.crypto_store.device_id = self.client.device_id
+            await self.crypto_store.put_device_id(self.client.device_id)
             self.log.debug(f"Logged in with new device ID {self.client.device_id}")
         await self.crypto.load()
         self.sync_task = self.client.start(self._filter)
@@ -130,6 +139,8 @@ class EncryptionManager:
     async def stop(self) -> None:
         self.sync_task.cancel()
         await self.crypto_store.stop()
+        if self.crypto_db:
+            await self.crypto_db.stop()
 
     @property
     def _filter(self) -> Filter:
