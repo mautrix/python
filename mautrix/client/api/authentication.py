@@ -40,7 +40,8 @@ class ClientAuthenticationMethods(BaseClientAPI):
     async def login(self, identifier: Optional[Union[UserIdentifier, UserID]] = None,
                     login_type: LoginType = LoginType.PASSWORD, device_name: Optional[str] = None,
                     device_id: Optional[str] = None, password: Optional[str] = None,
-                    store_access_token: bool = True, **kwargs: str) -> LoginResponse:
+                    store_access_token: bool = True, update_hs_url: bool = False, **kwargs: str
+                    ) -> LoginResponse:
         """
         Authenticates the user, and issues an access token they can use to authorize themself in
         subsequent requests.
@@ -83,11 +84,12 @@ class ClientAuthenticationMethods(BaseClientAPI):
             self.mxid = resp_data.user_id
             self.device_id = resp_data.device_id
             self.api.token = resp_data.access_token
+        if update_hs_url:
             base_url = resp_data.well_known.homeserver.base_url
             if base_url and base_url != self.api.base_url:
                 self.log.debug("Login response contained new base URL, switching from "
                                f"{self.api.base_url} to {base_url}")
-                self.api.base_url = base_url
+                self.api.base_url = base_url.rstrip("/")
         return resp_data
 
     async def logout(self, clear_access_token: bool = True) -> None:
