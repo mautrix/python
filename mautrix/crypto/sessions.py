@@ -69,7 +69,7 @@ class InboundGroupSession(olm.InboundGroupSession):
         self.forwarding_chain = forwarding_chain or []
         super().__init__(session_key)
 
-    def __new__(cls, *args):
+    def __new__(cls, *args, **kwargs):
         return super().__new__(cls)
 
     @classmethod
@@ -125,7 +125,7 @@ class OutboundGroupSession(olm.OutboundGroupSession):
         self.shared = False
         super().__init__()
 
-    def __new__(cls, **kwargs):
+    def __new__(cls, *args, **kwargs):
         return super().__new__(cls)
 
     @property

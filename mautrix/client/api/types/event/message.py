@@ -11,7 +11,7 @@ from attr import dataclass
 import attr
 
 from .....api import JSON
-from ..util import ExtensibleEnum, SerializableAttrs, Serializable, Obj, deserializer
+from ..util import ExtensibleEnum, SerializableAttrs, Serializable, Obj, deserializer, no_value
 from ..primitive import ContentURI, EventID
 from .base import BaseRoomEvent, BaseUnsigned
 
@@ -107,6 +107,8 @@ class RelatesTo(Serializable):
         return None
 
     def serialize(self) -> JSON:
+        if not self:
+            return no_value
         data = {
             **self._extra,
             "rel_type": self.rel_type.serialize(),

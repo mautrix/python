@@ -91,7 +91,9 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
 
         if fetch_keys:
             self.log.trace(f"Fetching missing keys for {fetch_keys}")
-            await self._fetch_keys(users, include_untracked=True)
+            fetched_keys = await self._fetch_keys(users, include_untracked=True)
+            for user_id, devices in fetched_keys.items():
+                missing_sessions[user_id] = devices
 
         if missing_sessions:
             self.log.trace(f"Creating missing outbound sessions {missing_sessions}")

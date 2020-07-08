@@ -312,7 +312,7 @@ class BaseMatrixHandler(ABC):
             self.log.exception("Error handling manually received Matrix event")
 
     async def handle_encrypted(self, evt: EncryptedEvent) -> None:
-        await self.int_handle_event(self.e2ee.decrypt(evt))
+        await self.int_handle_event(await self.e2ee.decrypt(evt))
 
     async def enable_dm_encryption(self, portal: 'BasePortal', members: List[UserID]) -> bool:
         try:
@@ -327,12 +327,11 @@ class BaseMatrixHandler(ABC):
             return False
 
         portal.encrypted = True
-        await self.e2ee.add_room(portal.mxid, members=members + [self.az.bot_mxid], encrypted=True)
         return True
 
     async def int_handle_event(self, evt: Event) -> None:
         if isinstance(evt, StateEvent) and evt.type == EventType.ROOM_MEMBER and self.e2ee:
-            await self.e2ee.handle_room_membership(evt)
+            await self.e2ee.crypto.handle_member_event(evt)
         if self.filter_matrix_event(evt):
             return
         self.log.trace("Received event: %s", evt)
@@ -375,8 +374,6 @@ class BaseMatrixHandler(ABC):
             if evt.type != EventType.ROOM_MESSAGE:
                 evt.content.msgtype = MessageType(str(evt.type))
             await self.handle_message(evt.room_id, evt.sender, evt.content, evt.event_id)
-        elif evt.type == EventType.ROOM_ENCRYPTION and self.e2ee:
-            await self.e2ee.handle_room_encryption(evt)
         elif evt.type == EventType.ROOM_ENCRYPTED and self.e2ee:
             await self.handle_encrypted(evt)
         else:

@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
 import logging
+import asyncio
 
 from mautrix.client import Client, InternalEventType, DeviceOTKCount, DeviceLists
 from mautrix.types import StateEvent, ToDeviceEvent, Membership, EventType, EncryptionAlgorithm
@@ -13,19 +14,18 @@ from mautrix.util.logging import TraceLogger
 from .store import CryptoStore, StateStore
 from .types import DecryptedOlmEvent
 from .account import OlmAccount
-from .device_lists import DeviceListMachine
-from .encrypt_olm import OlmEncryptionMachine
 from .decrypt_olm import OlmDecryptionMachine
 from .encrypt_megolm import MegolmEncryptionMachine
 from .decrypt_megolm import MegolmDecryptionMachine
 
 
-class OlmMachine(DeviceListMachine, OlmEncryptionMachine, OlmDecryptionMachine,
-                 MegolmEncryptionMachine, MegolmDecryptionMachine):
+class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryptionMachine):
     client: Client
     log: TraceLogger
     crypto_store: CryptoStore
     state_store: StateStore
+
+    _fetch_keys_lock: asyncio.Lock
 
     account: OlmAccount
 
@@ -40,7 +40,10 @@ class OlmMachine(DeviceListMachine, OlmEncryptionMachine, OlmDecryptionMachine,
 
         self.allow_unverified_devices = True
 
-        self.client.add_event_handler(InternalEventType.DEVICE_OTK_COUNT, self.handle_otk_count)
+        self._fetch_keys_lock = asyncio.Lock()
+
+        self.client.add_event_handler(InternalEventType.DEVICE_OTK_COUNT, self.handle_otk_count,
+                                      wait_sync=True)
         self.client.add_event_handler(InternalEventType.DEVICE_LISTS, self.handle_device_lists)
         self.client.add_event_handler(EventType.TO_DEVICE_ENCRYPTED, self.handle_to_device_event)
         self.client.add_event_handler(EventType.ROOM_MEMBER, self.handle_member_event)
@@ -58,7 +61,8 @@ class OlmMachine(DeviceListMachine, OlmEncryptionMachine, OlmDecryptionMachine,
 
     async def handle_device_lists(self, device_lists: DeviceLists) -> None:
         if len(device_lists.changed) > 0:
-            await self._fetch_keys(device_lists.changed, include_untracked=False)
+            async with self._fetch_keys_lock:
+                await self._fetch_keys(device_lists.changed, include_untracked=False)
 
     async def handle_member_event(self, evt: StateEvent) -> None:
         if not await self.state_store.is_encrypted(evt.room_id):

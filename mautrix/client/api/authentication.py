@@ -69,9 +69,9 @@ class ClientAuthenticationMethods(BaseClientAPI):
             kwargs["password"] = password
         if device_name is not None:
             kwargs["initial_device_display_name"] = device_name
-        if device_id is not None:
+        if device_id:
             kwargs["device_id"] = device_id
-        elif self.device_id is not None:
+        elif self.device_id:
             kwargs["device_id"] = self.device_id
         resp = await self.api.request(Method.POST, Path.login, {
             "type": str(login_type),

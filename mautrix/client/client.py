@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import (Dict, List, Callable, Union, Optional, Awaitable, Any, Type, NamedTuple,
-                    TYPE_CHECKING)
+                    Tuple, TYPE_CHECKING)
 from enum import Enum, Flag, auto
 from time import time
 import asyncio
@@ -62,8 +62,8 @@ class InternalEventType(Enum):
 class Client(ClientAPI):
     """Client is a high-level wrapper around the client API."""
     store: ClientStore
-    global_event_handlers: List[EventHandler]
-    event_handlers: Dict[Union[EventType, InternalEventType], List[EventHandler]]
+    global_event_handlers: List[Tuple[EventHandler, bool]]
+    event_handlers: Dict[Union[EventType, InternalEventType], List[Tuple[EventHandler, bool]]]
     dispatchers: Dict[Type['Dispatcher'], 'Dispatcher']
     syncing_task: Optional[asyncio.Future]
     ignore_initial_sync: bool
@@ -125,7 +125,7 @@ class Client(ClientAPI):
         del self.dispatchers[dispatcher_type]
 
     def add_event_handler(self, event_type: Union[InternalEventType, EventType],
-                          handler: EventHandler) -> None:
+                          handler: EventHandler, wait_sync: bool = False) -> None:
         """
         Add a new event handler.
 
@@ -133,13 +133,14 @@ class Client(ClientAPI):
             event_type: The event type to add. If not specified, the handler will be called for all
                 event types.
             handler: The handler function to add.
+            wait_sync: Whether or not the handler should be awaited before the next sync request.
         """
         if not isinstance(event_type, (EventType, InternalEventType)):
             raise ValueError("Invalid event type")
         if event_type == EventType.ALL:
-            self.global_event_handlers.append(handler)
+            self.global_event_handlers.append((handler, wait_sync))
         else:
-            self.event_handlers.setdefault(event_type, []).append(handler)
+            self.event_handlers.setdefault(event_type, []).append((handler, wait_sync))
 
     def remove_event_handler(self, event_type: Union[EventType, InternalEventType],
                              handler: EventHandler) -> None:
@@ -154,16 +155,19 @@ class Client(ClientAPI):
             raise ValueError("Invalid event type")
         try:
             if event_type == EventType.ALL:
-                self.global_event_handlers.remove(handler)
+                # FIXME this is a bit hacky
+                self.global_event_handlers.remove((handler, True))
+                self.global_event_handlers.remove((handler, False))
             else:
                 handlers = self.event_handlers[event_type]
-                handlers.remove(handler)
+                handlers.remove((handler, True))
+                handlers.remove((handler, False))
                 if len(handlers) == 0:
                     del self.event_handlers[event_type]
         except (KeyError, ValueError):
             pass
 
-    async def dispatch_event(self, event: Event, source: SyncStream) -> None:
+    def dispatch_event(self, event: Event, source: SyncStream) -> List[asyncio.Task]:
         """
         Send the given event to all applicable event handlers.
 
@@ -184,67 +188,82 @@ class Client(ClientAPI):
         else:
             event.type = event.type.with_class(EventType.Class.MESSAGE)
         setattr(event, "source", source)
-        await self.dispatch_manual_event(event.type, event, include_global_handlers=True)
+        return self.dispatch_manual_event(event.type, event, include_global_handlers=True)
 
-    async def dispatch_manual_event(self, event_type: Union[EventType, InternalEventType],
-                                    data: Any, include_global_handlers: bool = False) -> None:
+    async def _catch_errors(self, handler: EventHandler, data: Any) -> None:
+        try:
+            await handler(data)
+        except Exception:
+            self.log.exception("Failed to run handler")
+
+    def dispatch_manual_event(self, event_type: Union[EventType, InternalEventType],
+                              data: Any, include_global_handlers: bool = False,
+                              force_synchronous: bool = False) -> List[asyncio.Task]:
         handlers = self.event_handlers.get(event_type, [])
         if include_global_handlers:
             handlers = self.global_event_handlers + handlers
-        for handler in handlers:
-            try:
-                await handler(data)
-            except Exception:
-                self.log.exception("Failed to run handler")
+        tasks = []
+        for handler, wait_sync in handlers:
+            task = self.loop.create_task(self._catch_errors(handler, data))
+            if force_synchronous or wait_sync:
+                tasks.append(task)
+        return tasks
+
+    async def run_internal_event(self, event_type: InternalEventType, custom_type: Any = None,
+                                 **kwargs: Any) -> None:
+        kwargs["source"] = SyncStream.INTERNAL
+        tasks = self.dispatch_manual_event(event_type, custom_type or kwargs,
+                                           include_global_handlers=False)
+        await asyncio.gather(*tasks)
 
     def dispatch_internal_event(self, event_type: InternalEventType, custom_type: Any = None,
-                                **kwargs: Any) -> Awaitable[None]:
+                                **kwargs: Any) -> List[asyncio.Task]:
         kwargs["source"] = SyncStream.INTERNAL
         return self.dispatch_manual_event(event_type, custom_type or kwargs,
                                           include_global_handlers=False)
 
-    def handle_sync(self, data: JSON) -> None:
+    def handle_sync(self, data: JSON) -> List[asyncio.Task]:
         """
         Handle a /sync object.
 
         Args:
             data: The data from a /sync request.
         """
-        for raw_event in data.get("account_data", {}).get("events", []):
-            self.loop.create_task(self.dispatch_event(
-                AccountDataEvent.deserialize(raw_event), source=SyncStream.ACCOUNT_DATA))
-        for raw_event in data.get("ephemeral", {}).get("events", []):
-            self.loop.create_task(self.dispatch_event(
-                EphemeralEvent.deserialize(raw_event), source=SyncStream.EPHEMERAL))
-        for raw_event in data.get("to_device", {}).get("events", []):
-            self.loop.create_task(self.dispatch_event(
-                ToDeviceEvent.deserialize(raw_event), source=SyncStream.TO_DEVICE))
-
-        device_lists = data.get("device_lists", {})
-        self.loop.create_task(self.dispatch_internal_event(
-            InternalEventType.DEVICE_LISTS,
-            custom_type=DeviceLists(changed=device_lists.get("changed", []),
-                                    left=device_lists.get("left", []))))
+        tasks = []
 
         otk_count = data.get("device_one_time_keys_count", {})
-        self.loop.create_task(self.dispatch_internal_event(
+        tasks += self.dispatch_internal_event(
             InternalEventType.DEVICE_OTK_COUNT,
             custom_type=DeviceOTKCount(curve25519=otk_count.get("curve25519", 0),
-                                       signed_curve25519=otk_count.get("signed_curve25519", 0))))
+                                       signed_curve25519=otk_count.get("signed_curve25519", 0)))
+
+        device_lists = data.get("device_lists", {})
+        tasks += self.dispatch_internal_event(InternalEventType.DEVICE_LISTS,
+                                              custom_type=DeviceLists(
+                                                  changed=device_lists.get("changed", []),
+                                                  left=device_lists.get("left", [])))
+
+        for raw_event in data.get("account_data", {}).get("events", []):
+            tasks += self.dispatch_event(AccountDataEvent.deserialize(raw_event),
+                                         source=SyncStream.ACCOUNT_DATA)
+        for raw_event in data.get("ephemeral", {}).get("events", []):
+            tasks += self.dispatch_event(EphemeralEvent.deserialize(raw_event),
+                                         source=SyncStream.EPHEMERAL)
+        for raw_event in data.get("to_device", {}).get("events", []):
+            tasks += self.dispatch_event(ToDeviceEvent.deserialize(raw_event),
+                                         source=SyncStream.TO_DEVICE)
 
         rooms = data.get("rooms", {})
         for room_id, room_data in rooms.get("join", {}).items():
             for raw_event in room_data.get("state", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                self.loop.create_task(
-                    self.dispatch_event(StateEvent.deserialize(raw_event),
-                                        source=SyncStream.JOINED_ROOM | SyncStream.STATE))
+                tasks += self.dispatch_event(StateEvent.deserialize(raw_event),
+                                             source=SyncStream.JOINED_ROOM | SyncStream.STATE)
 
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 raw_event["room_id"] = room_id
-                self.loop.create_task(
-                    self.dispatch_event(Event.deserialize(raw_event),
-                                        source=SyncStream.JOINED_ROOM | SyncStream.TIMELINE))
+                tasks += self.dispatch_event(Event.deserialize(raw_event),
+                                             source=SyncStream.JOINED_ROOM | SyncStream.TIMELINE)
         for room_id, room_data in rooms.get("invite", {}).items():
             events: List[Dict[str, Any]] = room_data.get("invite_state", {}).get("events", [])
             for raw_event in events:
@@ -260,15 +279,14 @@ class Client(ClientAPI):
             invite.unsigned.invite_room_state = [StrippedStateEvent.deserialize(raw_event)
                                                  for raw_event in events
                                                  if raw_event != raw_invite]
-            self.loop.create_task(
-                self.dispatch_event(invite, source=SyncStream.INVITED_ROOM | SyncStream.STATE))
+            tasks += self.dispatch_event(invite, source=SyncStream.INVITED_ROOM | SyncStream.STATE)
         for room_id, room_data in rooms.get("leave", {}).items():
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 if "state_key" in raw_event:
                     raw_event["room_id"] = room_id
-                    self.loop.create_task(
-                        self.dispatch_event(StateEvent.deserialize(raw_event),
-                                            source=SyncStream.LEFT_ROOM | SyncStream.TIMELINE))
+                    tasks += self.dispatch_event(StateEvent.deserialize(raw_event),
+                                                 source=SyncStream.LEFT_ROOM | SyncStream.TIMELINE)
+        return tasks
 
     def start(self, filter_data: Optional[Union[FilterID, Filter]]) -> asyncio.Future:
         """
@@ -291,21 +309,22 @@ class Client(ClientAPI):
             self.log.debug("Syncing cancelled")
         except Exception as e:
             self.log.exception("Fatal error while syncing")
-            await self.dispatch_internal_event(InternalEventType.SYNC_STOPPED, error=e)
+            await self.run_internal_event(InternalEventType.SYNC_STOPPED, error=e)
             return
         else:
             self.log.debug("Syncing stopped")
-        await self.dispatch_internal_event(InternalEventType.SYNC_STOPPED, error=None)
+        await self.run_internal_event(InternalEventType.SYNC_STOPPED, error=None)
 
     async def _start(self, filter_id: Optional[FilterID]) -> None:
         fail_sleep = 5
         is_first = True
 
         self.log.debug("Starting syncing")
-        await self.dispatch_internal_event(InternalEventType.SYNC_STARTED)
+        next_batch = await self.store.get_next_batch()
+        await self.run_internal_event(InternalEventType.SYNC_STARTED)
         while True:
             try:
-                data = await self.sync(since=self.store.next_batch, filter_id=filter_id,
+                data = await self.sync(since=next_batch, filter_id=filter_id,
                                        set_presence=self.presence)
                 fail_sleep = 5
             except (asyncio.CancelledError, MUnknownToken):
@@ -313,26 +332,28 @@ class Client(ClientAPI):
             except Exception as e:
                 self.log.exception(f"Sync request errored, waiting {fail_sleep}"
                                    " seconds before continuing")
-                await self.dispatch_internal_event(InternalEventType.SYNC_ERRORED, error=e,
+                await self.run_internal_event(InternalEventType.SYNC_ERRORED, error=e,
                                                    sleep_for=fail_sleep)
                 await asyncio.sleep(fail_sleep, loop=self.loop)
                 if fail_sleep < 320:
                     fail_sleep *= 2
                 continue
 
-            is_initial = not self.store.next_batch
+            is_initial = not next_batch
             data["net.maunium.mautrix"] = {
                 "is_initial": is_initial,
                 "is_first": is_first,
             }
-            self.store.next_batch = data.get("next_batch")
-            await self.dispatch_internal_event(InternalEventType.SYNC_SUCCESSFUL, data=data)
+            next_batch = data.get("next_batch")
+            await self.store.put_next_batch(next_batch)
+            await self.run_internal_event(InternalEventType.SYNC_SUCCESSFUL, data=data)
             if (self.ignore_first_sync and is_first) or (self.ignore_initial_sync and is_initial):
                 is_first = False
                 continue
             is_first = False
             try:
-                self.handle_sync(data)
+                tasks = self.handle_sync(data)
+                await asyncio.gather(*tasks)
             except Exception:
                 self.log.exception("Sync handling errored")
 

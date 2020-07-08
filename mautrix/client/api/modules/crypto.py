@@ -9,7 +9,7 @@ from mautrix.errors import MatrixResponseError
 from mautrix.api import Method, Path
 
 from ..types import (UserID, DeviceID, EncryptionKeyAlgorithm, ClaimKeysResponse, QueryKeysResponse,
-                     EventType, ToDeviceEventContent, SyncToken)
+                     EventType, ToDeviceEventContent, SyncToken, Serializable)
 from ..base import BaseClientAPI
 
 
@@ -34,7 +34,12 @@ class CryptoMethods(BaseClientAPI):
         if not event_type.is_to_device:
             raise ValueError("Event type must be a to-device event type")
         await self.api.request(Method.PUT, Path.sendToDevice[event_type][self.api.get_txn_id()], {
-            "messages": messages,
+            "messages": {
+                user_id: {device_id: (content.serialize() if isinstance(content, Serializable)
+                                      else content)
+                          for device_id, content in devices.items()}
+                for user_id, devices in messages.items()
+            },
         })
 
     async def upload_keys(self, one_time_keys: Optional[Dict[str, Any]] = None,
@@ -118,6 +123,8 @@ class CryptoMethods(BaseClientAPI):
         """
         resp = await self.api.request(Method.POST, Path.keys.claim, {
             "timeout": timeout,
-            "one_time_keys": one_time_keys,
+            "one_time_keys": {user_id: {device_id: alg.serialize()
+                                        for device_id, alg in devices.items()}
+                              for user_id, devices in one_time_keys.items()},
         })
         return ClaimKeysResponse.deserialize(resp)

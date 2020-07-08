@@ -56,7 +56,7 @@ async def upgrade_v1(conn: Connection) -> None:
         signing_key  CHAR(43)     NOT NULL,
         room_id      VARCHAR(255) NOT NULL,
         session      bytea        NOT NULL,
-        forwarding_chains bytea   NOT NULL
+        forwarding_chains TEXT    NOT NULL
     )""")
     await conn.execute("""CREATE TABLE IF NOT EXISTS crypto_megolm_outbound_session (
         room_id       VARCHAR(255) PRIMARY KEY,
@@ -65,7 +65,7 @@ async def upgrade_v1(conn: Connection) -> None:
         shared        BOOLEAN      NOT NULL,
         max_messages  INTEGER      NOT NULL,
         message_count INTEGER      NOT NULL,
-        max_age       BIGINT       NOT NULL,
+        max_age       INTERVAL     NOT NULL,
         created_at    timestamp    NOT NULL,
         last_used     timestamp    NOT NULL
     )""")

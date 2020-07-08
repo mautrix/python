@@ -20,6 +20,8 @@ Deserializer = NewType("Deserializer", Callable[[JSON], T])
 serializer_map: Dict[Type[T], Serializer] = {}
 deserializer_map: Dict[Type[T], Deserializer] = {}
 
+no_value = object()
+
 
 def serializer(elem_type: Type[T]) -> Callable[[Serializer], Serializer]:
     """
@@ -223,7 +225,7 @@ def _attrs_to_dict(data: T) -> JSON:
             serialized = _serialize(field_val)
         if field.metadata.get("flatten", False) and isinstance(serialized, dict):
             new_dict.update(serialized)
-        else:
+        elif serialized != no_value:
             new_dict[json_name] = serialized
     try:
         new_dict.update(data.unrecognized_)

@@ -28,11 +28,17 @@ class DeviceKeys(SerializableAttrs['DeviceKeys']):
 
     @property
     def ed25519(self) -> SigningKey:
-        return self.keys[f"{EncryptionKeyAlgorithm.ED25519}:{self.device_id}"]
+        try:
+            return self.keys[f"{EncryptionKeyAlgorithm.ED25519}:{self.device_id}"]
+        except KeyError:
+            return None
 
     @property
     def curve25519(self) -> IdentityKey:
-        return self.keys[f"{EncryptionKeyAlgorithm.CURVE25519}:{self.device_id}"]
+        try:
+            return self.keys[f"{EncryptionKeyAlgorithm.CURVE25519}:{self.device_id}"]
+        except KeyError:
+            return None
 
 
 @dataclass

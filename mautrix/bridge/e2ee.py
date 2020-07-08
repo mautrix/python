@@ -3,14 +3,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Union, Optional, List, Dict, Callable, Awaitable
+from typing import Tuple, Union, Optional, List, Dict, Callable, Awaitable, cast
 import logging
 import asyncio
 import hashlib
 import hmac
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
-                           RoomID, Serializable, JSON, MessageEvent, UserID, EncryptedEvent)
+                           RoomID, Serializable, JSON, MessageEvent, UserID, EncryptedEvent,
+                           EncryptedMegolmEventContent)
 from mautrix.client import Client
 from mautrix.crypto import OlmMachine, CryptoStore, StateStore, PgCryptoStore, EncryptionError
 from mautrix.bridge.portal import BasePortal
@@ -36,7 +37,7 @@ class PgStateStore(StateStore):
     async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]:
         rows = await self.db.fetch("SELECT room_id FROM mx_user_profile "
                                    "LEFT JOIN portal ON portal.mxid=mx_user_profile.room_id "
-                                   "WHERE user_id=$1 AND portal.encrypted=true", (user_id,))
+                                   "WHERE user_id=$1 AND portal.encrypted=true", user_id)
         return [row["room_id"] for row in rows]
 
 
@@ -68,9 +69,11 @@ class EncryptionManager:
         self._id_suffix = user_id_suffix
         self._share_session_waiters = {}
         self.login_shared_secret = login_shared_secret.encode("utf-8")
-        self.client = Client(base_url=homeserver_address, mxid=self.bot_mxid, loop=self.loop)
         self.crypto_store = PgCryptoStore(None, "mautrix.bridge.e2ee", db_url, loop=self.loop)
-        self.state_store = PgStateStore(self.crypto, get_portal)
+        self.client = Client(base_url=homeserver_address, mxid=self.bot_mxid, loop=self.loop,
+                             store=self.crypto_store)
+        self.state_store = PgStateStore(cast(PgCryptoStore, self.crypto_store), get_portal)
+        self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
 
     async def share_session_lock(self, room_id: RoomID) -> bool:
         try:
@@ -94,23 +97,25 @@ class EncryptionManager:
                 and user_id != self.bot_mxid)
 
     async def encrypt(self, room_id: RoomID, event_type: EventType,
-                      content: Union[Serializable, JSON]) -> Tuple[EventType, JSON]:
+                      content: Union[Serializable, JSON]
+                      ) -> Tuple[EventType, EncryptedMegolmEventContent]:
         try:
-            event_type, encrypted = self.crypto.encrypt_megolm_event(room_id, event_type, content)
+            encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         except EncryptionError:
             self.log.debug("Got EncryptionError, sharing group session and trying again")
             if await self.share_session_lock(room_id):
                 try:
                     users = UserProfile.all_except(room_id, self._id_prefix, self._id_suffix,
                                                    self.bot_mxid)
-                    await self.crypto.share_group_session(room_id, users)
+                    await self.crypto.share_group_session(room_id, [profile.user_id
+                                                                    for profile in users])
                 finally:
                     self.share_session_unlock(room_id)
-            event_type, encrypted = self.crypto.encrypt_megolm_event(room_id, event_type, content)
-        return event_type, encrypted
+            encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
+        return EventType.ROOM_ENCRYPTED, encrypted
 
-    def decrypt(self, evt: EncryptedEvent) -> MessageEvent:
-        decrypted = self.crypto.decrypt_megolm_event(evt)
+    async def decrypt(self, evt: EncryptedEvent) -> MessageEvent:
+        decrypted = await self.crypto.decrypt_megolm_event(evt)
         self.log.trace("Decrypted event %s: %s", evt.event_id, decrypted)
         return decrypted
 
@@ -123,9 +128,12 @@ class EncryptionManager:
         if device_id:
             self.log.debug(f"Found device ID in database: {device_id}")
         self.crypto_store.device_id = device_id
-        self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
         await self.client.login(password=password, device_name=self.device_name,
                                 device_id=device_id)
+        if not device_id:
+            self.crypto_store.device_id = self.client.device_id
+            self.log.debug(f"Logged in with new device ID {self.client.device_id}")
+        await self.crypto.load()
         self.sync_task = self.client.start(self._filter)
         self.log.info("End-to-bridge encryption support is enabled")
 

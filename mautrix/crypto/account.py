@@ -67,9 +67,12 @@ class OlmAccount(olm.Account):
             "user_id": user_id,
             "device_id": device_id,
             "algorithms": [EncryptionAlgorithm.OLM_V1.value, EncryptionAlgorithm.MEGOLM_V1.value],
-            "keys": self.identity_keys,
+            "keys": {
+                f"{algorithm}:{device_id}": key
+                for algorithm, key in self.identity_keys.items()
+            },
         }
-        signature = self.sign(canonical_json(device_id))
+        signature = self.sign(canonical_json(device_keys))
         device_keys["signatures"] = {
             user_id: {f"{EncryptionKeyAlgorithm.ED25519}:{device_id}": signature}
         }

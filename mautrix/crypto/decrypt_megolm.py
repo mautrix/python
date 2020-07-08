@@ -68,8 +68,8 @@ class MegolmDecryptionMachine(BaseOlmMachine):
             "origin_server_ts": evt.timestamp,
             "type": event_type,
             "content": content,
-            "unsigned": evt.unsigned,
         })
+        result.unsigned = evt.unsigned
         if evt.content.relates_to:
             if hasattr(result.content, "relates_to"):
                 if not result.content.relates_to:

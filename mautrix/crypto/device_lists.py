@@ -32,7 +32,7 @@ class DeviceListMachine(BaseOlmMachine):
             users.remove(user_id)
 
             new_devices = {}
-            existing_devices = await self.crypto_store.get_devices(user_id)
+            existing_devices = (await self.crypto_store.get_devices(user_id)) or {}
 
             self.log.trace(f"Updating devices for {user_id}, got {len(devices)}, "
                            f"have {len(existing_devices)} in store")
@@ -43,10 +43,14 @@ class DeviceListMachine(BaseOlmMachine):
                 except KeyError:
                     existing = None
                     changed = True
-                self.log.trace(f"Validating device {devices} of {user_id}")
-                new_device = await self._validate_device(user_id, device_id, keys, existing)
-                if new_device:
-                    new_devices[device_id] = new_device
+                self.log.trace(f"Validating device {keys} of {user_id}")
+                try:
+                    new_device = await self._validate_device(user_id, device_id, keys, existing)
+                except DeviceValidationError as e:
+                    self.log.warning(f"Failed to validate device {device_id} of {user_id}: {e}")
+                else:
+                    if new_device:
+                        new_devices[device_id] = new_device
             self.log.trace(f"Storing new device list for {user_id} "
                            f"containing {len(new_devices)} devices")
             await self.crypto_store.put_devices(user_id, new_devices)
