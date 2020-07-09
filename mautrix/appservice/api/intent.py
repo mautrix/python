@@ -206,8 +206,8 @@ class IntentAPI(ClientAPI):
         content = await self.get_state_event(room_id, EventType.ROOM_PINNED_EVENTS)
         return content["pinned"]
 
-    def set_pinned_messages(self, room_id: RoomID, events: List[EventID], **kwargs) -> Awaitable[
-        dict]:
+    def set_pinned_messages(self, room_id: RoomID, events: List[EventID], **kwargs
+                            ) -> Awaitable[EventID]:
         return self.send_state_event(room_id, EventType.ROOM_PINNED_EVENTS,
                                      RoomPinnedEventsStateEventContent(pinned=events), **kwargs)
 
@@ -292,7 +292,11 @@ class IntentAPI(ClientAPI):
                                content: Union[StateEventContent, Dict],
                                state_key: Optional[str] = "", **kwargs) -> EventID:
         await self._ensure_has_power_level_for(room_id, event_type)
-        return await super().send_state_event(room_id, event_type, content, state_key, **kwargs)
+        event_id = await super().send_state_event(room_id, event_type, content, state_key, **kwargs)
+        self.state_store.update_state(StateEvent(type=event_type, room_id=room_id,
+                                                 event_id=event_id, sender=self.mxid,
+                                                 state_key=state_key, timestamp=0, content=content))
+        return event_id
 
     async def get_state_event(self, room_id: RoomID, event_type: EventType,
                               state_key: Optional[str] = "") -> StateEventContent:
@@ -301,6 +305,29 @@ class IntentAPI(ClientAPI):
                                                  event_id=EventID(""), sender=UserID(""),
                                                  state_key=state_key, timestamp=0, content=event))
         return event
+
+    async def get_joined_members(self, room_id: RoomID) -> Dict[UserID, Member]:
+        members = await super().get_joined_members(room_id)
+        for user_id, member in members.items():
+            member.membership = Membership.JOIN
+            self.state_store.set_member(room_id, user_id, member)
+        return members
+
+    async def get_members(self, room_id: RoomID) -> List[StateEvent]:
+        member_events = await super().get_members(room_id)
+        for evt in member_events:
+            self.state_store.update_state(evt)
+        return member_events
+
+    async def get_room_members(self, room_id: RoomID,
+                               allowed_memberships: Tuple[Membership, ...] = (Membership.JOIN,)
+                               ) -> List[UserID]:
+        if len(allowed_memberships) == 1 and allowed_memberships[0] == Membership.JOIN:
+            memberships = await self.get_joined_members(room_id)
+            return list(memberships.keys())
+        member_events = await self.get_members(room_id)
+        return [evt.state_key for evt in member_events
+                if evt.content.membership in allowed_memberships]
 
     async def leave_room(self, room_id: RoomID) -> None:
         if not room_id:
@@ -312,26 +339,6 @@ class IntentAPI(ClientAPI):
         except MatrixRequestError as e:
             if "not in room" not in e.message:
                 raise
-
-    def get_room_memberships(self, room_id: RoomID) -> Awaitable[dict]:
-        if not room_id:
-            raise ValueError("Room ID not given")
-        return self.api.request(Method.GET, Path.rooms[room_id].members)
-
-    def get_room_joined_memberships(self, room_id: RoomID) -> Awaitable[dict]:
-        if not room_id:
-            raise ValueError("Room ID not given")
-        return self.api.request(Method.GET, Path.rooms[room_id].joined_members)
-
-    async def get_room_members(self, room_id: RoomID,
-                               allowed_memberships: Tuple[Membership, ...] = (Membership.JOIN,)
-                               ) -> List[UserID]:
-        if len(allowed_memberships) == 1 and allowed_memberships[0] == Membership.JOIN:
-            memberships = await self.get_room_joined_memberships(room_id)
-            return list(memberships["joined"].keys())
-        memberships = await self.get_room_memberships(room_id)
-        return [membership["state_key"] for membership in memberships["chunk"] if
-                Membership(membership["content"]["membership"]) in allowed_memberships]
 
     async def get_state(self, room_id: RoomID) -> List[StateEvent]:
         state = await super().get_state(room_id)
