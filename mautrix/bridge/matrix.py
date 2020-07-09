@@ -332,21 +332,6 @@ class BaseMatrixHandler(ABC):
     async def handle_encrypted(self, evt: EncryptedEvent) -> None:
         await self.int_handle_event(await self.e2ee.decrypt(evt))
 
-    async def enable_dm_encryption(self, portal: 'BasePortal', members: List[UserID]) -> bool:
-        try:
-            await portal.main_intent.invite_user(portal.mxid, self.az.bot_mxid)
-            await self.az.intent.join_room_by_id(portal.mxid)
-            await portal.main_intent.send_state_event(portal.mxid, EventType.ROOM_ENCRYPTION, {
-                "algorithm": "m.megolm.v1.aes-sha2"
-            })
-        except Exception:
-            self.log.warning(f"Failed to enable end-to-bridge encryption in {portal.mxid}",
-                             exc_info=True)
-            return False
-
-        portal.encrypted = True
-        return True
-
     async def int_handle_event(self, evt: Event) -> None:
         if isinstance(evt, StateEvent) and evt.type == EventType.ROOM_MEMBER and self.e2ee:
             await self.e2ee.crypto.handle_member_event(evt)
