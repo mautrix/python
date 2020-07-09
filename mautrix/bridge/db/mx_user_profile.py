@@ -32,8 +32,8 @@ class UserProfile(Base):
     def all_except(cls, room_id: RoomID, prefix: str, suffix: str, bot: str
                    ) -> Iterable['UserProfile']:
         return cls._select_all(~(cls.c.user_id.startswith(prefix, autoescape=True)
-                                 & cls.c.user_id.endswith(suffix, autoescape=True)
-                                 & (cls.c.user_id != bot))
+                                 & cls.c.user_id.endswith(suffix, autoescape=True))
+                               & (cls.c.user_id != bot)
                                & ((cls.c.membership == Membership.JOIN)
                                   | (cls.c.membership == Membership.INVITE))
                                & (cls.c.room_id == room_id))
