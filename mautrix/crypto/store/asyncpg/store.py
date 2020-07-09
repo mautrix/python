@@ -25,6 +25,7 @@ class PgCryptoStore(CryptoStore, ClientStore):
     log: TraceLogger
 
     _sync_token: Optional[SyncToken]
+    _device_id: Optional[DeviceID]
     _account: Optional[OlmAccount]
 
     def __init__(self, account_id: str, pickle_key: str, db: Database) -> None:
@@ -33,15 +34,19 @@ class PgCryptoStore(CryptoStore, ClientStore):
         self.pickle_key = pickle_key
 
         self._sync_token = None
+        self._device_id = ""
         self._account = None
 
     async def get_device_id(self) -> Optional[DeviceID]:
-        return await self.db.fetchval("SELECT device_id FROM crypto_account WHERE account_id=$1",
-                                      self.account_id)
+        device_id = await self.db.fetchval("SELECT device_id FROM crypto_account "
+                                           "WHERE account_id=$1", self.account_id)
+        self._device_id = device_id or self._device_id
+        return self._device_id
 
     async def put_device_id(self, device_id: DeviceID) -> None:
         await self.db.fetchval("UPDATE crypto_account SET device_id=$1 WHERE account_id=$2",
                                device_id, self.account_id)
+        self._device_id = device_id
 
     async def put_next_batch(self, next_batch: SyncToken) -> None:
         self._sync_token = next_batch
@@ -57,14 +62,16 @@ class PgCryptoStore(CryptoStore, ClientStore):
     async def put_account(self, account: OlmAccount) -> None:
         self._account = account
         pickle = account.pickle(self.pickle_key)
-        await self.db.execute("INSERT INTO crypto_account (account_id, shared, sync_token, account)"
-                              " VALUES($1, $2, $3, $4) ON CONFLICT (account_id) DO UPDATE "
-                              "SET shared=$2, sync_token=$3, account=$4",
-                              self.account_id, account.shared, self._sync_token or "", pickle)
+        await self.db.execute("INSERT INTO crypto_account (account_id, device_id, shared, "
+                              "sync_token, account) VALUES($1, $2, $3, $4, $5) "
+                              "ON CONFLICT (account_id) DO UPDATE SET shared=$3, sync_token=$4,"
+                              "                                       account=$5",
+                              self.account_id, self._device_id, account.shared,
+                              self._sync_token or "", pickle)
 
     async def get_account(self) -> OlmAccount:
         if self._account is None:
-            row = await self.db.fetchrow("SELECT shared, account FROM crypto_account "
+            row = await self.db.fetchrow("SELECT shared, account, device_id FROM crypto_account "
                                          "WHERE account_id=$1", self.account_id)
             if row is not None:
                 self._account = OlmAccount.from_pickle(row["account"], passphrase=self.pickle_key,

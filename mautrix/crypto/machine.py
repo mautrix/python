@@ -52,6 +52,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         self.account = await self.crypto_store.get_account()
         if self.account is None:
             self.account = OlmAccount()
+            await self.crypto_store.put_account(self.account)
 
     async def handle_otk_count(self, otk_count: DeviceOTKCount) -> None:
         if otk_count.signed_curve25519 < self.account.max_one_time_keys // 2:

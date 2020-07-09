@@ -129,10 +129,10 @@ class EncryptionManager:
             self.log.debug(f"Found device ID in database: {device_id}")
         await self.client.login(password=password, device_name=self.device_name,
                                 device_id=device_id, store_access_token=True, update_hs_url=False)
+        await self.crypto.load()
         if not device_id:
             await self.crypto_store.put_device_id(self.client.device_id)
             self.log.debug(f"Logged in with new device ID {self.client.device_id}")
-        await self.crypto.load()
         self.sync_task = self.client.start(self._filter)
         self.log.info("End-to-bridge encryption support is enabled")
 
