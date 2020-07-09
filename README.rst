@@ -17,18 +17,30 @@ Components:
   * Basic room state storage
   * Intent wrapper around the client API functions (design based on matrix-appservice-bridge)
 
-* Soon™: High-level bridging framework (mautrix.bridge_).
+* Medium-level end-to-end encryption framework (mautrix.crypto_)
 
-* High-level client framework (mautrix.client_). Currently only has an event handling helper.
+  * Handles all the complicated e2ee key exchange
+
+* High-level bridging utility framework (mautrix.bridge_)
+
+  * Base class for bridges
+  * Common bridge configuration and appservice registration generation things
+  * Double-puppeting helper
+  * End-to-bridge encryption helper
+
+* High-level client framework (mautrix.client_)
+
+  * Syncing and event handling helper.
 
 .. _python-appservice-framework: https://github.com/Cadair/python-appservice-framework/
-.. _Client API: https://matrix.org/docs/spec/client_server/r0.4.0.html
+.. _Client API: https://matrix.org/docs/spec/client_server/r0.6.1.html
 
 .. _mautrix.api: https://mautrix.readthedocs.io/en/latest/mautrix.api.html
 .. _mautrix.client.api: https://mautrix.readthedocs.io/en/latest/mautrix.client.api.html
 .. _mautrix.appservice: https://mautrix.readthedocs.io/en/latest/mautrix.appservice.html
 .. _mautrix.bridge: https://mautrix.readthedocs.io/en/latest/mautrix.bridge.html
 .. _mautrix.client: https://mautrix.readthedocs.io/en/latest/mautrix.client.html
+.. _mautrix.crypto: https://mautrix.readthedocs.io/en/latest/mautrix.crypto.html
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/mautrix.svg
    :target: https://pypi.python.org/pypi/mautrix
