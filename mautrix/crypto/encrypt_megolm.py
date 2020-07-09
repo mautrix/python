@@ -36,7 +36,7 @@ SessionEncryptResult = Union[
 class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
     async def encrypt_megolm_event(self, room_id: RoomID, event_type: EventType, content: Any
                                    ) -> EncryptedMegolmEventContent:
-        self.log.trace(f"Encrypting event of type {event_type} for {room_id}")
+        self.log.debug(f"Encrypting event of type {event_type} for {room_id}")
         session = await self.crypto_store.get_outbound_group_session(room_id)
         if not session:
             raise EncryptionError("No group session created")
@@ -58,7 +58,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
                                            ciphertext=ciphertext, relates_to=relates_to)
 
     async def share_group_session(self, room_id: RoomID, users: List[UserID]) -> None:
-        self.log.trace(f"Sharing group session for room {room_id} with {users}")
+        self.log.debug(f"Sharing group session for room {room_id} with {users}")
         session = await self.crypto_store.get_outbound_group_session(room_id)
         if session and session.shared and not session.expired:
             raise SessionShareError("Group session has already been shared")
@@ -73,12 +73,12 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
         for user_id in users:
             devices = await self.crypto_store.get_devices(user_id)
             if devices is None:
-                self.log.trace(f"get_devices returned nil for {user_id}, will fetch keys and retry")
+                self.log.debug(f"get_devices returned nil for {user_id}, will fetch keys and retry")
                 fetch_keys.append(user_id)
             elif len(devices) == 0:
-                self.log.trace(f"{user_id} has no devices, skipping")
+                self.log.debug(f"{user_id} has no devices, skipping")
             else:
-                self.log.trace(f"Trying to encrypt group session {session.id} for {user_id}")
+                self.log.debug(f"Trying to encrypt group session {session.id} for {user_id}")
                 for device_id, device in devices.items():
                     result = await self._encrypt_group_session_for_device(session, user_id,
                                                                           device_id, device)
@@ -90,13 +90,13 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
                         missing_sessions[user_id][device_id] = device
 
         if fetch_keys:
-            self.log.trace(f"Fetching missing keys for {fetch_keys}")
+            self.log.debug(f"Fetching missing keys for {fetch_keys}")
             fetched_keys = await self._fetch_keys(users, include_untracked=True)
             for user_id, devices in fetched_keys.items():
                 missing_sessions[user_id] = devices
 
         if missing_sessions:
-            self.log.trace(f"Creating missing outbound sessions {missing_sessions}")
+            self.log.debug(f"Creating missing outbound sessions {missing_sessions}")
             await self._create_outbound_sessions(missing_sessions)
 
         for user_id, devices in missing_sessions.items():
@@ -111,7 +111,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
 
         await self.client.send_to_device(EventType.TO_DEVICE_ENCRYPTED, share_key_msgs)
         await self.client.send_to_device(EventType.ROOM_KEY_WITHHELD, withhold_key_msgs)
-        self.log.debug(f"Group session for {room_id} successfully shared")
+        self.log.info(f"Group session for {room_id} successfully shared")
         session.shared = True
         await self.crypto_store.add_outbound_group_session(session)
 
@@ -127,7 +127,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
         session = InboundGroupSession(session_key=session_key, signing_key=signing_key,
                                       sender_key=sender_key, room_id=room_id)
         await self.crypto_store.put_group_session(room_id, sender_key, session_id, session)
-        self.log.trace(f"Created inbound group session {room_id}/{sender_key}/{session_id}")
+        self.log.debug(f"Created inbound group session {room_id}/{sender_key}/{session_id}")
 
     async def _encrypt_group_session_for_user(self, session: OutboundGroupSession, user_id: UserID,
                                               devices: Dict[DeviceID, DeviceIdentity],
@@ -169,5 +169,5 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
         encrypted = await self._encrypt_olm_event(device_session, device, EventType.ROOM_KEY,
                                                   session.share_content)
         session.users_shared_with.add(key)
-        self.log.trace(f"Encrypted group session {session.id} for {device_id} of {user_id}")
+        self.log.debug(f"Encrypted group session {session.id} for {device_id} of {user_id}")
         return encrypted

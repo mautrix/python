@@ -64,7 +64,7 @@ class OlmDecryptionMachine(BaseOlmMachine):
             except olm.OlmSessionError as e:
                 # TODO session unwedging
                 raise DecryptionError("Failed to create new session from prekey message") from e
-            self.log.trace(f"Created inbound session {session.id} for {sender} "
+            self.log.debug(f"Created inbound session {session.id} for {sender} "
                            f"(sender key: {sender_key})")
 
             try:

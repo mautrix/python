@@ -51,7 +51,7 @@ class DeviceListMachine(BaseOlmMachine):
                 else:
                     if new_device:
                         new_devices[device_id] = new_device
-            self.log.trace(f"Storing new device list for {user_id} "
+            self.log.debug(f"Storing new device list for {user_id} "
                            f"containing {len(new_devices)} devices")
             await self.crypto_store.put_devices(user_id, new_devices)
             data[user_id] = new_devices

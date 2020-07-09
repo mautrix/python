@@ -56,7 +56,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
 
     async def handle_otk_count(self, otk_count: DeviceOTKCount) -> None:
         if otk_count.signed_curve25519 < self.account.max_one_time_keys // 2:
-            self.log.trace(f"Sync response said we have {otk_count.signed_curve25519} signed"
+            self.log.debug(f"Sync response said we have {otk_count.signed_curve25519} signed"
                            " curve25519 keys left, sharing new ones...")
             await self.share_keys(otk_count.signed_curve25519)
 
@@ -77,7 +77,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         }
         if prev == cur or ignored_changes.get(prev) == cur:
             return
-        self.log.trace(f"Got membership state event in {evt.room_id} changing {evt.state_key} from "
+        self.log.debug(f"Got membership state event in {evt.room_id} changing {evt.state_key} from "
                        f"{prev} to {cur}, invalidating group session")
         await self.crypto_store.remove_outbound_group_session(evt.room_id)
 
@@ -102,12 +102,12 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         one_time_keys = self.account.get_one_time_keys(self.client.mxid, self.client.device_id,
                                                        current_otk_count)
         if not device_keys and not one_time_keys:
-            self.log.trace("No one-time keys nor device keys got when trying to share keys")
+            self.log.warning("No one-time keys nor device keys got when trying to share keys")
             return
         if device_keys:
-            self.log.trace("Going to upload initial account keys")
-        self.log.trace(f"Uploading {len(one_time_keys)} one-time keys")
+            self.log.debug("Going to upload initial account keys")
+        self.log.debug(f"Uploading {len(one_time_keys)} one-time keys")
         await self.client.upload_keys(one_time_keys=one_time_keys, device_keys=device_keys)
         self.account.shared = True
         await self.crypto_store.put_account(self.account)
-        self.log.trace("Shared keys and saved account")
+        self.log.debug("Shared keys and saved account")
