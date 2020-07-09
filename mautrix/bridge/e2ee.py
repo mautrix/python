@@ -17,8 +17,8 @@ from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore, 
                             PickleCryptoStore)
 from mautrix.util.logging import TraceLogger
 
-from .db import UserProfile, PgCryptoStateStore, SQLCryptoStateStore
-from .db.crypto_state_store import GetPortalFunc
+from .db import UserProfile
+from .db.crypto_state_store import GetPortalFunc, PgCryptoStateStore, SQLCryptoStateStore
 
 try:
     from mautrix.util.async_db import Database
