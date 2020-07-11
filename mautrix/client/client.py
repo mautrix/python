@@ -8,12 +8,13 @@ from typing import Optional, TYPE_CHECKING
 from .api import ClientAPI
 from .state_store import SyncStore, StateStore, MemoryStateStore
 from .syncer import Syncer
+from .store_updater import StoreUpdatingAPI
 
 if TYPE_CHECKING:
     from mautrix.crypto import OlmMachine
 
 
-class Client(ClientAPI, Syncer):
+class Client(StoreUpdatingAPI, Syncer):
     """Client is a high-level wrapper around the client API."""
 
     state_store: StateStore

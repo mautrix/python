@@ -7,14 +7,15 @@ from typing import Optional, Dict, Awaitable, Union, Any, TYPE_CHECKING
 from datetime import datetime, timezone
 import asyncio
 
+from aiohttp import ClientSession
+
 from mautrix.types import UserID
 from mautrix.api import HTTPAPI, Method, PathBuilder
+from mautrix.util.logging import TraceLogger
 
 from .intent import IntentAPI
 
 if TYPE_CHECKING:
-    from logging import Logger
-    from aiohttp import ClientSession
     from ..state_store import ASStateStore
 
 
@@ -23,7 +24,7 @@ class AppServiceAPI(HTTPAPI):
     AppServiceAPI is an extension to HTTPAPI that provides appservice-specific features,
     such as child instances and easy access to IntentAPIs.
     """
-    base_log: 'Logger'
+    base_log: TraceLogger
 
     identity: Optional[UserID]
     bot_mxid: UserID
@@ -39,8 +40,8 @@ class AppServiceAPI(HTTPAPI):
     _bot_intent: Optional[IntentAPI]
 
     def __init__(self, base_url: str, bot_mxid: UserID = None, token: str = None,
-                 identity: Optional[UserID] = None, log: 'Logger' = None,
-                 state_store: 'ASStateStore' = None, client_session: 'ClientSession' = None,
+                 identity: Optional[UserID] = None, log: TraceLogger = None,
+                 state_store: 'ASStateStore' = None, client_session: ClientSession = None,
                  child: bool = False, real_user: bool = False,
                  real_user_content_key: Optional[str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
