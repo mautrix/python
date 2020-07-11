@@ -8,14 +8,14 @@ import asyncio
 
 from mautrix.types import EventType, StateEvent, Membership
 
-from .client import Client, InternalEventType
+from .syncer import InternalEventType, Syncer
 
 
 class Dispatcher(ABC):
-    client: Client
+    syncer: Syncer
 
-    def __init__(self, client: Client) -> None:
-        self.client = client
+    def __init__(self, syncer: Syncer) -> None:
+        self.syncer = syncer
 
     @abstractmethod
     def register(self) -> None:
@@ -26,16 +26,16 @@ class Dispatcher(ABC):
         pass
 
     def _dispatch(self, event_type: InternalEventType, evt: StateEvent) -> None:
-        asyncio.ensure_future(self.client.dispatch_manual_event(event_type, evt),
-                              loop=self.client.loop)
+        asyncio.ensure_future(self.syncer.dispatch_manual_event(event_type, evt),
+                              loop=self.syncer.loop)
 
 
 class MembershipEventDispatcher(Dispatcher):
     def register(self) -> None:
-        self.client.add_event_handler(EventType.ROOM_MEMBER, self.handle)
+        self.syncer.add_event_handler(EventType.ROOM_MEMBER, self.handle)
 
     def unregister(self) -> None:
-        self.client.remove_event_handler(EventType.ROOM_MEMBER, self.handle)
+        self.syncer.remove_event_handler(EventType.ROOM_MEMBER, self.handle)
 
     async def handle(self, evt: StateEvent) -> None:
         if evt.type != EventType.ROOM_MEMBER:
