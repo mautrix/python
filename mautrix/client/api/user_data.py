@@ -5,9 +5,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
 
-from ...errors import MatrixResponseError
-from ...api import Method, Path
-from .types import UserSearchResults, Member, SerializerError, User
+from mautrix.errors import MatrixResponseError
+from mautrix.api import Method, Path
+from mautrix.types import UserSearchResults, Member, SerializerError, User
+
 from .base import BaseClientAPI
 
 

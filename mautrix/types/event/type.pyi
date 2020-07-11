@@ -6,7 +6,7 @@
 from typing import Optional, Any, Dict
 
 from mautrix.api import JSON
-from ..util import Serializable, SerializableEnum
+from mautrix.types.util import Serializable, SerializableEnum
 
 
 class EventType(Serializable):

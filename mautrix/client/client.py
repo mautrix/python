@@ -3,26 +3,27 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import (Dict, List, Callable, Union, Optional, Awaitable, Any, Type, NamedTuple,
-                    Tuple, TYPE_CHECKING)
+from typing import (Dict, List, Callable, Union, Optional, Awaitable, Any, Type, Tuple,
+                    TYPE_CHECKING)
 from enum import Enum, Flag, auto
 from time import time
 import asyncio
 
-from ..errors import MUnknownToken
-from ..api import JSON
-from .api.types import (EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID,
-                        Filter, PresenceState, AccountDataEvent, UserID, EphemeralEvent,
-                        ToDeviceEvent)
+from mautrix.errors import MUnknownToken
+from mautrix.api import JSON
+from mautrix.types import (EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID,
+                           Filter, PresenceState, AccountDataEvent, DeviceLists, DeviceOTKCount,
+                           EphemeralEvent, ToDeviceEvent)
+
 from .api import ClientAPI
-from .store import ClientStore, MemoryClientStore
+from .state_store import SyncStore, MemorySyncStore
 
 if TYPE_CHECKING:
+    from mautrix.crypto import OlmMachine
+
     from .dispatcher import Dispatcher
 
 EventHandler = Callable[[Event], Awaitable[None]]
-DeviceLists = NamedTuple("DeviceLists", changed=List[UserID], left=List[UserID])
-DeviceOTKCount = NamedTuple("DeviceOTKCount", curve25519=int, signed_curve25519=int)
 
 
 class SyncStream(Flag):
@@ -61,7 +62,7 @@ class InternalEventType(Enum):
 
 class Client(ClientAPI):
     """Client is a high-level wrapper around the client API."""
-    store: ClientStore
+    store: SyncStore
     global_event_handlers: List[Tuple[EventHandler, bool]]
     event_handlers: Dict[Union[EventType, InternalEventType], List[Tuple[EventHandler, bool]]]
     dispatchers: Dict[Type['Dispatcher'], 'Dispatcher']
@@ -70,9 +71,11 @@ class Client(ClientAPI):
     ignore_first_sync: bool
     presence: PresenceState
 
-    def __init__(self, *args, store: ClientStore = None, **kwargs):
+    crypto: Optional['OlmMachine']
+
+    def __init__(self, *args, store: SyncStore = None, crypto: 'OlmMachine' = None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.store = store or MemoryClientStore()
+        self.store = store or MemorySyncStore()
         self.global_event_handlers = []
         self.event_handlers = {}
         self.dispatchers = {}
@@ -80,6 +83,7 @@ class Client(ClientAPI):
         self.ignore_initial_sync = False
         self.ignore_first_sync = False
         self.presence = PresenceState.ONLINE
+        self.crypto = crypto
 
     def on(self, var: Union[EventHandler, EventType, InternalEventType]
            ) -> Union[EventHandler, Callable[[EventHandler], EventHandler]]:
@@ -333,7 +337,7 @@ class Client(ClientAPI):
                 self.log.exception(f"Sync request errored, waiting {fail_sleep}"
                                    " seconds before continuing")
                 await self.run_internal_event(InternalEventType.SYNC_ERRORED, error=e,
-                                                   sleep_for=fail_sleep)
+                                              sleep_for=fail_sleep)
                 await asyncio.sleep(fail_sleep, loop=self.loop)
                 if fail_sleep < 320:
                     fail_sleep *= 2

@@ -6,8 +6,9 @@
 from abc import ABC, abstractmethod
 import asyncio
 
-from .api.types import EventType, StateEvent, Membership
-from .client import Client, InternalEventType, SyncStream
+from mautrix.types import EventType, StateEvent, Membership
+
+from .client import Client, InternalEventType
 
 
 class Dispatcher(ABC):

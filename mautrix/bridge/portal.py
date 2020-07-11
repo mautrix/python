@@ -9,7 +9,8 @@ import asyncio
 import logging
 
 from mautrix.appservice import AppService, IntentAPI
-from mautrix.types import RoomID, EventID, MessageEventContent, EventType
+from mautrix.types import (RoomID, EventID, MessageEventContent, EventType, EncryptionAlgorithm,
+                           RoomEncryptionStateEventContent as Encryption)
 from mautrix.util.logging import TraceLogger
 
 if TYPE_CHECKING:
@@ -33,9 +34,8 @@ class BasePortal(ABC):
         try:
             await self.main_intent.invite_user(self.mxid, self.az.bot_mxid)
             await self.az.intent.join_room_by_id(self.mxid)
-            await self.main_intent.send_state_event(self.mxid, EventType.ROOM_ENCRYPTION, {
-                "algorithm": "m.megolm.v1.aes-sha2"
-            })
+            await self.main_intent.send_state_event(self.mxid, EventType.ROOM_ENCRYPTION,
+                                                    Encryption(EncryptionAlgorithm.MEGOLM_V1))
         except Exception:
             self.log.warning(f"Failed to enable end-to-bridge encryption", exc_info=True)
             return False

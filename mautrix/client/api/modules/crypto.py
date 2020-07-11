@@ -7,9 +7,9 @@ from typing import List, Dict, Any, Optional, Union, Iterable
 
 from mautrix.errors import MatrixResponseError
 from mautrix.api import Method, Path
+from mautrix.types import (UserID, DeviceID, EncryptionKeyAlgorithm, ClaimKeysResponse, SyncToken,
+                           QueryKeysResponse, EventType, ToDeviceEventContent, Serializable)
 
-from ..types import (UserID, DeviceID, EncryptionKeyAlgorithm, ClaimKeysResponse, QueryKeysResponse,
-                     EventType, ToDeviceEventContent, SyncToken, Serializable)
 from ..base import BaseClientAPI
 
 

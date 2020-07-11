@@ -7,8 +7,9 @@ from typing import Optional
 import logging
 import asyncio
 
-from mautrix.client import Client, InternalEventType, DeviceOTKCount, DeviceLists
-from mautrix.types import StateEvent, ToDeviceEvent, Membership, EventType, EncryptionAlgorithm
+from mautrix.client import Client, InternalEventType
+from mautrix.types import (StateEvent, ToDeviceEvent, Membership, EventType, EncryptionAlgorithm,
+                           DeviceOTKCount, DeviceLists)
 from mautrix.util.logging import TraceLogger
 
 from .store import CryptoStore, StateStore

@@ -17,4 +17,3 @@ class ClientAPI(ClientAuthenticationMethods, FilteringMethods, EventMethods, Roo
     ClientAPI is a medium-level wrapper around the HTTPAPI that provides many easy-to-use
     functions for accessing the client-server API.
     """
-    pass

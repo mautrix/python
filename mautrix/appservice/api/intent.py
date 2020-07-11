@@ -5,17 +5,19 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Dict, Awaitable, List, Tuple, Union, TYPE_CHECKING
 from urllib.parse import quote as urllib_quote
+import asyncio
 
-from ...api import Method, Path
-from ...types import (StateEvent, EventType, StateEventContent, EventID, ContentURI,
-                      MessageEventContent, UserID, RoomID, PresenceState,
-                      RoomAvatarStateEventContent, RoomNameStateEventContent,
-                      RoomTopicStateEventContent, PowerLevelStateEventContent,
-                      RoomPinnedEventsStateEventContent, Membership, Member,
-                      MemberStateEventContent)
-from ...client import ClientAPI
-from ...errors import MForbidden, MBadState, MatrixRequestError, IntentError
-from ..state_store import StateStore
+from mautrix.api import Method, Path
+from mautrix.types import (StateEvent, EventType, StateEventContent, EventID, ContentURI,
+                           MessageEventContent, UserID, RoomID, PresenceState,
+                           RoomAvatarStateEventContent, RoomNameStateEventContent,
+                           RoomTopicStateEventContent, PowerLevelStateEventContent,
+                           RoomPinnedEventsStateEventContent, Membership, Member,
+                           MemberStateEventContent)
+from mautrix.client import ClientAPI
+from mautrix.errors import MForbidden, MBadState, MatrixRequestError, IntentError
+
+from ..state_store import ASStateStore
 
 try:
     import magic
@@ -61,7 +63,7 @@ class IntentAPI(ClientAPI):
     api: 'AppServiceAPI'
 
     def __init__(self, mxid: UserID, api: 'AppServiceAPI', bot: 'IntentAPI' = None,
-                 state_store: StateStore = None):
+                 state_store: ASStateStore = None):
         super().__init__(mxid=mxid, api=api)
         self.bot = bot
         self.log = api.base_log.getChild("intent")
@@ -154,16 +156,16 @@ class IntentAPI(ClientAPI):
         """
         try:
             ok_states = (Membership.INVITE, Membership.JOIN)
-            do_invite = (not check_cache
-                         or self.state_store.get_membership(room_id, user_id) not in ok_states)
+            do_invite = (not check_cache or (await self.state_store.get_membership(room_id, user_id)
+                                             not in ok_states))
             if do_invite:
                 await super().invite_user(room_id, user_id)
-                self.state_store.invited(room_id, user_id)
+                await self.state_store.invited(room_id, user_id)
         except MatrixRequestError as e:
             if e.errcode != "M_FORBIDDEN":
                 raise IntentError(f"Failed to invite {user_id} to {room_id}", e)
             if "is already in the room" in e.message:
-                self.state_store.joined(room_id, user_id)
+                await self.state_store.joined(room_id, user_id)
 
     def set_room_avatar(self, room_id: RoomID, avatar_url: Optional[ContentURI], **kwargs
                         ) -> Awaitable[EventID]:
@@ -184,13 +186,13 @@ class IntentAPI(ClientAPI):
         await self.ensure_joined(room_id)
         if not ignore_cache:
             try:
-                levels = self.state_store.get_power_levels(room_id)
+                levels = await self.state_store.get_power_levels(room_id)
             except KeyError:
                 levels = None
             if levels:
                 return levels
         levels = await self.get_state_event(room_id, EventType.ROOM_POWER_LEVELS)
-        self.state_store.set_power_levels(room_id, levels)
+        await self.state_store.set_power_levels(room_id, levels)
         return levels
 
     async def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent, **kwargs
@@ -198,7 +200,7 @@ class IntentAPI(ClientAPI):
         response = await self.send_state_event(room_id, EventType.ROOM_POWER_LEVELS, content,
                                                **kwargs)
         if response:
-            self.state_store.set_power_levels(room_id, content)
+            await self.state_store.set_power_levels(room_id, content)
         return response
 
     async def get_pinned_messages(self, room_id: RoomID) -> List[EventID]:
@@ -240,7 +242,7 @@ class IntentAPI(ClientAPI):
 
     async def get_room_member_info(self, room_id: RoomID, user_id: UserID, ignore_cache=False
                                    ) -> Member:
-        member = self.state_store.get_member(room_id, user_id)
+        member = await self.state_store.get_member(room_id, user_id)
         if not member.membership or ignore_cache:
             member = await self.get_state_event(room_id, EventType.ROOM_MEMBER, user_id)
         return member
@@ -293,30 +295,31 @@ class IntentAPI(ClientAPI):
                                state_key: Optional[str] = "", **kwargs) -> EventID:
         await self._ensure_has_power_level_for(room_id, event_type)
         event_id = await super().send_state_event(room_id, event_type, content, state_key, **kwargs)
-        self.state_store.update_state(StateEvent(type=event_type, room_id=room_id,
-                                                 event_id=event_id, sender=self.mxid,
-                                                 state_key=state_key, timestamp=0, content=content))
+        fake_event = StateEvent(type=event_type, room_id=room_id, event_id=event_id,
+                                sender=self.mxid, state_key=state_key, timestamp=0, content=content)
+        await self.state_store.update_state(fake_event)
         return event_id
 
     async def get_state_event(self, room_id: RoomID, event_type: EventType,
                               state_key: Optional[str] = "") -> StateEventContent:
         event = await super().get_state_event(room_id, event_type, state_key)
-        self.state_store.update_state(StateEvent(type=event_type, room_id=room_id,
-                                                 event_id=EventID(""), sender=UserID(""),
-                                                 state_key=state_key, timestamp=0, content=event))
+        fake_event = StateEvent(type=event_type, room_id=room_id, event_id=EventID(""),
+                                sender=UserID(""), state_key=state_key, timestamp=0, content=event)
+        await self.state_store.update_state(fake_event)
         return event
 
     async def get_joined_members(self, room_id: RoomID) -> Dict[UserID, Member]:
         members = await super().get_joined_members(room_id)
+        tasks = []
         for user_id, member in members.items():
             member.membership = Membership.JOIN
-            self.state_store.set_member(room_id, user_id, member)
+            tasks.append(self.state_store.set_member(room_id, user_id, member))
+        await asyncio.gather(*tasks)
         return members
 
     async def get_members(self, room_id: RoomID) -> List[StateEvent]:
         member_events = await super().get_members(room_id)
-        for evt in member_events:
-            self.state_store.update_state(evt)
+        await asyncio.gather(*[self.state_store.update_state(evt) for evt in member_events])
         return member_events
 
     async def get_room_members(self, room_id: RoomID,
@@ -334,7 +337,7 @@ class IntentAPI(ClientAPI):
             raise ValueError("Room ID not given")
         await self.ensure_registered()
         try:
-            self.state_store.left(room_id, self.mxid)
+            await self.state_store.left(room_id, self.mxid)
             await super().leave_room(room_id)
         except MatrixRequestError as e:
             if "not in room" not in e.message:
@@ -342,8 +345,7 @@ class IntentAPI(ClientAPI):
 
     async def get_state(self, room_id: RoomID) -> List[StateEvent]:
         state = await super().get_state(room_id)
-        for event in state:
-            self.state_store.update_state(event)
+        await asyncio.gather(*[self.state_store.update_state(evt) for evt in state])
         return state
 
     async def mark_read(self, room_id: RoomID, event_id: EventID) -> None:
@@ -357,20 +359,19 @@ class IntentAPI(ClientAPI):
     async def ensure_joined(self, room_id: RoomID, ignore_cache: bool = False) -> None:
         if not room_id:
             raise ValueError("Room ID not given")
-        if not ignore_cache and self.state_store.is_joined(room_id, self.mxid):
+        if not ignore_cache and await self.state_store.is_joined(room_id, self.mxid):
             return
         await self.ensure_registered()
         try:
             await self.join_room(room_id, max_retries=0)
-            self.state_store.joined(room_id, self.mxid)
+            await self.state_store.joined(room_id, self.mxid)
         except MForbidden as e:
             if not self.bot:
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e
             try:
                 await self.bot.invite_user(room_id, self.mxid)
                 await self.join_room(room_id, max_retries=0)
-                self.state_store.joined(room_id, self.mxid)
-                return
+                await self.state_store.joined(room_id, self.mxid)
             except MatrixRequestError as e2:
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e2
         except MBadState as e:
@@ -380,8 +381,7 @@ class IntentAPI(ClientAPI):
                 await self.bot.unban_user(room_id, self.mxid)
                 await self.bot.invite_user(room_id, self.mxid)
                 await self.join_room(room_id, max_retries=0)
-                self.state_store.joined(room_id, self.mxid)
-                return
+                await self.state_store.joined(room_id, self.mxid)
             except MatrixRequestError as e2:
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e2
         except MatrixRequestError as e:
@@ -393,7 +393,7 @@ class IntentAPI(ClientAPI):
         return self.api.request(Method.POST, Path.register, content, query_params=query_params)
 
     async def ensure_registered(self) -> None:
-        if self.state_store.is_registered(self.mxid):
+        if await self.state_store.is_registered(self.mxid):
             return
         try:
             await self._register()
@@ -402,7 +402,7 @@ class IntentAPI(ClientAPI):
                 raise IntentError(f"Failed to register {self.mxid}", e)
                 # self.log.exception(f"Failed to register {self.mxid}!")
                 # return
-        self.state_store.registered(self.mxid)
+        await self.state_store.registered(self.mxid)
 
     async def _ensure_has_power_level_for(self, room_id: RoomID, event_type: EventType) -> None:
         if not room_id:
@@ -410,9 +410,9 @@ class IntentAPI(ClientAPI):
         elif not event_type:
             raise ValueError("Event type not given")
 
-        if not self.state_store.has_power_levels(room_id):
-            await self.get_power_levels(room_id)
-        if not self.state_store.has_power_level(room_id, self.mxid, event_type):
+        if not await self.state_store.has_power_levels_cached(room_id):
+            await self.get_power_levels(room_id, ignore_cache=True)
+        if not await self.state_store.has_power_level(room_id, self.mxid, event_type):
             # TODO implement something better
             raise IntentError(f"Power level of {self.mxid} is not enough "
                               f"for {event_type} in {room_id}")

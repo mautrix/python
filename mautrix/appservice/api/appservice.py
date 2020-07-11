@@ -7,14 +7,15 @@ from typing import Optional, Dict, Awaitable, Union, Any, TYPE_CHECKING
 from datetime import datetime, timezone
 import asyncio
 
-from ...api import HTTPAPI, Method, PathBuilder
-from ...types import UserID
+from mautrix.types import UserID
+from mautrix.api import HTTPAPI, Method, PathBuilder
+
 from .intent import IntentAPI
 
 if TYPE_CHECKING:
     from logging import Logger
     from aiohttp import ClientSession
-    from ..state_store import StateStore
+    from ..state_store import ASStateStore
 
 
 class AppServiceAPI(HTTPAPI):
@@ -27,7 +28,7 @@ class AppServiceAPI(HTTPAPI):
     identity: Optional[UserID]
     bot_mxid: UserID
 
-    state_store: 'StateStore'
+    state_store: 'ASStateStore'
     txn_id: int
     children: Dict[str, 'ChildAppServiceAPI']
     real_users: Dict[str, 'AppServiceAPI']
@@ -39,7 +40,7 @@ class AppServiceAPI(HTTPAPI):
 
     def __init__(self, base_url: str, bot_mxid: UserID = None, token: str = None,
                  identity: Optional[UserID] = None, log: 'Logger' = None,
-                 state_store: 'StateStore' = None, client_session: 'ClientSession' = None,
+                 state_store: 'ASStateStore' = None, client_session: 'ClientSession' = None,
                  child: bool = False, real_user: bool = False,
                  real_user_content_key: Optional[str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:

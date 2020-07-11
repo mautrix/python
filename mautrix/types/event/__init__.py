@@ -14,9 +14,9 @@ from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaM
 from .reaction import ReactionEventContent, ReactionEvent
 from .state import (PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
                     AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
-                    RoomNameStateEventContent, RoomTopicStateEventContent,
+                    RoomNameStateEventContent, RoomTopicStateEventContent, StateEventContent,
                     RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
-                    RoomTombstoneEventContent, StateEventContent)
+                    RoomTombstoneStateEventContent, RoomEncryptionStateEventContent)
 from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                            RoomTagAccountDataEventContent)
 from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, PresenceState,

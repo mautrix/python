@@ -7,7 +7,7 @@ from typing import Optional, List, Dict, Union
 from attr import dataclass
 import attr
 
-from .....api import JSON
+from mautrix.api import JSON
 from ..primitive import UserID, EventID, ContentURI, RoomID, RoomAlias
 from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
 from .base import BaseRoomEvent, BaseUnsigned, EventType
@@ -115,13 +115,13 @@ class RoomPinnedEventsStateEventContent(SerializableAttrs['RoomPinnedEventsState
 
 
 @dataclass
-class RoomTombstoneEventContent(SerializableAttrs['RoomTombstoneEventContent']):
+class RoomTombstoneStateEventContent(SerializableAttrs['RoomID, UserID']):
     body: str = None
     replacement_room: RoomID = None
 
 
 @dataclass
-class EncryptionEventContent(SerializableAttrs['EncryptionEventContent']):
+class RoomEncryptionStateEventContent(SerializableAttrs['RoomEncryptionStateEventContent']):
     algorithm: EncryptionAlgorithm = None
     rotation_period_ms: int = 604800000
     rotation_period_msgs: int = 100
@@ -131,7 +131,7 @@ StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
                           AliasesStateEventContent, CanonicalAliasStateEventContent,
                           RoomNameStateEventContent, RoomAvatarStateEventContent,
                           RoomTopicStateEventContent, RoomPinnedEventsStateEventContent,
-                          RoomTombstoneEventContent, EncryptionEventContent, Obj]
+                          RoomTombstoneStateEventContent, RoomEncryptionStateEventContent, Obj]
 
 
 @dataclass
@@ -184,8 +184,8 @@ state_event_content_map = {
     EventType.ROOM_NAME: RoomNameStateEventContent,
     EventType.ROOM_AVATAR: RoomAvatarStateEventContent,
     EventType.ROOM_TOPIC: RoomTopicStateEventContent,
-    EventType.ROOM_TOMBSTONE: RoomTombstoneEventContent,
-    EventType.ROOM_ENCRYPTION: EncryptionEventContent,
+    EventType.ROOM_TOMBSTONE: RoomTombstoneStateEventContent,
+    EventType.ROOM_ENCRYPTION: RoomEncryptionStateEventContent,
 }
 
 

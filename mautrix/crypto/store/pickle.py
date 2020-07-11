@@ -3,13 +3,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Type, Dict, Tuple, List, Any, TYPE_CHECKING
-import logging
-import pickle
-import time
+from typing import Type, Dict, Tuple, List, Any, TYPE_CHECKING
 
 from mautrix.types import DeviceID, SyncToken, IdentityKey, SessionID, EventID, UserID, RoomID
-from mautrix.util.logging import TraceLogger
+from mautrix.util.file_store import FileStore
 
 from .. import OlmAccount, Session, InboundGroupSession, OutboundGroupSession, DeviceIdentity
 from .memory import MemoryCryptoStore
@@ -43,29 +40,19 @@ if TYPE_CHECKING:
         def pickle(self, passphrase: str) -> bytes: ...
 
 
-class PickleCryptoStore(MemoryCryptoStore):
-    log: TraceLogger
+class PickleCryptoStore(MemoryCryptoStore, FileStore):
     path: str
     save_interval: float
     _last_save: float
 
-    def __init__(self, account_id: str, pickle_key: str, path: str, save_interval: float = 60.0,
-                 log: Optional[TraceLogger] = None) -> None:
-        super().__init__(account_id, pickle_key)
-        self.path = path
-        self._last_save = time.monotonic()
-        self.save_interval = save_interval
-        self.log = log or logging.getLogger("mau.crypto.pickle")
+    def __init__(self, account_id: str, pickle_key: str, path: str, save_interval: float = 60.0
+                 ) -> None:
+        MemoryCryptoStore.__init__(self, account_id, pickle_key)
+        FileStore.__init__(self, path=path, save_interval=save_interval, binary=True)
 
-    async def start(self) -> None:
-        try:
-            with open(self.path, "rb") as file:
-                data: 'PickledStore' = pickle.load(file)
-        except FileNotFoundError:
-            return
-        self.log.debug(f"Reading data in pickled crypto store {self.path}")
+    def deserialize(self, data: 'PickledStore') -> None:
         if data.get("version", 0) != 1:
-            raise ValueError("Unsupported pickled crypto store version")
+            raise ValueError("Unsupported file crypto store version")
         self._device_id = data["device_id"]
         self._sync_token = data["sync_token"]
         self._account = self._from_pickle(OlmAccount, data["account"])
@@ -83,9 +70,8 @@ class PickleCryptoStore(MemoryCryptoStore):
         pickle_data = data.pop("pickle")
         return entity_type.from_pickle(pickle_data, passphrase=self.pickle_key, **data)
 
-    async def flush(self) -> None:
-        self.log.debug(f"Writing data to pickled crypto store {self.path}")
-        data: 'PickledStore' = {
+    def serialize(self) -> 'PickledStore':
+        return {
             "version": 1,
             "device_id": self._device_id,
             "sync_token": self._sync_token,
@@ -116,47 +102,40 @@ class PickleCryptoStore(MemoryCryptoStore):
                                             "shared": session.shared}
                                   for room_id, session in self._outbound_sessions.items()}
         }
-        with open(self.path, "wb") as file:
-            pickle.dump(data, file)
-
-    async def _time_limited_flush(self) -> None:
-        if self._last_save + self.save_interval < time.monotonic():
-            await self.flush()
-            self._last_save = time.monotonic()
 
     async def put_device_id(self, device_id: DeviceID) -> None:
         await super().put_device_id(device_id)
-        await self._time_limited_flush()
+        self._time_limited_flush()
 
     async def put_next_batch(self, next_batch: SyncToken) -> None:
         await super().put_next_batch(next_batch)
-        await self._time_limited_flush()
+        self._time_limited_flush()
 
     async def put_account(self, account: OlmAccount) -> None:
         await super().put_account(account)
-        await self.flush()
+        self._save()
 
     async def add_session(self, key: IdentityKey, session: Session) -> None:
         await super().add_session(key, session)
-        await self._time_limited_flush()
+        self._time_limited_flush()
 
     async def put_group_session(self, room_id: RoomID, sender_key: IdentityKey,
                                 session_id: SessionID, session: InboundGroupSession) -> None:
         await super().put_group_session(room_id, sender_key, session_id, session)
-        await self._time_limited_flush()
+        self._time_limited_flush()
 
     async def add_outbound_group_session(self, session: OutboundGroupSession) -> None:
         await super().add_outbound_group_session(session)
-        await self._time_limited_flush()
+        self._time_limited_flush()
 
     async def update_outbound_group_session(self, session: OutboundGroupSession) -> None:
         await super().update_outbound_group_session(session)
-        await self._time_limited_flush()
+        self._time_limited_flush()
 
     async def remove_outbound_group_session(self, room_id: RoomID) -> None:
         await super().remove_outbound_group_session(room_id)
-        await self._time_limited_flush()
+        self._time_limited_flush()
 
     async def put_devices(self, user_id: UserID, devices: Dict[DeviceID, DeviceIdentity]) -> None:
         await super().put_devices(user_id, devices)
-        await self._time_limited_flush()
+        self._time_limited_flush()

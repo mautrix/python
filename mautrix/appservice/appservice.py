@@ -10,10 +10,11 @@ import aiohttp
 import asyncio
 import logging
 
-from ..api import JSON
-from ..types import UserID, RoomAlias, Event
+from mautrix.api import JSON
+from mautrix.types import UserID, RoomAlias
+
 from .api import AppServiceAPI, IntentAPI
-from .state_store import StateStore, JSONStateStore
+from .state_store import ASStateStore, FileASStateStore
 from .as_handler import AppServiceServerMixin
 
 try:
@@ -36,7 +37,7 @@ class AppService(AppServiceServerMixin):
     hs_token: str
     bot_mxid: UserID
     real_user_content_key: str
-    state_store: StateStore
+    state_store: ASStateStore
 
     transactions: Set[str]
 
@@ -56,7 +57,7 @@ class AppService(AppServiceServerMixin):
                  tls_cert: Optional[str] = None, tls_key: Optional[str] = None,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
-                 state_store: StateStore = None, aiohttp_params: Dict = None) -> None:
+                 state_store: ASStateStore = None, aiohttp_params: Dict = None) -> None:
         super().__init__()
         self.server = server
         self.domain = domain
@@ -67,12 +68,11 @@ class AppService(AppServiceServerMixin):
         self.hs_token = hs_token
         self.bot_mxid = UserID(f"@{bot_localpart}:{domain}")
         self.real_user_content_key: str = real_user_content_key
-        if isinstance(state_store, StateStore):
+        if isinstance(state_store, ASStateStore):
             self.state_store = state_store
         else:
             file = state_store if isinstance(state_store, str) else "mx-state.json"
-            self.state_store: JSONStateStore = JSONStateStore(autosave_file=file)
-            self.state_store.load(file)
+            self.state_store = FileASStateStore(path=file, binary=False)
 
         self._http_session = None
         self._intent = None
@@ -91,10 +91,7 @@ class AppService(AppServiceServerMixin):
         self.app.router.add_route("GET", "/_matrix/mau/ready", self._readiness_probe)
         self.register_routes(self.app)
 
-        async def update_state(event: Event):
-            self.state_store.update_state(event)
-
-        self.matrix_event_handler(update_state)
+        self.matrix_event_handler(self.state_store.update_state)
 
     @property
     def http_session(self) -> aiohttp.ClientSession:
@@ -117,6 +114,7 @@ class AppService(AppServiceServerMixin):
         await self.stop()
 
     async def start(self, host: str = "127.0.0.1", port: int = 8080) -> None:
+        await self.state_store.open()
         connector = None
         self.log.debug(f"Starting appservice web server on {host}:{port}")
         if self.server.startswith("https://") and not self.verify_ssl:
@@ -141,6 +139,7 @@ class AppService(AppServiceServerMixin):
         self._intent = None
         await self._http_session.close()
         self._http_session = None
+        await self.state_store.close()
 
     async def _liveness_probe(self, _: web.Request) -> web.Response:
         return web.Response(status=200 if self.live else 500, text="{}")

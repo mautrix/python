@@ -190,7 +190,7 @@ class Program:
         First lifecycle method called inside the asyncio event loop. Extend this if you want more
         control over startup than just filling startup_actions in the prepare step.
         """
-        await asyncio.gather(*(self.startup_actions or []), loop=self.loop)
+        await asyncio.gather(*(self.startup_actions or []))
 
     def prepare_stop(self) -> None:
         """
@@ -203,7 +203,7 @@ class Program:
         Lifecycle method used to stop things that need awaiting to stop. Extend this if you want
         more control over shutdown than just filling shutdown_actions in the prepare_stop method.
         """
-        await asyncio.gather(*(self.shutdown_actions or []), loop=self.loop)
+        await asyncio.gather(*(self.shutdown_actions or []))
 
     def prepare_shutdown(self) -> None:
         """Lifecycle method that is called right before ``sys.exit(0)``."""

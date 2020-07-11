@@ -3,8 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Optional, Union, List, TYPE_CHECKING
-from abc import ABC, abstractmethod
+from typing import Tuple, Optional, Union, TYPE_CHECKING
 import logging
 import asyncio
 import os.path
@@ -35,7 +34,7 @@ except ImportError:
     EncryptionManager = None
 
 
-class BaseMatrixHandler(ABC):
+class BaseMatrixHandler:
     log: TraceLogger = logging.getLogger("mau.mx")
     az: AppService
     commands: CommandProcessor
@@ -52,6 +51,7 @@ class BaseMatrixHandler(ABC):
                  bridge: Optional['Bridge'] = None) -> None:
         self.az = az
         self.config = config
+        self.bridge = bridge
         self.commands = command_processor or CommandProcessor(az=az, config=config, loop=loop,
                                                               bridge=bridge)
         self.az.matrix_event_handler(self.int_handle_event)
@@ -68,7 +68,7 @@ class BaseMatrixHandler(ABC):
                     user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
                     login_shared_secret=self.config["bridge.login_shared_secret"],
                     homeserver_address=self.config["homeserver.address"],
-                    db_url=self._get_db_url(config), get_portal=self.get_portal, loop=loop)
+                    db_url=self._get_db_url(config), get_portal=self.bridge.get_portal, loop=loop)
 
     @staticmethod
     def _get_db_url(config: 'BaseBridgeConfig') -> str:
@@ -129,18 +129,6 @@ class BaseMatrixHandler(ABC):
     async def init_encryption(self) -> None:
         if self.e2ee:
             await self.e2ee.start()
-
-    @abstractmethod
-    async def get_user(self, user_id: UserID) -> 'BaseUser':
-        pass
-
-    @abstractmethod
-    async def get_portal(self, room_id: RoomID) -> 'BasePortal':
-        pass
-
-    @abstractmethod
-    async def get_puppet(self, user_id: UserID) -> 'BasePuppet':
-        pass
 
     @staticmethod
     async def allow_message(user: 'BaseUser') -> bool:
@@ -248,7 +236,7 @@ class BaseMatrixHandler(ABC):
     async def int_handle_invite(self, room_id: RoomID, user_id: UserID, invited_by: UserID,
                                 event_id: EventID) -> None:
         self.log.debug(f"{invited_by} invited {user_id} to {room_id}")
-        inviter = await self.get_user(invited_by)
+        inviter = await self.bridge.get_user(invited_by)
         if inviter is None:
             self.log.exception(f"Failed to find user with Matrix ID {invited_by}")
             return
@@ -258,7 +246,7 @@ class BaseMatrixHandler(ABC):
         elif not await self.allow_command(inviter):
             return
 
-        puppet = await self.get_puppet(user_id)
+        puppet = await self.bridge.get_puppet(user_id)
         if puppet:
             await self.handle_puppet_invite(room_id, puppet, inviter, event_id)
             return
@@ -275,7 +263,7 @@ class BaseMatrixHandler(ABC):
 
     async def handle_message(self, room_id: RoomID, user_id: UserID, message: MessageEventContent,
                              event_id: EventID) -> None:
-        sender = await self.get_user(user_id)
+        sender = await self.bridge.get_user(user_id)
         if not sender or not await self.allow_message(sender):
             self.log.debug(f"Ignoring message {event_id} from {user_id} to {room_id}:"
                            " User is not whitelisted.")
@@ -287,7 +275,7 @@ class BaseMatrixHandler(ABC):
             message.trim_reply_fallback()
 
         is_command, text = self.is_command(message)
-        portal = await self.get_portal(room_id)
+        portal = await self.bridge.get_portal(room_id)
         if not is_command and portal and await self.allow_bridging_message(sender, portal):
             await portal.handle_matrix_message(sender, message, event_id)
             return

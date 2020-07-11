@@ -5,15 +5,15 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Awaitable, Dict, Optional, List
 
-from ...api import Method, JSON, Path
-from ...errors import MatrixResponseError
-from .types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection, StateEvent,
-                    EventType, StateEventContent, MessageEventContent, Member, Event, ContentURI,
-                    PaginatedMessages, SerializerError, MessageType, RelatesTo, Format, ImageInfo,
-                    BaseFileInfo, TextMessageEventContent, MediaMessageEventContent, PresenceState,
-                    EventContent, ReactionEventContent, RelationType)
-from .types.event.state import state_event_content_map
-from .types.util import Obj, Serializable
+from mautrix.api import Method, JSON, Path
+from mautrix.errors import MatrixResponseError
+from mautrix.types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection,
+                           StateEvent, EventType, StateEventContent, MessageEventContent, Member,
+                           Event, ContentURI, PaginatedMessages, SerializerError, MessageType,
+                           RelatesTo, Format, ImageInfo, BaseFileInfo, TextMessageEventContent,
+                           MediaMessageEventContent, PresenceState, EventContent,
+                           ReactionEventContent, RelationType, Obj, Serializable)
+from mautrix.types.event.state import state_event_content_map
 from .base import BaseClientAPI
 
 

@@ -7,9 +7,9 @@ from typing import Optional, AsyncIterable, Union
 
 from mautrix.api import Method, MediaPath
 from mautrix.errors import MatrixResponseError
+from mautrix.types import ContentURI, MediaRepoConfig, SerializerError, MXOpenGraph
 
 from ..base import BaseClientAPI
-from ..types import ContentURI, MediaRepoConfig, SerializerError, MXOpenGraph
 
 try:
     import magic

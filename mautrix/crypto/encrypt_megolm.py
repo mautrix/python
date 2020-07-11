@@ -3,8 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Dict, List, Union, NewType
+from typing import Any, Dict, List, Union
 from collections import defaultdict
+from datetime import timedelta
 import json
 
 from mautrix.types import (EncryptedMegolmEventContent, EventType, UserID, DeviceID, Serializable,
@@ -64,6 +65,16 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
             raise SessionShareError("Group session has already been shared")
         if not session or session.expired:
             session = await self._new_outbound_group_session(room_id)
+
+        encryption_info = await self.state_store.get_encryption_info(room_id)
+        if encryption_info:
+            if encryption_info.algorithm != EncryptionAlgorithm.MEGOLM_V1:
+                raise SessionShareError("Room encryption algorithm is not supported")
+            session.max_messages = encryption_info.rotation_period_msgs or session.max_messages
+            session.max_age = (timedelta(milliseconds=encryption_info.rotation_period_ms)
+                               if encryption_info.rotation_period_ms else session.max_age)
+            self.log.debug("Got stored encryption state event and configured session to rotate "
+                           f"after {session.max_messages} messages or {session.max_age}")
 
         share_key_msgs = defaultdict(lambda: {})
         withhold_key_msgs = defaultdict(lambda: {})

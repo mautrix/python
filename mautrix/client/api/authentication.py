@@ -5,9 +5,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import List, Optional, Union
 
-from ...errors import MatrixResponseError
-from ...api import Method, Path
-from .types import UserID, LoginType, UserIdentifier, LoginResponse, LoginFlow, MatrixUserIdentifier
+from mautrix.errors import MatrixResponseError
+from mautrix.api import Method, Path
+from mautrix.types import (UserID, LoginType, UserIdentifier, LoginResponse, LoginFlow,
+                           MatrixUserIdentifier)
+
 from .base import BaseClientAPI
 
 

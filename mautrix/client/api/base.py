@@ -9,8 +9,7 @@ import asyncio
 import logging
 
 from mautrix.api import HTTPAPI
-
-from .types import UserID, DeviceID
+from mautrix.types import UserID, DeviceID
 
 
 class BaseClientAPI:

@@ -8,13 +8,13 @@ import asyncio
 
 from multidict import CIMultiDict
 
-from ...errors import MatrixResponseError, MatrixRequestError, MRoomInUse
-from ...api import Method, JSON, Path
-from .types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility, RoomAliasInfo,
-                    RoomCreatePreset, DirectoryPaginationToken, RoomDirectoryResponse, Serializable,
-                    StrippedStateEvent)
-from .base import BaseClientAPI
+from mautrix.errors import MatrixResponseError, MatrixRequestError, MRoomInUse
+from mautrix.api import Method, JSON, Path
+from mautrix.types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility,
+                           RoomAliasInfo, RoomCreatePreset, DirectoryPaginationToken,
+                           RoomDirectoryResponse, Serializable, StrippedStateEvent)
 
+from .base import BaseClientAPI
 
 InitialState = List[Union[StateEvent, StrippedStateEvent, Dict[str, Any]]]
 

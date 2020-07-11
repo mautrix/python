@@ -10,7 +10,7 @@ import re
 from attr import dataclass
 import attr
 
-from .....api import JSON
+from mautrix.api import JSON
 from ..util import ExtensibleEnum, SerializableAttrs, Serializable, Obj, deserializer, no_value
 from ..primitive import ContentURI, EventID
 from .base import BaseRoomEvent, BaseUnsigned

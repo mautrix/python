@@ -6,13 +6,13 @@
 from typing import Dict, Optional, List, Tuple
 
 from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
-from mautrix.client import ClientStore
+from mautrix.client.state_store import SyncStore
 
 from .. import OlmAccount, Session, InboundGroupSession, OutboundGroupSession, DeviceIdentity
 from .abstract import CryptoStore
 
 
-class MemoryCryptoStore(CryptoStore, ClientStore):
+class MemoryCryptoStore(CryptoStore, SyncStore):
     _device_id: Optional[DeviceID]
     _sync_token: Optional[SyncToken]
     _account: Optional[OlmAccount]

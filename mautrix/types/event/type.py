@@ -6,7 +6,7 @@
 from typing import Any, Dict, Optional
 import json
 
-from .....api import JSON
+from mautrix.api import JSON
 from ..util import SerializableEnum, Serializable
 
 

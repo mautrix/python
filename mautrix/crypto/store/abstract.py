@@ -6,7 +6,8 @@
 from typing import Optional, Dict, List
 from abc import ABC, abstractmethod
 
-from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
+from mautrix.types import (SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID,
+                           RoomEncryptionStateEventContent)
 
 from .. import OlmAccount, Session, InboundGroupSession, OutboundGroupSession, DeviceIdentity
 
@@ -14,6 +15,10 @@ from .. import OlmAccount, Session, InboundGroupSession, OutboundGroupSession, D
 class StateStore(ABC):
     @abstractmethod
     async def is_encrypted(self, room_id: RoomID) -> bool: ...
+
+    @abstractmethod
+    async def get_encryption_info(self, room_id: RoomID
+                                  ) -> Optional[RoomEncryptionStateEventContent]: ...
 
     @abstractmethod
     async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]: ...
@@ -35,13 +40,13 @@ class CryptoStore(ABC):
     @abstractmethod
     async def put_device_id(self, device_id: DeviceID) -> None: ...
 
-    async def start(self) -> None:
+    async def open(self) -> None:
         """
         Open the store. If the store doesn't require opening any resources beforehand or only opens
         when flushing, this can be a no-op
         """
 
-    async def stop(self) -> None:
+    async def close(self) -> None:
         """
         Close the store when it will no longer be used. The default implementation will simply call
         .flush(). If the store doesn't keep any persistent resources, the default implementation is

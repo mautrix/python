@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Awaitable, Union, List, NewType
+from typing import Optional, Dict, Union, TYPE_CHECKING
 from urllib.parse import quote as urllib_quote
 from json.decoder import JSONDecodeError
 from enum import Enum
@@ -15,9 +15,10 @@ import asyncio
 from aiohttp import ClientSession
 from aiohttp.client_exceptions import ContentTypeError, ClientError
 
-from ..errors import make_request_error, MatrixConnectionError
+from mautrix.errors import make_request_error, MatrixConnectionError
 
-JSON = NewType("JSON", Union[str, int, float, bool, None, Dict[str, 'JSON'], List['JSON']])
+if TYPE_CHECKING:
+    from mautrix.types import JSON
 
 
 class APIPath(Enum):

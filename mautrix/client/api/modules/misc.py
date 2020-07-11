@@ -7,9 +7,9 @@ from typing import Optional
 
 from mautrix.errors import MatrixResponseError
 from mautrix.api import Method, Path
+from mautrix.types import RoomID, UserID, EventID, PresenceEventContent, PresenceState, SerializerError
 
 from ..base import BaseClientAPI
-from ..types import RoomID, UserID, EventID, PresenceEventContent, PresenceState, SerializerError
 
 
 class MiscModuleMethods(BaseClientAPI):

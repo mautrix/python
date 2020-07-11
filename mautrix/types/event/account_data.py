@@ -7,7 +7,7 @@ from typing import Dict, Union
 from attr import dataclass
 import attr
 
-from .....api import JSON
+from mautrix.api import JSON
 from ..util import SerializableAttrs, Obj, deserializer
 from .base import EventType, BaseEvent
 

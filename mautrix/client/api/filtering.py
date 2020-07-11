@@ -3,10 +3,11 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from ...errors import MatrixResponseError
-from ...api import Method, Path
+from mautrix.errors import MatrixResponseError
+from mautrix.api import Method, Path
+from mautrix.types import Filter, FilterID, Serializable
+
 from .base import BaseClientAPI
-from .types import Filter, FilterID, Serializable
 
 
 class FilteringMethods(BaseClientAPI):

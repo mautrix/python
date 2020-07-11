@@ -6,7 +6,7 @@
 from typing import Dict, Optional, List
 
 from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
-from mautrix.client import ClientStore
+from mautrix.client.state_store import SyncStore
 from mautrix.util.async_db import Database
 from mautrix.util.logging import TraceLogger
 
@@ -16,7 +16,7 @@ from ..abstract import CryptoStore
 from .upgrade import upgrade_table
 
 
-class PgCryptoStore(CryptoStore, ClientStore):
+class PgCryptoStore(CryptoStore, SyncStore):
     upgrade_table = upgrade_table
 
     db: Database

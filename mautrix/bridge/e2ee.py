@@ -12,13 +12,13 @@ import hmac
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
                            RoomID, Serializable, JSON, MessageEvent, UserID, EncryptedEvent,
                            EncryptedMegolmEventContent)
-from mautrix.client import Client, ClientStore
+from mautrix.client import Client, SyncStore
+from mautrix.client.state_store.sqlalchemy import UserProfile
 from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore, EncryptionError,
                             PickleCryptoStore)
 from mautrix.util.logging import TraceLogger
 
-from .db import UserProfile
-from .db.crypto_state_store import GetPortalFunc, PgCryptoStateStore, SQLCryptoStateStore
+from .crypto_state_store import GetPortalFunc, PgCryptoStateStore, SQLCryptoStateStore
 
 try:
     from mautrix.util.async_db import Database
@@ -32,7 +32,7 @@ class EncryptionManager:
 
     client: Client
     crypto: OlmMachine
-    crypto_store: Union[CryptoStore, ClientStore]
+    crypto_store: Union[CryptoStore, SyncStore]
     crypto_db: Optional[Database]
     state_store: StateStore
 
@@ -123,7 +123,7 @@ class EncryptionManager:
                             hashlib.sha512).hexdigest()
         if self.crypto_db:
             await self.crypto_db.start()
-        await self.crypto_store.start()
+        await self.crypto_store.open()
         device_id = await self.crypto_store.get_device_id()
         if device_id:
             self.log.debug(f"Found device ID in database: {device_id}")
@@ -138,7 +138,7 @@ class EncryptionManager:
 
     async def stop(self) -> None:
         self.sync_task.cancel()
-        await self.crypto_store.stop()
+        await self.crypto_store.close()
         if self.crypto_db:
             await self.crypto_db.stop()
 

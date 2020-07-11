@@ -4,17 +4,23 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Type
+from abc import ABC, abstractmethod
 import sys
 
 import sqlalchemy as sql
 from sqlalchemy.engine.base import Engine
 
-from mautrix.appservice import AppService
+from mautrix.types import RoomID, UserID
+from mautrix.appservice import AppService, ASStateStore
+
 from ..util.db import Base
 from ..util.program import Program
-from .db import SQLStateStore
 from .config import BaseBridgeConfig
 from .matrix import BaseMatrixHandler
+from .bridge_state_store import SQLBridgeStateStore
+from .portal import BasePortal
+from .user import BaseUser
+from .puppet import BasePuppet
 
 try:
     import uvloop
@@ -22,11 +28,11 @@ except ImportError:
     uvloop = None
 
 
-class Bridge(Program):
+class Bridge(Program, ABC):
     db: Engine
     az: AppService
-    state_store_class: Type[SQLStateStore] = SQLStateStore
-    state_store: SQLStateStore
+    state_store_class: Type[ASStateStore] = SQLBridgeStateStore
+    state_store: ASStateStore
     config_class: Type[BaseBridgeConfig]
     config: BaseBridgeConfig
     matrix_class: Type[BaseMatrixHandler]
@@ -40,7 +46,7 @@ class Bridge(Program):
                  real_user_content_key: Optional[str] = None,
                  config_class: Type[BaseBridgeConfig] = None,
                  matrix_class: Type[BaseMatrixHandler] = None,
-                 state_store_class: Type[SQLStateStore] = None) -> None:
+                 state_store_class: Type[ASStateStore] = None) -> None:
         super().__init__(module, name, description, command, version, config_class)
         if real_user_content_key:
             self.real_user_content_key = real_user_content_key
@@ -83,7 +89,10 @@ class Bridge(Program):
         print(f"Registration generated and saved to {self.config.registration_path}")
 
     def prepare_appservice(self) -> None:
-        self.state_store = self.state_store_class()
+        if issubclass(self.state_store_class, SQLBridgeStateStore):
+            self.state_store = self.state_store_class(self.get_puppet, self.get_double_puppet)
+        else:
+            self.state_store = self.state_store_class()
         mb = 1024 ** 2
         self.az = AppService(server=self.config["homeserver.address"],
                              domain=self.config["homeserver.domain"],
@@ -133,3 +142,19 @@ class Bridge(Program):
         await super().stop()
         if self.matrix.e2ee:
             await self.matrix.e2ee.stop()
+
+    @abstractmethod
+    async def get_user(self, user_id: UserID) -> 'BaseUser':
+        pass
+
+    @abstractmethod
+    async def get_portal(self, room_id: RoomID) -> 'BasePortal':
+        pass
+
+    @abstractmethod
+    async def get_puppet(self, user_id: UserID, create: bool = False) -> 'BasePuppet':
+        pass
+
+    @abstractmethod
+    async def get_double_puppet(self, user_id: UserID) -> 'BasePuppet':
+        pass
