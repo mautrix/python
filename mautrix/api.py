@@ -121,7 +121,7 @@ class HTTPAPI:
         """
         self.base_url: str = base_url
         self.token: str = token
-        self.log: Optional[logging.Logger] = log or logging.getLogger("mautrix.api")
+        self.log: Optional[logging.Logger] = log or logging.getLogger("mau.http")
         self.loop = loop or asyncio.get_event_loop()
         self.session: ClientSession = client_session or ClientSession(loop=self.loop)
         if txn_id is not None:
