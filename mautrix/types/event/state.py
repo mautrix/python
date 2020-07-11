@@ -7,8 +7,7 @@ from typing import Optional, List, Dict, Union
 from attr import dataclass
 import attr
 
-from mautrix.api import JSON
-from ..primitive import UserID, EventID, ContentURI, RoomID, RoomAlias
+from ..primitive import JSON, UserID, EventID, ContentURI, RoomID, RoomAlias
 from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
 from .base import BaseRoomEvent, BaseUnsigned, EventType
 from .encrypted import EncryptionAlgorithm

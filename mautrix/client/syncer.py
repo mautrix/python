@@ -10,10 +10,9 @@ from time import time
 import asyncio
 
 from mautrix.errors import MUnknownToken
-from mautrix.api import JSON
 from mautrix.types import (EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID,
                            Filter, AccountDataEvent, DeviceLists, DeviceOTKCount, EphemeralEvent,
-                           PresenceState, ToDeviceEvent, SyncToken, UserID)
+                           PresenceState, ToDeviceEvent, SyncToken, UserID, JSON)
 from mautrix.util.logging import TraceLogger
 
 from .state_store import SyncStore, MemorySyncStore

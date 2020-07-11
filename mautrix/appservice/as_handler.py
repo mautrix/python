@@ -10,8 +10,7 @@ from aiohttp import web
 import asyncio
 import logging
 
-from ..api import JSON
-from ..types import UserID, RoomAlias, Event, SerializerError
+from mautrix.types import JSON, UserID, RoomAlias, Event, SerializerError
 
 QueryFunc = Callable[[web.Request], Awaitable[Optional[web.Response]]]
 HandlerFunc = Callable[[Event], Awaitable]

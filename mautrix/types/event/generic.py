@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Union, NewType
 
-from mautrix.api import JSON
+from ..primitive import JSON
 from ..util import deserializer, Obj
 from .base import EventType, GenericEvent
 from .redaction import RedactionEvent, RedactionEventContent

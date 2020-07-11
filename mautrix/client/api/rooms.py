@@ -9,8 +9,8 @@ import asyncio
 from multidict import CIMultiDict
 
 from mautrix.errors import MatrixResponseError, MatrixRequestError, MRoomInUse
-from mautrix.api import Method, JSON, Path
-from mautrix.types import (UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility,
+from mautrix.api import Method, Path
+from mautrix.types import (JSON, UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility,
                            RoomAliasInfo, RoomCreatePreset, DirectoryPaginationToken,
                            RoomDirectoryResponse, Serializable, StrippedStateEvent)
 

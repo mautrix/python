@@ -322,7 +322,7 @@ class BaseMatrixHandler:
 
     async def int_handle_event(self, evt: Event) -> None:
         if isinstance(evt, StateEvent) and evt.type == EventType.ROOM_MEMBER and self.e2ee:
-            await self.e2ee.crypto.handle_member_event(evt)
+            await self.e2ee.handle_member_event(evt)
         if self.filter_matrix_event(evt):
             return
         self.log.trace("Received event: %s", evt)

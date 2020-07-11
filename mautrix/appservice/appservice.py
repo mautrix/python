@@ -10,8 +10,7 @@ import aiohttp
 import asyncio
 import logging
 
-from mautrix.api import JSON
-from mautrix.types import UserID, RoomAlias
+from mautrix.types import JSON, UserID, RoomAlias
 
 from .api import AppServiceAPI, IntentAPI
 from .state_store import ASStateStore, FileASStateStore

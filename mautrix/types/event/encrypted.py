@@ -9,8 +9,7 @@ from attr import dataclass
 import attr
 import sys
 
-from mautrix.api import JSON
-from ..primitive import IdentityKey, SessionID, DeviceID
+from ..primitive import JSON, IdentityKey, SessionID, DeviceID
 from ..util import SerializableAttrs, Serializable, ExtensibleEnum, Obj, deserializer
 from .base import BaseRoomEvent, BaseUnsigned
 from .message import RelatesTo

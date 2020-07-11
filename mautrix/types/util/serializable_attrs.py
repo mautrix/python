@@ -8,7 +8,7 @@ import attr
 import copy
 import sys
 
-from mautrix.api import JSON
+from ..primitive import JSON
 from .serializable import SerializerError, Serializable, GenericSerializable
 from .obj import Obj, Lst
 

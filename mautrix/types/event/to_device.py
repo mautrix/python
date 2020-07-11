@@ -3,14 +3,12 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Union, Optional
+from typing import Union, Optional
 from attr import dataclass
 
-from mautrix.api import JSON
-
 from ..util import SerializableAttrs, Obj, deserializer, ExtensibleEnum
-from ..primitive import UserID, RoomID, SessionID, IdentityKey
-from .encrypted import EncryptionAlgorithm, OlmCiphertext, EncryptedOlmEventContent
+from ..primitive import JSON, UserID, RoomID, SessionID, IdentityKey
+from .encrypted import EncryptionAlgorithm, EncryptedOlmEventContent
 from .base import EventType, BaseEvent
 
 

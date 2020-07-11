@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 import json
 
-from mautrix.api import JSON
+from ..primitive import JSON
 
 T = TypeVar("T")
 

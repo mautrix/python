@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Any, Iterable, Type, Tuple, Optional, cast
 
-from mautrix.api import JSON
+from ..primitive import JSON
 from .serializable import Serializable
 
 

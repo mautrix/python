@@ -5,9 +5,9 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Awaitable, Dict, Optional, List
 
-from mautrix.api import Method, JSON, Path
+from mautrix.api import Method, Path
 from mautrix.errors import MatrixResponseError
-from mautrix.types import (UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection,
+from mautrix.types import (JSON, UserID, RoomID, EventID, FilterID, SyncToken, PaginationDirection,
                            StateEvent, EventType, StateEventContent, MessageEventContent, Member,
                            Event, ContentURI, PaginatedMessages, SerializerError, MessageType,
                            RelatesTo, Format, ImageInfo, BaseFileInfo, TextMessageEventContent,

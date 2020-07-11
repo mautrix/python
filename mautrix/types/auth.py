@@ -7,8 +7,7 @@ from typing import Union, Optional, List
 from attr import dataclass
 import attr
 
-from mautrix.api import JSON
-from .primitive import UserID
+from .primitive import UserID, JSON
 from .util import SerializableAttrs, ExtensibleEnum, deserializer, Obj
 
 

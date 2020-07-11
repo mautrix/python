@@ -2,7 +2,7 @@
 # Modified to add Serializable base
 from typing import Dict, List
 
-from mautrix.api import JSON
+from ..primitive import JSON
 from .serializable import GenericSerializable, Serializable
 
 

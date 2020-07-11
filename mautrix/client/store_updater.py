@@ -17,7 +17,7 @@ class StoreUpdatingAPI(ClientAPI):
     state_store: Optional[StateStore]
 
     def __init__(self, *args, state_store: Optional[StateStore] = None, **kwargs):
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.state_store = state_store
 
     async def get_state(self, room_id: RoomID) -> List[StateEvent]:

@@ -11,7 +11,7 @@ import hmac
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
                            RoomID, Serializable, JSON, MessageEvent, UserID, EncryptedEvent,
-                           EncryptedMegolmEventContent)
+                           EncryptedMegolmEventContent, StateEvent)
 from mautrix.client import Client, SyncStore
 from mautrix.client.state_store.sqlalchemy import UserProfile
 from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore, EncryptionError,
@@ -70,7 +70,7 @@ class EncryptionManager:
         else:
             raise RuntimeError("Unsupported database scheme")
         self.client = Client(base_url=homeserver_address, mxid=self.bot_mxid, loop=self.loop,
-                             store=self.crypto_store)
+                             sync_store=self.crypto_store)
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
 
     async def share_session_lock(self, room_id: RoomID) -> bool:
@@ -93,6 +93,12 @@ class EncryptionManager:
     def _ignore_user(self, user_id: str) -> bool:
         return (user_id.startswith(self._id_prefix) and user_id.endswith(self._id_suffix)
                 and user_id != self.bot_mxid)
+
+    async def handle_member_event(self, evt: StateEvent) -> None:
+        if self._ignore_user(evt.state_key):
+            # We don't want to invalidate group sessions because a ghost left or joined
+            return
+        await self.crypto.handle_member_event(evt)
 
     async def encrypt(self, room_id: RoomID, event_type: EventType,
                       content: Union[Serializable, JSON]

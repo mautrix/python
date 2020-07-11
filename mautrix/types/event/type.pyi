@@ -5,8 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Any, Dict
 
-from mautrix.api import JSON
-from mautrix.types.util import Serializable, SerializableEnum
+from mautrix.types import JSON, Serializable, SerializableEnum
 
 
 class EventType(Serializable):
