@@ -8,8 +8,9 @@ import json
 import olm
 
 from mautrix.types import EncryptedMegolmEventContent, EncryptionAlgorithm, Event, EncryptedEvent
+from mautrix.errors import DecryptionError
 
-from .types import TrustState, DecryptionError
+from .types import TrustState
 from .base import BaseOlmMachine
 
 

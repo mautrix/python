@@ -6,7 +6,7 @@
 from typing import Optional, Type
 import json
 
-from sqlalchemy import Column, String, types
+from sqlalchemy import Column, String, Boolean, types
 
 from mautrix.types import (RoomID, PowerLevelStateEventContent as PowerLevels,
                            RoomEncryptionStateEventContent as EncryptionInfo, Serializable)
@@ -42,8 +42,10 @@ class RoomState(Base):
     __tablename__ = "mx_room_state"
 
     room_id: RoomID = Column(String(255), primary_key=True)
-    power_levels: PowerLevels = Column(SerializableType(PowerLevels), nullable=True)
+    is_encrypted: bool = Column(Boolean, nullable=True)
+    has_full_member_list: bool = Column(Boolean, nullable=True)
     encryption: EncryptionInfo = Column(SerializableType(EncryptionInfo), nullable=True)
+    power_levels: PowerLevels = Column(SerializableType(PowerLevels), nullable=True)
 
     @property
     def has_power_levels(self) -> bool:
@@ -51,7 +53,7 @@ class RoomState(Base):
 
     @property
     def has_encryption_info(self) -> bool:
-        return bool(self.encryption)
+        return self.is_encrypted is not None
 
     @classmethod
     def get(cls, room_id: RoomID) -> Optional['RoomState']:

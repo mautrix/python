@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Dict
 
 from sqlalchemy import Column, String, Enum
 
@@ -29,14 +29,18 @@ class UserProfile(Base):
         return cls._select_one_or_none((cls.c.room_id == room_id) & (cls.c.user_id == user_id))
 
     @classmethod
-    def all_except(cls, room_id: RoomID, prefix: str, suffix: str, bot: str
-                   ) -> Iterable['UserProfile']:
-        return cls._select_all(~(cls.c.user_id.startswith(prefix, autoescape=True)
-                                 & cls.c.user_id.endswith(suffix, autoescape=True))
-                               & (cls.c.user_id != bot)
-                               & ((cls.c.membership == Membership.JOIN)
-                                  | (cls.c.membership == Membership.INVITE))
-                               & (cls.c.room_id == room_id))
+    def all_in_room(cls, room_id: RoomID, prefix: str = None, suffix: str = None, bot: str = None
+                    ) -> Iterable['UserProfile']:
+        clause = (((cls.c.membership == Membership.JOIN)
+                   | (cls.c.membership == Membership.INVITE))
+                  & (cls.c.room_id == room_id))
+        if bot:
+            clause = clause & (cls.c.user_id != bot)
+        if prefix:
+            clause = clause & ~cls.c.user_id.startswith(prefix, autoescape=True)
+        if suffix:
+            clause = clause & ~cls.c.user_id.startswith(suffix, autoescape=True)
+        return cls._select_all(clause)
 
     @classmethod
     def find_rooms_with_user(cls, user_id: UserID) -> Iterable['UserProfile']:
@@ -46,3 +50,12 @@ class UserProfile(Base):
     def delete_all(cls, room_id: RoomID) -> None:
         with cls.db.begin() as conn:
             conn.execute(cls.t.delete().where(cls.c.room_id == room_id))
+
+    @classmethod
+    def bulk_replace(cls, room_id: RoomID, members: Dict[UserID, Member]) -> None:
+        with cls.db.begin() as conn:
+            cls.db.execute(cls.t.delete().where(cls.c.room_id == room_id))
+            conn.execute(cls.t.insert(),
+                         [dict(room_id=room_id, user_id=user_id, membership=member.membership,
+                               avatar_url=member.avatar_url, displayname=member.displayname)
+                          for user_id, member in members.items()])

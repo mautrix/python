@@ -12,10 +12,10 @@ import hmac
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
                            RoomID, Serializable, JSON, MessageEvent, UserID, EncryptedEvent,
                            EncryptedMegolmEventContent, StateEvent)
+from mautrix.errors import EncryptionError
 from mautrix.client import Client, SyncStore
 from mautrix.client.state_store.sqlalchemy import UserProfile
-from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore, EncryptionError,
-                            PickleCryptoStore)
+from mautrix.crypto import OlmMachine, CryptoStore, StateStore, PgCryptoStore, PickleCryptoStore
 from mautrix.util.logging import TraceLogger
 
 from .crypto_state_store import GetPortalFunc, PgCryptoStateStore, SQLCryptoStateStore
@@ -109,8 +109,8 @@ class EncryptionManager:
             self.log.debug("Got EncryptionError, sharing group session and trying again")
             if await self.share_session_lock(room_id):
                 try:
-                    users = UserProfile.all_except(room_id, self._id_prefix, self._id_suffix,
-                                                   self.bot_mxid)
+                    users = UserProfile.all_in_room(room_id, self._id_prefix, self._id_suffix,
+                                                    self.bot_mxid)
                     await self.crypto.share_group_session(room_id, [profile.user_id
                                                                     for profile in users])
                 finally:

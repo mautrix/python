@@ -10,8 +10,7 @@ import olm
 
 from mautrix.types import (UserID, DeviceID, IdentityKey, SigningKey, RoomID, OlmMsgType,
                            RoomKeyEventContent, EncryptionAlgorithm, OlmCiphertext)
-
-from .types import EncryptionError
+from mautrix.errors import EncryptionError
 
 
 class Session(olm.Session):

@@ -6,9 +6,10 @@
 from typing import List, Dict, Optional
 
 from mautrix.types import UserID, SyncToken, DeviceID, DeviceKeys
+from mautrix.errors import DeviceValidationError
 
 from .base import BaseOlmMachine, verify_signature_json
-from .types import DeviceIdentity, TrustState, DeviceValidationError
+from .types import DeviceIdentity, TrustState
 
 
 class DeviceListMachine(BaseOlmMachine):

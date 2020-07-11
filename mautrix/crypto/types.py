@@ -31,32 +31,6 @@ class DeviceIdentity:
     name: str
 
 
-class CryptoError(Exception):
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
-
-
-class EncryptionError(CryptoError):
-    pass
-
-
-class SessionShareError(CryptoError):
-    pass
-
-
-class DecryptionError(CryptoError):
-    pass
-
-
-class MatchingSessionDecryptionError(DecryptionError):
-    pass
-
-
-class DeviceValidationError(EncryptionError):
-    pass
-
-
 @dataclass
 class OlmEventKeys(SerializableAttrs['OlmEventKeys']):
     ed25519: SigningKey

@@ -6,8 +6,7 @@
 from typing import Union, Optional, Dict, List
 import asyncio
 
-from mautrix.types import (RoomID, UserID, EventID, EventType, StateEvent, StateEventContent,
-                           Member, Membership)
+from mautrix.types import RoomID, UserID, EventID, EventType, StateEvent, StateEventContent, Member
 
 from .api import ClientAPI
 from .state_store import StateStore
@@ -23,7 +22,13 @@ class StoreUpdatingAPI(ClientAPI):
     async def get_state(self, room_id: RoomID) -> List[StateEvent]:
         state = await super().get_state(room_id)
         if self.state_store:
-            await asyncio.gather(*[self.state_store.update_state(evt) for evt in state])
+            update_members = self.state_store.set_members(room_id, {
+                evt.state_key: evt.content for evt in state
+                if evt.type == EventType.ROOM_MEMBER
+            })
+            await asyncio.gather(update_members,
+                                 *[self.state_store.update_state(evt) for evt in state
+                                   if evt.type != EventType.ROOM_MEMBER])
         return state
 
     async def send_state_event(self, room_id: RoomID, event_type: EventType,
@@ -50,15 +55,12 @@ class StoreUpdatingAPI(ClientAPI):
     async def get_joined_members(self, room_id: RoomID) -> Dict[UserID, Member]:
         members = await super().get_joined_members(room_id)
         if self.state_store:
-            tasks = []
-            for user_id, member in members.items():
-                member.membership = Membership.JOIN
-                tasks.append(self.state_store.set_member(room_id, user_id, member))
-            await asyncio.gather(*tasks)
+            await self.state_store.set_members(room_id, members)
         return members
 
     async def get_members(self, room_id: RoomID) -> List[StateEvent]:
         member_events = await super().get_members(room_id)
         if self.state_store:
-            await asyncio.gather(*[self.state_store.update_state(evt) for evt in member_events])
+            await self.state_store.set_members(room_id, {evt.state_key: evt.content
+                                                         for evt in member_events})
         return member_events

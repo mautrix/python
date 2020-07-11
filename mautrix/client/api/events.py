@@ -11,7 +11,7 @@ from mautrix.types import (JSON, UserID, RoomID, EventID, FilterID, SyncToken, P
                            StateEvent, EventType, StateEventContent, MessageEventContent, Member,
                            Event, ContentURI, PaginatedMessages, SerializerError, MessageType,
                            RelatesTo, Format, ImageInfo, BaseFileInfo, TextMessageEventContent,
-                           MediaMessageEventContent, PresenceState, EventContent,
+                           MediaMessageEventContent, PresenceState, EventContent, Membership,
                            ReactionEventContent, RelationType, Obj, Serializable)
 from mautrix.types.event.state import state_event_content_map
 from .base import BaseClientAPI
@@ -171,7 +171,12 @@ class EventMethods(BaseClientAPI):
         """
         content = await self.api.request(Method.GET, Path.rooms[room_id].joined_members)
         try:
-            return {user_id: Member.deserialize(event)
+            def deserialize_member(event: JSON) -> Member:
+                member = Member.deserialize(event)
+                member.membership = Membership.JOIN
+                return member
+
+            return {user_id: deserialize_member(event)
                     for user_id, event in content["joined"].items()}
         except KeyError:
             raise MatrixResponseError("`joined` not in response.")
@@ -314,7 +319,6 @@ class EventMethods(BaseClientAPI):
         return self.send_message_event(room_id, EventType.ROOM_MESSAGE, content, **kwargs)
 
     def react(self, room_id: RoomID, event_id: EventID, key: str) -> Awaitable[EventID]:
-        # TODO make this use the send_relation API instead.
         content = ReactionEventContent(relates_to=RelatesTo(rel_type=RelationType.ANNOTATION,
                                                             event_id=event_id, key=key))
         return self.send_message_event(room_id, EventType.REACTION, content)

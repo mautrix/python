@@ -9,7 +9,7 @@ import asyncio
 
 from mautrix.api import Method, Path
 from mautrix.types import (StateEvent, EventType, StateEventContent, EventID, ContentURI,
-                           MessageEventContent, UserID, RoomID, PresenceState,
+                           EventContent, UserID, RoomID, PresenceState,
                            RoomAvatarStateEventContent, RoomNameStateEventContent,
                            RoomTopicStateEventContent, PowerLevelStateEventContent,
                            RoomPinnedEventsStateEventContent, Membership, Member)
@@ -187,10 +187,7 @@ class IntentAPI(StoreUpdatingAPI):
                                ) -> PowerLevelStateEventContent:
         await self.ensure_joined(room_id)
         if not ignore_cache:
-            try:
-                levels = await self.state_store.get_power_levels(room_id)
-            except KeyError:
-                levels = None
+            levels = await self.state_store.get_power_levels(room_id)
             if levels:
                 return levels
         levels = await self.get_state_event(room_id, EventType.ROOM_POWER_LEVELS)
@@ -245,7 +242,7 @@ class IntentAPI(StoreUpdatingAPI):
     async def get_room_member_info(self, room_id: RoomID, user_id: UserID, ignore_cache=False
                                    ) -> Member:
         member = await self.state_store.get_member(room_id, user_id)
-        if not member.membership or ignore_cache:
+        if not member or not member.membership or ignore_cache:
             member = await self.get_state_event(room_id, EventType.ROOM_MEMBER, user_id)
         return member
 
@@ -264,7 +261,7 @@ class IntentAPI(StoreUpdatingAPI):
         await self.leave_room(room_id)
 
     async def send_message_event(self, room_id: RoomID, event_type: EventType,
-                                 content: Union[MessageEventContent, Dict], **kwargs) -> EventID:
+                                 content: EventContent, **kwargs) -> EventID:
         await self._ensure_has_power_level_for(room_id, event_type)
 
         if self.api.is_real_user and self.api.real_user_content_key:

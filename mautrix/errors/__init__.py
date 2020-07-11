@@ -8,3 +8,5 @@ from .request import (MatrixRequestError, MatrixUnknownRequestError, MatrixStand
                       MIncompatibleRoomVersion, MBadState, MGuestAccessForbidden, MCaptchaNeeded,
                       MCaptchaInvalid, MMissingParam, MInvalidParam, MTooLarge, MExclusive,
                       MUserDeactivated)
+from .crypto import (CryptoError, EncryptionError, SessionShareError, DecryptionError,
+                     MatchingSessionDecryptionError, DeviceValidationError)

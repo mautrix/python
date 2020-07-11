@@ -6,10 +6,10 @@
 from typing import Optional, Tuple
 import warnings
 import asyncio
-import logging
 
 from mautrix.api import HTTPAPI
 from mautrix.types import UserID, DeviceID
+from mautrix.util.logging import TraceLogger
 
 
 class BaseClientAPI:
@@ -26,7 +26,7 @@ class BaseClientAPI:
     device_id: DeviceID
     api: HTTPAPI
     loop: asyncio.AbstractEventLoop
-    log: logging.Logger
+    log: TraceLogger
 
     def __init__(self, mxid: UserID = "", device_id: DeviceID = "", api: HTTPAPI = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, *args, **kwargs) -> None:

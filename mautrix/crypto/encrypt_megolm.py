@@ -12,8 +12,9 @@ from mautrix.types import (EncryptedMegolmEventContent, EventType, UserID, Devic
                            EncryptionAlgorithm, RoomID, EncryptedOlmEventContent, SessionID,
                            RoomKeyWithheldEventContent, RoomKeyWithheldCode, IdentityKey,
                            SigningKey, RelatesTo)
+from mautrix.errors import EncryptionError, SessionShareError
 
-from .types import DeviceIdentity, TrustState, EncryptionError, SessionShareError
+from .types import DeviceIdentity, TrustState
 from .encrypt_olm import OlmEncryptionMachine
 from .device_lists import DeviceListMachine
 from .sessions import OutboundGroupSession, InboundGroupSession

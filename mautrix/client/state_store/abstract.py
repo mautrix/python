@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Awaitable, Optional
+from typing import Union, Awaitable, Optional, List, Dict
 from abc import ABC, abstractmethod
 
 from mautrix.types import (StateEvent, EventType, RoomID, UserID, PowerLevelStateEventContent,
@@ -36,6 +36,19 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
+    async def get_members(self, room_id: RoomID) -> Optional[List[UserID]]:
+        pass
+
+    @abstractmethod
+    async def set_members(self, room_id: RoomID,
+                          members: Dict[UserID, Union[Member, MemberStateEventContent]]) -> None:
+        pass
+
+    @abstractmethod
+    async def has_full_member_list(self, room_id: RoomID) -> bool:
+        pass
+
+    @abstractmethod
     async def has_power_levels_cached(self, room_id: RoomID) -> bool:
         pass
 
@@ -50,6 +63,10 @@ class StateStore(ABC):
 
     @abstractmethod
     async def has_encryption_cached(self, room_id: RoomID) -> bool:
+        pass
+
+    @abstractmethod
+    async def is_encrypted(self, room_id: RoomID) -> Optional[bool]:
         pass
 
     @abstractmethod
