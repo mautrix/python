@@ -63,9 +63,9 @@ class EncryptionManager:
                                       log=logging.getLogger("mau.crypto.db"), loop=self.loop)
             self.crypto_store = PgCryptoStore("", pickle_key, self.crypto_db)
             self.state_store = PgCryptoStateStore(self.crypto_db, get_portal)
-        elif db_url.startswith("pickle://"):
+        elif db_url.startswith("pickle:///"):
             self.crypto_db = None
-            self.crypto_store = PickleCryptoStore("", pickle_key, db_url[len("pickle://"):])
+            self.crypto_store = PickleCryptoStore("", pickle_key, db_url[len("pickle:///"):])
             self.state_store = SQLCryptoStateStore(get_portal)
         else:
             raise RuntimeError("Unsupported database scheme")

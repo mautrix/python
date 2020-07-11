@@ -77,11 +77,8 @@ class BaseMatrixHandler:
             db_url = config["appservice.database"]
             parsed_url = URL(db_url)
             if parsed_url.scheme == "sqlite":
-                # SQLite URIs use three slashes (four for absolute paths)
-                # URL() only removes two of them, so we need to remove one manually
-                path = parsed_url.path[1:]
                 # Remove the extension to replace it with our own
-                path = os.path.splitext(path)[0]
+                path = os.path.splitext(parsed_url.path)[0]
                 db_url = f"pickle://{path}.crypto.pickle"
         return db_url
 
