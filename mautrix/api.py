@@ -128,7 +128,7 @@ class HTTPAPI:
             self.txn_id: int = txn_id
 
     async def _send(self, method: Method, endpoint: str, content: Union[bytes, str],
-                    query_params: Dict[str, str], headers: Dict[str, str]) -> JSON:
+                    query_params: Dict[str, str], headers: Dict[str, str]) -> 'JSON':
         while True:
             request = self.session.request(str(method), endpoint, data=content,
                                            params=query_params, headers=headers)
@@ -168,9 +168,9 @@ class HTTPAPI:
                      }})
 
     async def request(self, method: Method, path: PathBuilder,
-                      content: Optional[Union[JSON, bytes, str]] = None,
+                      content: Optional[Union['JSON', bytes, str]] = None,
                       headers: Optional[Dict[str, str]] = None,
-                      query_params: Optional[Dict[str, str]] = None) -> JSON:
+                      query_params: Optional[Dict[str, str]] = None) -> 'JSON':
         """
         Make a raw HTTP request.
 
