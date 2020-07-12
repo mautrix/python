@@ -31,7 +31,9 @@ class CryptoStore(ABC):
     """
 
     account_id: str
+    """The unique identifier for the account that is stored in this CryptoStore."""
     pickle_key: str
+    """The pickle key to use when pickling Olm objects."""
 
     @abstractmethod
     async def get_device_id(self) -> Optional[DeviceID]:
@@ -43,7 +45,13 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def put_device_id(self, device_id: DeviceID) -> None: ...
+    async def put_device_id(self, device_id: DeviceID) -> None:
+        """
+        Store a device ID.
+
+        Args:
+            device_id: The device ID to store.
+        """
 
     async def open(self) -> None:
         """

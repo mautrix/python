@@ -228,7 +228,7 @@ class HTTPAPI:
         Examples:
             >>> api = HTTPAPI(...)
             >>> api.get_download_url("mxc://matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6")
-            "https://matrix.org/_matrix/media/r0/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6
+            "https://matrix.org/_matrix/media/r0/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6"
         """
         if mxc_uri.startswith("mxc://"):
             return f"{self.base_url}{APIPath.MEDIA}/{download_type}/{mxc_uri[6:]}"

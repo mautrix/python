@@ -5,21 +5,23 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
-   mautrix.api
    mautrix.appservice
    mautrix.bridge
    mautrix.client
+   mautrix.crypto
    mautrix.errors
+   mautrix.types
    mautrix.util
 
 Submodules
 ----------
 
-mautrix.types module
---------------------
+mautrix.api module
+------------------
 
-.. automodule:: mautrix.types
+.. automodule:: mautrix.api
    :members:
    :undoc-members:
    :show-inheritance:

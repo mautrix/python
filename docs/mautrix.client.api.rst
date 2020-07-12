@@ -5,9 +5,9 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    mautrix.client.api.modules
-   mautrix.client.api.types
 
 Submodules
 ----------

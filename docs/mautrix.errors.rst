@@ -12,6 +12,14 @@ mautrix.errors.base module
    :undoc-members:
    :show-inheritance:
 
+mautrix.errors.crypto module
+----------------------------
+
+.. automodule:: mautrix.errors.crypto
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 mautrix.errors.request module
 -----------------------------
 

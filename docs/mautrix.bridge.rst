@@ -5,9 +5,9 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    mautrix.bridge.commands
-   mautrix.bridge.db
 
 Submodules
 ----------
@@ -20,10 +20,26 @@ mautrix.bridge.bridge module
    :undoc-members:
    :show-inheritance:
 
+mautrix.bridge.bridge\_state\_store module
+------------------------------------------
+
+.. automodule:: mautrix.bridge.bridge_state_store
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 mautrix.bridge.config module
 ----------------------------
 
 .. automodule:: mautrix.bridge.config
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mautrix.bridge.crypto\_state\_store module
+------------------------------------------
+
+.. automodule:: mautrix.bridge.crypto_state_store
    :members:
    :undoc-members:
    :show-inheritance:
@@ -36,10 +52,26 @@ mautrix.bridge.custom\_puppet module
    :undoc-members:
    :show-inheritance:
 
+mautrix.bridge.e2ee module
+--------------------------
+
+.. automodule:: mautrix.bridge.e2ee
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 mautrix.bridge.matrix module
 ----------------------------
 
 .. automodule:: mautrix.bridge.matrix
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mautrix.bridge.notification\_disabler module
+--------------------------------------------
+
+.. automodule:: mautrix.bridge.notification_disabler
    :members:
    :undoc-members:
    :show-inheritance:

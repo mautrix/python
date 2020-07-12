@@ -4,6 +4,14 @@ mautrix.client.api.modules package
 Submodules
 ----------
 
+mautrix.client.api.modules.crypto module
+----------------------------------------
+
+.. automodule:: mautrix.client.api.modules.crypto
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 mautrix.client.api.modules.media\_repository module
 ---------------------------------------------------
 

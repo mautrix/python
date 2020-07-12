@@ -4,26 +4,26 @@ mautrix.appservice.state\_store package
 Submodules
 ----------
 
-mautrix.appservice.state\_store.abstract module
------------------------------------------------
-
-.. automodule:: mautrix.appservice.state_store.abstract
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-mautrix.appservice.state\_store.json module
+mautrix.appservice.state\_store.file module
 -------------------------------------------
 
-.. automodule:: mautrix.appservice.state_store.json
+.. automodule:: mautrix.appservice.state_store.file
    :members:
    :undoc-members:
    :show-inheritance:
 
-mautrix.appservice.state\_store.pickle module
+mautrix.appservice.state\_store.memory module
 ---------------------------------------------
 
-.. automodule:: mautrix.appservice.state_store.pickle
+.. automodule:: mautrix.appservice.state_store.memory
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mautrix.appservice.state\_store.sqlalchemy module
+-------------------------------------------------
+
+.. automodule:: mautrix.appservice.state_store.sqlalchemy
    :members:
    :undoc-members:
    :show-inheritance:
