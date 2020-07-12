@@ -14,7 +14,7 @@ from .mx_room_state import RoomState
 
 
 class SQLStateStore(StateStore):
-    _profile_cache: Dict[Tuple[RoomID, UserID], UserProfile]
+    _profile_cache: Dict[RoomID, Dict[UserID, UserProfile]]
     _room_state_cache: Dict[RoomID, RoomState]
 
     def __init__(self) -> None:
@@ -28,19 +28,20 @@ class SQLStateStore(StateStore):
             raise ValueError("room_id is empty")
         elif not user_id:
             raise ValueError("user_id is empty")
-        key = (room_id, user_id)
         try:
-            return self._profile_cache[key]
+            return self._profile_cache[room_id][user_id]
         except KeyError:
             pass
+        if room_id not in self._profile_cache:
+            self._profile_cache[room_id] = {}
 
-        profile = UserProfile.get(*key)
+        profile = UserProfile.get(room_id, user_id)
         if profile:
-            self._profile_cache[key] = profile
+            self._profile_cache[room_id][user_id] = profile
         elif create:
             profile = UserProfile(room_id=room_id, user_id=user_id, membership=Membership.LEAVE)
             profile.insert()
-            self._profile_cache[key] = profile
+            self._profile_cache[room_id][user_id] = profile
         return profile
 
     async def get_member(self, room_id: RoomID, user_id: UserID) -> Optional[Member]:
@@ -62,11 +63,19 @@ class SQLStateStore(StateStore):
         await self.set_member(room_id, user_id, Member(membership=membership))
 
     async def get_members(self, room_id: RoomID) -> Optional[List[UserID]]:
-        return [profile.user_id for profile in UserProfile.all_in_room(room_id)]
+        self._profile_cache[room_id] = {}
+        for profile in UserProfile.all_in_room(room_id):
+            self._profile_cache[room_id][profile.user_id] = profile
+        return [profile.user_id for profile in self._profile_cache[room_id].values()]
 
-    async def set_members(self, room_id: RoomID, members: Dict[UserID, Member]) -> None:
-        UserProfile.bulk_replace(room_id, members)
+    async def set_members(self, room_id: RoomID, members: Dict[UserID, Member],
+                          joined_only: bool = False) -> None:
+        UserProfile.bulk_replace(room_id, members, joined_only=joined_only)
         self._get_room_state(room_id, create=True).edit(has_full_member_list=True)
+        try:
+            del self._profile_cache[room_id]
+        except KeyError:
+            pass
 
     async def has_full_member_list(self, room_id: RoomID) -> bool:
         room = self._get_room_state(room_id)

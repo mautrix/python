@@ -41,7 +41,8 @@ class StateStore(ABC):
 
     @abstractmethod
     async def set_members(self, room_id: RoomID,
-                          members: Dict[UserID, Union[Member, MemberStateEventContent]]) -> None:
+                          members: Dict[UserID, Union[Member, MemberStateEventContent]],
+                          joined_only: bool = False) -> None:
         pass
 
     @abstractmethod
