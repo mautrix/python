@@ -171,13 +171,10 @@ class EventMethods(BaseClientAPI):
         """
         content = await self.api.request(Method.GET, Path.rooms[room_id].joined_members)
         try:
-            def deserialize_member(event: JSON) -> Member:
-                member = Member.deserialize(event)
-                member.membership = Membership.JOIN
-                return member
-
-            return {user_id: deserialize_member(event)
-                    for user_id, event in content["joined"].items()}
+            return {user_id: Member(membership=Membership.JOIN,
+                                    displayname=member.get("display_name", ""),
+                                    avatar_url=member.get("avatar_url", ""))
+                    for user_id, member in content["joined"].items()}
         except KeyError:
             raise MatrixResponseError("`joined` not in response.")
         except SerializerError as e:

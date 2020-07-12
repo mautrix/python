@@ -65,5 +65,5 @@ class UserProfile(Base):
             cls.db.execute(cls.t.delete().where(delete_condition))
             conn.execute(cls.t.insert(),
                          [dict(room_id=room_id, user_id=user_id, membership=member.membership,
-                               avatar_url=member.avatar_url, displayname=member.displayname)
+                               displayname=member.displayname, avatar_url=member.avatar_url)
                           for user_id, member in members.items()])
