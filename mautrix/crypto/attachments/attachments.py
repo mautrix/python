@@ -26,7 +26,7 @@ from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto.Util import Counter
 
-from ..types import DecryptionError
+from mautrix.errors import DecryptionError
 
 DataT = Union[bytes, Iterable[bytes]]
 
