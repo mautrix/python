@@ -18,9 +18,11 @@ from .account import OlmAccount
 from .decrypt_olm import OlmDecryptionMachine
 from .encrypt_megolm import MegolmEncryptionMachine
 from .decrypt_megolm import MegolmDecryptionMachine
+from .share_lock import ShareSessionLock
 
 
-class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryptionMachine):
+class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryptionMachine,
+                 ShareSessionLock):
     client: Client
     log: TraceLogger
     crypto_store: CryptoStore
@@ -34,7 +36,9 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
 
     def __init__(self, client: Client, crypto_store: CryptoStore, state_store: StateStore,
                  log: Optional[TraceLogger] = None) -> None:
+        ShareSessionLock.__init__(self)
         self.client = client
+        self.loop = self.client.loop
         self.log = log or logging.getLogger("mau.crypto")
         self.crypto_store = crypto_store
         self.state_store = state_store

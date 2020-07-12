@@ -10,6 +10,8 @@ from sqlalchemy import Column, String, Enum
 from mautrix.types import RoomID, UserID, ContentURI, Member, Membership
 from mautrix.util.db import Base
 
+from .mx_room_state import RoomState
+
 
 class UserProfile(Base):
     __tablename__ = "mx_user_profile"
@@ -44,7 +46,9 @@ class UserProfile(Base):
 
     @classmethod
     def find_rooms_with_user(cls, user_id: UserID) -> Iterable['UserProfile']:
-        return cls._select_all(cls.c.user_id == user_id)
+        return cls._select_all((cls.c.user_id == user_id)
+                               & (cls.c.room_id == RoomState.c.room_id)
+                               & (RoomState.c.is_encrypted == True))
 
     @classmethod
     def delete_all(cls, room_id: RoomID) -> None:

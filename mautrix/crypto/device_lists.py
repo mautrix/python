@@ -66,10 +66,10 @@ class DeviceListMachine(BaseOlmMachine):
         return data
 
     async def on_devices_changed(self, user_id: UserID) -> None:
-        for room_id in await self.state_store.find_shared_rooms(user_id):
-            self.log.debug(f"Devices of {user_id} changed, "
-                           f"invalidating group session for {room_id}")
-            await self.crypto_store.remove_outbound_group_session(room_id)
+        shared_rooms = await self.state_store.find_shared_rooms(user_id)
+        self.log.debug(f"Devices of {user_id} changed, "
+                       f"invalidating group session in {shared_rooms}")
+        await self.crypto_store.remove_outbound_group_sessions(shared_rooms)
 
     @staticmethod
     async def _validate_device(user_id: UserID, device_id: DeviceID, device_keys: DeviceKeys,

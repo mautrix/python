@@ -62,7 +62,7 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    async def has_encryption_cached(self, room_id: RoomID) -> bool:
+    async def has_encryption_info_cached(self, room_id: RoomID) -> bool:
         pass
 
     @abstractmethod
@@ -70,12 +70,13 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    async def get_encryption(self, room_id: RoomID) -> Optional[RoomEncryptionStateEventContent]:
+    async def get_encryption_info(self, room_id: RoomID
+                                  ) -> Optional[RoomEncryptionStateEventContent]:
         pass
 
     @abstractmethod
-    async def set_encryption(self, room_id: RoomID, content: RoomEncryptionStateEventContent
-                             ) -> None:
+    async def set_encryption_info(self, room_id: RoomID, content: RoomEncryptionStateEventContent
+                                  ) -> None:
         pass
 
     async def update_state(self, evt: StateEvent) -> None:
@@ -84,7 +85,7 @@ class StateStore(ABC):
         elif evt.type == EventType.ROOM_MEMBER:
             await self.set_member(evt.room_id, UserID(evt.state_key), evt.content)
         elif evt.type == EventType.ROOM_ENCRYPTION:
-            await self.set_encryption(evt.room_id, evt.content)
+            await self.set_encryption_info(evt.room_id, evt.content)
 
     async def get_membership(self, room_id: RoomID, user_id: UserID) -> Membership:
         member = await self.get_member(room_id, user_id)

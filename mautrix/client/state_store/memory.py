@@ -102,7 +102,7 @@ class MemoryStateStore(StateStore):
     async def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
         self.power_levels[room_id] = content
 
-    async def has_encryption_cached(self, room_id: RoomID) -> bool:
+    async def has_encryption_info_cached(self, room_id: RoomID) -> bool:
         return room_id in self.encryption
 
     async def is_encrypted(self, room_id: RoomID) -> Optional[bool]:
@@ -111,9 +111,9 @@ class MemoryStateStore(StateStore):
         except KeyError:
             return None
 
-    async def get_encryption(self, room_id: RoomID) -> RoomEncryptionStateEventContent:
+    async def get_encryption_info(self, room_id: RoomID) -> RoomEncryptionStateEventContent:
         return self.encryption.get(room_id)
 
-    async def set_encryption(self, room_id: RoomID,
-                             content: RoomEncryptionStateEventContent) -> None:
+    async def set_encryption_info(self, room_id: RoomID,
+                                  content: RoomEncryptionStateEventContent) -> None:
         self.encryption[room_id] = content

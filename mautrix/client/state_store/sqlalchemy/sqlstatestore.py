@@ -74,6 +74,9 @@ class SQLStateStore(StateStore):
             return False
         return room.has_full_member_list
 
+    async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]:
+        return [profile.room_id for profile in UserProfile.find_rooms_with_user(user_id)]
+
     def _get_room_state(self, room_id: RoomID, create: bool = False) -> RoomState:
         if not room_id:
             raise ValueError("room_id is empty")
@@ -114,18 +117,18 @@ class SQLStateStore(StateStore):
             return None
         return room.is_encrypted
 
-    async def has_encryption_cached(self, room_id: RoomID) -> bool:
+    async def has_encryption_info_cached(self, room_id: RoomID) -> bool:
         room = self._get_room_state(room_id)
         return room and room.has_encryption_info
 
-    async def get_encryption(self, room_id: RoomID) -> Optional[RoomEncryptionStateEventContent]:
+    async def get_encryption_info(self, room_id: RoomID) -> Optional[RoomEncryptionStateEventContent]:
         room = self._get_room_state(room_id)
         if not room:
             return None
         return room.encryption
 
-    async def set_encryption(self, room_id: RoomID,
-                             content: RoomEncryptionStateEventContent) -> None:
+    async def set_encryption_info(self, room_id: RoomID,
+                                  content: RoomEncryptionStateEventContent) -> None:
         if not content:
             raise ValueError("content is empty")
-        self._get_room_state(room_id, create=True).edit(encryption=content, encrypted=True)
+        self._get_room_state(room_id, create=True).edit(encryption=content, is_encrypted=True)

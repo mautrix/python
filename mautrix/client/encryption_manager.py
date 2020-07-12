@@ -20,15 +20,19 @@ if TYPE_CHECKING:
 
 
 class EncryptingAPI(StoreUpdatingAPI):
-    crypto: Optional['OlmMachine']
+    _crypto: Optional['OlmMachine']
     encryption_blacklist: Set[EventType] = {EventType.REACTION}
     crypto_log: TraceLogger = logging.getLogger("mau.client.crypto")
 
-    def __init__(self, *args, crypto: Optional['OlmMachine'] = None, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        if crypto and not self.state_store:
+    @property
+    def crypto(self) -> Optional['OlmMachine']:
+        return self._crypto
+
+    @crypto.setter
+    def crypto(self, crypto: 'OlmMachine') -> None:
+        if not self.state_store:
             raise ValueError("State store must be set to use encryption")
-        self.crypto = crypto
+        self._crypto = crypto
 
     @property
     def crypto_enabled(self) -> bool:
@@ -40,6 +44,14 @@ class EncryptingAPI(StoreUpdatingAPI):
             return await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         except EncryptionError:
             self.crypto_log.debug("Got EncryptionError, sharing group session and trying again")
+            await self.share_group_session(room_id)
+            self.crypto_log.trace(f"Shared group session, now trying to encrypt in {room_id} again")
+            return await self.crypto.encrypt_megolm_event(room_id, event_type, content)
+
+    async def share_group_session(self, room_id: RoomID) -> None:
+        if not await self.crypto.share_session_lock(room_id):
+            return
+        try:
             if not await self.state_store.has_full_member_list(room_id):
                 self.crypto_log.trace(f"Don't have full member list for {room_id},"
                                       " fetching from server")
@@ -48,8 +60,8 @@ class EncryptingAPI(StoreUpdatingAPI):
                 self.crypto_log.trace(f"Fetching member list for {room_id} from state store")
                 members = await self.state_store.get_members(room_id)
             await self.crypto.share_group_session(room_id, members)
-            self.crypto_log.trace(f"Shared group session, now trying to encrypt in {room_id} again")
-            return await self.crypto.encrypt_megolm_event(room_id, event_type, content)
+        finally:
+            self.crypto.share_session_unlock(room_id)
 
     async def send_message_event(self, room_id: RoomID, event_type: EventType,
                                  content: EventContent, disable_encryption: bool = False,
@@ -74,8 +86,10 @@ class DecryptionDispatcher(SimpleDispatcher):
 
     async def handle(self, evt: EncryptedEvent) -> None:
         try:
+            self.client.crypto_log.trace(f"Decrypting {evt.event_id} in {evt.room_id}...")
             decrypted = await self.client.crypto.decrypt_megolm_event(evt)
         except DecryptionError as e:
             self.client.crypto_log.warning(f"Failed to decrypt {evt.event_id}: {e}")
             return
+        self.client.crypto_log.trace(f"Decrypted {evt.event_id}: {decrypted}")
         self.client.dispatch_event(decrypted, evt.source)

@@ -106,6 +106,9 @@ class CryptoStore(ABC):
     async def remove_outbound_group_session(self, room_id: RoomID) -> None: ...
 
     @abstractmethod
+    async def remove_outbound_group_sessions(self, rooms: List[RoomID]) -> None: ...
+
+    @abstractmethod
     async def validate_message_index(self, sender_key: IdentityKey, session_id: SessionID,
                                      event_id: EventID, index: int, timestamp: int) -> bool: ...
 

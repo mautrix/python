@@ -31,9 +31,9 @@ class FileStateStore(MemoryStateStore, FileStore):
         await super().set_member(room_id, user_id, member)
         self._time_limited_flush()
 
-    async def set_encryption(self, room_id: RoomID,
-                             content: RoomEncryptionStateEventContent) -> None:
-        await super().set_encryption(room_id, content)
+    async def set_encryption_info(self, room_id: RoomID,
+                                  content: RoomEncryptionStateEventContent) -> None:
+        await super().set_encryption_info(room_id, content)
         self._time_limited_flush()
 
     async def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:

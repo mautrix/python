@@ -5,7 +5,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Any, Dict, List, Optional
 from attr import dataclass
-import attr
 
 from .primitive import UserID, DeviceID, IdentityKey, SigningKey
 from .util import SerializableAttrs
@@ -24,7 +23,11 @@ class DeviceKeys(SerializableAttrs['DeviceKeys']):
     algorithms: List[EncryptionAlgorithm]
     keys: Dict[str, str]
     signatures: Dict[UserID, Dict[str, str]]
-    unsigned: UnsignedDeviceInfo = attr.ib(factory=UnsignedDeviceInfo)
+    unsigned: UnsignedDeviceInfo = None
+
+    def __attrs_post_init__(self) -> None:
+        if self.unsigned is None:
+            self.unsigned = UnsignedDeviceInfo()
 
     @property
     def ed25519(self) -> SigningKey:

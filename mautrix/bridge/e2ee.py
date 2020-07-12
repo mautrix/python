@@ -73,23 +73,6 @@ class EncryptionManager:
                              sync_store=self.crypto_store)
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
 
-    async def share_session_lock(self, room_id: RoomID) -> bool:
-        try:
-            waiters = self._share_session_waiters[room_id]
-        except KeyError:
-            self._share_session_waiters[room_id] = []
-            return True
-        else:
-            fut = self.loop.create_future()
-            waiters.append(fut)
-            await fut
-            return False
-
-    def share_session_unlock(self, room_id: RoomID) -> None:
-        for fut in self._share_session_waiters[room_id]:
-            fut.set_result(None)
-        del self._share_session_waiters[room_id]
-
     def _ignore_user(self, user_id: str) -> bool:
         return (user_id.startswith(self._id_prefix) and user_id.endswith(self._id_suffix)
                 and user_id != self.bot_mxid)
@@ -107,14 +90,14 @@ class EncryptionManager:
             encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         except EncryptionError:
             self.log.debug("Got EncryptionError, sharing group session and trying again")
-            if await self.share_session_lock(room_id):
+            if await self.crypto.share_session_lock(room_id):
                 try:
                     users = UserProfile.all_in_room(room_id, self._id_prefix, self._id_suffix,
                                                     self.bot_mxid)
                     await self.crypto.share_group_session(room_id, [profile.user_id
                                                                     for profile in users])
                 finally:
-                    self.share_session_unlock(room_id)
+                    self.crypto.share_session_unlock(room_id)
             encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         return EventType.ROOM_ENCRYPTED, encrypted
 

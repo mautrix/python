@@ -118,12 +118,14 @@ class Syncer(ABC):
     def add_dispatcher(self, dispatcher_type: Type['Dispatcher']) -> None:
         if dispatcher_type in self.dispatchers:
             return
+        self.log.debug(f"Enabling {dispatcher_type.__name__}")
         self.dispatchers[dispatcher_type] = dispatcher_type(self)
         self.dispatchers[dispatcher_type].register()
 
     def remove_dispatcher(self, dispatcher_type: Type['Dispatcher']) -> None:
         if dispatcher_type not in self.dispatchers:
             return
+        self.log.debug(f"Disabling {dispatcher_type.__name__}")
         self.dispatchers[dispatcher_type].unregister()
         del self.dispatchers[dispatcher_type]
 

@@ -180,6 +180,11 @@ class PgCryptoStore(CryptoStore, SyncStore):
                               "WHERE room_id=$1 AND account_id=$2",
                               room_id, self.account_id)
 
+    async def remove_outbound_group_sessions(self, rooms: List[RoomID]) -> None:
+        await self.db.execute("DELETE FROM crypto_megolm_outbound_session "
+                              "WHERE room_id=ANY($1) AND account_id=$2",
+                              rooms, self.account_id)
+
     async def validate_message_index(self, sender_key: IdentityKey, session_id: SessionID,
                                      event_id: EventID, index: int, timestamp: int) -> bool:
         row = await self.db.fetchrow("SELECT event_id, timestamp FROM crypto_message_index "

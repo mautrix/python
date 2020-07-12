@@ -93,6 +93,10 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
     async def remove_outbound_group_session(self, room_id: RoomID) -> None:
         self._outbound_sessions.pop(room_id, None)
 
+    async def remove_outbound_group_sessions(self, rooms: List[RoomID]) -> None:
+        for room_id in rooms:
+            self._outbound_sessions.pop(room_id, None)
+
     async def validate_message_index(self, sender_key: IdentityKey, session_id: SessionID,
                                      event_id: EventID, index: int, timestamp: int) -> bool:
         try:

@@ -136,6 +136,10 @@ class PickleCryptoStore(MemoryCryptoStore, FileStore):
         await super().remove_outbound_group_session(room_id)
         self._time_limited_flush()
 
+    async def remove_outbound_group_sessions(self, rooms: List[RoomID]) -> None:
+        await super().remove_outbound_group_sessions(rooms)
+        self._time_limited_flush()
+
     async def put_devices(self, user_id: UserID, devices: Dict[DeviceID, DeviceIdentity]) -> None:
         await super().put_devices(user_id, devices)
         self._time_limited_flush()

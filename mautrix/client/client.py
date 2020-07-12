@@ -7,6 +7,7 @@ from typing import Optional, TYPE_CHECKING
 
 from .state_store import SyncStore, StateStore
 from .syncer import Syncer
+from .store_updater import StoreUpdatingAPI
 from .encryption_manager import EncryptingAPI, DecryptionDispatcher
 
 if TYPE_CHECKING:
@@ -17,9 +18,16 @@ class Client(EncryptingAPI, Syncer):
     """Client is a high-level wrapper around the client API."""
 
     def __init__(self, *args, sync_store: Optional[SyncStore] = None,
-                 state_store: Optional[StateStore] = None, crypto: Optional['OlmMachine'] = None,
-                 **kwargs) -> None:
-        EncryptingAPI.__init__(self, *args, state_store=state_store, crypto=crypto, **kwargs)
+                 state_store: Optional[StateStore] = None, **kwargs) -> None:
+        StoreUpdatingAPI.__init__(self, *args, state_store=state_store, **kwargs)
         Syncer.__init__(self, sync_store)
+
+    @EncryptingAPI.crypto.setter
+    def crypto(self, crypto: 'OlmMachine') -> None:
+        if not self.state_store:
+            raise ValueError("State store must be set to use encryption")
+        self._crypto = crypto
         if self.crypto_enabled:
             self.add_dispatcher(DecryptionDispatcher)
+        else:
+            self.remove_dispatcher(DecryptionDispatcher)
