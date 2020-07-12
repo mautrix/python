@@ -24,6 +24,10 @@ class EncryptingAPI(StoreUpdatingAPI):
     encryption_blacklist: Set[EventType] = {EventType.REACTION}
     crypto_log: TraceLogger = logging.getLogger("mau.client.crypto")
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._crypto = None
+
     @property
     def crypto(self) -> Optional['OlmMachine']:
         return self._crypto

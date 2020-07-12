@@ -40,15 +40,15 @@ if TYPE_CHECKING:
         def pickle(self, passphrase: str) -> bytes: ...
 
 
-class PickleCryptoStore(MemoryCryptoStore, FileStore):
+class PickleCryptoStore(FileStore, MemoryCryptoStore):
     path: str
     save_interval: float
     _last_save: float
 
     def __init__(self, account_id: str, pickle_key: str, path: str, save_interval: float = 60.0
                  ) -> None:
-        MemoryCryptoStore.__init__(self, account_id, pickle_key)
         FileStore.__init__(self, path=path, save_interval=save_interval, binary=True)
+        MemoryCryptoStore.__init__(self, account_id, pickle_key)
 
     def deserialize(self, data: 'PickledStore') -> None:
         if data.get("version", 0) != 1:

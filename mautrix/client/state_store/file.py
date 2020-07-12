@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from mautrix.util.file_store import PathLike, Filer
 
 
-class FileStateStore(MemoryStateStore, FileStore):
+class FileStateStore(FileStore, MemoryStateStore):
     def __init__(self, path: 'PathLike', filer: Optional['Filer'] = None, binary: bool = True,
                  save_interval: float = 60.0) -> None:
         FileStore.__init__(self, path, filer, binary, save_interval)

@@ -7,7 +7,6 @@ from typing import Optional, TYPE_CHECKING
 
 from .state_store import SyncStore, StateStore
 from .syncer import Syncer
-from .store_updater import StoreUpdatingAPI
 from .encryption_manager import EncryptingAPI, DecryptionDispatcher
 
 if TYPE_CHECKING:
@@ -19,7 +18,7 @@ class Client(EncryptingAPI, Syncer):
 
     def __init__(self, *args, sync_store: Optional[SyncStore] = None,
                  state_store: Optional[StateStore] = None, **kwargs) -> None:
-        StoreUpdatingAPI.__init__(self, *args, state_store=state_store, **kwargs)
+        EncryptingAPI.__init__(self, *args, state_store=state_store, **kwargs)
         Syncer.__init__(self, sync_store)
 
     @EncryptingAPI.crypto.setter
