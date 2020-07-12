@@ -31,15 +31,14 @@ from mautrix.errors import DecryptionError
 DataT = Union[bytes, Iterable[bytes]]
 
 
-
 def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str):
     """Decrypt an encrypted attachment.
 
     Args:
-        ciphertext (bytes): The data to decrypt.
-        key (str): AES_CTR JWK key object.
-        hash (str): Base64 encoded SHA-256 hash of the ciphertext.
-        iv (str): Base64 encoded 16 byte AES-CTR IV.
+        ciphertext: The data to decrypt.
+        key: AES_CTR JWK key object.
+        hash: Base64 encoded SHA-256 hash of the ciphertext.
+        iv: Base64 encoded 16 byte AES-CTR IV.
     Returns:
         The plaintext bytes.
     Raises:
@@ -80,22 +79,18 @@ def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, Dict[str, Any]]:
     """Encrypt data in order to send it as an encrypted attachment.
 
     Args:
-        data (bytes): The data to encrypt.
+        plaintext: The data to encrypt.
 
     Returns:
         A tuple with the encrypted bytes and a dict containing the info needed
         to decrypt data. See ``encrypted_attachment_generator()`` for the keys.
     """
-
     values = list(encrypted_attachment_generator(plaintext))
-    encrytped_bytes: bytes = b"".join(values[:-1])  # type: ignore
-    keys: Dict[str, Any] = values[-1]  # type: ignore
-    return (encrytped_bytes, keys)
+    return b"".join(values[:-1]), values[-1]
 
 
-def encrypted_attachment_generator(
-    data: DataT,
-) -> Generator[Union[bytes, Dict[str, Any]], None, None]:
+def encrypted_attachment_generator(data: DataT
+                                   ) -> Generator[Union[bytes, Dict[str, Any]], None, None]:
     """Generator to encrypt data in order to send it as an encrypted
     attachment.
 
@@ -104,7 +99,7 @@ def encrypted_attachment_generator(
     into memory if an iterable of bytes is passed as data.
 
     Args:
-        data (bytes/Iterable[bytes]): The data to encrypt.
+        data: The data to encrypt.
 
     Yields:
         The encrypted bytes for each chunk of data.
@@ -135,21 +130,17 @@ def encrypted_attachment_generator(
     yield _get_decryption_info_dict(key, iv, sha256)
 
 
-def _get_decryption_info_dict(
-    key: bytes, iv: bytes, sha256: SHA256.SHA256Hash
-) -> Dict[str, Any]:
-    json_web_key = {
-        "kty": "oct",
-        "alg": "A256CTR",
-        "ext": True,
-        "k": unpaddedbase64.encode_base64(key, urlsafe=True),
-        "key_ops": ["encrypt", "decrypt"],
-    }
-
+def _get_decryption_info_dict(key: bytes, iv: bytes, sha256: SHA256.SHA256Hash) -> Dict[str, Any]:
     return {
         "v": "v2",
-        "key": json_web_key,
+        "key": {
+            "kty": "oct",
+            "alg": "A256CTR",
+            "ext": True,
+            "k": unpaddedbase64.encode_base64(key, urlsafe=True),
+            "key_ops": ["encrypt", "decrypt"],
+        },
         # Send IV concatenated with counter
         "iv": unpaddedbase64.encode_base64(iv + b"\x00" * 8),
-        "hashes": {"sha256": unpaddedbase64.encode_base64(sha256.digest()),},
+        "hashes": {"sha256": unpaddedbase64.encode_base64(sha256.digest())},
     }
