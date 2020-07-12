@@ -16,6 +16,18 @@ from .base import BaseOlmMachine
 
 class MegolmDecryptionMachine(BaseOlmMachine):
     async def decrypt_megolm_event(self, evt: EncryptedEvent) -> Event:
+        """
+        Decrypt an event that was encrypted using Megolm.
+
+        Args:
+            evt: The whole encrypted event.
+
+        Returns:
+            The decrypted event, including some unencrypted metadata from the input event.
+
+        Raises:
+            DecryptionError: If decryption failed.
+        """
         if not isinstance(evt.content, EncryptedMegolmEventContent):
             raise DecryptionError("Unsupported event content class")
         elif evt.content.algorithm != EncryptionAlgorithm.MEGOLM_V1:

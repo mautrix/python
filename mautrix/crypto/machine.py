@@ -18,11 +18,16 @@ from .account import OlmAccount
 from .decrypt_olm import OlmDecryptionMachine
 from .encrypt_megolm import MegolmEncryptionMachine
 from .decrypt_megolm import MegolmDecryptionMachine
-from .share_lock import ShareSessionLock
 
 
-class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryptionMachine,
-                 ShareSessionLock):
+class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryptionMachine):
+    """
+    OlmMachine is the main class for handling things related to Matrix end-to-end encryption with
+    Olm and Megolm. Users primarily need :meth:`encrypt_megolm_event`, :meth:`share_group_session`,
+    and :meth:`decrypt_megolm_event`. Tracking device lists, establishing Olm sessions and handling
+    Megolm group sessions is handled internally.
+    """
+
     client: Client
     log: TraceLogger
     crypto_store: CryptoStore
@@ -36,7 +41,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
 
     def __init__(self, client: Client, crypto_store: CryptoStore, state_store: StateStore,
                  log: Optional[TraceLogger] = None) -> None:
-        ShareSessionLock.__init__(self)
+        super().__init__()
         self.client = client
         self.loop = self.client.loop
         self.log = log or logging.getLogger("mau.crypto")
@@ -54,23 +59,45 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         self.client.add_event_handler(EventType.ROOM_MEMBER, self.handle_member_event)
 
     async def load(self) -> None:
+        """Load the Olm account into memory, or create one if the store doesn't have one stored."""
         self.account = await self.crypto_store.get_account()
         if self.account is None:
             self.account = OlmAccount()
             await self.crypto_store.put_account(self.account)
 
     async def handle_otk_count(self, otk_count: DeviceOTKCount) -> None:
+        """
+        Handle the ``device_one_time_keys_count`` data in a sync response.
+
+        This is automatically registered as an event handler and therefore called if the client you
+        passed to the OlmMachine is syncing. You shouldn't need to call this yourself unless you
+        do syncing in some manual way.
+        """
         if otk_count.signed_curve25519 < self.account.max_one_time_keys // 2:
             self.log.debug(f"Sync response said we have {otk_count.signed_curve25519} signed"
                            " curve25519 keys left, sharing new ones...")
             await self.share_keys(otk_count.signed_curve25519)
 
     async def handle_device_lists(self, device_lists: DeviceLists) -> None:
+        """
+        Handle the ``device_lists`` data in a sync response.
+
+        This is automatically registered as an event handler and therefore called if the client you
+        passed to the OlmMachine is syncing. You shouldn't need to call this yourself unless you
+        do syncing in some manual way.
+        """
         if len(device_lists.changed) > 0:
             async with self._fetch_keys_lock:
                 await self._fetch_keys(device_lists.changed, include_untracked=False)
 
     async def handle_member_event(self, evt: StateEvent) -> None:
+        """
+        Handle a new member event.
+
+        This is automatically registered as an event handler and therefore called if the client you
+        passed to the OlmMachine is syncing. You shouldn't need to call this yourself unless you
+        receive events in some manual way (e.g. through appservice transactions)
+        """
         if not await self.state_store.is_encrypted(evt.room_id):
             return
         prev = evt.prev_content.membership or Membership.UNKNOWN
@@ -87,6 +114,13 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         await self.crypto_store.remove_outbound_group_session(evt.room_id)
 
     async def handle_to_device_event(self, evt: ToDeviceEvent) -> None:
+        """
+        Handle an encrypted to-device event.
+
+        This is automatically registered as an event handler and therefore called if the client you
+        passed to the OlmMachine is syncing. You shouldn't need to call this yourself unless you
+        do syncing in some manual way.
+        """
         self.log.trace(f"Handling encrypted to-device event from {evt.content.sender_key}"
                        f" ({evt.sender})")
         decrypted_evt = await self._decrypt_olm_event(evt)
@@ -102,6 +136,13 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
                                          evt.content.session_id, evt.content.session_key)
 
     async def share_keys(self, current_otk_count: int) -> None:
+        """
+        Share any keys that need to be shared. This is automatically called from
+        :meth:`handle_otk_count`, so you should not need to call this yourself.
+
+        Args:
+            current_otk_count: The current number of signed curve25519 keys present on the server.
+        """
         device_keys = (self.account.get_device_keys(self.client.mxid, self.client.device_id)
                        if not self.account.shared else None)
         one_time_keys = self.account.get_one_time_keys(self.client.mxid, self.client.device_id,

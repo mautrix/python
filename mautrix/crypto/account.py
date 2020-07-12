@@ -40,7 +40,11 @@ class OlmAccount(olm.Account):
 
     @property
     def fingerprint(self) -> str:
-        key = self._signing_key
+        """
+        Fingerprint is the base64-encoded signing key of this account, with spaces every 4
+        characters. This is what is used for manual device verification.
+        """
+        key = self.signing_key
         return " ".join([key[i:i + 4] for i in range(0, len(key), 4)])
 
     @classmethod

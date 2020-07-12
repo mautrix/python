@@ -30,7 +30,11 @@ class OlmDecryptionMachine(BaseOlmMachine):
         plaintext = await self._decrypt_olm_ciphertext(evt.sender, evt.content.sender_key,
                                                        own_content)
 
-        decrypted_evt: DecryptedOlmEvent = DecryptedOlmEvent.parse_json(plaintext)
+        try:
+            decrypted_evt: DecryptedOlmEvent = DecryptedOlmEvent.parse_json(plaintext)
+        except Exception:
+            self.log.trace("Failed to parse olm event plaintext: %s", plaintext)
+            raise
         if decrypted_evt.sender != evt.sender:
             raise DecryptionError("mismatched sender in olm payload")
         elif decrypted_evt.recipient != self.client.mxid:

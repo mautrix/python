@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Any, Dict
+import asyncio
 
 from mautrix.types import (EncryptedOlmEventContent, EventType, UserID, DeviceID,
                            EncryptionKeyAlgorithm)
@@ -13,7 +14,15 @@ from .types import DeviceIdentity, DecryptedOlmEvent, OlmEventKeys
 from .sessions import Session
 
 
+ClaimKeysList = Dict[UserID, Dict[DeviceID, DeviceIdentity]]
+
+
 class OlmEncryptionMachine(BaseOlmMachine):
+    _claim_keys_lock: asyncio.Lock
+
+    def __init__(self):
+        self._claim_keys_lock = asyncio.Lock()
+
     async def _encrypt_olm_event(self, session: Session, recipient: DeviceIdentity,
                                  event_type: EventType, content: Any) -> EncryptedOlmEventContent:
         evt = DecryptedOlmEvent(sender=self.client.mxid, sender_device=self.client.device_id,
@@ -26,8 +35,11 @@ class OlmEncryptionMachine(BaseOlmMachine):
         return EncryptedOlmEventContent(ciphertext={recipient.identity_key: ciphertext},
                                         sender_key=self.account.identity_key)
 
-    async def _create_outbound_sessions(self, users: Dict[UserID, Dict[DeviceID, DeviceIdentity]]
-                                        ) -> None:
+    async def _create_outbound_sessions(self, users: ClaimKeysList) -> None:
+        async with self._claim_keys_lock:
+            return await self._create_outbound_sessions_locked(users)
+
+    async def _create_outbound_sessions_locked(self, users: ClaimKeysList) -> None:
         request: Dict[UserID, Dict[DeviceID, EncryptionKeyAlgorithm]] = {}
         for user_id, devices in users.items():
             request[user_id] = {}

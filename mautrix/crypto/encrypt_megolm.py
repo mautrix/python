@@ -6,6 +6,7 @@
 from typing import Any, Dict, List, Union
 from collections import defaultdict
 from datetime import timedelta
+import asyncio
 import json
 
 from mautrix.types import (EncryptedMegolmEventContent, EventType, UserID, DeviceID, Serializable,
@@ -36,8 +37,40 @@ SessionEncryptResult = Union[
 
 
 class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
+    _megolm_locks: Dict[RoomID, asyncio.Lock]
+    _olm_locks: Dict[IdentityKey, asyncio.Lock]
+    _sharing_group_session: Dict[RoomID, asyncio.Event]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._megolm_locks = defaultdict(lambda: asyncio.Lock())
+        self._olm_locks = defaultdict(lambda: asyncio.Lock())
+        self._sharing_group_session = {}
+
     async def encrypt_megolm_event(self, room_id: RoomID, event_type: EventType, content: Any
                                    ) -> EncryptedMegolmEventContent:
+        """
+        Encrypt an event for a specific room using Megolm.
+
+        Args:
+            room_id: The room to encrypt the message for.
+            event_type: The event type.
+            content: The event content. Using the content structs in the mautrix.types
+                module is recommended.
+
+        Returns:
+            The encrypted event content.
+
+        Raises:
+            EncryptionError: If a group session has not been shared.
+                Use :meth:`share_group_session` to share a group session if this error is raised.
+        """
+        # The crypto store is async, so we need to make sure only one thing is writing at a time.
+        async with self._megolm_locks[room_id]:
+            return await self._encrypt_megolm_event(room_id, event_type, content)
+
+    async def _encrypt_megolm_event(self, room_id: RoomID, event_type: EventType, content: Any
+                                    ) -> EncryptedMegolmEventContent:
         self.log.debug(f"Encrypting event of type {event_type} for {room_id}")
         session = await self.crypto_store.get_outbound_group_session(room_id)
         if not session:
@@ -59,7 +92,55 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
                                            device_id=self.client.device_id, session_id=session.id,
                                            ciphertext=ciphertext, relates_to=relates_to)
 
+    def is_sharing_group_session(self, room_id: RoomID) -> bool:
+        """
+        Check if there's a group session being shared for a specific room
+
+        Args:
+            room_id: The room ID to check.
+
+        Returns:
+            True if a group session share is in progress, False if not
+        """
+        return room_id in self._sharing_group_session
+
+    async def wait_group_session(self, room_id: RoomID) -> None:
+        """
+        Wait for a group session to be shared.
+
+        Args:
+            room_id: The room ID to wait for.
+        """
+        try:
+            event = self._sharing_group_session[room_id]
+            await event.wait()
+        except KeyError:
+            pass
+
     async def share_group_session(self, room_id: RoomID, users: List[UserID]) -> None:
+        """
+        Create a Megolm session for a specific room and share it with the given list of users.
+
+        Note that you must not call this method again before the previous share has finished. You
+        should either lock calls yourself, or use :meth:`wait_group_session` to use the built-in
+        locking capabilities.
+
+        Args:
+            room_id: The room to create the session for.
+            users: The list of users to share the session with.
+
+        Raises:
+            SessionShareError: If something went wrong while sharing the session.
+        """
+        if room_id in self._sharing_group_session:
+            raise SessionShareError("Already sharing group session for that room")
+        self._sharing_group_session[room_id] = asyncio.Event()
+        try:
+            await self._share_group_session(room_id, users)
+        finally:
+            self._sharing_group_session.pop(room_id).set()
+
+    async def _share_group_session(self, room_id: RoomID, users: List[UserID]) -> None:
         self.log.debug(f"Sharing group session for room {room_id} with {users}")
         session = await self.crypto_store.get_outbound_group_session(room_id)
         if session and session.shared and not session.expired:
@@ -92,8 +173,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
             else:
                 self.log.debug(f"Trying to encrypt group session {session.id} for {user_id}")
                 for device_id, device in devices.items():
-                    result = await self._encrypt_group_session_for_device(session, user_id,
-                                                                          device_id, device)
+                    result = await self._encrypt_group_session(session, user_id, device_id, device)
                     if isinstance(result, EncryptedOlmEventContent):
                         share_key_msgs[user_id][device_id] = result
                     elif isinstance(result, RoomKeyWithheldEventContent):
@@ -113,8 +193,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
 
         for user_id, devices in missing_sessions.items():
             for device_id, device in devices.items():
-                result = await self._encrypt_group_session_for_device(session, user_id, device_id,
-                                                                      device)
+                result = await self._encrypt_group_session(session, user_id, device_id, device)
                 if isinstance(result, EncryptedOlmEventContent):
                     share_key_msgs[user_id][device_id] = result
                 elif isinstance(result, RoomKeyWithheldEventContent):
@@ -141,16 +220,15 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
         await self.crypto_store.put_group_session(room_id, sender_key, session_id, session)
         self.log.debug(f"Created inbound group session {room_id}/{sender_key}/{session_id}")
 
-    async def _encrypt_group_session_for_user(self, session: OutboundGroupSession, user_id: UserID,
-                                              devices: Dict[DeviceID, DeviceIdentity],
-                                              ) -> Dict[DeviceID, SessionEncryptResult]:
-        return {device_id: await self._encrypt_group_session_for_device(session, user_id, device_id,
-                                                                        device)
-                for device_id, device in devices.items()}
+    async def _encrypt_group_session(self, session: OutboundGroupSession, user_id: UserID,
+                                     device_id: DeviceID, device: DeviceIdentity
+                                     ) -> SessionEncryptResult:
+        async with self._olm_locks[device.identity_key]:
+            return await self._encrypt_group_session_locked(session, user_id, device_id, device)
 
-    async def _encrypt_group_session_for_device(self, session: OutboundGroupSession,
-                                                user_id: UserID, device_id: DeviceID,
-                                                device: DeviceIdentity) -> SessionEncryptResult:
+    async def _encrypt_group_session_locked(self, session: OutboundGroupSession, user_id: UserID,
+                                            device_id: DeviceID, device: DeviceIdentity
+                                            ) -> SessionEncryptResult:
         key = (user_id, device_id)
         if key in session.users_ignored or key in session.users_shared_with:
             return already_shared

@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Union, Optional, List, Dict
+from typing import Tuple, Union, Optional
 import logging
 import asyncio
 import hashlib
@@ -40,7 +40,6 @@ class EncryptionManager:
     login_shared_secret: bytes
     _id_prefix: str
     _id_suffix: str
-    _share_session_waiters: Dict[RoomID, List[asyncio.Future]]
 
     sync_task: asyncio.Future
 
@@ -53,7 +52,6 @@ class EncryptionManager:
         self.device_name = device_name
         self._id_prefix = user_id_prefix
         self._id_suffix = user_id_suffix
-        self._share_session_waiters = {}
         self.login_shared_secret = login_shared_secret.encode("utf-8")
         pickle_key = "mautrix.bridge.e2ee"
         if db_url.startswith("postgres://"):
@@ -90,14 +88,15 @@ class EncryptionManager:
             encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         except EncryptionError:
             self.log.debug("Got EncryptionError, sharing group session and trying again")
-            if await self.crypto.share_session_lock(room_id):
-                try:
-                    users = UserProfile.all_in_room(room_id, self._id_prefix, self._id_suffix,
-                                                    self.bot_mxid)
-                    await self.crypto.share_group_session(room_id, [profile.user_id
-                                                                    for profile in users])
-                finally:
-                    self.crypto.share_session_unlock(room_id)
+            if not self.crypto.is_sharing_group_session(room_id):
+                # TODO if this becomes async, this should be locked separately
+                #      instead of only relying on crypto.wait_group_session
+                users = UserProfile.all_in_room(room_id, self._id_prefix, self._id_suffix,
+                                                self.bot_mxid)
+                await self.crypto.share_group_session(room_id, [profile.user_id
+                                                                for profile in users])
+            else:
+                await self.crypto.wait_group_session(room_id)
             encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         return EventType.ROOM_ENCRYPTED, encrypted
 

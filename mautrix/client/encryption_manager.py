@@ -3,8 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Set, Optional, TYPE_CHECKING
+from typing import Set, Optional, Dict, TYPE_CHECKING
 import logging
+import asyncio
 
 from mautrix.types import (RoomID, EventID, EventType, EventContent, EncryptedMegolmEventContent,
                            EncryptedEvent)
@@ -23,10 +24,12 @@ class EncryptingAPI(StoreUpdatingAPI):
     _crypto: Optional['OlmMachine']
     encryption_blacklist: Set[EventType] = {EventType.REACTION}
     crypto_log: TraceLogger = logging.getLogger("mau.client.crypto")
+    _share_session_events: Dict[RoomID, asyncio.Event]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._crypto = None
+        self._share_session_events = {}
 
     @property
     def crypto(self) -> Optional['OlmMachine']:
@@ -52,8 +55,18 @@ class EncryptingAPI(StoreUpdatingAPI):
             self.crypto_log.trace(f"Shared group session, now trying to encrypt in {room_id} again")
             return await self.crypto.encrypt_megolm_event(room_id, event_type, content)
 
+    async def _share_session_lock(self, room_id: RoomID) -> bool:
+        try:
+            event = self._share_session_events[room_id]
+        except KeyError:
+            self._share_session_events[room_id] = asyncio.Event()
+            return True
+        else:
+            await event.wait()
+            return False
+
     async def share_group_session(self, room_id: RoomID) -> None:
-        if not await self.crypto.share_session_lock(room_id):
+        if await self._share_session_lock(room_id):
             return
         try:
             if not await self.state_store.has_full_member_list(room_id):
@@ -65,7 +78,7 @@ class EncryptingAPI(StoreUpdatingAPI):
                 members = await self.state_store.get_members(room_id)
             await self.crypto.share_group_session(room_id, members)
         finally:
-            self.crypto.share_session_unlock(room_id)
+            self._share_session_events.pop(room_id).set()
 
     async def send_message_event(self, room_id: RoomID, event_type: EventType,
                                  content: EventContent, disable_encryption: bool = False,
