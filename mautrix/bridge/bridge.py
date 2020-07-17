@@ -18,7 +18,7 @@ from .user import BaseUser
 from .puppet import BasePuppet
 
 try:
-    from .bridge_state_store import SQLBridgeStateStore
+    from .state_store.sqlalchemy import SQLBridgeStateStore
     from ..util.db import Base
 
     import sqlalchemy as sql
@@ -92,13 +92,16 @@ class Bridge(Program, ABC):
         self.config.save()
         print(f"Registration generated and saved to {self.config.registration_path}")
 
-    def prepare_appservice(self) -> None:
+    def make_state_store(self) -> None:
         if self.state_store_class is None:
             raise RuntimeError("state_store_class is not set")
         elif SQLBridgeStateStore and issubclass(self.state_store_class, SQLBridgeStateStore):
             self.state_store = self.state_store_class(self.get_puppet, self.get_double_puppet)
         else:
             self.state_store = self.state_store_class()
+
+    def prepare_appservice(self) -> None:
+        self.make_state_store()
         mb = 1024 ** 2
         self.az = AppService(server=self.config["homeserver.address"],
                              domain=self.config["homeserver.domain"],
@@ -134,7 +137,7 @@ class Bridge(Program, ABC):
             sys.exit(10)
 
     def prepare_bridge(self) -> None:
-        self.matrix = self.matrix_class(az=self.az, config=self.config, loop=self.loop, bridge=self)
+        self.matrix = self.matrix_class(bridge=self)
 
     async def start(self) -> None:
         self.log.debug("Starting appservice...")

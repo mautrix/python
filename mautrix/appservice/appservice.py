@@ -67,11 +67,13 @@ class AppService(AppServiceServerMixin):
         self.hs_token = hs_token
         self.bot_mxid = UserID(f"@{bot_localpart}:{domain}")
         self.real_user_content_key: str = real_user_content_key
-        if isinstance(state_store, ASStateStore):
-            self.state_store = state_store
-        else:
+        if not state_store:
             file = state_store if isinstance(state_store, str) else "mx-state.json"
             self.state_store = FileASStateStore(path=file, binary=False)
+        elif isinstance(state_store, ASStateStore):
+            self.state_store = state_store
+        else:
+            raise ValueError(f"Unsupported state store {type(state_store)}")
 
         self._http_session = None
         self._intent = None

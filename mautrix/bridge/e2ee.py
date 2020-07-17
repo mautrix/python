@@ -3,22 +3,27 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union, Optional, Dict
 import logging
 import asyncio
 import hashlib
 import hmac
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
-                           RoomID, Serializable, JSON, MessageEvent, UserID, EncryptedEvent,
-                           EncryptedMegolmEventContent, StateEvent)
+                           RoomID, Serializable, JSON, MessageEvent, EncryptedEvent, StateEvent,
+                           EncryptedMegolmEventContent)
+from mautrix.appservice import AppService
 from mautrix.errors import EncryptionError
 from mautrix.client import Client, SyncStore
-from mautrix.client.state_store.sqlalchemy import UserProfile
 from mautrix.crypto import OlmMachine, CryptoStore, StateStore, PgCryptoStore, PickleCryptoStore
 from mautrix.util.logging import TraceLogger
 
 from .crypto_state_store import GetPortalFunc, PgCryptoStateStore, SQLCryptoStateStore
+
+try:
+    from mautrix.client.state_store.sqlalchemy import UserProfile
+except ImportError:
+    UserProfile = None
 
 try:
     from mautrix.util.async_db import Database
@@ -36,23 +41,25 @@ class EncryptionManager:
     crypto_db: Optional[Database]
     state_store: StateStore
 
-    bot_mxid: UserID
+    az: AppService
     login_shared_secret: bytes
     _id_prefix: str
     _id_suffix: str
 
     sync_task: asyncio.Future
+    _share_session_events: Dict[RoomID, asyncio.Event]
 
-    def __init__(self, bot_mxid: UserID, login_shared_secret: str, homeserver_address: str,
+    def __init__(self, az: AppService, login_shared_secret: str, homeserver_address: str,
                  user_id_prefix: str, user_id_suffix: str, device_name: str, db_url: str,
                  get_portal: GetPortalFunc, loop: Optional[asyncio.AbstractEventLoop] = None
                  ) -> None:
         self.loop = loop or asyncio.get_event_loop()
-        self.bot_mxid = bot_mxid
+        self.az = az
         self.device_name = device_name
         self._id_prefix = user_id_prefix
         self._id_suffix = user_id_suffix
         self.login_shared_secret = login_shared_secret.encode("utf-8")
+        self._share_session_events = {}
         pickle_key = "mautrix.bridge.e2ee"
         if db_url.startswith("postgres://"):
             if not PgCryptoStore or not PgCryptoStateStore:
@@ -67,19 +74,29 @@ class EncryptionManager:
             self.state_store = SQLCryptoStateStore(get_portal)
         else:
             raise RuntimeError("Unsupported database scheme")
-        self.client = Client(base_url=homeserver_address, mxid=self.bot_mxid, loop=self.loop,
+        self.client = Client(base_url=homeserver_address, mxid=self.az.bot_mxid, loop=self.loop,
                              sync_store=self.crypto_store)
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
 
     def _ignore_user(self, user_id: str) -> bool:
         return (user_id.startswith(self._id_prefix) and user_id.endswith(self._id_suffix)
-                and user_id != self.bot_mxid)
+                and user_id != self.az.bot_mxid)
 
     async def handle_member_event(self, evt: StateEvent) -> None:
         if self._ignore_user(evt.state_key):
             # We don't want to invalidate group sessions because a ghost left or joined
             return
         await self.crypto.handle_member_event(evt)
+
+    async def _share_session_lock(self, room_id: RoomID) -> bool:
+        try:
+            event = self._share_session_events[room_id]
+        except KeyError:
+            self._share_session_events[room_id] = asyncio.Event()
+            return True
+        else:
+            await event.wait()
+            return False
 
     async def encrypt(self, room_id: RoomID, event_type: EventType,
                       content: Union[Serializable, JSON]
@@ -88,15 +105,13 @@ class EncryptionManager:
             encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         except EncryptionError:
             self.log.debug("Got EncryptionError, sharing group session and trying again")
-            if not self.crypto.is_sharing_group_session(room_id):
-                # TODO if this becomes async, this should be locked separately
-                #      instead of only relying on crypto.wait_group_session
-                users = UserProfile.all_in_room(room_id, self._id_prefix, self._id_suffix,
-                                                self.bot_mxid)
-                await self.crypto.share_group_session(room_id, [profile.user_id
-                                                                for profile in users])
-            else:
-                await self.crypto.wait_group_session(room_id)
+            if not await self._share_session_lock(room_id):
+                try:
+                    users = await self.az.state_store.get_members_filtered(
+                        room_id, self._id_prefix, self._id_suffix, self.az.bot_mxid)
+                    await self.crypto.share_group_session(room_id, users)
+                finally:
+                    self._share_session_events.pop(room_id).set()
             encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         return EventType.ROOM_ENCRYPTED, encrypted
 
@@ -107,7 +122,7 @@ class EncryptionManager:
 
     async def start(self) -> None:
         self.log.debug("Logging in with bridge bot user")
-        password = hmac.new(self.login_shared_secret, self.bot_mxid.encode("utf-8"),
+        password = hmac.new(self.login_shared_secret, self.az.bot_mxid.encode("utf-8"),
                             hashlib.sha512).hexdigest()
         if self.crypto_db:
             await self.crypto_db.start()

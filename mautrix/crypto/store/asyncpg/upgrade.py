@@ -9,9 +9,8 @@ import logging
 from asyncpg import Connection
 
 from mautrix.util.async_db.upgrade import UpgradeTable
-from mautrix.util.logging import TraceLogger
 
-upgrade_table = UpgradeTable(version_table_name="crypto_version",
+upgrade_table = UpgradeTable(version_table_name="crypto_version", database_name="crypto store",
                              log=logging.getLogger("mau.crypto.db.upgrade"))
 
 

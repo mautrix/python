@@ -39,6 +39,29 @@ class StateStore(ABC):
     async def get_members(self, room_id: RoomID) -> Optional[List[UserID]]:
         pass
 
+    async def get_members_filtered(self, room_id: RoomID, not_prefix: str, not_suffix: str,
+                                   not_id: str) -> Optional[List[UserID]]:
+        """
+        A filtered version of get_members that only returns user IDs that aren't operated by a
+        bridge. This should return the same as :meth:`get_members`, except users where the user ID
+        is equal to not_id OR it starts with not_prefix AND ends with not_suffix.
+
+        The default implementation simply calls :meth:`get_members`, but databases can implement
+        this more efficiently.
+
+        Args:
+            room_id: The room ID to find.
+            not_prefix: The user ID prefix to disallow.
+            not_suffix: The user ID suffix to disallow.
+            not_id: The user ID to disallow.
+        """
+        members = await self.get_members(room_id)
+        if members is None:
+            return None
+        return [user_id for user_id in members
+                if user_id != not_id and (not user_id.startswith(not_prefix)
+                                          and not user_id.endswith(not_suffix))]
+
     @abstractmethod
     async def set_members(self, room_id: RoomID,
                           members: Dict[UserID, Union[Member, MemberStateEventContent]],

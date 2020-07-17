@@ -15,7 +15,7 @@ import json
 from aiohttp import ClientConnectionError
 
 from mautrix.types import (UserID, FilterID, Filter, RoomEventFilter, RoomFilter, EventFilter,
-                           EventType, SyncToken, RoomID, Event, PresenceState)
+                           EventType, SyncToken, RoomID, Event, PresenceState, StateFilter)
 from mautrix.appservice import AppService, IntentAPI
 from mautrix.errors import IntentError, MatrixError, MatrixRequestError, MatrixInvalidToken
 from mautrix.api import Path
@@ -85,7 +85,7 @@ class CustomPuppetMixin(ABC):
     _sync_task: Optional[asyncio.Future] = None
 
     @abstractmethod
-    def save(self) -> None:
+    async def save(self) -> None:
         """Save the information of this puppet. Called from :meth:`switch_mxid`"""
 
     @property
@@ -161,7 +161,7 @@ class CustomPuppetMixin(ABC):
                 await self._leave_rooms_with_default_user()
             except Exception:
                 self.log.warning("Error when leaving rooms with default user", exc_info=True)
-        self.save()
+        await self.save()
 
     async def try_start(self) -> None:
         try:
@@ -224,22 +224,23 @@ class CustomPuppetMixin(ABC):
                 pass
 
     def _create_sync_filter(self) -> Awaitable[FilterID]:
+        all_events = EventType.find("*")
         return self.intent.create_filter(Filter(
-            account_data=EventFilter(types=[]),
+            account_data=EventFilter(types=[all_events]),
+            presence=EventFilter(
+                types=[EventType.PRESENCE],
+                senders=[self.custom_mxid] if self.only_handle_own_synced_events else None,
+            ),
             room=RoomFilter(
                 include_leave=False,
-                state=RoomEventFilter(types=[]),
-                timeline=RoomEventFilter(types=[]),
-                account_data=RoomEventFilter(types=[]),
+                state=StateFilter(not_types=[all_events]),
+                timeline=RoomEventFilter(not_types=[all_events]),
+                account_data=RoomEventFilter(not_types=[all_events]),
                 ephemeral=RoomEventFilter(types=[
                     EventType.TYPING,
                     EventType.RECEIPT,
                 ]),
             ),
-            presence=EventFilter(
-                types=[EventType.PRESENCE],
-                senders=[self.custom_mxid] if self.only_handle_own_synced_events else None,
-            )
         ))
 
     def _filter_events(self, room_id: RoomID, events: List[Dict]) -> Iterator[Event]:

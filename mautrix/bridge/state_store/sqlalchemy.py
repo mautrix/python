@@ -8,7 +8,7 @@ from typing import Callable, Union, Awaitable
 from mautrix.types import UserID
 from mautrix.appservice.state_store.sqlalchemy import SQLASStateStore
 
-from .puppet import BasePuppet
+from ..puppet import BasePuppet
 
 GetPuppetFunc = Union[Callable[[UserID], Awaitable[BasePuppet]],
                       Callable[[UserID, bool], Awaitable[BasePuppet]]]

@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, List
 
 from mautrix.types import (UserID, RoomID, Membership, Member, PowerLevelStateEventContent,
                            RoomEncryptionStateEventContent)
@@ -67,6 +67,11 @@ class SQLStateStore(StateStore):
         for profile in UserProfile.all_in_room(room_id):
             self._profile_cache[room_id][profile.user_id] = profile
         return [profile.user_id for profile in self._profile_cache[room_id].values()]
+
+    async def get_members_filtered(self, room_id: RoomID, not_prefix: str, not_suffix: str,
+                                   not_id: str) -> Optional[List[UserID]]:
+        return [profile.user_id for profile
+                in UserProfile.all_in_room(room_id, not_suffix, not_prefix, not_id)]
 
     async def set_members(self, room_id: RoomID, members: Dict[UserID, Member],
                           joined_only: bool = False) -> None:

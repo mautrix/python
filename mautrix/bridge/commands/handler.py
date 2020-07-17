@@ -294,12 +294,10 @@ class CommandProcessor:
     bridge: 'Bridge'
     _ref_no: int
 
-    def __init__(self, az: AppService, config: BaseBridgeConfig, bridge: 'Bridge',
-                 event_class: Type[CommandEvent] = CommandEvent,
-                 loop: asyncio.AbstractEventLoop = None) -> None:
-        self.az = az
-        self.config = config
-        self.loop = loop or asyncio.get_event_loop()
+    def __init__(self, bridge: 'Bridge', event_class: Type[CommandEvent] = CommandEvent) -> None:
+        self.az = bridge.az
+        self.config = bridge.config
+        self.loop = bridge.loop or asyncio.get_event_loop()
         self.command_prefix = self.config["bridge.command_prefix"]
         self.bridge = bridge
         self.event_class = event_class

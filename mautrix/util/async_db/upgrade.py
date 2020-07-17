@@ -8,6 +8,8 @@ import logging
 
 import asyncpg
 
+from ..logging import TraceLogger
+
 Upgrade = Callable[[asyncpg.Connection], Awaitable[None]]
 
 
@@ -22,14 +24,17 @@ async def noop_upgrade(_: asyncpg.Connection) -> None:
 class UpgradeTable:
     upgrades: List[Upgrade]
     allow_unsupported: bool
+    database_name: str
     version_table_name: str
-    log: logging.Logger
+    log: TraceLogger
 
     def __init__(self, allow_unsupported: bool = False, version_table_name: str = "version",
-                 log: Optional[logging.Logger] = None) -> None:
+                 database_name: str = "database",
+                 log: Optional[Union[logging.Logger, TraceLogger]] = None) -> None:
         self.upgrades = [noop_upgrade]
         self.allow_unsupported = allow_unsupported
         self.version_table_name = version_table_name
+        self.database_name = database_name
         self.log = log or logging.getLogger("mau.db.upgrade")
 
     def register(self, index: int = -1, description: str = "", _outer_fn: Optional[Upgrade] = None
@@ -49,6 +54,12 @@ class UpgradeTable:
             return fn
 
         return actually_register(_outer_fn) if _outer_fn else actually_register
+
+    async def _save_version(self, conn: asyncpg.Connection, version: int) -> None:
+        self.log.trace(f"Saving current version (v{version}) to database")
+        await conn.execute(f"DELETE FROM {self.version_table_name}")
+        await conn.execute(f"INSERT INTO {self.version_table_name} (version) VALUES ($1)",
+                           version)
 
     async def upgrade(self, pool: asyncpg.pool.Pool) -> None:
         async with pool.acquire() as conn:
@@ -75,15 +86,12 @@ class UpgradeTable:
                 upgrade = self.upgrades[new_version]
                 desc = getattr(upgrade, "__mau_db_upgrade_description__", None)
                 suffix = f": {desc}" if desc else ""
-                self.log.debug(f"Upgrading database from v{version} to v{new_version}{suffix}")
-                await upgrade(conn)
-                version = new_version
-
-            async with conn.transaction():
-                self.log.debug(f"Saving current version (v{version}) to database")
-                await conn.execute(f"DELETE FROM {self.version_table_name}")
-                await conn.execute(f"INSERT INTO {self.version_table_name} (version) VALUES ($1)",
-                                   version)
+                self.log.debug(f"Upgrading {self.database_name} "
+                               f"from v{version} to v{new_version}{suffix}")
+                async with conn.transaction():
+                    await upgrade(conn)
+                    version = new_version
+                    await self._save_version(conn, version)
 
 
 upgrade_tables: Dict[str, UpgradeTable] = {}

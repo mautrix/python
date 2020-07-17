@@ -45,15 +45,12 @@ class BaseMatrixHandler:
     user_id_prefix: str
     user_id_suffix: str
 
-    def __init__(self, az: AppService, config: 'BaseBridgeConfig',
-                 command_processor: Optional[CommandProcessor] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None,
+    def __init__(self, command_processor: Optional[CommandProcessor] = None,
                  bridge: Optional['Bridge'] = None) -> None:
-        self.az = az
-        self.config = config
+        self.az = bridge.az
+        self.config = bridge.config
         self.bridge = bridge
-        self.commands = command_processor or CommandProcessor(az=az, config=config, loop=loop,
-                                                              bridge=bridge)
+        self.commands = command_processor or CommandProcessor(bridge=bridge)
         self.az.matrix_event_handler(self.int_handle_event)
 
         self.e2ee = None
@@ -64,16 +61,16 @@ class BaseMatrixHandler:
                 self.log.warning("Encryption enabled in config, but login_shared_secret not set.")
             else:
                 self.e2ee = EncryptionManager(
-                    bot_mxid=self.az.bot_mxid, device_name=bridge.name,
+                    az=bridge.az, device_name=bridge.name, loop=bridge.loop,
                     user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
                     login_shared_secret=self.config["bridge.login_shared_secret"],
                     homeserver_address=self.config["homeserver.address"],
-                    db_url=self._get_db_url(config), get_portal=self.bridge.get_portal, loop=loop)
+                    db_url=self._get_db_url(bridge.config), get_portal=self.bridge.get_portal)
 
     @staticmethod
     def _get_db_url(config: 'BaseBridgeConfig') -> str:
         db_url = config["bridge.encryption.database"]
-        if db_url == "default":
+        if not db_url or db_url == "default":
             db_url = config["appservice.database"]
             parsed_url = URL(db_url)
             if parsed_url.scheme == "sqlite":
