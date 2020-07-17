@@ -7,20 +7,24 @@ from typing import Optional, Type
 from abc import ABC, abstractmethod
 import sys
 
-import sqlalchemy as sql
-from sqlalchemy.engine.base import Engine
-
 from mautrix.types import RoomID, UserID
 from mautrix.appservice import AppService, ASStateStore
 
-from ..util.db import Base
 from ..util.program import Program
 from .config import BaseBridgeConfig
 from .matrix import BaseMatrixHandler
-from .bridge_state_store import SQLBridgeStateStore
 from .portal import BasePortal
 from .user import BaseUser
 from .puppet import BasePuppet
+
+try:
+    from .bridge_state_store import SQLBridgeStateStore
+    from ..util.db import Base
+
+    import sqlalchemy as sql
+    from sqlalchemy.engine.base import Engine
+except ImportError:
+    Base = SQLBridgeStateStore = sql = Engine = None
 
 try:
     import uvloop
@@ -29,7 +33,7 @@ except ImportError:
 
 
 class Bridge(Program, ABC):
-    db: Engine
+    db: 'Engine'
     az: AppService
     state_store_class: Type[ASStateStore] = SQLBridgeStateStore
     state_store: ASStateStore
@@ -72,8 +76,8 @@ class Bridge(Program, ABC):
 
     def prepare(self) -> None:
         super().prepare()
-        self.prepare_appservice()
         self.prepare_db()
+        self.prepare_appservice()
         self.prepare_bridge()
 
     def prepare_config(self) -> None:
@@ -89,7 +93,9 @@ class Bridge(Program, ABC):
         print(f"Registration generated and saved to {self.config.registration_path}")
 
     def prepare_appservice(self) -> None:
-        if issubclass(self.state_store_class, SQLBridgeStateStore):
+        if self.state_store_class is None:
+            raise RuntimeError("state_store_class is not set")
+        elif SQLBridgeStateStore and issubclass(self.state_store_class, SQLBridgeStateStore):
             self.state_store = self.state_store_class(self.get_puppet, self.get_double_puppet)
         else:
             self.state_store = self.state_store_class()
@@ -118,6 +124,8 @@ class Bridge(Program, ABC):
                              })
 
     def prepare_db(self) -> None:
+        if not sql:
+            raise RuntimeError("SQLAlchemy is not installed")
         self.db = sql.create_engine(self.config["appservice.database"])
         Base.metadata.bind = self.db
         if not self.db.has_table("alembic_version"):
