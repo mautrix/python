@@ -76,13 +76,30 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("logging")
 
     @property
-    @abstractmethod
     def namespaces(self) -> Dict[str, List[Dict[str, Any]]]:
         """
         Generate the user ID and room alias namespace config for the registration as specified in
         https://matrix.org/docs/spec/application_service/r0.1.0.html#application-services
         """
-        return {}
+        homeserver = self["homeserver.domain"]
+
+        username_format = self["bridge.username_template"].format(userid=".*")
+        alias_format = (self["bridge.alias_template"].format(groupname=".*")
+                        if "bridge.alias_template" in self else None)
+        group_id = ({"group_id": self["appservice.community_id"]}
+                    if self["appservice.community_id"] else {})
+
+        return {
+            "users": [{
+                "exclusive": True,
+                "regex": f"@{username_format}:{homeserver}",
+                **group_id,
+            }],
+            "aliases": [{
+                "exclusive": True,
+                "regex": f"#{alias_format}:{homeserver}",
+            }] if alias_format else []
+        }
 
     def generate_registration(self) -> None:
         self["appservice.as_token"] = self._new_token()
