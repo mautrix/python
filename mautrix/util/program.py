@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Iterable, Awaitable, Optional, Type, Union, Tuple, Any
+from typing import Iterable, Awaitable, Optional, Type, Union, Tuple, AsyncIterable, Any
 from itertools import chain
 from time import time
 import argparse
@@ -23,7 +23,7 @@ except ImportError:
     uvloop = None
 
 
-NewTask = Union[Awaitable[Any], Iterable[Awaitable[Any]]]
+NewTask = Union[Awaitable[Any], Iterable[Awaitable[Any]], AsyncIterable[Awaitable[Any]]]
 TaskList = Iterable[Awaitable[Any]]
 
 
@@ -218,10 +218,18 @@ class Program:
     def add_shutdown_actions(self, *actions: NewTask) -> None:
         self.shutdown_actions = self._add_actions(self.shutdown_actions, actions)
 
-    @staticmethod
-    def _add_actions(to: TaskList, add: Tuple[NewTask, ...]) -> TaskList:
+    async def _unpack_async_iterator(self, iterable: AsyncIterable[Awaitable[Any]]) -> None:
+        tasks = []
+        async for task in iterable:
+            if inspect.isawaitable(task):
+                tasks.append(asyncio.ensure_future(task, loop=self.loop))
+        await asyncio.gather(*tasks)
+
+    def _add_actions(self, to: TaskList, add: Tuple[NewTask, ...]) -> TaskList:
         for item in add:
-            if inspect.isawaitable(item):
+            if inspect.isasyncgen(item):
+                to.append(self._unpack_async_iterator(item))
+            elif inspect.isawaitable(item):
                 if isinstance(to, list):
                     to.append(item)
                 else:

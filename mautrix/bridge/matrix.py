@@ -314,6 +314,13 @@ class BaseMatrixHandler:
     async def handle_encrypted(self, evt: EncryptedEvent) -> None:
         await self.int_handle_event(await self.e2ee.decrypt(evt))
 
+    async def handle_encryption(self, evt: StateEvent) -> None:
+        await self.az.state_store.set_encryption_info(evt.room_id, evt.content)
+        portal = await self.bridge.get_portal(evt.room_id)
+        if portal.encrypted:
+            portal.encrypted = True
+            await portal.save()
+
     async def int_handle_event(self, evt: Event) -> None:
         if isinstance(evt, StateEvent) and evt.type == EventType.ROOM_MEMBER and self.e2ee:
             await self.e2ee.handle_member_event(evt)
@@ -361,6 +368,8 @@ class BaseMatrixHandler:
             await self.handle_message(evt.room_id, evt.sender, evt.content, evt.event_id)
         elif evt.type == EventType.ROOM_ENCRYPTED and self.e2ee:
             await self.handle_encrypted(evt)
+        elif evt.type == EventType.ROOM_ENCRYPTION:
+            await self.handle_encryption(evt)
         else:
             if evt.type.is_state and isinstance(evt, StateEvent):
                 await self.handle_state_event(evt)

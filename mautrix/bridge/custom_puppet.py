@@ -201,7 +201,7 @@ class CustomPuppetMixin(ABC):
             self._sync_task.cancel()
             self._sync_task = None
 
-    def default_puppet_should_leave_room(self, room_id: RoomID) -> bool:
+    async def default_puppet_should_leave_room(self, room_id: RoomID) -> bool:
         """
         Whether or not the default puppet user should leave the given room when this puppet is
         switched to using a custom user account.
@@ -217,7 +217,7 @@ class CustomPuppetMixin(ABC):
     async def _leave_rooms_with_default_user(self) -> None:
         for room_id in await self.default_mxid_intent.get_joined_rooms():
             try:
-                if self.default_puppet_should_leave_room(room_id):
+                if await self.default_puppet_should_leave_room(room_id):
                     await self.default_mxid_intent.leave_room(room_id)
                     await self.intent.ensure_joined(room_id)
             except (IntentError, MatrixRequestError):

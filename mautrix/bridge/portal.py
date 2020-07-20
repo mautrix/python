@@ -11,23 +11,30 @@ import logging
 from mautrix.appservice import AppService, IntentAPI
 from mautrix.types import (RoomID, EventID, MessageEventContent, EventType, EncryptionAlgorithm,
                            RoomEncryptionStateEventContent as Encryption)
+from mautrix.errors import MatrixError
 from mautrix.util.logging import TraceLogger
 from mautrix.util.simple_lock import SimpleLock
 
 if TYPE_CHECKING:
     from .user import BaseUser
     from .matrix import BaseMatrixHandler
+    from .bridge import Bridge
 
 
 class BasePortal(ABC):
     log: TraceLogger = logging.getLogger("mau.portal")
     az: AppService
     matrix: 'BaseMatrixHandler'
+    bridge: 'Bridge'
     loop: asyncio.AbstractEventLoop
     main_intent: IntentAPI
     mxid: Optional[RoomID]
     encrypted: bool
     backfill_lock: SimpleLock
+
+    @abstractmethod
+    async def save(self) -> None:
+        pass
 
     @abstractmethod
     async def handle_matrix_message(self, sender: 'BaseUser', message: MessageEventContent,
@@ -64,3 +71,40 @@ class BasePortal(ABC):
     @abstractmethod
     def bridge_info(self) -> Dict[str, Any]:
         pass
+
+    # region Matrix room cleanup
+
+    @abstractmethod
+    async def delete(self) -> None:
+        pass
+
+    async def cleanup_room(self, intent: IntentAPI, room_id: RoomID,
+                           message: str = "Portal deleted", puppets_only: bool = False) -> None:
+        try:
+            members = await intent.get_room_members(room_id)
+        except MatrixError:
+            members = []
+        for user_id in members:
+            puppet = await self.bridge.get_puppet(user_id, create=False)
+            if user_id != intent.mxid and (not puppets_only or puppet):
+                try:
+                    if puppet:
+                        await puppet.intent.leave_room(room_id)
+                    else:
+                        await intent.kick_user(room_id, user_id, message)
+                except MatrixError:
+                    pass
+        try:
+            await intent.leave_room(room_id)
+        except MatrixError:
+            pass
+
+    async def unbridge(self) -> None:
+        await self.cleanup_room(self.main_intent, self.mxid, "Room unbridged", puppets_only=True)
+        await self.delete()
+
+    async def cleanup_and_delete(self) -> None:
+        await self.cleanup_room(self.main_intent, self.mxid)
+        await self.delete()
+
+    # endregion
