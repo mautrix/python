@@ -216,7 +216,7 @@ class Program:
         self.startup_actions = self._add_actions(self.startup_actions, actions)
 
     def add_shutdown_actions(self, *actions: NewTask) -> None:
-        self.startup_actions = self._add_actions(self.startup_actions, actions)
+        self.shutdown_actions = self._add_actions(self.shutdown_actions, actions)
 
     @staticmethod
     def _add_actions(to: TaskList, add: Tuple[NewTask, ...]) -> TaskList:

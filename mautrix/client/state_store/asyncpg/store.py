@@ -70,7 +70,7 @@ class PgStateStore(StateStore):
                           members: Dict[UserID, Union[Member, MemberStateEventContent]],
                           joined_only: bool = False) -> None:
         columns = ["room_id", "user_id", "membership", "displayname", "avatar_url"]
-        records = [(room_id, user_id, member.membership, member.displayname, member.avatar_url)
+        records = [(room_id, user_id, str(member.membership), member.displayname, member.avatar_url)
                    for user_id, member in members.items()]
         async with self.db.acquire() as conn, conn.transaction():
             del_q = "DELETE FROM mx_user_profile WHERE room_id=$1"
@@ -97,7 +97,7 @@ class PgStateStore(StateStore):
     async def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
         await self.db.execute("INSERT INTO mx_room_state (room_id, power_levels) VALUES ($1, $2) "
                               "ON CONFLICT (room_id) DO UPDATE SET power_levels=$2",
-                              room_id, content.serialize())
+                              room_id, content.json())
 
     async def has_encryption_info_cached(self, room_id: RoomID) -> bool:
         return bool(await self.db.fetchval("SELECT encryption IS NULL FROM mx_room_state "
@@ -119,4 +119,4 @@ class PgStateStore(StateStore):
                                   content: RoomEncryptionStateEventContent) -> None:
         q = ("INSERT INTO mx_room_state (room_id, is_encrypted, encryption) VALUES ($1, true, $2) "
              "ON CONFLICT (room_id) DO UPDATE SET is_encrypted=true, encryption=$2")
-        await self.db.execute(q, room_id, content.serialize())
+        await self.db.execute(q, room_id, content.json())

@@ -28,16 +28,12 @@ class BasePuppet(CustomPuppetMixin, ABC):
     mxid: str
     intent: IntentAPI
 
+    @classmethod
     @abstractmethod
-    def save(self) -> None:
+    async def get_by_mxid(cls, mxid: UserID) -> 'BasePuppet':
         pass
 
     @classmethod
     @abstractmethod
-    def get_by_mxid(cls, mxid: UserID) -> 'BasePuppet':
-        pass
-
-    @classmethod
-    @abstractmethod
-    def get_by_custom_mxid(cls, mxid: UserID) -> 'BasePuppet':
+    async def get_by_custom_mxid(cls, mxid: UserID) -> 'BasePuppet':
         pass

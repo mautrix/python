@@ -8,7 +8,6 @@ from abc import ABC
 
 from mautrix.types import RoomID, UserID, RoomEncryptionStateEventContent
 from mautrix.crypto import StateStore
-from mautrix.client.state_store.sqlalchemy import UserProfile, RoomState
 
 from mautrix.bridge.portal import BasePortal
 
@@ -26,18 +25,25 @@ class BaseCryptoStateStore(StateStore, ABC):
         return portal.encrypted if portal else False
 
 
-class SQLCryptoStateStore(BaseCryptoStateStore):
-    @staticmethod
-    async def find_shared_rooms(user_id: UserID) -> List[RoomID]:
-        return [profile.user_id for profile in UserProfile.find_rooms_with_user(user_id)]
+try:
+    from mautrix.client.state_store.sqlalchemy import UserProfile, RoomState
 
-    @staticmethod
-    async def get_encryption_info(room_id: RoomID) -> Optional[RoomEncryptionStateEventContent]:
-        state = RoomState.get(room_id)
-        if not state:
-            return None
-        return state.encryption
 
+    class SQLCryptoStateStore(BaseCryptoStateStore):
+        @staticmethod
+        async def find_shared_rooms(user_id: UserID) -> List[RoomID]:
+            return [profile.user_id for profile in UserProfile.find_rooms_with_user(user_id)]
+
+        @staticmethod
+        async def get_encryption_info(room_id: RoomID) -> Optional[RoomEncryptionStateEventContent]:
+            state = RoomState.get(room_id)
+            if not state:
+                return None
+            return state.encryption
+except ImportError:
+    UserProfile = None
+    RoomState = None
+    SQLCryptoStateStore = None
 
 try:
     from mautrix.util.async_db import Database

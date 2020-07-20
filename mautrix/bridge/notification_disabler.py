@@ -6,7 +6,7 @@
 from typing import Optional, Type
 import logging
 
-from mautrix.types import RoomID
+from mautrix.types import RoomID, UserID
 from mautrix.appservice import IntentAPI
 from mautrix.api import Method, Path, PathBuilder
 from mautrix.util.logging import TraceLogger
@@ -20,15 +20,15 @@ class NotificationDisabler:
     config_enabled: bool = False
     log: TraceLogger = logging.getLogger("mau.notification_disabler")
 
+    user_id: UserID
     room_id: RoomID
     intent: Optional[IntentAPI]
     enabled: bool
 
     def __init__(self, room_id: RoomID, user: BaseUser) -> None:
+        self.user_id = user.mxid
         self.room_id = room_id
         self.enabled = False
-        puppet = self.puppet_cls.get_by_custom_mxid(user.mxid)
-        self.intent = puppet.intent if puppet and puppet.is_real_user else None
 
     @property
     def _path(self) -> PathBuilder:
@@ -46,6 +46,8 @@ class NotificationDisabler:
         }
 
     async def __aenter__(self) -> None:
+        puppet = await self.puppet_cls.get_by_custom_mxid(self.user_id)
+        self.intent = puppet.intent if puppet and puppet.is_real_user else None
         if not self.intent or not self.config_enabled:
             return
         self.enabled = True

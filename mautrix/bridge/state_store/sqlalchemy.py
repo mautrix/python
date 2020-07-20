@@ -33,6 +33,6 @@ class SQLBridgeStateStore(SQLASStateStore):
         puppet = await self.get_puppet(user_id, True)
         if puppet:
             puppet.is_registered = True
-            puppet.save()
+            await puppet.save()
         else:
             await super().registered(user_id)

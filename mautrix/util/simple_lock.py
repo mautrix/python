@@ -9,14 +9,12 @@ import asyncio
 
 
 class SimpleLock:
-    _loop: asyncio.AbstractEventLoop
     _event: asyncio.Event
     log: Optional[logging.Logger]
     message: Optional[str]
 
-    def __init__(self, message: Optional[str] = None, log: Optional[logging.Logger] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
-        self._loop = loop or asyncio.get_event_loop()
+    def __init__(self, message: Optional[str] = None, log: Optional[logging.Logger] = None) -> None:
+        self._event = asyncio.Event()
         self.log = log
         self.message = message
 

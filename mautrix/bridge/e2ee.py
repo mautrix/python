@@ -105,7 +105,7 @@ class EncryptionManager:
             encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         except EncryptionError:
             self.log.debug("Got EncryptionError, sharing group session and trying again")
-            if not await self._share_session_lock(room_id):
+            if await self._share_session_lock(room_id):
                 try:
                     users = await self.az.state_store.get_members_filtered(
                         room_id, self._id_prefix, self._id_suffix, self.az.bot_mxid)
