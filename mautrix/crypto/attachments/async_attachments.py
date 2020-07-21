@@ -25,7 +25,9 @@ from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto.Util import Counter
 
-from .attachments import _get_decryption_info_dict
+from mautrix.types import EncryptedFile
+
+from .attachments import _get_decryption_info
 
 AsyncDataT = Union[
     bytes,
@@ -34,7 +36,7 @@ AsyncDataT = Union[
     io.BufferedIOBase,
 ]
 
-_EncryptedReturnT = AsyncGenerator[Union[bytes, Dict[str, Any]], None]
+_EncryptedReturnT = AsyncGenerator[Union[bytes, EncryptedFile], None]
 
 
 async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
@@ -81,7 +83,7 @@ async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
 
         yield crypt_chunk
 
-    yield _get_decryption_info_dict(key, iv, sha256)
+    yield _get_decryption_info(key, iv, sha256)
 
 
 async def async_generator_from_data(

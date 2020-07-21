@@ -27,11 +27,12 @@ from Crypto.Hash import SHA256
 from Crypto.Util import Counter
 
 from mautrix.errors import DecryptionError
+from mautrix.types import EncryptedFile, JSONWebKey
 
 DataT = Union[bytes, Iterable[bytes]]
 
 
-def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str):
+def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str) -> bytes:
     """Decrypt an encrypted attachment.
 
     Args:
@@ -75,7 +76,7 @@ def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str):
     return cipher.decrypt(ciphertext)
 
 
-def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, Dict[str, Any]]:
+def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, EncryptedFile]:
     """Encrypt data in order to send it as an encrypted attachment.
 
     Args:
@@ -90,7 +91,7 @@ def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, Dict[str, Any]]:
 
 
 def encrypted_attachment_generator(data: DataT
-                                   ) -> Generator[Union[bytes, Dict[str, Any]], None, None]:
+                                   ) -> Generator[Union[bytes, EncryptedFile], None, None]:
     """Generator to encrypt data in order to send it as an encrypted
     attachment.
 
@@ -127,20 +128,12 @@ def encrypted_attachment_generator(data: DataT
         sha256.update(encrypted_chunk)  # in executor
         yield encrypted_chunk
 
-    yield _get_decryption_info_dict(key, iv, sha256)
+    yield _get_decryption_info(key, iv, sha256)
 
 
-def _get_decryption_info_dict(key: bytes, iv: bytes, sha256: SHA256.SHA256Hash) -> Dict[str, Any]:
-    return {
-        "v": "v2",
-        "key": {
-            "kty": "oct",
-            "alg": "A256CTR",
-            "ext": True,
-            "k": unpaddedbase64.encode_base64(key, urlsafe=True),
-            "key_ops": ["encrypt", "decrypt"],
-        },
-        # Send IV concatenated with counter
-        "iv": unpaddedbase64.encode_base64(iv + b"\x00" * 8),
-        "hashes": {"sha256": unpaddedbase64.encode_base64(sha256.digest())},
-    }
+def _get_decryption_info(key: bytes, iv: bytes, sha256: SHA256.SHA256Hash) -> EncryptedFile:
+    return EncryptedFile(version="v2", iv=unpaddedbase64.encode_base64(iv + b"\x00" * 8),
+                         hashes={"sha256": unpaddedbase64.encode_base64(sha256.digest())},
+                         key=JSONWebKey(key_type="oct", algorithm="A256CTR", extractable=True,
+                                        key_ops=["encrypt", "decrypt"],
+                                        key=unpaddedbase64.encode_base64(key, urlsafe=True)))
