@@ -15,6 +15,7 @@ class SimpleLock:
 
     def __init__(self, message: Optional[str] = None, log: Optional[logging.Logger] = None) -> None:
         self._event = asyncio.Event()
+        self._event.set()
         self.log = log
         self.message = message
 
@@ -32,7 +33,7 @@ class SimpleLock:
 
     @property
     def locked(self) -> bool:
-        return self._event.is_set()
+        return not self._event.is_set()
 
     async def wait(self, task: Optional[str] = None) -> None:
         if not self._event.is_set():
