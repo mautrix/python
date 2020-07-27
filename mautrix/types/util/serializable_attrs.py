@@ -106,7 +106,7 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
         name = field.name.lstrip("_")
         new_items[name] = _try_deserialize(field.type, value, field.default,
                                            field.metadata.get("ignore_errors", False))
-    if len(new_items) == 0 and default_if_empty:
+    if len(new_items) == 0 and default_if_empty and default is not attr.NOTHING:
         return _safe_default(default)
     try:
         obj = attrs_type(**new_items)
