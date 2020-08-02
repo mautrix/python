@@ -49,6 +49,7 @@ class MatrixParser(Generic[T]):
     fs: Type[T] = MarkdownString
     read_html: Callable[[str], HTMLNode] = read_html
     ignore_less_relevant_links: bool = True
+    less_relevant_link_attrib: str = "data-mautrix-no-link"
 
     @classmethod
     def list_bullet(cls, depth: int) -> str:
@@ -134,7 +135,7 @@ class MatrixParser(Generic[T]):
 
         # Custom attribute to tell the parser that the link isn't relevant and
         # shouldn't be included in plaintext representation.
-        if cls.ignore_less_relevant_links and node.attrib.get("data-mautrix-no-link", False):
+        if cls.ignore_less_relevant_links and node.attrib.get(cls.less_relevant_link_attrib, False):
             return msg
 
         return cls.url_to_fstring(msg, href)
