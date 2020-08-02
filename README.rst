@@ -31,6 +31,7 @@ Components:
 * High-level client framework (mautrix.client_)
 
   * Syncing and event handling helper.
+  * End-to-end encryption helper.
 
 .. _python-appservice-framework: https://github.com/Cadair/python-appservice-framework/
 .. _Client API: https://matrix.org/docs/spec/client_server/r0.6.1.html
