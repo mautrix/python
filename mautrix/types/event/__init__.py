@@ -26,5 +26,6 @@ from .encrypted import (EncryptedEvent, EncryptedEventContent, EncryptionAlgorit
                         EncryptedOlmEventContent, EncryptedMegolmEventContent,
                         EncryptionKeyAlgorithm, OlmMsgType, OlmCiphertext)
 from .to_device import (ToDeviceEvent, ToDeviceEventContent,  RoomKeyWithheldCode,
-                        RoomKeyWithheldEventContent, RoomKeyEventContent)
+                        RoomKeyWithheldEventContent, RoomKeyEventContent, KeyRequestAction,
+                        RequestedKeyInfo, RoomKeyRequestEventContent, ForwardedRoomKeyEventContent)
 from .generic import Event, EventContent

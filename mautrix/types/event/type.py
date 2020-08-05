@@ -140,6 +140,7 @@ _standard_types = {
         "m.room.encrypted": "TO_DEVICE_ENCRYPTED",
         "m.room_key": "ROOM_KEY",
         "m.room_key.withheld": "ROOM_KEY_WITHHELD",
+        "org.matrix.room_key.withheld": "ORG_MATRIX_ROOM_KEY_WITHHELD",
         "m.room_key_request": "ROOM_KEY_REQUEST",
         "m.forwarded_room_key": "FORWARDED_ROOM_KEY",
     },

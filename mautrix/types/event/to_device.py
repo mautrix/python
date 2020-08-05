@@ -3,11 +3,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Optional
+from typing import Union, Optional, List
+
 from attr import dataclass
+import attr
 
 from ..util import SerializableAttrs, Obj, deserializer, ExtensibleEnum
-from ..primitive import JSON, UserID, RoomID, SessionID, IdentityKey
+from ..primitive import JSON, UserID, RoomID, SessionID, IdentityKey, SigningKey, DeviceID
 from .encrypted import EncryptionAlgorithm, EncryptedOlmEventContent
 from .base import EventType, BaseEvent
 
@@ -38,12 +40,44 @@ class RoomKeyEventContent(SerializableAttrs['RoomKeyEventContent']):
     session_key: str
 
 
+class KeyRequestAction(ExtensibleEnum):
+    REQUEST: 'KeyRequestAction' = "request"
+    CANCEL: 'KeyRequestAction' = "request_cancellation"
+
+
+@dataclass
+class RequestedKeyInfo(SerializableAttrs['RequestedKeyInfo']):
+    algorithm: EncryptionAlgorithm
+    room_id: RoomID
+    sender_key: IdentityKey
+    session_id: SessionID
+
+
+@dataclass
+class RoomKeyRequestEventContent(SerializableAttrs['RoomKeyRequestEventContent']):
+    body: RequestedKeyInfo
+    action: KeyRequestAction
+    requesting_device_id: DeviceID
+    request_id: str
+
+
+@dataclass
+class ForwardedRoomKeyEventContent(RoomKeyEventContent,
+                                   SerializableAttrs['ForwardedRoomKeyEventContent']):
+    sender_key: IdentityKey
+    signing_key: SigningKey = attr.ib(metadata={"json": "sender_claimed_ed25519_key"})
+    forwarding_key_chain: List[str] = attr.ib(metadata={"json": "forwarding_curve25519_key_chain"})
+
+
 ToDeviceEventContent = Union[Obj, EncryptedOlmEventContent, RoomKeyWithheldEventContent,
-                             RoomKeyEventContent]
+                             RoomKeyEventContent, RoomKeyRequestEventContent,
+                             ForwardedRoomKeyEventContent]
 to_device_event_content_map = {
     EventType.TO_DEVICE_ENCRYPTED: EncryptedOlmEventContent,
     EventType.ROOM_KEY_WITHHELD: RoomKeyWithheldEventContent,
+    EventType.ROOM_KEY_REQUEST: RoomKeyRequestEventContent,
     EventType.ROOM_KEY: RoomKeyEventContent,
+    EventType.FORWARDED_ROOM_KEY: ForwardedRoomKeyEventContent,
 }
 
 

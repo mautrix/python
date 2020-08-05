@@ -30,7 +30,8 @@ from .event import (EventType, GenericEvent,
                     OlmMsgType, OlmCiphertext,
 
                     ToDeviceEvent, ToDeviceEventContent, RoomKeyWithheldCode,
-                    RoomKeyWithheldEventContent, RoomKeyEventContent,
+                    RoomKeyWithheldEventContent, RoomKeyEventContent, KeyRequestAction,
+                    RequestedKeyInfo, RoomKeyRequestEventContent, ForwardedRoomKeyEventContent,
 
                     Event, EventContent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
