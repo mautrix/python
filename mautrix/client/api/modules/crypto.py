@@ -22,7 +22,7 @@ class CryptoMethods(BaseClientAPI):
     async def send_to_device(self, event_type: EventType,
                              messages: Dict[UserID, Dict[DeviceID, ToDeviceEventContent]]) -> None:
         """
-        Send send-to-device events to a set of client devices.
+        Send to-device events to a set of client devices.
 
         See also: `API reference <https://matrix.org/docs/spec/client_server/r0.6.1#put-matrix-client-r0-sendtodevice-eventtype-txnid>`__
 
@@ -41,6 +41,19 @@ class CryptoMethods(BaseClientAPI):
                 for user_id, devices in messages.items()
             },
         })
+
+    async def send_to_one_device(self, event_type: EventType, user_id: UserID, device_id: DeviceID,
+                                 message: ToDeviceEventContent) -> None:
+        """
+        Send a to-device event to a single device.
+
+        Args:
+            event_type: The type of event to send.
+            user_id: The user whose device to send the event to.
+            device_id: The device ID to send the event to.
+            message: The event content to send.
+        """
+        return await self.send_to_device(event_type, {user_id: {device_id: message}})
 
     async def upload_keys(self, one_time_keys: Optional[Dict[str, Any]] = None,
                           device_keys: Optional[Dict[str, Any]] = None,
