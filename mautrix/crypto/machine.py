@@ -18,9 +18,11 @@ from .account import OlmAccount
 from .decrypt_olm import OlmDecryptionMachine
 from .encrypt_megolm import MegolmEncryptionMachine
 from .decrypt_megolm import MegolmDecryptionMachine
+from .key_share import KeySharingMachine
 
 
-class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryptionMachine):
+class OlmMachine(KeySharingMachine, MegolmEncryptionMachine, MegolmDecryptionMachine,
+                 OlmDecryptionMachine):
     """
     OlmMachine is the main class for handling things related to Matrix end-to-end encryption with
     Olm and Megolm. Users primarily need :meth:`encrypt_megolm_event`, :meth:`share_group_session`,
@@ -49,6 +51,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         self.state_store = state_store
 
         self.allow_unverified_devices = True
+        self.share_to_unverified_devices = False
 
         self._fetch_keys_lock = asyncio.Lock()
 
@@ -56,6 +59,10 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
                                       wait_sync=True)
         self.client.add_event_handler(InternalEventType.DEVICE_LISTS, self.handle_device_lists)
         self.client.add_event_handler(EventType.TO_DEVICE_ENCRYPTED, self.handle_to_device_event)
+        self.client.add_event_handler(EventType.ROOM_KEY_REQUEST, self.handle_room_key_request)
+        # self.client.add_event_handler(EventType.ROOM_KEY_WITHHELD, self.handle_room_key_withheld)
+        # self.client.add_event_handler(EventType.ORG_MATRIX_ROOM_KEY_WITHHELD,
+        #                               self.handle_room_key_withheld)
         self.client.add_event_handler(EventType.ROOM_MEMBER, self.handle_member_event)
 
     async def load(self) -> None:

@@ -33,7 +33,7 @@ class OlmAccount(olm.Account):
         return self._signing_key
 
     @property
-    def identity_key(self) -> SigningKey:
+    def identity_key(self) -> IdentityKey:
         if self._identity_key is None:
             self._identity_key = self.identity_keys["curve25519"]
         return self._identity_key

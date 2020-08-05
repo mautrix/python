@@ -141,12 +141,12 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
             self._sharing_group_session.pop(room_id).set()
 
     async def _share_group_session(self, room_id: RoomID, users: List[UserID]) -> None:
-        self.log.debug(f"Sharing group session for room {room_id} with {users}")
         session = await self.crypto_store.get_outbound_group_session(room_id)
         if session and session.shared and not session.expired:
             raise SessionShareError("Group session has already been shared")
         if not session or session.expired:
             session = await self._new_outbound_group_session(room_id)
+        self.log.debug(f"Sharing group session {session.id} for room {room_id} with {users}")
 
         encryption_info = await self.state_store.get_encryption_info(room_id)
         if encryption_info:
@@ -200,9 +200,18 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
                     withhold_key_msgs[user_id][device_id] = result
                 # We don't care about missing keys at this point
 
-        await self.client.send_to_device(EventType.TO_DEVICE_ENCRYPTED, share_key_msgs)
-        await self.client.send_to_device(EventType.ROOM_KEY_WITHHELD, withhold_key_msgs)
-        self.log.info(f"Group session for {room_id} successfully shared")
+        if len(share_key_msgs) > 0:
+            event_count = sum(len(map) for map in share_key_msgs.values())
+            self.log.debug(f"Sending {event_count} to-device events to share {session.id}")
+            await self.client.send_to_device(EventType.TO_DEVICE_ENCRYPTED, share_key_msgs)
+        if len(withhold_key_msgs) > 0:
+            event_count = sum(len(map) for map in withhold_key_msgs.values())
+            self.log.debug(f"Sending {event_count} to-device events "
+                           f"to report {session.id} is withheld")
+            await self.client.send_to_device(EventType.ROOM_KEY_WITHHELD, withhold_key_msgs)
+            await self.client.send_to_device(EventType.ORG_MATRIX_ROOM_KEY_WITHHELD,
+                                             withhold_key_msgs)
+        self.log.info(f"Group session {session.id} for {room_id} successfully shared")
         session.shared = True
         await self.crypto_store.add_outbound_group_session(session)
 

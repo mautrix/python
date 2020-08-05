@@ -65,6 +65,17 @@ class DeviceListMachine(BaseOlmMachine):
 
         return data
 
+    async def get_or_fetch_device(self, user_id: UserID, device_id: DeviceID
+                                  ) -> Optional[DeviceIdentity]:
+        device = await self.crypto_store.get_device(user_id, device_id)
+        if device is not None:
+            return device
+        devices = await self._fetch_keys([user_id], include_untracked=True)
+        try:
+            return devices[user_id][device_id]
+        except KeyError:
+            return None
+
     async def on_devices_changed(self, user_id: UserID) -> None:
         shared_rooms = await self.state_store.find_shared_rooms(user_id)
         self.log.debug(f"Devices of {user_id} changed, "

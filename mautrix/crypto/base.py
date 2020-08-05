@@ -34,6 +34,7 @@ class BaseOlmMachine:
     account: 'OlmAccount'
 
     allow_unverified_devices: bool
+    share_to_unverified_devices: bool
 
 
 canonical_json = functools.partial(json.dumps, ensure_ascii=False, separators=(",", ":"),

@@ -7,12 +7,11 @@ from typing import Any, Dict
 import asyncio
 
 from mautrix.types import (EncryptedOlmEventContent, EventType, UserID, DeviceID,
-                           EncryptionKeyAlgorithm)
+                           EncryptionKeyAlgorithm, ToDeviceEventContent)
 
 from .base import BaseOlmMachine, verify_signature_json
 from .types import DeviceIdentity, DecryptedOlmEvent, OlmEventKeys
 from .sessions import Session
-
 
 ClaimKeysList = Dict[UserID, Dict[DeviceID, DeviceIdentity]]
 
@@ -62,3 +61,11 @@ class OlmEncryptionMachine(BaseOlmMachine):
                 else:
                     session = self.account.new_outbound_session(identity.identity_key, one_time_key)
                     await self.crypto_store.add_session(identity.identity_key, session)
+
+    async def send_encrypted_to_device(self, device: DeviceIdentity, event_type: EventType,
+                                       content: ToDeviceEventContent) -> None:
+        await self._create_outbound_sessions({device.user_id: {device.device_id: device}})
+        session = await self.crypto_store.get_latest_session(device.identity_key)
+        encrypted_content = await self._encrypt_olm_event(session, device, event_type, content)
+        await self.client.send_to_one_device(EventType.TO_DEVICE_ENCRYPTED, device.user_id,
+                                             device.device_id, encrypted_content)
