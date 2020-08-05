@@ -55,10 +55,10 @@ class RequestedKeyInfo(SerializableAttrs['RequestedKeyInfo']):
 
 @dataclass
 class RoomKeyRequestEventContent(SerializableAttrs['RoomKeyRequestEventContent']):
-    body: RequestedKeyInfo
     action: KeyRequestAction
     requesting_device_id: DeviceID
     request_id: str
+    body: Optional[RequestedKeyInfo] = None
 
 
 @dataclass

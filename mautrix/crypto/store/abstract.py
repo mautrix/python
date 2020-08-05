@@ -172,6 +172,22 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
+    async def has_group_session(self, room_id: RoomID, sender_key: IdentityKey,
+                                session_id: SessionID) -> bool:
+        """
+        Check whether or not a specific inbound Megolm session is in the store. This is used before
+        importing forwarded keys.
+
+        Args:
+            room_id: The room ID for which the session was made.
+            sender_key: The curve25519 identity key of the user who made the session.
+            session_id: The unique identifier of the session.
+
+        Returns:
+            ``True`` if the store has a session with the given ID, ``False`` otherwise.
+        """
+
+    @abstractmethod
     async def add_outbound_group_session(self, session: OutboundGroupSession) -> None:
         """
         Insert an outbound Megolm session into the store.

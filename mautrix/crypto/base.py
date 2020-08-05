@@ -5,11 +5,12 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Any, TYPE_CHECKING
 import functools
+import asyncio
 import json
 
 import olm
 
-from mautrix.types import UserID, DeviceID, SigningKey, EncryptionKeyAlgorithm
+from mautrix.types import UserID, DeviceID, SigningKey, EncryptionKeyAlgorithm, SessionID
 from mautrix.client import Client
 from mautrix.util.logging import TraceLogger
 
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
 class BaseOlmMachine:
     client: Client
     log: TraceLogger
+    loop: asyncio.AbstractEventLoop
     crypto_store: 'CryptoStore'
     state_store: 'StateStore'
 
@@ -35,6 +37,8 @@ class BaseOlmMachine:
 
     allow_unverified_devices: bool
     share_to_unverified_devices: bool
+
+    _room_key_waiters: Dict[SessionID, asyncio.Future]
 
 
 canonical_json = functools.partial(json.dumps, ensure_ascii=False, separators=(",", ":"),

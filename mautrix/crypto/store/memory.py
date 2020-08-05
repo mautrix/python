@@ -80,6 +80,10 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
                                 session_id: SessionID) -> InboundGroupSession:
         return self._inbound_sessions.get((room_id, sender_key, session_id))
 
+    async def has_group_session(self, room_id: RoomID, sender_key: IdentityKey,
+                                session_id: SessionID) -> bool:
+        return (room_id, sender_key, session_id) in self._inbound_sessions
+
     async def add_outbound_group_session(self, session: OutboundGroupSession) -> None:
         self._outbound_sessions[session.room_id] = session
 

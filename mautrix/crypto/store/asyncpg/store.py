@@ -139,6 +139,14 @@ class PgCryptoStore(CryptoStore, SyncStore):
                                                sender_key=sender_key, room_id=room_id,
                                                forwarding_chain=row["forwarding_chains"].split(","))
 
+    async def has_group_session(self, room_id: RoomID, sender_key: IdentityKey,
+                                session_id: SessionID) -> bool:
+        count = await self.db.fetchval("SELECT COUNT(session) "
+                                       "FROM crypto_megolm_inbound_session WHERE room_id=$1"
+                                       " AND sender_key=$2 AND session_id=$3 AND account_id=$4",
+                                       room_id, sender_key, session_id, self.account_id)
+        return count > 0
+
     async def add_outbound_group_session(self, session: OutboundGroupSession) -> None:
         pickle = session.pickle(self.pickle_key)
         await self.db.execute("INSERT INTO crypto_megolm_outbound_session (room_id, session_id, "

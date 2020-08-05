@@ -19,10 +19,11 @@ from .decrypt_olm import OlmDecryptionMachine
 from .encrypt_megolm import MegolmEncryptionMachine
 from .decrypt_megolm import MegolmDecryptionMachine
 from .key_share import KeySharingMachine
+from .key_request import KeyRequestingMachine
 
 
-class OlmMachine(KeySharingMachine, MegolmEncryptionMachine, MegolmDecryptionMachine,
-                 OlmDecryptionMachine):
+class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryptionMachine,
+                 KeySharingMachine, KeyRequestingMachine):
     """
     OlmMachine is the main class for handling things related to Matrix end-to-end encryption with
     Olm and Megolm. Users primarily need :meth:`encrypt_megolm_event`, :meth:`share_group_session`,
@@ -54,6 +55,7 @@ class OlmMachine(KeySharingMachine, MegolmEncryptionMachine, MegolmDecryptionMac
         self.share_to_unverified_devices = False
 
         self._fetch_keys_lock = asyncio.Lock()
+        self._room_key_waiters = {}
 
         self.client.add_event_handler(InternalEventType.DEVICE_OTK_COUNT, self.handle_otk_count,
                                       wait_sync=True)
@@ -133,6 +135,8 @@ class OlmMachine(KeySharingMachine, MegolmEncryptionMachine, MegolmDecryptionMac
         decrypted_evt = await self._decrypt_olm_event(evt)
         if decrypted_evt.type == EventType.ROOM_KEY:
             await self._receive_room_key(decrypted_evt)
+        elif decrypted_evt.type == EventType.FORWARDED_ROOM_KEY:
+            await self._receive_forwarded_room_key(decrypted_evt)
 
     async def _receive_room_key(self, evt: DecryptedOlmEvent) -> None:
         # TODO nio had a comment saying "handle this better"

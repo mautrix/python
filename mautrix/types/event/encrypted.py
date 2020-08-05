@@ -48,7 +48,7 @@ class OlmCiphertext(SerializableAttrs['OlmCiphertext']):
 @dataclass
 class EncryptedOlmEventContent(SerializableAttrs['EncryptedOlmEventContent']):
     ciphertext: Dict[str, OlmCiphertext]
-    sender_key: str
+    sender_key: IdentityKey
     algorithm: EncryptionAlgorithm = EncryptionAlgorithm.OLM_V1
 
 
