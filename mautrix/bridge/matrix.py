@@ -61,11 +61,12 @@ class BaseMatrixHandler:
                 self.log.warning("Encryption enabled in config, but login_shared_secret not set.")
             else:
                 self.e2ee = EncryptionManager(
-                    az=bridge.az, device_name=bridge.name, loop=bridge.loop,
+                    bridge=bridge,
                     user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
                     login_shared_secret=self.config["bridge.login_shared_secret"],
                     homeserver_address=self.config["homeserver.address"],
-                    db_url=self._get_db_url(bridge.config), get_portal=self.bridge.get_portal)
+                    db_url=self._get_db_url(bridge.config),
+                    key_sharing_config=self.config["bridge.key_sharing"])
 
     @staticmethod
     def _get_db_url(config: 'BaseBridgeConfig') -> str:

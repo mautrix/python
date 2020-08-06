@@ -9,8 +9,11 @@ import logging
 import asyncio
 
 from mautrix.appservice import AppService
-from mautrix.types import UserID
+from mautrix.types import UserID, EventType, Membership
+from mautrix.errors import MNotFound
 from mautrix.util.logging import TraceLogger
+
+from .portal import BasePortal
 
 
 class BaseUser(ABC):
@@ -24,3 +27,11 @@ class BaseUser(ABC):
 
     async def is_logged_in(self) -> bool:
         return False
+
+    async def is_in_portal(self, portal: BasePortal) -> bool:
+        try:
+            member_event = await portal.main_intent.get_state_event(
+                portal.mxid, EventType.ROOM_MEMBER, self.mxid)
+        except MNotFound:
+            return False
+        return member_event and member_event.membership in (Membership.JOIN, Membership.INVITE)

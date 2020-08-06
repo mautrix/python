@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Union, Optional, Dict
+from typing import Tuple, Union, Optional, Dict, TYPE_CHECKING
 import logging
 import asyncio
 import hashlib
@@ -11,11 +11,12 @@ import hmac
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
                            RoomID, Serializable, JSON, MessageEvent, EncryptedEvent, StateEvent,
-                           EncryptedMegolmEventContent)
+                           EncryptedMegolmEventContent, RequestedKeyInfo, RoomKeyWithheldCode)
 from mautrix.appservice import AppService
 from mautrix.errors import EncryptionError
 from mautrix.client import Client, SyncStore
-from mautrix.crypto import OlmMachine, CryptoStore, StateStore, PgCryptoStore, PickleCryptoStore
+from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore, PickleCryptoStore,
+                            DeviceIdentity, RejectKeyShare, TrustState)
 from mautrix.util.logging import TraceLogger
 
 from .crypto_state_store import GetPortalFunc, PgCryptoStateStore, SQLCryptoStateStore
@@ -30,6 +31,9 @@ try:
 except ImportError:
     Database = None
 
+if TYPE_CHECKING:
+    from mautrix.bridge import Bridge
+
 
 class EncryptionManager:
     loop: asyncio.AbstractEventLoop
@@ -41,6 +45,7 @@ class EncryptionManager:
     crypto_db: Optional[Database]
     state_store: StateStore
 
+    bridge: 'Bridge'
     az: AppService
     login_shared_secret: bytes
     _id_prefix: str
@@ -49,17 +54,18 @@ class EncryptionManager:
     sync_task: asyncio.Future
     _share_session_events: Dict[RoomID, asyncio.Event]
 
-    def __init__(self, az: AppService, login_shared_secret: str, homeserver_address: str,
-                 user_id_prefix: str, user_id_suffix: str, device_name: str, db_url: str,
-                 get_portal: GetPortalFunc, loop: Optional[asyncio.AbstractEventLoop] = None
-                 ) -> None:
-        self.loop = loop or asyncio.get_event_loop()
-        self.az = az
-        self.device_name = device_name
+    def __init__(self, bridge: 'Bridge', login_shared_secret: str, homeserver_address: str,
+                 user_id_prefix: str, user_id_suffix: str, db_url: str,
+                 key_sharing_config: Dict[str, bool] = None) -> None:
+        self.loop = bridge.loop or asyncio.get_event_loop()
+        self.bridge = bridge
+        self.az = bridge.az
+        self.device_name = bridge.name
         self._id_prefix = user_id_prefix
         self._id_suffix = user_id_suffix
         self.login_shared_secret = login_shared_secret.encode("utf-8")
         self._share_session_events = {}
+        self.key_sharing_config = key_sharing_config or {}
         pickle_key = "mautrix.bridge.e2ee"
         if db_url.startswith("postgres://"):
             if not PgCryptoStore or not PgCryptoStateStore:
@@ -67,16 +73,49 @@ class EncryptionManager:
             self.crypto_db = Database(url=db_url, upgrade_table=PgCryptoStore.upgrade_table,
                                       log=logging.getLogger("mau.crypto.db"), loop=self.loop)
             self.crypto_store = PgCryptoStore("", pickle_key, self.crypto_db)
-            self.state_store = PgCryptoStateStore(self.crypto_db, get_portal)
+            self.state_store = PgCryptoStateStore(self.crypto_db, bridge.get_portal)
         elif db_url.startswith("pickle:///"):
             self.crypto_db = None
             self.crypto_store = PickleCryptoStore("", pickle_key, db_url[len("pickle:///"):])
-            self.state_store = SQLCryptoStateStore(get_portal)
+            self.state_store = SQLCryptoStateStore(bridge.get_portal)
         else:
             raise RuntimeError("Unsupported database scheme")
         self.client = Client(base_url=homeserver_address, mxid=self.az.bot_mxid, loop=self.loop,
                              sync_store=self.crypto_store)
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
+        self.crypto.allow_key_share = self.allow_key_share
+
+    async def allow_key_share(self, device: DeviceIdentity, request: RequestedKeyInfo) -> bool:
+        require_verification = self.key_sharing_config.get("require_verification", True)
+        allow = self.key_sharing_config.get("allow", False)
+        if not allow:
+            return False
+        elif device.trust == TrustState.BLACKLISTED:
+            raise RejectKeyShare(f"Rejecting key request from blacklisted device "
+                                 f"{device.user_id}/{device.device_id}",
+                                 code=RoomKeyWithheldCode.BLACKLISTED,
+                                 reason="You have been blacklisted by this device")
+        elif device.trust == TrustState.VERIFIED or not require_verification:
+            portal = await self.bridge.get_portal(request.room_id)
+            if portal is None:
+                raise RejectKeyShare(f"Rejecting key request for {request.session_id} from "
+                                     f"{device.user_id}/{device.device_id}: room is not a portal",
+                                     code=RoomKeyWithheldCode.UNAVAILABLE,
+                                     reason="Requested room is not a portal")
+            user = await self.bridge.get_user(device.user_id)
+            if not await user.is_in_portal(portal):
+                raise RejectKeyShare(f"Rejecting key request for {request.session_id} from "
+                                     f"{device.user_id}/{device.device_id}: user is not in portal",
+                                     code=RoomKeyWithheldCode.UNAUTHORIZED,
+                                     reason="You're not in that portal")
+            self.log.debug(f"Accepting key request for {request.session_id} from "
+                           f"{device.user_id}/{device.device_id}")
+            return True
+        else:
+            raise RejectKeyShare(f"Rejecting key request from unverified device "
+                                 f"{device.user_id}/{device.device_id}",
+                                 code=RoomKeyWithheldCode.UNVERIFIED,
+                                 reason="You have not been verified by this device")
 
     def _ignore_user(self, user_id: str) -> bool:
         return (user_id.startswith(self._id_prefix) and user_id.endswith(self._id_suffix)

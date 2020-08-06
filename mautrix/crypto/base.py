@@ -3,16 +3,19 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, TYPE_CHECKING
+from typing import Any, Callable, Awaitable, Optional, TYPE_CHECKING
 import functools
 import asyncio
 import json
 
 import olm
 
-from mautrix.types import UserID, DeviceID, SigningKey, EncryptionKeyAlgorithm, SessionID
+from mautrix.types import (UserID, DeviceID, SigningKey, EncryptionKeyAlgorithm, SessionID,
+                           RequestedKeyInfo)
 from mautrix.client import Client
 from mautrix.util.logging import TraceLogger
+
+from .types import DeviceIdentity
 
 if TYPE_CHECKING:
     from .store import CryptoStore, StateStore
@@ -37,6 +40,7 @@ class BaseOlmMachine:
 
     allow_unverified_devices: bool
     share_to_unverified_devices: bool
+    allow_key_share: Callable[[DeviceIdentity, RequestedKeyInfo], Awaitable[bool]]
 
     _room_key_waiters: Dict[SessionID, asyncio.Future]
 

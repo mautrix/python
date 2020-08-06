@@ -32,10 +32,11 @@ class RejectKeyShare(MatrixError):
 
 
 class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
-    async def allow_key_share(self, device: DeviceIdentity, request: RequestedKeyInfo) -> bool:
+    async def default_allow_key_share(self, device: DeviceIdentity, request: RequestedKeyInfo
+                                      ) -> bool:
         """
-        Check whether or not the given key request should be fulfilled. This can be overridden to
-        customize the behavior.
+        Check whether or not the given key request should be fulfilled. You can set a custom
+        function in :attr:`allow_key_share` to override this.
 
         Args:
             device: The identity of the device requesting keys.

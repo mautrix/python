@@ -53,6 +53,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
 
         self.allow_unverified_devices = True
         self.share_to_unverified_devices = False
+        self.allow_key_share = self.default_allow_key_share
 
         self._fetch_keys_lock = asyncio.Lock()
         self._room_key_waiters = {}
