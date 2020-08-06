@@ -96,7 +96,7 @@ class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
             device = await self.get_or_fetch_device(evt.sender, request.requesting_device_id)
         except Exception:
             self.log.warning(f"Failed to get device {evt.sender}/{request.requesting_device_id} to "
-                             f"handle key request {request.request_id}")
+                             f"handle key request {request.request_id}", exc_info=True)
             if raise_exceptions:
                 raise
             return

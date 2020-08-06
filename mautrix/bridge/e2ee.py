@@ -89,6 +89,8 @@ class EncryptionManager:
         require_verification = self.key_sharing_config.get("require_verification", True)
         allow = self.key_sharing_config.get("allow", False)
         if not allow:
+            self.log.debug(f"Key sharing not enabled, ignoring key request from "
+                           f"{device.user_id}/{device.device_id}")
             return False
         elif device.trust == TrustState.BLACKLISTED:
             raise RejectKeyShare(f"Rejecting key request from blacklisted device "
