@@ -66,7 +66,7 @@ class BaseMatrixHandler:
                     login_shared_secret=self.config["bridge.login_shared_secret"],
                     homeserver_address=self.config["homeserver.address"],
                     db_url=self._get_db_url(bridge.config),
-                    key_sharing_config=self.config["bridge.key_sharing"])
+                    key_sharing_config=self.config["bridge.encryption.key_sharing"])
 
     @staticmethod
     def _get_db_url(config: 'BaseBridgeConfig') -> str:

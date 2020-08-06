@@ -6,7 +6,7 @@
 from typing import Optional
 
 from mautrix.types import (UserID, EventType, RequestedKeyInfo, RoomKeyWithheldCode,
-                           RoomKeyWithheldEventContent, RoomKeyRequestEventContent,
+                           RoomKeyWithheldEventContent, RoomKeyRequestEventContent, ToDeviceEvent,
                            KeyRequestAction, ForwardedRoomKeyEventContent, EncryptionAlgorithm)
 from mautrix.errors import MatrixError, MatrixConnectionError, MatrixRequestError
 
@@ -72,8 +72,8 @@ class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
                                  code=RoomKeyWithheldCode.UNVERIFIED,
                                  reason="You have not been verified by this device")
 
-    async def handle_room_key_request(self, sender: UserID, request: RoomKeyRequestEventContent,
-                                      raise_exceptions: bool = False) -> None:
+    async def handle_room_key_request(self, evt: ToDeviceEvent, raise_exceptions: bool = False
+                                      ) -> None:
         """
         Handle a ``m.room_key_request`` where the action is ``request``.
 
@@ -82,26 +82,26 @@ class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
         do syncing in some manual way.
 
         Args:
-            sender: The user who sent the event.
-            request: The request event content.
+            evt: The to-device event.
             raise_exceptions: Whether or not errors while handling should be raised.
         """
+        request: RoomKeyRequestEventContent = evt.content
         if request.action != KeyRequestAction.REQUEST:
             return
-        elif sender == self.client.mxid and request.requesting_device_id == self.client.device_id:
+        elif evt.sender == self.client.mxid and request.requesting_device_id == self.client.device_id:
             self.log.debug(f"Ignoring key request {request.request_id} from ourselves")
             return
 
         try:
-            device = await self.get_or_fetch_device(sender, request.requesting_device_id)
+            device = await self.get_or_fetch_device(evt.sender, request.requesting_device_id)
         except Exception:
-            self.log.warning(f"Failed to get device {sender}/{request.requesting_device_id} to "
+            self.log.warning(f"Failed to get device {evt.sender}/{request.requesting_device_id} to "
                              f"handle key request {request.request_id}")
             if raise_exceptions:
                 raise
             return
         if not device:
-            self.log.warning(f"Couldn't find device {sender}/{request.requesting_device_id} to "
+            self.log.warning(f"Couldn't find device {evt.sender}/{request.requesting_device_id} to "
                              f"handle key request {request.request_id}")
             return
 
@@ -129,6 +129,9 @@ class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
 
     async def _handle_room_key_request(self, device: DeviceIdentity, request: RequestedKeyInfo
                                        ) -> None:
+        if not await self.allow_key_share(device, request):
+            return
+
         sess = await self.crypto_store.get_group_session(request.room_id, request.sender_key,
                                                          request.session_id)
         if sess is None:
