@@ -129,20 +129,39 @@ class EventMethods(BaseClientAPI):
         except SerializerError as e:
             raise MatrixResponseError("Invalid state events in response") from e
 
-    async def get_members(self, room_id: RoomID) -> List[StateEvent]:
+    async def get_members(self, room_id: RoomID, at: Optional[SyncToken] = None,
+                          membership: Optional[Membership] = None,
+                          not_membership: Optional[Membership] = None) -> List[StateEvent]:
         """
         Get the list of members for a room. See also: `/members API reference`_
 
         Args:
             room_id: The ID of the room to get the member events for.
+            at: The point in time (pagination token) to return members for in the room. This token
+                can be obtained from a ``prev_batch`` token returned for each room by the sync API.
+                Defaults to the current state of the room, as determined by the server.
+            membership: The kind of membership to filter for. Defaults to no filtering if
+                unspecified. When specified alongside ``not_membership``, the two parameters create
+                an 'or' condition: either the ``membership`` is the same as membership or is not the
+                same as ``not_membership``.
+            not_membership: The kind of membership to exclude from the results. Defaults to no
+                filtering if unspecified.
 
         Returns:
             A list of most recent member events for each user.
 
         .. _/members API reference:
-            https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-members
+            https://matrix.org/docs/spec/client_server/r0.6.1#get-matrix-client-r0-rooms-roomid-members
         """
-        content = await self.api.request(Method.GET, Path.rooms[room_id].members)
+        query = {}
+        if at:
+            query["at"] = at
+        if membership:
+            query["membership"] = membership.value
+        if not_membership:
+            query["not_membership"] = not_membership.value
+        content = await self.api.request(Method.GET, Path.rooms[room_id].members,
+                                         query_params=query)
         try:
             return [StateEvent.deserialize(event) for event in content["chunk"]]
         except KeyError:
