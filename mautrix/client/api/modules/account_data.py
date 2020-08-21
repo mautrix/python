@@ -6,7 +6,7 @@
 from typing import Union, Optional
 
 from mautrix.api import Method, Path
-from mautrix.types import Obj, EventType, AccountDataEventContent, RoomID, Serializable
+from mautrix.types import Obj, EventType, AccountDataEventContent, JSON, RoomID, Serializable
 from mautrix.types.event.account_data import account_data_event_content_map
 
 from ..base import BaseClientAPI
@@ -20,7 +20,7 @@ class AccountDataMethods(BaseClientAPI):
     See also: `API reference <https://matrix.org/docs/spec/client_server/r0.6.1#id125>`__"""
 
     async def get_account_data(self, type: Union[EventType, str], room_id: Optional[RoomID] = None
-                               ) -> AccountDataEventContent:
+                               ) -> JSON:
         """
         Get a specific account data event from the homeserver.
 
@@ -38,15 +38,7 @@ class AccountDataMethods(BaseClientAPI):
         base_path = Path.user[self.mxid]
         if room_id:
             base_path = base_path.rooms[room_id]
-        resp = await self.api.request(Method.GET, base_path.account_data[type])
-        if isinstance(type, EventType):
-            try:
-                type_class = account_data_event_content_map[type]
-            except KeyError:
-                pass
-            else:
-                return type_class.deserialize(resp)
-        return Obj(**resp)
+        return await self.api.request(Method.GET, base_path.account_data[type])
 
     async def set_account_data(self, type: Union[EventType, str], data: AccountDataEventContent,
                                room_id: Optional[RoomID] = None) -> None:
