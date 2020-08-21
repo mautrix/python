@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Type
+from typing import Optional, Type, Any
 from abc import ABC, abstractmethod
 import sys
 
@@ -169,4 +169,8 @@ class Bridge(Program, ABC):
 
     @abstractmethod
     async def get_double_puppet(self, user_id: UserID) -> 'BasePuppet':
+        pass
+
+    @abstractmethod
+    def is_bridge_ghost(self, user_id: UserID) -> bool:
         pass
