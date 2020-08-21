@@ -107,6 +107,7 @@ class Bridge(Program, ABC):
                              domain=self.config["homeserver.domain"],
                              verify_ssl=self.config["homeserver.verify_ssl"],
 
+                             id=self.config["appservice.id"],
                              as_token=self.config["appservice.as_token"],
                              hs_token=self.config["appservice.hs_token"],
 

@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 class APIPath(Enum):
     """The known Matrix API path prefixes."""
     CLIENT = "/_matrix/client/r0"
+    CLIENT_UNSTABLE = "/_matrix/client/unstable"
     MEDIA = "/_matrix/media/r0"
     IDENTITY = "/_matrix/identity/r0"
 
@@ -101,6 +102,7 @@ class PathBuilder:
 
 Path = PathBuilder(APIPath.CLIENT)
 ClientPath = Path
+UnstableClientPath = PathBuilder(APIPath.CLIENT_UNSTABLE)
 MediaPath = PathBuilder(APIPath.MEDIA)
 IdentityPath = PathBuilder(APIPath.IDENTITY)
 

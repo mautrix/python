@@ -3,11 +3,11 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Union
+from typing import Dict, List, Union
 from attr import dataclass
 import attr
 
-from ..primitive import JSON
+from ..primitive import JSON, RoomID, UserID
 from ..util import SerializableAttrs, Obj, deserializer
 from .base import EventType, BaseEvent
 
@@ -22,9 +22,13 @@ class RoomTagAccountDataEventContent(SerializableAttrs['RoomTagAccountDataEventC
     tags: Dict[str, RoomTagInfo] = attr.ib(default=None, metadata={"json": "tags"})
 
 
-AccountDataEventContent = Union[RoomTagAccountDataEventContent, Obj]
+DirectAccountDataEventContent = Dict[UserID, List[RoomID]]
+
+
+AccountDataEventContent = Union[RoomTagAccountDataEventContent, DirectAccountDataEventContent, Obj]
 account_data_event_content_map = {
-    EventType.TAG: RoomTagAccountDataEventContent
+    EventType.TAG: RoomTagAccountDataEventContent,
+    EventType.DIRECT: DirectAccountDataEventContent,
 }
 
 

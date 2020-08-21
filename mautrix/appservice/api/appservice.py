@@ -96,7 +96,7 @@ class AppServiceAPI(HTTPAPI):
             self.children[user] = child
             return child
 
-    def real_user(self, mxid: str, token: str, base_url: Optional[str] = None) -> 'AppServiceAPI':
+    def real_user(self, mxid: UserID, token: str, base_url: Optional[str] = None) -> 'AppServiceAPI':
         """
         Get the AppServiceAPI for a real (non-appservice-managed) Matrix user.
 
@@ -190,8 +190,7 @@ class AppServiceAPI(HTTPAPI):
         if not self.is_real_user:
             query_params["user_id"] = self.identity or self.bot_mxid
 
-        return super(AppServiceAPI, self).request(method, path, content,
-                                                  headers, query_params)
+        return super().request(method, path, content, headers, query_params)
 
 
 class ChildAppServiceAPI(AppServiceAPI):

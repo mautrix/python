@@ -29,6 +29,7 @@ class AppService(AppServiceServerMixin):
 
     server: str
     domain: str
+    id: str
     verify_ssl: bool
     tls_cert: str
     tls_key: str
@@ -51,7 +52,7 @@ class AppService(AppServiceServerMixin):
     runner: web.AppRunner
 
     def __init__(self, server: str, domain: str, as_token: str, hs_token: str, bot_localpart: str,
-                 loop: Optional[asyncio.AbstractEventLoop] = None,
+                 id: str, loop: Optional[asyncio.AbstractEventLoop] = None,
                  log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
                  tls_cert: Optional[str] = None, tls_key: Optional[str] = None,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
@@ -60,6 +61,7 @@ class AppService(AppServiceServerMixin):
         super().__init__()
         self.server = server
         self.domain = domain
+        self.id = id
         self.verify_ssl = verify_ssl
         self.tls_cert = tls_cert
         self.tls_key = tls_key
