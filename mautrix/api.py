@@ -42,6 +42,7 @@ class Method(Enum):
     POST = "POST"
     PUT = "PUT"
     DELETE = "DELETE"
+    PATCH = "PATCH"
 
     def __repr__(self):
         return self.value

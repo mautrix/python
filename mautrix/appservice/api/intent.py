@@ -309,11 +309,11 @@ class IntentAPI(StoreUpdatingAPI):
     # endregion
     # region Ensure functions
 
-    async def ensure_joined(self, room_id: RoomID, ignore_cache: bool = False) -> None:
+    async def ensure_joined(self, room_id: RoomID, ignore_cache: bool = False) -> bool:
         if not room_id:
             raise ValueError("Room ID not given")
         if not ignore_cache and await self.state_store.is_joined(room_id, self.mxid):
-            return
+            return False
         await self.ensure_registered()
         try:
             await self.join_room(room_id, max_retries=0)
@@ -339,6 +339,7 @@ class IntentAPI(StoreUpdatingAPI):
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e2
         except MatrixRequestError as e:
             raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e
+        return True
 
     def _register(self) -> Awaitable[dict]:
         content = {"username": self.localpart, "type": "m.login.application_service"}

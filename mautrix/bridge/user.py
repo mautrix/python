@@ -32,6 +32,8 @@ class BaseUser(ABC):
     mxid: UserID
     command_status: Optional[Dict[str, Any]]
 
+    dm_update_lock: asyncio.Lock
+
     async def is_logged_in(self) -> bool:
         return False
 
@@ -46,22 +48,35 @@ class BaseUser(ABC):
     async def get_direct_chats(self) -> Dict[UserID, List[RoomID]]:
         raise NotImplementedError()
 
-    async def update_m_direct(self, asmux: bool = False) -> None:
+    async def update_direct_chats(self, dms: Optional[Dict[UserID, List[RoomID]]] = None) -> None:
+        """
+        Update the m.direct account data of the user.
+
+        Args:
+            dms: DMs to _add_ to the list. If not provided, the list is _replaced_ with the result
+                of :meth:`get_direct_chats`.
+        """
+        if not self.bridge.config["bridge.sync_direct_chat_list"]:
+            return
+
         puppet = await self.bridge.get_double_puppet(self.mxid)
         if not puppet or not puppet.is_real_user:
             return
 
         self.log.debug("Updating m.direct list on homeserver")
-        dms = await self.get_direct_chats()
-        if asmux:
+        replace = dms is None
+        dms = dms or await self.get_direct_chats()
+        if self.bridge.config.get("homeserver.asmux", False):
             # This uses a secret endpoint for atomically updating the DM list
-            await puppet.intent.api.request(Method.PUT, AsmuxPath.dms, content=dms,
-                                            headers={"X-Asmux-Auth": self.az.as_token})
+            await puppet.intent.api.request(Method.PUT if replace else Method.PATCH, AsmuxPath.dms,
+                                            content=dms, headers={"X-Asmux-Auth": self.az.as_token})
         else:
-            current_dms = await puppet.intent.get_account_data(EventType.DIRECT)
-            # Filter away all existing DM statuses with bridge users
-            current_dms = {user: rooms for user, rooms in current_dms.items()
-                           if not self.bridge.is_bridge_ghost(user)}
-            # Add DM statuses for all rooms in our database
-            current_dms.update(dms)
-            await puppet.intent.set_account_data(EventType.DIRECT, current_dms)
+            async with self.dm_update_lock:
+                current_dms = await puppet.intent.get_account_data(EventType.DIRECT)
+                if replace:
+                    # Filter away all existing DM statuses with bridge users
+                    current_dms = {user: rooms for user, rooms in current_dms.items()
+                                   if not self.bridge.is_bridge_ghost(user)}
+                # Add DM statuses for all rooms in our database
+                current_dms.update(dms)
+                await puppet.intent.set_account_data(EventType.DIRECT, current_dms)
