@@ -7,7 +7,7 @@ from typing import Optional
 
 from mautrix.errors import MatrixResponseError
 from mautrix.api import Method, Path
-from mautrix.types import UserSearchResults, Member, SerializerError, User
+from mautrix.types import UserSearchResults, Member, SerializerError, User, ContentURI, UserID
 
 from .base import BaseClientAPI
 
@@ -65,7 +65,7 @@ class UserDataMethods(BaseClientAPI):
     # region 10.2 Profiles
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#profiles
 
-    async def set_displayname(self, displayname: str) -> None:
+    async def set_displayname(self, displayname: str, check_current: bool = True) -> None:
         """
         Set the display name of the current user.
 
@@ -73,12 +73,15 @@ class UserDataMethods(BaseClientAPI):
 
         Args:
             displayname: The new display name for the user.
+            check_current: Whether or not to check if the displayname is already set.
         """
+        if check_current and await self.get_displayname(self.mxid) == displayname:
+            return
         await self.api.request(Method.PUT, Path.profile[self.mxid].displayname, {
             "displayname": displayname,
         })
 
-    async def get_displayname(self, user_id: str) -> str:
+    async def get_displayname(self, user_id: UserID) -> str:
         """
         Get the display name of a user.
 
@@ -96,7 +99,7 @@ class UserDataMethods(BaseClientAPI):
         except KeyError:
             raise MatrixResponseError("`displayname` not in response.")
 
-    async def set_avatar_url(self, avatar_url: str) -> None:
+    async def set_avatar_url(self, avatar_url: ContentURI, check_current: bool = True) -> None:
         """
         Set the avatar of the current user.
 
@@ -104,12 +107,15 @@ class UserDataMethods(BaseClientAPI):
 
         Args:
             avatar_url: The ``mxc://`` URI to the new avatar.
+            check_current: Whether or not to check if the avatar is already set.
         """
+        if check_current and await self.get_avatar_url(self.mxid) == avatar_url:
+            return
         await self.api.request(Method.PUT, Path.profile[self.mxid].avatar_url, {
             "avatar_url": avatar_url,
         })
 
-    async def get_avatar_url(self, user_id: str) -> str:
+    async def get_avatar_url(self, user_id: UserID) -> ContentURI:
         """
         Get the avatar URL of a user.
 
@@ -127,7 +133,7 @@ class UserDataMethods(BaseClientAPI):
         except KeyError:
             raise MatrixResponseError("`avatar_url` not in response.")
 
-    async def get_profile(self, user_id: str) -> Member:
+    async def get_profile(self, user_id: UserID) -> Member:
         """
         Get the combined profile information for a user.
 

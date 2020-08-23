@@ -6,6 +6,7 @@
 from typing import Dict, List, Callable, Union, Optional, Awaitable, Any, Type, Tuple, TYPE_CHECKING
 from abc import ABC, abstractmethod
 from enum import Enum, Flag, auto
+from contextlib import suppress
 from time import time
 import asyncio
 
@@ -13,6 +14,7 @@ from mautrix.errors import MUnknownToken
 from mautrix.types import (EventType, MessageEvent, StateEvent, StrippedStateEvent, Event, FilterID,
                            Filter, AccountDataEvent, DeviceLists, DeviceOTKCount, EphemeralEvent,
                            PresenceState, ToDeviceEvent, SyncToken, UserID, JSON)
+from mautrix.types.event.message import BaseMessageEventContentFuncs
 from mautrix.util.logging import TraceLogger
 
 from .state_store import SyncStore, MemorySyncStore
@@ -158,19 +160,17 @@ class Syncer(ABC):
         """
         if not isinstance(event_type, (EventType, InternalEventType)):
             raise ValueError("Invalid event type")
-        try:
-            if event_type == EventType.ALL:
-                # FIXME this is a bit hacky
-                self.global_event_handlers.remove((handler, True))
-                self.global_event_handlers.remove((handler, False))
-            else:
-                handlers = self.event_handlers[event_type]
-                handlers.remove((handler, True))
-                handlers.remove((handler, False))
-                if len(handlers) == 0:
-                    del self.event_handlers[event_type]
-        except (KeyError, ValueError):
-            pass
+        handler_list = (self.global_event_handlers if event_type == EventType.ALL
+                        else self.event_handlers[event_type])
+
+        # FIXME this is a bit hacky
+        with suppress(ValueError):
+            handler_list.remove((handler, True))
+        with suppress(ValueError):
+            handler_list.remove((handler, False))
+
+        if len(handler_list) == 0 and event_type != EventType.ALL:
+            del self.event_handlers[event_type]
 
     def dispatch_event(self, event: Event, source: SyncStream) -> List[asyncio.Task]:
         """
@@ -180,7 +180,7 @@ class Syncer(ABC):
             event: The event to send.
             source: The sync stream the event was received in.
         """
-        if isinstance(event, MessageEvent):
+        if isinstance(event.content, BaseMessageEventContentFuncs):
             event.content.trim_reply_fallback()
         if getattr(event, "state_key", None) is not None:
             event.type = event.type.with_class(EventType.Class.STATE)

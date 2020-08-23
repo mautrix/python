@@ -66,7 +66,8 @@ class EncryptingAPI(StoreUpdatingAPI):
             return False
 
     async def share_group_session(self, room_id: RoomID) -> None:
-        if await self._share_session_lock(room_id):
+        if not await self._share_session_lock(room_id):
+            self.log.silly("Group session was already being shared, so didn't share new one")
             return
         try:
             if not await self.state_store.has_full_member_list(room_id):
