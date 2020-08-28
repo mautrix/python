@@ -102,24 +102,26 @@ class CustomPuppetMixin(ABC):
         return (self.az.intent.user(self.custom_mxid, self.access_token)
                 if self.is_real_user else self.default_mxid_intent)
 
-    def can_auto_login(self, mxid: UserID) -> bool:
-        if not self.login_shared_secret:
+    @classmethod
+    def can_auto_login(cls, mxid: UserID) -> bool:
+        if not cls.login_shared_secret:
             return False
-        _, server = self.az.intent.parse_user_id(mxid)
-        if server != self.az.domain:
+        _, server = cls.az.intent.parse_user_id(mxid)
+        if server != cls.az.domain:
             return False
         return True
 
-    async def _login_with_shared_secret(self, mxid: UserID) -> Optional[str]:
-        if not self.can_auto_login(mxid):
+    @classmethod
+    async def _login_with_shared_secret(cls, mxid: UserID) -> Optional[str]:
+        if not cls.can_auto_login(mxid):
             return None
-        password = hmac.new(self.login_shared_secret, mxid.encode("utf-8"),
+        password = hmac.new(cls.login_shared_secret, mxid.encode("utf-8"),
                             hashlib.sha512).hexdigest()
-        url = self.az.intent.api.base_url + str(Path.login)
-        resp = await self.az.http_session.post(url, data=json.dumps({
+        url = cls.az.intent.api.base_url + str(Path.login)
+        resp = await cls.az.http_session.post(url, data=json.dumps({
             "type": "m.login.password",
-            "initial_device_display_name": self.login_device_name,
-            "device_id": self.login_device_name,
+            "initial_device_display_name": cls.login_device_name,
+            "device_id": cls.login_device_name,
             "identifier": {
                 "type": "m.id.user",
                 "user": mxid,
