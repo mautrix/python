@@ -81,7 +81,7 @@ class UserDataMethods(BaseClientAPI):
             "displayname": displayname,
         })
 
-    async def get_displayname(self, user_id: UserID) -> str:
+    async def get_displayname(self, user_id: UserID) -> Optional[str]:
         """
         Get the display name of a user.
 
@@ -97,7 +97,7 @@ class UserDataMethods(BaseClientAPI):
         try:
             return content["displayname"]
         except KeyError:
-            raise MatrixResponseError("`displayname` not in response.")
+            return None
 
     async def set_avatar_url(self, avatar_url: ContentURI, check_current: bool = True) -> None:
         """
@@ -115,7 +115,7 @@ class UserDataMethods(BaseClientAPI):
             "avatar_url": avatar_url,
         })
 
-    async def get_avatar_url(self, user_id: UserID) -> ContentURI:
+    async def get_avatar_url(self, user_id: UserID) -> Optional[ContentURI]:
         """
         Get the avatar URL of a user.
 
@@ -131,7 +131,7 @@ class UserDataMethods(BaseClientAPI):
         try:
             return content["avatar_url"]
         except KeyError:
-            raise MatrixResponseError("`avatar_url` not in response.")
+            return None
 
     async def get_profile(self, user_id: UserID) -> Member:
         """
