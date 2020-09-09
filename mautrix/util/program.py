@@ -22,6 +22,11 @@ try:
 except ImportError:
     uvloop = None
 
+try:
+    import prometheus_client as prometheus
+except ImportError:
+    prometheus = None
+
 
 NewTask = Union[Awaitable[Any], Iterable[Awaitable[Any]], AsyncIterable[Awaitable[Any]]]
 TaskList = Iterable[Awaitable[Any]]
@@ -68,6 +73,7 @@ class Program:
             self.config_class = config_class
         self.startup_actions = []
         self.shutdown_actions = []
+        self._automatic_prometheus = True
 
     def run(self) -> None:
         """
@@ -160,6 +166,20 @@ class Program:
 
         self.loop = asyncio.get_event_loop()
 
+    def start_prometheus(self) -> None:
+        try:
+            enabled = self.config["metrics.enabled"]
+            listen_port = self.config["metrics.listen_port"]
+        except KeyError:
+            return
+        if not enabled:
+            return
+        elif not prometheus:
+            self.log.warning("Metrics are enabled in config, "
+                             "but prometheus_client is not installed")
+            return
+        prometheus.start_http_server(listen_port)
+
     def _run(self) -> None:
         signal.signal(signal.SIGINT, signal.default_int_handler)
         signal.signal(signal.SIGTERM, signal.default_int_handler)
@@ -191,6 +211,8 @@ class Program:
         control over startup than just filling startup_actions in the prepare step.
         """
         await asyncio.gather(*(self.startup_actions or []))
+        if self._automatic_prometheus:
+            self.start_prometheus()
 
     def prepare_stop(self) -> None:
         """
