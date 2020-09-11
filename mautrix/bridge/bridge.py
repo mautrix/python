@@ -130,7 +130,7 @@ class Bridge(Program, ABC):
     def prepare_db(self) -> None:
         if not sql:
             raise RuntimeError("SQLAlchemy is not installed")
-        self.db = sql.create_engine(self.config["appservice.database"])
+        self.db = sql.create_engine(self.config["appservice.database"], pool_pre_ping=True)
         Base.metadata.bind = self.db
         if not self.db.has_table("alembic_version"):
             self.log.critical("alembic_version table not found. "
