@@ -92,7 +92,7 @@ class IntentAPI(StoreUpdatingAPI):
 
             setattr(self, method.__name__, wrapper)
 
-    def user(self, user_id: UserID, token: Optional[str] = None) -> 'IntentAPI':
+    def user(self, user_id: UserID, token: Optional[str] = None, base_url: Optional[str] = None) -> 'IntentAPI':
         """
         Get the intent API for a specific user.
         This is just a proxy to :meth:`AppServiceAPI.intent`.
@@ -103,15 +103,16 @@ class IntentAPI(StoreUpdatingAPI):
         Args:
             user_id: The Matrix ID of the user whose intent API to get.
             token: The access token to use for the Matrix ID.
+            base_url: An optional URL to use for API requests.
 
         Returns:
             The IntentAPI for the given user.
         """
         if not self.bot:
-            return self.api.intent(user_id, token)
+            return self.api.intent(user_id, token, base_url)
         else:
             self.log.warning("Called IntentAPI#user() of child intent object.")
-            return self.bot.api.intent(user_id, token)
+            return self.bot.api.intent(user_id, token, base_url)
 
     # region User actions
 
