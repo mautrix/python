@@ -64,6 +64,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("appservice.tls_key")
 
         copy("appservice.database")
+        copy("appservice.database_opts")
 
         copy("appservice.id")
         copy("appservice.bot_username")
