@@ -26,7 +26,7 @@ setuptools.setup(
 
     classifiers=[
         "Development Status :: 4 - Beta",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
         "Topic :: Communications :: Chat",
         "Framework :: AsyncIO",
         "Programming Language :: Python",

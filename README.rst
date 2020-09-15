@@ -5,6 +5,8 @@ mautrix-python
 
 A Python 3.6+ asyncio Matrix framework.
 
+Matrix room: [``#maunium:maunium.net``_]
+
 Components:
 
 * Basic HTTP request sender (mautrix.api_)
@@ -33,6 +35,7 @@ Components:
   * Syncing and event handling helper.
   * End-to-end encryption helper.
 
+.. _``#maunium:maunium.net``: https://matrix.to/#/#maunium:maunium.net
 .. _python-appservice-framework: https://github.com/Cadair/python-appservice-framework/
 .. _Client API: https://matrix.org/docs/spec/client_server/r0.6.1.html
 
