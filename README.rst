@@ -5,7 +5,7 @@ mautrix-python
 
 A Python 3.6+ asyncio Matrix framework.
 
-Matrix room: [#maunium:maunium.net_]
+Matrix room: `#maunium:maunium.net`_
 
 Components:
 
