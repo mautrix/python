@@ -15,7 +15,7 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
                            PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent,
                            EncryptedEvent)
-from mautrix.errors import IntentError, MatrixError, MForbidden
+from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError
 from mautrix.appservice import AppService
 from mautrix.util.logging import TraceLogger
 
@@ -312,8 +312,20 @@ class BaseMatrixHandler:
         except Exception:
             self.log.exception("Error handling manually received Matrix event")
 
+    async def send_encryption_error_notice(self, evt: EncryptedEvent, error: DecryptionError) -> None:
+        await self.az.intent.send_notice(evt.room_id,
+                                         f"\u26a0 Your message was not bridged: {error}. Try "
+                                         f"restarting your client if this error keeps happening.")
+
     async def handle_encrypted(self, evt: EncryptedEvent) -> None:
-        await self.int_handle_event(await self.e2ee.decrypt(evt))
+        try:
+            decrypted = await self.e2ee.decrypt(evt)
+        except DecryptionError as e:
+            self.log.warning("Failed to decrypt event %s: %s", evt.event_id, e)
+            self.log.trace("%s decryption traceback:", evt.event_id, exc_info=True)
+            await self.send_encryption_error_notice(evt, e)
+        else:
+            await self.int_handle_event(decrypted)
 
     async def handle_encryption(self, evt: StateEvent) -> None:
         await self.az.state_store.set_encryption_info(evt.room_id, evt.content)
