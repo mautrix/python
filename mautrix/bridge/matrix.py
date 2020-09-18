@@ -18,6 +18,7 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
 from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError
 from mautrix.appservice import AppService
 from mautrix.util.logging import TraceLogger
+from mautrix.util.opt_prometheus import Histogram
 
 from .commands import CommandProcessor
 
@@ -32,6 +33,8 @@ try:
     from .e2ee import EncryptionManager
 except ImportError:
     EncryptionManager = None
+
+EVENT_TIME = Histogram("matrix_event", "Time spent processing Matrix events", ["event_type"])
 
 
 class BaseMatrixHandler:
@@ -314,7 +317,8 @@ class BaseMatrixHandler:
         except Exception:
             self.log.exception("Error handling manually received Matrix event")
 
-    async def send_encryption_error_notice(self, evt: EncryptedEvent, error: DecryptionError) -> None:
+    async def send_encryption_error_notice(self, evt: EncryptedEvent,
+                                           error: DecryptionError) -> None:
         await self.az.intent.send_notice(evt.room_id,
                                          f"\u26a0 Your message was not bridged: {error}. Try "
                                          f"restarting your client if this error keeps happening.")
@@ -394,4 +398,4 @@ class BaseMatrixHandler:
         await self.log_event_handle_duration(evt, time.time() - start_time)
 
     async def log_event_handle_duration(self, evt: Event, duration: float) -> None:
-        pass
+        EVENT_TIME.labels(event_type=str(evt.type)).observe(duration)
