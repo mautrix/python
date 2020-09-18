@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import asyncio
 
 from aiohttp import ClientSession
+from yarl import URL
 
 from mautrix.types import UserID
 from mautrix.api import HTTPAPI, Method, PathBuilder
@@ -39,7 +40,7 @@ class AppServiceAPI(HTTPAPI):
 
     _bot_intent: Optional[IntentAPI]
 
-    def __init__(self, base_url: str, bot_mxid: UserID = None, token: str = None,
+    def __init__(self, base_url: Union[URL, str], bot_mxid: UserID = None, token: str = None,
                  identity: Optional[UserID] = None, log: TraceLogger = None,
                  state_store: 'ASStateStore' = None, client_session: ClientSession = None,
                  child: bool = False, real_user: bool = False,
@@ -96,7 +97,8 @@ class AppServiceAPI(HTTPAPI):
             self.children[user] = child
             return child
 
-    def real_user(self, mxid: UserID, token: str, base_url: Optional[str] = None) -> 'AppServiceAPI':
+    def real_user(self, mxid: UserID, token: str, base_url: Optional[URL] = None
+                  ) -> 'AppServiceAPI':
         """
         Get the AppServiceAPI for a real (non-appservice-managed) Matrix user.
 

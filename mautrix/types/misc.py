@@ -3,14 +3,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from typing import List, NewType, NamedTuple, Dict
 from enum import Enum
-from typing import List, NewType, NamedTuple
+
 from attr import dataclass
+import attr
 
 from .primitive import RoomID, RoomAlias, SyncToken, ContentURI, UserID
 from .util import SerializableAttrs
 from .event import Event
-
 
 DeviceLists = NamedTuple("DeviceLists", changed=List[UserID], left=List[UserID])
 DeviceOTKCount = NamedTuple("DeviceOTKCount", curve25519=int, signed_curve25519=int)
@@ -96,3 +97,9 @@ class RoomDirectoryResponse(SerializableAttrs['RoomDirectoryResponse']):
 
 PaginatedMessages = NamedTuple("PaginatedMessages", start=SyncToken, end=SyncToken,
                                events=List[Event])
+
+
+@dataclass
+class VersionsResponse(SerializableAttrs['VersionsResponse']):
+    versions: List[str]
+    unstable_features: Dict[str, bool] = attr.ib(factory=lambda: {})

@@ -10,3 +10,6 @@ from .request import (MatrixRequestError, MatrixUnknownRequestError, MatrixStand
                       MUserDeactivated)
 from .crypto import (CryptoError, EncryptionError, SessionShareError, DecryptionError,
                      MatchingSessionDecryptionError, DeviceValidationError)
+from .well_known import (WellKnownError, WellKnownNotJSON, WellKnownMissingHomeserver,
+                         WellKnownNotURL, WellKnownUnexpectedStatus, WellKnownUnsupportedScheme,
+                         WellKnownInvalidVersionsResponse)

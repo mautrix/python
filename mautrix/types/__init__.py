@@ -36,7 +36,7 @@ from .event import (EventType, GenericEvent,
                     Event, EventContent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
                    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages,
-                   DeviceLists, DeviceOTKCount)
+                   DeviceLists, DeviceOTKCount, VersionsResponse)
 from .users import User, Member, UserSearchResults
 from .auth import (LoginType, UserIdentifierType, MatrixUserIdentifier, ThirdPartyIdentifier,
                    PhoneIdentifier, UserIdentifier, LoginResponse, DiscoveryInformation,

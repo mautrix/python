@@ -6,10 +6,17 @@
 from typing import Optional, Tuple
 import warnings
 import asyncio
+import json
 
-from mautrix.api import HTTPAPI
-from mautrix.types import UserID, DeviceID
+from yarl import URL
+from aiohttp import ClientSession, ContentTypeError, ClientError
+
+from mautrix.api import HTTPAPI, Method, Path
+from mautrix.types import UserID, DeviceID, VersionsResponse, SerializerError
 from mautrix.util.logging import TraceLogger
+from mautrix.errors import (WellKnownNotURL, WellKnownNotJSON, WellKnownMissingHomeserver,
+                            WellKnownUnexpectedStatus, WellKnownUnsupportedScheme,
+                            WellKnownInvalidVersionsResponse)
 
 
 class BaseClientAPI:
@@ -93,3 +100,62 @@ class BaseClientAPI:
     def mxid(self, mxid: UserID) -> None:
         self.localpart, self.domain = self.parse_user_id(mxid)
         self._mxid = mxid
+
+    async def versions(self) -> VersionsResponse:
+        """Get client-server spec versions supported by the server."""
+        resp = await self.api.request(Method.GET, "_matrix/client/versions")
+        return VersionsResponse.deserialize(resp)
+
+    @classmethod
+    async def discover(cls, domain: str, session: Optional[ClientSession] = None) -> Optional[URL]:
+        """
+        Follow the server discovery spec to find the actual URL when given a Matrix server name.
+
+        Args:
+            domain: The server name (end of user ID) to discover.
+            session: Optionally, the aiohttp ClientSession object to use.
+
+        Returns:
+            The parsed URL if the discovery succeeded.
+            ``None`` if the request returned a 404 status.
+
+        Raises:
+            WellKnownError: for other errors
+        """
+        if session is None:
+            async with ClientSession() as sess:
+                return await cls._discover(domain, sess)
+        else:
+            return await cls._discover(domain, session)
+
+    @classmethod
+    async def _discover(cls, domain: str, session: ClientSession) -> Optional[URL]:
+        well_known = URL.build(scheme="https", host=domain, path="/.well-known/matrix/client")
+        async with session.get(well_known) as resp:
+            if resp.status == 404:
+                return None
+            elif resp.status != 200:
+                raise WellKnownUnexpectedStatus(resp.status)
+            try:
+                data = await resp.json()
+            except (json.JSONDecodeError, ContentTypeError) as e:
+                raise WellKnownNotJSON() from e
+
+        try:
+            homeserver_url = data["m.homeserver"]["base_url"]
+        except KeyError as e:
+            raise WellKnownMissingHomeserver() from e
+        parsed_url = URL(homeserver_url)
+        if not parsed_url.is_absolute():
+            raise WellKnownNotURL()
+        elif parsed_url.scheme not in ("http", "https"):
+            raise WellKnownUnsupportedScheme(parsed_url.scheme)
+
+        try:
+            async with session.get(parsed_url / "_matrix/client/versions") as resp:
+                data = VersionsResponse.deserialize(await resp.json())
+                assert len(data.versions) > 0
+        except (ClientError, json.JSONDecodeError, SerializerError, AssertionError) as e:
+            raise WellKnownInvalidVersionsResponse() from e
+
+        return parsed_url

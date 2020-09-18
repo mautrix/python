@@ -11,15 +11,16 @@ import logging
 import hashlib
 import hmac
 import json
-import aiohttp
-import urllib.parse
 
+from yarl import URL
 from aiohttp import ClientConnectionError
 
 from mautrix.types import (UserID, FilterID, Filter, RoomEventFilter, RoomFilter, EventFilter,
-                           EventType, SyncToken, RoomID, Event, PresenceState, StateFilter)
+                           EventType, SyncToken, RoomID, Event, PresenceState, StateFilter,
+                           LoginType)
 from mautrix.appservice import AppService, IntentAPI
-from mautrix.errors import IntentError, MatrixError, MatrixRequestError, MatrixInvalidToken
+from mautrix.errors import (IntentError, MatrixError, MatrixRequestError, MatrixInvalidToken,
+                            WellKnownError)
 from mautrix.api import Path
 
 from .matrix import BaseMatrixHandler
@@ -39,25 +40,15 @@ class OnlyLoginSelf(CustomPuppetError):
         super().__init__("You may only replace your puppet with your own Matrix account.")
 
 
-class CouldNotDetermineHomeServerURL(CustomPuppetError):
-    """
-    Will be raised when any are true:
-    - .well-known/matrix/client returns 200 with mangled JSON body
-    - .well-known's JSON key [""m.homeserver"]["base_url"] does not exist
-    - .well-known's JSON key [""m.homeserver"]["base_url"] is not a valid URL
-    - .well-known's supplied homeserver URL, or the base domain URL, errors when validating it's version endpoint
-
-    This is in accordance with: https://matrix.org/docs/spec/client_server/r0.6.1#id178
-    """
-
+class HomeserverURLNotFound(CustomPuppetError):
     def __init__(self, domain: str):
-        super().__init__(f"Could not discover a valid homeserver URL from domain {domain}")
+        super().__init__(f"Could not discover a valid homeserver URL for {domain}")
 
 
-class OnlyLoginLocalDomain(CustomPuppetError):
-    """Will be raised when CustomPuppetMixin.allow_external_custom_puppets is set to False"""
-    def __init__(self, domain: str):
-        super().__init__(f"You may only replace your puppet with an account from {domain}")
+class OnlyLoginTrustedDomain(CustomPuppetError):
+    def __init__(self):
+        super().__init__("This bridge doesn't allow double-puppeting "
+                         "with accounts on untrusted servers.")
 
 
 class CustomPuppetMixin(ABC):
@@ -66,6 +57,8 @@ class CustomPuppetMixin(ABC):
 
     Attributes:
         sync_with_custom_puppets: Whether or not custom puppets should /sync
+        allow_discover_url: Allow logging into other homeservers using .well-known discovery.
+        homeserver_url_map: Static map from server name to URL that are always allowed to log in.
         only_handle_own_synced_events: Whether or not typing notifications and read receipts by
                                        other users should be filtered away before passing them to
                                        the Matrix event handler.
@@ -86,9 +79,10 @@ class CustomPuppetMixin(ABC):
     """
 
     sync_with_custom_puppets: bool = True
-    allow_external_custom_puppets: bool = False
+    allow_discover_url: bool = False
+    homeserver_url_map: Dict[str, URL] = {}
     only_handle_own_synced_events: bool = True
-    login_shared_secret: Optional[bytes] = None
+    login_shared_secret_map: Dict[str, bytes] = {}
     login_device_name: Optional[str] = None
 
     az: AppService
@@ -102,7 +96,7 @@ class CustomPuppetMixin(ABC):
     default_mxid_intent: IntentAPI
     custom_mxid: Optional[UserID]
     access_token: Optional[str]
-    base_url: Optional[str]
+    base_url: Optional[URL]
     next_batch: Optional[SyncToken]
 
     intent: IntentAPI
@@ -127,78 +121,30 @@ class CustomPuppetMixin(ABC):
         return (self.az.intent.user(self.custom_mxid, self.access_token, self.base_url)
                 if self.is_real_user else self.default_mxid_intent)
 
-    async def _discover_homeserver_endpoint(self, domain: str) -> str:
-        domain_is_valid = False
-
-        async def validate_versions_api(base_url: str) -> bool:
-
-            async with self.az.http_session.get(urllib.parse.urljoin(base_url, "_matrix/client/versions")) as response:
-                if response.status != 200:
-                    return False
-
-                try:
-                    obj = await response.json(content_type=None)
-                    if len(obj["versions"]) > 1:
-                        return True
-                except (KeyError, json.JSONDecodeError):
-                    return False
-
-        async def get_well_known_homeserver_base_url(probable_domain: str) -> Optional[str]:
-            async with self.az.http_session.get(f"https://{probable_domain}/.well-known/matrix/client") as response:
-                if response.status != 200:
-                    return None
-
-                try:
-                    obj = await response.json(content_type=None)
-                    return obj["m.homeserver"]["base_url"]
-                except (KeyError, json.JSONDecodeError) as e:
-                    raise CouldNotDetermineHomeServerURL(domain) from e
-
-        try:
-            if await validate_versions_api(f"https://{domain}"):
-                # Flag front domain as valid, but keep looking
-                domain_is_valid = True
-        except aiohttp.ClientError:
-            pass
-
-        try:
-            base_url = await get_well_known_homeserver_base_url(domain)
-
-            if base_url is None:
-                if domain_is_valid:
-                    # If we found a valid domain already, we just return that
-                    return f"https://{domain}"
-                else:
-                    raise CouldNotDetermineHomeServerURL(domain)
-
-            if await validate_versions_api(base_url):
-                return base_url
-            elif await validate_versions_api(base_url + "/"):
-                return base_url + "/"
-        except aiohttp.ClientError as e:
-            if domain_is_valid:
-                # Earlier we already found a valid domain, so we ignore the error and return the base domain instead
-                return f"https://{domain}"
-            raise CouldNotDetermineHomeServerURL(domain) from e
-
     @classmethod
     def can_auto_login(cls, mxid: UserID) -> bool:
-        if not cls.login_shared_secret:
-            return False
         _, server = cls.az.intent.parse_user_id(mxid)
-        if server != cls.az.domain:
-            return False
-        return True
+        return server in cls.login_shared_secret_map and (server in cls.homeserver_url_map
+                                                          or server == cls.az.domain)
 
     @classmethod
     async def _login_with_shared_secret(cls, mxid: UserID) -> Optional[str]:
-        if not cls.can_auto_login(mxid):
+        _, server = cls.az.intent.parse_user_id(mxid)
+        try:
+            secret = cls.login_shared_secret_map[server]
+        except KeyError:
             return None
-        password = hmac.new(cls.login_shared_secret, mxid.encode("utf-8"),
-                            hashlib.sha512).hexdigest()
-        url = cls.az.intent.api.base_url + str(Path.login)
+        if server == cls.az.domain:
+            base_url = cls.az.intent.api.base_url
+        else:
+            try:
+                base_url = cls.homeserver_url_map[server]
+            except KeyError:
+                return None
+        password = hmac.new(secret, mxid.encode("utf-8"), hashlib.sha512).hexdigest()
+        url = base_url / str(Path.login)
         resp = await cls.az.http_session.post(url, data=json.dumps({
-            "type": "m.login.password",
+            "type": str(LoginType.PASSWORD),
             "initial_device_display_name": cls.login_device_name,
             "device_id": cls.login_device_name,
             "identifier": {
@@ -210,8 +156,7 @@ class CustomPuppetMixin(ABC):
         data = await resp.json()
         return data["access_token"]
 
-    async def switch_mxid(self, access_token: Optional[str], mxid: Optional[UserID],
-                          base_url: Optional[str] = None) -> None:
+    async def switch_mxid(self, access_token: Optional[str], mxid: Optional[UserID]) -> None:
         """
         Switch to a real Matrix user or away from one.
 
@@ -220,8 +165,6 @@ class CustomPuppetMixin(ABC):
                           the appservice-owned ID.
             mxid: The expected Matrix user ID of the custom account, or ``None`` when
                   ``access_token`` is None.
-            base_url: An optional base URL to direct API calls to. If ``None``, and ``mxid`` is not ``None``,
-                      and ``mxid`` ``server_part`` is the not the appservice domain, autodiscovery is tried.
         """
         if access_token == "auto":
             access_token = await self._login_with_shared_secret(mxid)
@@ -230,13 +173,22 @@ class CustomPuppetMixin(ABC):
             self.log.debug(f"Logged in for {mxid} using shared secret")
 
         if mxid is not None:
-            mxid_domain = self.az.intent.parse_user_id(mxid)[1]
-            if mxid_domain != self.az.domain:
-                if not self.allow_external_custom_puppets:
-                    raise OnlyLoginLocalDomain(self.az.domain)
-                elif base_url is None:
-                    # This can throw CouldNotDetermineHomeServerURL
-                    base_url = await self._discover_homeserver_endpoint(mxid_domain)
+            _, mxid_domain = self.az.intent.parse_user_id(mxid)
+            if mxid_domain in self.homeserver_url_map:
+                base_url = self.homeserver_url_map[mxid_domain]
+            elif mxid_domain == self.az.domain:
+                base_url = None
+            else:
+                if not self.allow_discover_url:
+                    raise OnlyLoginTrustedDomain()
+                try:
+                    base_url = await IntentAPI.discover(mxid_domain, self.az.http_session)
+                except WellKnownError as e:
+                    raise HomeserverURLNotFound(mxid_domain) from e
+                if base_url is None:
+                    raise HomeserverURLNotFound(mxid_domain)
+        else:
+            base_url = None
 
         prev_mxid = self.custom_mxid
         self.custom_mxid = mxid
