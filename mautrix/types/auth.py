@@ -7,7 +7,7 @@ from typing import Union, Optional, List
 from attr import dataclass
 import attr
 
-from .primitive import UserID, JSON
+from .primitive import UserID, DeviceID, JSON
 from .util import SerializableAttrs, ExtensibleEnum, deserializer, Obj
 
 
@@ -20,6 +20,10 @@ class LoginType(ExtensibleEnum):
     """
     PASSWORD: 'LoginType' = "m.login.password"
     TOKEN: 'LoginType' = "m.login.token"
+    SSO: 'LoginType' = "m.login.sso"
+
+    JWT: 'LoginType' = "org.matrix.login.jwt"
+    APPSERVICE: 'LoginType' = "uk.half-shot.msc2778.login.application_service"
 
 
 @dataclass
@@ -31,6 +35,17 @@ class LoginFlow(SerializableAttrs['LoginFlow']):
         https://matrix.org/docs/spec/client_server/r0.6.1#get-matrix-client-r0-login
     """
     type: LoginType
+
+
+@dataclass
+class LoginFlowList(SerializableAttrs['LoginFlowList']):
+    flows: List[LoginFlow]
+
+    def supports_type(self, type: LoginType) -> bool:
+        for flow in self.flows:
+            if flow.type == type:
+                return True
+        return False
 
 
 class UserIdentifierType(ExtensibleEnum):
@@ -150,6 +165,6 @@ class LoginResponse(SerializableAttrs['LoginResponse']):
         https://matrix.org/docs/spec/client_server/r0.6.1#post-matrix-client-r0-login
     """
     user_id: UserID
-    device_id: str
+    device_id: DeviceID
     access_token: str
     well_known: DiscoveryInformation = attr.ib(factory=DiscoveryInformation)

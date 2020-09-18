@@ -6,12 +6,11 @@
 from typing import Tuple, Union, Optional, Dict, TYPE_CHECKING
 import logging
 import asyncio
-import hashlib
-import hmac
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
                            RoomID, Serializable, JSON, MessageEvent, EncryptedEvent, StateEvent,
-                           EncryptedMegolmEventContent, RequestedKeyInfo, RoomKeyWithheldCode)
+                           EncryptedMegolmEventContent, RequestedKeyInfo, RoomKeyWithheldCode,
+                           LoginType)
 from mautrix.appservice import AppService
 from mautrix.errors import EncryptionError
 from mautrix.client import Client, SyncStore
@@ -19,7 +18,7 @@ from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore, 
                             DeviceIdentity, RejectKeyShare, TrustState)
 from mautrix.util.logging import TraceLogger
 
-from .crypto_state_store import GetPortalFunc, PgCryptoStateStore, SQLCryptoStateStore
+from .crypto_state_store import PgCryptoStateStore, SQLCryptoStateStore
 
 try:
     from mautrix.client.state_store.sqlalchemy import UserProfile
@@ -47,23 +46,21 @@ class EncryptionManager:
 
     bridge: 'Bridge'
     az: AppService
-    login_shared_secret: bytes
     _id_prefix: str
     _id_suffix: str
 
     sync_task: asyncio.Future
     _share_session_events: Dict[RoomID, asyncio.Event]
 
-    def __init__(self, bridge: 'Bridge', login_shared_secret: str, homeserver_address: str,
-                 user_id_prefix: str, user_id_suffix: str, db_url: str,
-                 key_sharing_config: Dict[str, bool] = None) -> None:
+    def __init__(self, bridge: 'Bridge', homeserver_address: str, user_id_prefix: str,
+                 user_id_suffix: str, db_url: str, key_sharing_config: Dict[str, bool] = None
+                 ) -> None:
         self.loop = bridge.loop or asyncio.get_event_loop()
         self.bridge = bridge
         self.az = bridge.az
         self.device_name = bridge.name
         self._id_prefix = user_id_prefix
         self._id_suffix = user_id_suffix
-        self.login_shared_secret = login_shared_secret.encode("utf-8")
         self._share_session_events = {}
         self.key_sharing_config = key_sharing_config or {}
         pickle_key = "mautrix.bridge.e2ee"
@@ -161,17 +158,22 @@ class EncryptionManager:
         self.log.trace("Decrypted event %s: %s", evt.event_id, decrypted)
         return decrypted
 
+    async def check_server_support(self) -> bool:
+        flows = await self.client.get_login_flows()
+        return flows.supports_type(LoginType.APPSERVICE)
+
     async def start(self) -> None:
         self.log.debug("Logging in with bridge bot user")
-        password = hmac.new(self.login_shared_secret, self.az.bot_mxid.encode("utf-8"),
-                            hashlib.sha512).hexdigest()
         if self.crypto_db:
             await self.crypto_db.start()
         await self.crypto_store.open()
         device_id = await self.crypto_store.get_device_id()
         if device_id:
             self.log.debug(f"Found device ID in database: {device_id}")
-        await self.client.login(password=password, device_name=self.device_name,
+        # We set the API token to the AS token here to authenticate the appservice login
+        # It'll get overridden after the login
+        self.client.api.token = self.az.as_token
+        await self.client.login(login_type=LoginType.APPSERVICE, device_name=self.device_name,
                                 device_id=device_id, store_access_token=True, update_hs_url=False)
         await self.crypto.load()
         if not device_id:

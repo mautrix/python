@@ -57,16 +57,13 @@ class BaseMatrixHandler:
         if self.config["bridge.encryption.allow"]:
             if not EncryptionManager:
                 self.log.error("Encryption enabled in config, but dependencies not installed.")
-            elif not self.config["bridge.login_shared_secret"]:
-                self.log.warning("Encryption enabled in config, but login_shared_secret not set.")
-            else:
-                self.e2ee = EncryptionManager(
-                    bridge=bridge,
-                    user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
-                    login_shared_secret=self.config["bridge.login_shared_secret"],
-                    homeserver_address=self.config["homeserver.address"],
-                    db_url=self._get_db_url(bridge.config),
-                    key_sharing_config=self.config["bridge.encryption.key_sharing"])
+                return
+            self.e2ee = EncryptionManager(
+                bridge=bridge,
+                user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
+                homeserver_address=self.config["homeserver.address"],
+                db_url=self._get_db_url(bridge.config),
+                key_sharing_config=self.config["bridge.encryption.key_sharing"])
 
     @staticmethod
     def _get_db_url(config: 'BaseBridgeConfig') -> str:
@@ -123,7 +120,12 @@ class BaseMatrixHandler:
 
     async def init_encryption(self) -> None:
         if self.e2ee:
-            await self.e2ee.start()
+            if not await self.e2ee.check_server_support():
+                self.log.error("Encryption enabled in config, but homeserver does not "
+                               "support appservice login")
+                self.e2ee = None
+            else:
+                await self.e2ee.start()
 
     @staticmethod
     async def allow_message(user: 'BaseUser') -> bool:

@@ -7,7 +7,7 @@ from typing import List, Optional, Union
 
 from mautrix.errors import MatrixResponseError
 from mautrix.api import Method, Path
-from mautrix.types import (UserID, LoginType, UserIdentifier, LoginResponse, LoginFlow,
+from mautrix.types import (UserID, LoginType, UserIdentifier, LoginResponse, LoginFlowList,
                            MatrixUserIdentifier)
 
 from .base import BaseClientAPI
@@ -24,7 +24,7 @@ class ClientAuthenticationMethods(BaseClientAPI):
     # region 5.5 Login
     # API reference: https://matrix.org/docs/spec/client_server/r0.6.1.html#login
 
-    async def get_login_flows(self) -> List[LoginFlow]:
+    async def get_login_flows(self) -> LoginFlowList:
         """
         Get login flows supported by the homeserver.
 
@@ -35,7 +35,7 @@ class ClientAuthenticationMethods(BaseClientAPI):
         """
         resp = await self.api.request(Method.GET, Path.login)
         try:
-            return [LoginFlow.deserialize(flow) for flow in resp["flows"]]
+            return LoginFlowList.deserialize(resp)
         except KeyError:
             raise MatrixResponseError("`flows` not in response.")
 
