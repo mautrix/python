@@ -3,6 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from typing import Optional
 from enum import IntEnum
 
 from attr import dataclass
@@ -38,9 +39,8 @@ class OlmEventKeys(SerializableAttrs['OlmEventKeys']):
 
 @dataclass
 class DecryptedOlmEvent(ToDeviceEvent, SerializableAttrs['EncryptedOlmEvent']):
-    sender_device: DeviceID
     keys: OlmEventKeys
     recipient: UserID
     recipient_keys: OlmEventKeys
-
+    sender_device: Optional[DeviceID] = None
     sender_key: IdentityKey = attr.ib(metadata={"hidden": True}, default=None)
