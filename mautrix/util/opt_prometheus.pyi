@@ -3,9 +3,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Any, Tuple, TypeVar, Generic, Union, Callable, Dict
+from typing import Iterable, List, Any, TypeVar, Generic, Union, Callable, Dict
 
 T = TypeVar('T')
+Number = Union[int, float]
 
 
 class Metric:
@@ -15,12 +16,12 @@ class Metric:
     typ: str
     samples: List[Any]
 
-    def add_sample(self, name: str, labels: List[str], value: Any, timestamp: Any = None,
+    def add_sample(self, name: str, labels: Iterable[str], value: Any, timestamp: Any = None,
                    exemplar: Any = None) -> None: ...
 
 
 class MetricWrapperBase(Generic[T]):
-    def __init__(self, name: str, documentation: str, labelnames: Tuple[str, ...] = (),
+    def __init__(self, name: str, documentation: str, labelnames: Iterable[str] = (),
                  namespace: str = "", subsystem: str = "", unit: str = "", registry: Any = None,
                  labelvalues: Any = None) -> None: ...
 
@@ -42,17 +43,17 @@ class ContextManager:
 
 
 class Counter(MetricWrapperBase['Counter']):
-    def inc(self, amount: int = 1) -> None: ...
+    def inc(self, amount: Number = 1) -> None: ...
 
     def count_exceptions(self, exception: Exception = Exception) -> ContextManager: ...
 
 
 class Gauge(MetricWrapperBase['Gauge']):
-    def inc(self, amount: Union[int, float] = 1) -> None: ...
+    def inc(self, amount: Number = 1) -> None: ...
 
-    def dec(self, amount: Union[int, float] = 1) -> None: ...
+    def dec(self, amount: Number = 1) -> None: ...
 
-    def set(self, value: Union[int, float] = 1) -> None: ...
+    def set(self, value: Number = 1) -> None: ...
 
     def set_to_current_time(self) -> None: ...
 
@@ -60,21 +61,21 @@ class Gauge(MetricWrapperBase['Gauge']):
 
     def time(self) -> ContextManager: ...
 
-    def set_function(self, f: Callable[[], float]) -> None: ...
+    def set_function(self, f: Callable[[], Number]) -> None: ...
 
 
 class Summary(MetricWrapperBase['Summary']):
-    def observe(self, amount: Union[int, float]) -> None: ...
+    def observe(self, amount: Number) -> None: ...
 
     def time(self) -> ContextManager: ...
 
 
 class Histogram(MetricWrapperBase['Histogram']):
-    def __init__(self, name: str, documentation: str, labelnames: Tuple[str, ...] = (),
+    def __init__(self, name: str, documentation: str, labelnames: Iterable[str] = (),
                  namespace: str = "", subsystem: str = "", unit: str = "", registry: Any = None,
-                 labelvalues: Any = None, buckets: Tuple[float, ...] = ()) -> None: ...
+                 labelvalues: Any = None, buckets: Iterable[Number] = ()) -> None: ...
 
-    def observe(self, amount: Union[int, float] = 1) -> None: ...
+    def observe(self, amount: Number = 1) -> None: ...
 
     def time(self) -> ContextManager: ...
 
@@ -84,8 +85,11 @@ class Info(MetricWrapperBase['Info']):
 
 
 class Enum(MetricWrapperBase['Enum']):
-    def __init__(self, name: str, documentation: str, labelnames: Tuple[str, ...] = (),
+    def __init__(self, name: str, documentation: str, labelnames: Iterable[str] = (),
                  namespace: str = "", subsystem: str = "", unit: str = "", registry: Any = None,
-                 labelvalues: Any = None, states: List[str] = None) -> None: ...
+                 labelvalues: Any = None, states: Iterable[str] = None) -> None: ...
 
     def state(self, state: str) -> None: ...
+
+
+def async_time(metric: Union[Gauge, Summary, Histogram]) -> Callable[[Callable], Callable]: ...
