@@ -278,7 +278,10 @@ class BaseMatrixHandler:
             await portal.handle_matrix_message(sender, message, event_id)
             return
 
-        if message.msgtype != MessageType.TEXT or not await self.allow_command(sender):
+        if message.msgtype != MessageType.TEXT:
+            return
+        elif not await self.allow_command(sender):
+            self.log.trace("Ignoring command %s from %s", event_id, sender.mxid)
             return
 
         is_management = await self.is_management(room_id)
@@ -293,6 +296,9 @@ class BaseMatrixHandler:
                 args = []
             await self.commands.handle(room_id, event_id, sender, command, args, message,
                                        is_management, is_portal=portal is not None)
+        else:
+            self.log.trace("Ignoring event %s from %s: not a command and not a portal room",
+                           event_id, sender.mxid)
 
     async def is_management(self, room_id: RoomID) -> bool:
         try:
