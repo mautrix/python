@@ -48,7 +48,7 @@ class KeyRequestingMachine(BaseOlmMachine):
                                              requesting_device_id=self.client.device_id)
 
         fut = self.loop.create_future()
-        self._room_key_waiters[session_id] = fut
+        self._key_request_waiters[session_id] = fut
         await self.client.send_to_device(EventType.ROOM_KEY_REQUEST,
                                          {user_id: {device_id: request
                                                     for device_id in devices}
@@ -65,7 +65,7 @@ class KeyRequestingMachine(BaseOlmMachine):
                 pass
         except (asyncio.CancelledError, asyncio.TimeoutError):
             pass
-        del self._room_key_waiters[session_id]
+        del self._key_request_waiters[session_id]
         if len(from_devices) > 0:
             cancel = RoomKeyRequestEventContent(action=KeyRequestAction.CANCEL,
                                                 request_id=str(request_id),
@@ -91,12 +91,13 @@ class KeyRequestingMachine(BaseOlmMachine):
             return
 
         await self.crypto_store.put_group_session(key.room_id, key.sender_key, key.session_id, sess)
+        self._mark_session_received(key.session_id)
 
         self.log.debug(f"Imported {key.session_id} for {key.room_id} "
                        f"from {evt.sender}/{evt.sender_device}")
 
         try:
-            task = self._room_key_waiters[key.session_id]
+            task = self._key_request_waiters[key.session_id]
         except KeyError:
             return
         task.set_result((evt.sender, evt.sender_device))

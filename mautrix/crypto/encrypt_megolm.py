@@ -104,7 +104,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
         """
         return room_id in self._sharing_group_session
 
-    async def wait_group_session(self, room_id: RoomID) -> None:
+    async def wait_group_session_share(self, room_id: RoomID) -> None:
         """
         Wait for a group session to be shared.
 
@@ -121,9 +121,9 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
         """
         Create a Megolm session for a specific room and share it with the given list of users.
 
-        Note that you must not call this method again before the previous share has finished. You
-        should either lock calls yourself, or use :meth:`wait_group_session` to use the built-in
-        locking capabilities.
+        Note that you must not call this method again before the previous share has finished.
+        You should either lock calls yourself, or use :meth:`wait_group_session_share` to use
+        built-in locking capabilities.
 
         Args:
             room_id: The room to create the session for.
@@ -218,7 +218,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
     async def _new_outbound_group_session(self, room_id: RoomID) -> OutboundGroupSession:
         session = OutboundGroupSession(room_id)
         await self._create_group_session(self.account.identity_key, self.account.signing_key,
-                                         room_id, session.id, session.session_key)
+                                         room_id, SessionID(session.id), session.session_key)
         return session
 
     async def _create_group_session(self, sender_key: IdentityKey, signing_key: SigningKey,
@@ -226,7 +226,9 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
                                     ) -> None:
         session = InboundGroupSession(session_key=session_key, signing_key=signing_key,
                                       sender_key=sender_key, room_id=room_id)
+        # TODO we should probably make sure session.id == session_id
         await self.crypto_store.put_group_session(room_id, sender_key, session_id, session)
+        self._mark_session_received(session_id)
         self.log.debug(f"Created inbound group session {room_id}/{sender_key}/{session_id}")
 
     async def _encrypt_group_session(self, session: OutboundGroupSession, user_id: UserID,
@@ -251,7 +253,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
             session.users_ignored.add(key)
             return RoomKeyWithheldEventContent(
                 room_id=session.room_id, algorithm=EncryptionAlgorithm.MEGOLM_V1,
-                session_id=session.id, sender_key=self.account.identity_key,
+                session_id=SessionID(session.id), sender_key=self.account.identity_key,
                 code=RoomKeyWithheldCode.BLACKLISTED, reason="Device is blacklisted")
         elif not self.allow_unverified_devices and device.trust == TrustState.UNSET:
             self.log.debug(f"Not encrypting group session {session.id} for {device_id} "
@@ -259,7 +261,7 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
             session.users_ignored.add(key)
             return RoomKeyWithheldEventContent(
                 room_id=session.room_id, algorithm=EncryptionAlgorithm.MEGOLM_V1,
-                session_id=session.id, sender_key=self.account.identity_key,
+                session_id=SessionID(session.id), sender_key=self.account.identity_key,
                 code=RoomKeyWithheldCode.UNVERIFIED, reason="This device does not encrypt "
                                                             "messages for unverified devices")
         device_session = await self.crypto_store.get_latest_session(device.identity_key)

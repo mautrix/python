@@ -8,7 +8,8 @@ import json
 import olm
 
 from mautrix.types import EncryptedMegolmEventContent, EncryptionAlgorithm, Event, EncryptedEvent
-from mautrix.errors import DecryptionError
+from mautrix.errors import (DecryptionError, SessionNotFound, DuplicateMessageIndex,
+                            VerificationError, DecryptedPayloadError, MismatchingRoomError)
 
 from .types import TrustState
 from .base import BaseOlmMachine
@@ -36,7 +37,7 @@ class MegolmDecryptionMachine(BaseOlmMachine):
                                                             evt.content.session_id)
         if session is None:
             # TODO check if olm session is wedged
-            raise DecryptionError("Failed to decrypt megolm event: no session with given ID found")
+            raise SessionNotFound(evt.content.session_id)
         try:
             plaintext, index = session.decrypt(evt.content.ciphertext)
         except olm.OlmGroupSessionError as e:
@@ -44,7 +45,7 @@ class MegolmDecryptionMachine(BaseOlmMachine):
         if not await self.crypto_store.validate_message_index(evt.content.sender_key,
                                                               evt.content.session_id,
                                                               evt.event_id, index, evt.timestamp):
-            raise DecryptionError("Duplicate message index")
+            raise DuplicateMessageIndex()
 
         verified = False
         if ((evt.content.device_id == self.client.device_id
@@ -56,8 +57,7 @@ class MegolmDecryptionMachine(BaseOlmMachine):
             if device and device.trust == TrustState.VERIFIED and not session.forwarding_chain:
                 if ((device.signing_key != session.signing_key
                      or device.identity_key != evt.content.sender_key)):
-                    raise DecryptionError("Device keys in event and verified device info "
-                                          "do not match")
+                    raise VerificationError()
                 verified = True
             # else: TODO query device keys?
 
@@ -67,12 +67,12 @@ class MegolmDecryptionMachine(BaseOlmMachine):
             event_type = data["type"]
             content = data["content"]
         except json.JSONDecodeError as e:
-            raise DecryptionError("Failed to parse megolm payload") from e
+            raise DecryptedPayloadError("Failed to parse megolm payload") from e
         except KeyError as e:
-            raise DecryptionError("Megolm payload is missing fields") from e
+            raise DecryptedPayloadError("Megolm payload is missing fields") from e
 
         if room_id != evt.room_id:
-            raise DecryptionError("Encrypted megolm event is not intended for this room")
+            raise MismatchingRoomError()
 
         result = Event.deserialize({
             "room_id": evt.room_id,
