@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
 
-from mautrix.errors import MatrixResponseError
+from mautrix.errors import MatrixResponseError, MNotFound
 from mautrix.api import Method, Path
 from mautrix.types import UserSearchResults, Member, SerializerError, User, ContentURI, UserID
 
@@ -93,7 +93,10 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The display name of the given user.
         """
-        content = await self.api.request(Method.GET, Path.profile[user_id].displayname)
+        try:
+            content = await self.api.request(Method.GET, Path.profile[user_id].displayname)
+        except MNotFound:
+            return None
         try:
             return content["displayname"]
         except KeyError:
@@ -127,7 +130,10 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The ``mxc://`` URI to the user's avatar.
         """
-        content = await self.api.request(Method.GET, Path.profile[user_id].avatar_url)
+        try:
+            content = await self.api.request(Method.GET, Path.profile[user_id].avatar_url)
+        except MNotFound:
+            return None
         try:
             return content["avatar_url"]
         except KeyError:
