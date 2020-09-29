@@ -3,13 +3,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from typing import Optional, Dict
 import logging
 import asyncio
 
 from mautrix.client import Client, InternalEventType
 from mautrix.types import (StateEvent, ToDeviceEvent, Membership, EventType, EncryptionAlgorithm,
-                           DeviceOTKCount, DeviceLists)
+                           DeviceOTKCount, DeviceLists, SessionID)
 from mautrix.util.logging import TraceLogger
 
 from .store import CryptoStore, StateStore
@@ -56,7 +56,8 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         self.allow_key_share = self.default_allow_key_share
 
         self._fetch_keys_lock = asyncio.Lock()
-        self._room_key_waiters = {}
+        self._key_request_waiters = {}
+        self._inbound_session_waiters = {}
 
         self.client.add_event_handler(InternalEventType.DEVICE_OTK_COUNT, self.handle_otk_count,
                                       wait_sync=True)

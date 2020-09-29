@@ -18,6 +18,7 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
 from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError
 from mautrix.appservice import AppService
 from mautrix.util.logging import TraceLogger
+from mautrix.util.opt_prometheus import Histogram
 
 from .commands import CommandProcessor
 
@@ -32,6 +33,8 @@ try:
     from .e2ee import EncryptionManager
 except ImportError:
     EncryptionManager = None
+
+EVENT_TIME = Histogram("bridge_matrix_event", "Time spent processing Matrix events", ["event_type"])
 
 
 class BaseMatrixHandler:
@@ -277,7 +280,10 @@ class BaseMatrixHandler:
             await portal.handle_matrix_message(sender, message, event_id)
             return
 
-        if message.msgtype != MessageType.TEXT or not await self.allow_command(sender):
+        if message.msgtype != MessageType.TEXT:
+            return
+        elif not await self.allow_command(sender):
+            self.log.trace("Ignoring command %s from %s", event_id, sender.mxid)
             return
 
         is_management = await self.is_management(room_id)
@@ -292,6 +298,9 @@ class BaseMatrixHandler:
                 args = []
             await self.commands.handle(room_id, event_id, sender, command, args, message,
                                        is_management, is_portal=portal is not None)
+        else:
+            self.log.trace("Ignoring event %s from %s: not a command and not a portal room",
+                           event_id, sender.mxid)
 
     async def is_management(self, room_id: RoomID) -> bool:
         try:
@@ -314,7 +323,8 @@ class BaseMatrixHandler:
         except Exception:
             self.log.exception("Error handling manually received Matrix event")
 
-    async def send_encryption_error_notice(self, evt: EncryptedEvent, error: DecryptionError) -> None:
+    async def send_encryption_error_notice(self, evt: EncryptedEvent,
+                                           error: DecryptionError) -> None:
         await self.az.intent.send_notice(evt.room_id,
                                          f"\u26a0 Your message was not bridged: {error}. Try "
                                          f"restarting your client if this error keeps happening.")
@@ -394,4 +404,4 @@ class BaseMatrixHandler:
         await self.log_event_handle_duration(evt, time.time() - start_time)
 
     async def log_event_handle_duration(self, evt: Event, duration: float) -> None:
-        pass
+        EVENT_TIME.labels(event_type=str(evt.type)).observe(duration)

@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Type, TypeVar, Any, Union, Optional, Tuple, Iterator, Callable, NewType
+from uuid import UUID
 import attr
 import copy
 import sys
@@ -17,8 +18,12 @@ T2 = TypeVar("T2")
 
 Serializer = NewType("Serializer", Callable[[T], JSON])
 Deserializer = NewType("Deserializer", Callable[[JSON], T])
-serializer_map: Dict[Type[T], Serializer] = {}
-deserializer_map: Dict[Type[T], Deserializer] = {}
+serializer_map: Dict[Type[T], Serializer] = {
+    UUID: str,
+}
+deserializer_map: Dict[Type[T], Deserializer] = {
+    UUID: UUID,
+}
 
 no_value = object()
 
@@ -206,6 +211,15 @@ else:
             return None
 
 
+def _actual_type(cls: Type[T]) -> Type[T]:
+    if cls is None:
+        return cls
+    if getattr(cls, "__origin__", None) is Union:
+        if len(cls.__args__) == 2 and isinstance(None, cls.__args__[1]):
+            return cls.__args__[0]
+    return cls
+
+
 def _attrs_to_dict(data: T) -> JSON:
     new_dict = {}
     for json_name, field in _fields(data.__class__):
@@ -220,7 +234,7 @@ def _attrs_to_dict(data: T) -> JSON:
         if field.metadata.get("omitdefault", False) and field_val == field.default:
             continue
         try:
-            serialized = serializer_map[field.type](field_val)
+            serialized = serializer_map[_actual_type(field.type)](field_val)
         except KeyError:
             serialized = _serialize(field_val)
         if field.metadata.get("flatten", False) and isinstance(serialized, dict):

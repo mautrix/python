@@ -42,7 +42,26 @@ class BaseOlmMachine:
     share_to_unverified_devices: bool
     allow_key_share: Callable[[DeviceIdentity, RequestedKeyInfo], Awaitable[bool]]
 
-    _room_key_waiters: Dict[SessionID, asyncio.Future]
+    # Futures that wait for responses to a key request
+    _key_request_waiters: Dict[SessionID, asyncio.Future]
+    # Futures that wait for a session to be received (either normally or through a key request)
+    _inbound_session_waiters: Dict[SessionID, asyncio.Future]
+
+    async def wait_for_session(self, session_id: SessionID, timeout: float = 3) -> bool:
+        try:
+            fut = self._inbound_session_waiters[session_id]
+        except KeyError:
+            fut = self._inbound_session_waiters[session_id] = self.loop.create_future()
+        try:
+            return await asyncio.wait_for(asyncio.shield(fut), timeout)
+        except asyncio.TimeoutError:
+            return False
+
+    def _mark_session_received(self, session_id: SessionID) -> None:
+        try:
+            self._inbound_session_waiters.pop(session_id).set_result(True)
+        except KeyError:
+            return
 
 
 canonical_json = functools.partial(json.dumps, ensure_ascii=False, separators=(",", ":"),

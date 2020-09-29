@@ -12,7 +12,7 @@ from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, Sta
                            EncryptedMegolmEventContent, RequestedKeyInfo, RoomKeyWithheldCode,
                            LoginType)
 from mautrix.appservice import AppService
-from mautrix.errors import EncryptionError
+from mautrix.errors import EncryptionError, SessionNotFound
 from mautrix.client import Client, SyncStore
 from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore, PickleCryptoStore,
                             DeviceIdentity, RejectKeyShare, TrustState)
@@ -153,8 +153,16 @@ class EncryptionManager:
             encrypted = await self.crypto.encrypt_megolm_event(room_id, event_type, content)
         return EventType.ROOM_ENCRYPTED, encrypted
 
-    async def decrypt(self, evt: EncryptedEvent) -> MessageEvent:
-        decrypted = await self.crypto.decrypt_megolm_event(evt)
+    async def decrypt(self, evt: EncryptedEvent, wait_session_timeout: int = 3) -> MessageEvent:
+        try:
+            decrypted = await self.crypto.decrypt_megolm_event(evt)
+        except SessionNotFound as e:
+            if not wait_session_timeout:
+                raise
+            self.log.debug(f"Didn't find session {e.session_id},"
+                           " waiting a while for session to arrive")
+            await self.crypto.wait_for_session(e.session_id, timeout=wait_session_timeout)
+            decrypted = await self.crypto.decrypt_megolm_event(evt)
         self.log.trace("Decrypted event %s: %s", evt.event_id, decrypted)
         return decrypted
 

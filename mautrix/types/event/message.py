@@ -286,6 +286,7 @@ class MediaMessageEventContent(BaseMessageEventContent,
 
     @staticmethod
     @deserializer(MediaInfo)
+    @deserializer(Optional[MediaInfo])
     def deserialize_info(data: JSON) -> MediaInfo:
         if not isinstance(data, dict):
             return Obj()
@@ -321,7 +322,8 @@ class TextMessageEventContent(BaseMessageEventContent,
     format: Format = None
     formatted_body: str = None
 
-    def set_reply(self, reply_to: 'MessageEvent', *, displayname: Optional[str] = None) -> None:
+    def set_reply(self, reply_to: Union['MessageEvent', EventID],
+                  *, displayname: Optional[str] = None) -> None:
         super().set_reply(reply_to)
         if isinstance(reply_to, str):
             return
@@ -329,8 +331,8 @@ class TextMessageEventContent(BaseMessageEventContent,
             self.format = Format.HTML
             self.formatted_body = escape(self.body).replace("\n", "<br/>")
         if isinstance(reply_to, MessageEvent):
-            self.formatted_body = reply_to.make_reply_fallback_html(
-                displayname) + self.formatted_body
+            self.formatted_body = (reply_to.make_reply_fallback_html(displayname)
+                                   + self.formatted_body)
             self.body = reply_to.make_reply_fallback_text(displayname) + self.body
 
     def trim_reply_fallback(self) -> None:

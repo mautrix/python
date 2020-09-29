@@ -9,7 +9,9 @@ from .request import (MatrixRequestError, MatrixUnknownRequestError, MatrixStand
                       MCaptchaInvalid, MMissingParam, MInvalidParam, MTooLarge, MExclusive,
                       MUserDeactivated)
 from .crypto import (CryptoError, EncryptionError, SessionShareError, DecryptionError,
-                     MatchingSessionDecryptionError, DeviceValidationError)
+                     MatchingSessionDecryptionError, DeviceValidationError, SessionNotFound,
+                     DuplicateMessageIndex, VerificationError, DecryptedPayloadError,
+                     MismatchingRoomError)
 from .well_known import (WellKnownError, WellKnownNotJSON, WellKnownMissingHomeserver,
                          WellKnownNotURL, WellKnownUnexpectedStatus, WellKnownUnsupportedScheme,
                          WellKnownInvalidVersionsResponse)
