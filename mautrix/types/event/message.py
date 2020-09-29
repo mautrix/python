@@ -286,6 +286,7 @@ class MediaMessageEventContent(BaseMessageEventContent,
 
     @staticmethod
     @deserializer(MediaInfo)
+    @deserializer(Optional[MediaInfo])
     def deserialize_info(data: JSON) -> MediaInfo:
         if not isinstance(data, dict):
             return Obj()
