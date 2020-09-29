@@ -34,7 +34,7 @@ try:
 except ImportError:
     EncryptionManager = None
 
-EVENT_TIME = Histogram("bridge_matrix_event", "Time spent processing Matrix events", ["event_type"])
+EVENT_TIME = Histogram("matrix_event", "Time spent processing Matrix events", ["event_type"])
 
 
 class BaseMatrixHandler:

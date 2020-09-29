@@ -11,15 +11,7 @@ class _NoopPrometheusEntity:
         pass
 
     def __call__(self, *args, **kwargs):
-        if not kwargs and len(args) == 1 and callable(args[0]):
-            return args[0]
         return self
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
 
     def __getattr__(self, item):
         return self
