@@ -25,6 +25,7 @@ HelpSection = NamedTuple('HelpSection', name=str, order=int, description=str)
 HelpCacheKey = NamedTuple('HelpCacheKey', is_management=bool, is_portal=bool)
 
 SECTION_GENERAL = HelpSection("General", 0, "")
+SECTION_ADMIN = HelpSection("Administration", 50, "")
 
 
 def ensure_trailing_newline(s: str) -> str:
@@ -189,20 +190,26 @@ class CommandHandler:
         name: The name of this command.
         help_section: Section of the help in which this command will appear.
     """
-    management_only: bool
     name: str
+
+    management_only: bool
+    needs_admin: bool
+    needs_auth: bool
 
     _help_text: str
     _help_args: str
     help_section: HelpSection
 
     def __init__(self, handler: CommandHandlerFunc, management_only: bool, name: str,
-                 help_text: str, help_args: str, help_section: HelpSection, **kwargs) -> None:
+                 help_text: str, help_args: str, help_section: HelpSection,
+                 needs_auth: bool, needs_admin: bool, **kwargs) -> None:
         """
         Args:
             handler: The function handling the execution of this command.
             management_only: Whether the command can exclusively be issued
                 in a management room.
+            needs_auth: Whether the command needs the bridge to be authed already
+            needs_admin: Whether the command needs the issuer to be bridge admin
             name: The name of this command.
             help_text: The text displayed in the help for this command.
             help_args: Help text for the arguments of this command.
@@ -212,6 +219,8 @@ class CommandHandler:
             setattr(self, key, value)
         self._handler = handler
         self.management_only = management_only
+        self.needs_admin = needs_admin
+        self.needs_auth = needs_auth
         self.name = name
         self._help_text = help_text
         self._help_args = help_args
@@ -229,6 +238,10 @@ class CommandHandler:
         if self.management_only and not evt.is_management:
             return (f"`{evt.command}` is a restricted command: "
                     "you may only run it in management rooms.")
+        elif self.needs_admin and not evt.sender.is_admin:
+            return "This command requires administrator privileges."
+        elif self.needs_auth and not await evt.sender.is_logged_in():
+            return "This command requires you to be logged in."
         return None
 
     def has_permission(self, key: HelpCacheKey) -> bool:
@@ -241,7 +254,9 @@ class CommandHandler:
             True if a user with the given state is allowed to issue the
             command.
         """
-        return not self.management_only or key.is_management
+        return ((not self.management_only or key.is_management) and
+        (not self.needs_admin or key.is_admin) and
+        (not self.needs_auth or key.is_logged_in))
 
     async def __call__(self, evt: CommandEvent) -> Any:
         """Executes the command if evt was issued with proper rights.
@@ -272,13 +287,14 @@ def command_handler(_func: Optional[CommandHandlerFunc] = None, *, management_on
                     name: Optional[str] = None, help_text: str = "", help_args: str = "",
                     help_section: HelpSection = None, aliases: Optional[List[str]] = None,
                     _handler_class: Type[CommandHandler] = CommandHandler,
+                    needs_auth: bool = True, needs_admin: bool = False,
                     **kwargs) -> Callable[[CommandHandlerFunc], CommandHandler]:
     """Decorator to create CommandHandlers"""
 
     def decorator(func: CommandHandlerFunc) -> CommandHandler:
         actual_name = name or func.__name__.replace("_", "-")
         handler = _handler_class(func, management_only, actual_name, help_text, help_args,
-                                 help_section, **kwargs)
+                                 help_section, needs_auth, needs_admin, **kwargs)
         command_handlers[handler.name] = handler
         if aliases:
             for alias in aliases:
