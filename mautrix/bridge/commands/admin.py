@@ -31,7 +31,7 @@ async def set_power_level(evt: CommandEvent) -> EventID:
     mxid = evt.args[1] if len(evt.args) > 1 else evt.sender.mxid
     levels.users[mxid] = level
     try:
-        intent.set_power_levels(evt.room_id, levels)
+        return await intent.set_power_levels(evt.room_id, levels)
     except (MatrixRequestError, IntentError):
         evt.log.exception("Failed to set power level.")
         return await evt.reply("Failed to set power level.")
