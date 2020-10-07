@@ -137,7 +137,7 @@ class CommandEvent:
         html = self._render_message(message, allow_html=allow_html,
                                     render_markdown=render_markdown)
 
-       if self.is_portal:
+        if self.is_portal:
             portal = await self.processor.bridge.get_portal(self.room_id)
             return await portal.main_intent.send_notice(self.room_id, message, html=html)
         else:
@@ -255,8 +255,8 @@ class CommandHandler:
             command.
         """
         return ((not self.management_only or key.is_management) and
-        (not self.needs_admin or key.is_admin) and
-        (not self.needs_auth or key.is_logged_in))
+                (not self.needs_admin or key.is_admin) and
+                (not self.needs_auth or key.is_logged_in))
 
     async def __call__(self, evt: CommandEvent) -> Any:
         """Executes the command if evt was issued with proper rights.
