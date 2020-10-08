@@ -31,8 +31,8 @@ async def set_power_level(evt: CommandEvent) -> EventID:
         return await evt.reply("Failed to update power levels (see logs for more details)")
 
 @command_handler(needs_admin=True, needs_auth=False, name="set-avatar",
-                 help_section=SECTION_ADMIN, help_args="<_mxc_uri_> [_mxid_]",
-                 help_text="Sets an avatar for a ghost user.")
+                 help_section=SECTION_ADMIN, help_args="<_mxc://uri_> [_mxid_]",
+                 help_text="Set an avatar for a ghost user.")
 async def set_ghost_avatar(evt: CommandEvent) -> EventID:
     try:
         mxc_uri = evt.args[0]
@@ -41,6 +41,7 @@ async def set_ghost_avatar(evt: CommandEvent) -> EventID:
     if not mxc_uri.startswith("mxc://"):
         return await evt.reply("The URI has to start with mxc://.")
     if len(evt.args) > 1:
+        # TODO support parsing mention pills instead of requiring a plaintext mxid
         puppet = await evt.processor.bridge.get_puppet(evt.args[1])
         if puppet is None:
             return await evt.reply("The given mxid was not a valid ghost user.")
@@ -48,6 +49,8 @@ async def set_ghost_avatar(evt: CommandEvent) -> EventID:
     elif evt.is_portal:
         portal = await evt.processor.bridge.get_portal(evt.room_id)
         intent = portal.main_intent
+        if intent == evt.az.intent:
+            return await evt.reply("No mxid given and the main intent is not a ghost user.")
     else:
         return await evt.reply("No mxid given and not in a portal.")
     try:
@@ -58,7 +61,7 @@ async def set_ghost_avatar(evt: CommandEvent) -> EventID:
 
 @command_handler(needs_admin=True, needs_auth=False, name="remove-avatar",
                  help_section=SECTION_ADMIN, help_args="[_mxid_]",
-                 help_text="Removes an avatar for a ghost user.")
+                 help_text="Remove the avatar for a ghost user.")
 async def remove_ghost_avatar(evt: CommandEvent) -> EventID:
     if len(evt.args) > 0:
         puppet = await evt.processor.bridge.get_puppet(evt.args[0])
@@ -68,6 +71,8 @@ async def remove_ghost_avatar(evt: CommandEvent) -> EventID:
     elif evt.is_portal:
         portal = await evt.processor.bridge.get_portal(evt.room_id)
         intent = portal.main_intent
+        if intent == evt.az.intent:
+            return await evt.reply("No mxid given and the main intent is not a ghost user.")
     else:
         return await evt.reply("No mxid given and not in a portal.")
     try:
@@ -78,7 +83,7 @@ async def remove_ghost_avatar(evt: CommandEvent) -> EventID:
 
 @command_handler(needs_admin=True, needs_auth=False, name="set-displayname",
                  help_section=SECTION_ADMIN, help_args="<_display_name_> [_mxid_]",
-                 help_text="Sets the display name for a ghost user.")
+                 help_text="Set the display name for a ghost user.")
 async def set_ghost_display_name(evt: CommandEvent) -> EventID:
     if len(evt.args) > 1:
         #This allows whitespaces in the name
@@ -90,6 +95,8 @@ async def set_ghost_display_name(evt: CommandEvent) -> EventID:
     elif evt.is_portal:
         portal = await evt.processor.bridge.get_portal(evt.room_id)
         intent = portal.main_intent
+        if intent == evt.az.intent:
+            return await evt.reply("No mxid given and the main intent is not a ghost user.")
         displayname = evt.args[0]
     else:
         return await evt.reply("No mxid given and not in a portal.")
@@ -101,7 +108,7 @@ async def set_ghost_display_name(evt: CommandEvent) -> EventID:
 
 @command_handler(needs_admin=True, needs_auth=False, name="remove-displayname",
                  help_section=SECTION_ADMIN, help_args="[_mxid_]",
-                 help_text="Removes the display name for a ghost user.")
+                 help_text="Remove the display name for a ghost user.")
 async def set_ghost_display_name(evt: CommandEvent) -> EventID:
     if len(evt.args) > 0:
         puppet = await evt.processor.bridge.get_puppet(evt.args[0])
@@ -111,6 +118,8 @@ async def set_ghost_display_name(evt: CommandEvent) -> EventID:
     elif evt.is_portal:
         portal = await evt.processor.bridge.get_portal(evt.room_id)
         intent = portal.main_intent
+        if intent == evt.az.intent:
+            return await evt.reply("No mxid given and the main intent is not a ghost user.")
     else:
         return await evt.reply("No mxid given and not in a portal (see logs for more details).")
     try:
