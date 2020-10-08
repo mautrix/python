@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Optional, List
+from collections import defaultdict
 
 from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
 from mautrix.client.state_store import SyncStore
@@ -27,6 +28,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
     _sync_token: Optional[SyncToken]
     _device_id: Optional[DeviceID]
     _account: Optional[OlmAccount]
+    _olm_cache: Dict[IdentityKey, Dict[SessionID, Session]]
 
     def __init__(self, account_id: str, pickle_key: str, db: Database) -> None:
         self.db = db
@@ -36,6 +38,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
         self._sync_token = None
         self._device_id = ""
         self._account = None
+        self._olm_cache = defaultdict(lambda: {})
 
     async def get_device_id(self) -> Optional[DeviceID]:
         device_id = await self.db.fetchval("SELECT device_id FROM crypto_account "
@@ -79,32 +82,45 @@ class PgCryptoStore(CryptoStore, SyncStore):
         return self._account
 
     async def has_session(self, key: IdentityKey) -> bool:
+        if len(self._olm_cache[key]) > 0:
+            return True
         val = await self.db.fetchval("SELECT session_id FROM crypto_olm_session "
                                      "WHERE sender_key=$1 AND account_id=$2", key, self.account_id)
         return val is not None
 
     async def get_sessions(self, key: IdentityKey) -> List[Session]:
-        rows = await self.db.fetch("SELECT session, created_at, last_used FROM crypto_olm_session "
-                                   "WHERE sender_key=$1 AND account_id=$2 ORDER BY session_id",
+        rows = await self.db.fetch("SELECT session_id, session, created_at, last_used "
+                                   "FROM crypto_olm_session "
+                                   "WHERE sender_key=$1 AND account_id=$2 "
+                                   "ORDER BY session_id",
                                    key, self.account_id)
         sessions = []
         for row in rows:
-            sess = Session.from_pickle(row["session"], passphrase=self.pickle_key,
-                                       creation_time=row["created_at"], use_time=row["last_used"])
+            try:
+                sess = self._olm_cache[key][row["session_id"]]
+            except KeyError:
+                sess = Session.from_pickle(row["session"], passphrase=self.pickle_key,
+                                           creation_time=row["created_at"],
+                                           use_time=row["last_used"])
             sessions.append(sess)
         return sessions
 
     async def get_latest_session(self, key: IdentityKey) -> Optional[Session]:
-        row = await self.db.fetchrow("SELECT session, created_at, last_used FROM crypto_olm_session"
-                                     " WHERE sender_key=$1 AND account_id=$2"
-                                     " ORDER BY session DESC LIMIT 1", key, self.account_id)
+        row = await self.db.fetchrow("SELECT session_id, session, created_at, last_used "
+                                     "FROM crypto_olm_session "
+                                     "WHERE sender_key=$1 AND account_id=$2 "
+                                     "ORDER BY session_id DESC LIMIT 1", key, self.account_id)
         if row is None:
             return None
-        return Session.from_pickle(row["session"], passphrase=self.pickle_key,
-                                   creation_time=row["created_at"], use_time=row["last_used"])
+        try:
+            return self._olm_cache[key][row["session_id"]]
+        except KeyError:
+            return Session.from_pickle(row["session"], passphrase=self.pickle_key,
+                                       creation_time=row["created_at"], use_time=row["last_used"])
 
     async def add_session(self, key: IdentityKey, session: Session) -> None:
         pickle = session.pickle(self.pickle_key)
+        self._olm_cache[key][session.id] = session
         await self.db.execute("INSERT INTO crypto_olm_session (session_id, sender_key, session, "
                               "created_at, last_used, account_id) VALUES ($1, $2, $3, $4, $5, $6)",
                               session.id, key, pickle, session.creation_time, session.use_time,

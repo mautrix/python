@@ -18,9 +18,11 @@ ClaimKeysList = Dict[UserID, Dict[DeviceID, DeviceIdentity]]
 
 class OlmEncryptionMachine(BaseOlmMachine):
     _claim_keys_lock: asyncio.Lock
+    _olm_lock: asyncio.Lock
 
     def __init__(self):
         self._claim_keys_lock = asyncio.Lock()
+        self._olm_lock = asyncio.Lock()
 
     async def _encrypt_olm_event(self, session: Session, recipient: DeviceIdentity,
                                  event_type: EventType, content: Any) -> EncryptedOlmEventContent:
@@ -66,6 +68,7 @@ class OlmEncryptionMachine(BaseOlmMachine):
                                        content: ToDeviceEventContent) -> None:
         await self._create_outbound_sessions({device.user_id: {device.device_id: device}})
         session = await self.crypto_store.get_latest_session(device.identity_key)
-        encrypted_content = await self._encrypt_olm_event(session, device, event_type, content)
-        await self.client.send_to_one_device(EventType.TO_DEVICE_ENCRYPTED, device.user_id,
-                                             device.device_id, encrypted_content)
+        async with self._olm_lock:
+            encrypted_content = await self._encrypt_olm_event(session, device, event_type, content)
+            await self.client.send_to_one_device(EventType.TO_DEVICE_ENCRYPTED, device.user_id,
+                                                 device.device_id, encrypted_content)
