@@ -47,8 +47,7 @@ async def set_ghost_avatar(evt: CommandEvent) -> EventID:
             return await evt.reply("The given mxid was not a valid ghost user.")
         intent = puppet.intent
     elif evt.is_portal:
-        portal = await evt.processor.bridge.get_portal(evt.room_id)
-        intent = portal.main_intent
+        intent = evt.portal.main_intent
         if intent == evt.az.intent:
             return await evt.reply("No mxid given and the main intent is not a ghost user.")
     else:
@@ -69,8 +68,7 @@ async def remove_ghost_avatar(evt: CommandEvent) -> EventID:
             return await evt.reply("The given mxid was not a valid ghost user.")
         intent = puppet.intent
     elif evt.is_portal:
-        portal = await evt.processor.bridge.get_portal(evt.room_id)
-        intent = portal.main_intent
+        intent = evt.portal.main_intent
         if intent == evt.az.intent:
             return await evt.reply("No mxid given and the main intent is not a ghost user.")
     else:
@@ -93,8 +91,7 @@ async def set_ghost_display_name(evt: CommandEvent) -> EventID:
         intent = puppet.intent
         displayname = " ".join(evt.args[:-1])
     elif evt.is_portal:
-        portal = await evt.processor.bridge.get_portal(evt.room_id)
-        intent = portal.main_intent
+        intent = evt.portal.main_intent
         if intent == evt.az.intent:
             return await evt.reply("No mxid given and the main intent is not a ghost user.")
         displayname = evt.args[0]
@@ -116,8 +113,7 @@ async def set_ghost_display_name(evt: CommandEvent) -> EventID:
             return await evt.reply("The given mxid was not a valid ghost user.")
         intent = puppet.intent
     elif evt.is_portal:
-        portal = await evt.processor.bridge.get_portal(evt.room_id)
-        intent = portal.main_intent
+        intent = evt.portal.main_intent
         if intent == evt.az.intent:
             return await evt.reply("No mxid given and the main intent is not a ghost user.")
     else:
