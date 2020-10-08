@@ -92,6 +92,10 @@ class CommandEvent:
         self.is_management = is_management
         self.has_bridge_bot = has_bridge_bot
 
+    @property
+    def is_portal(self) -> bool:
+        return self.portal is not None
+
     async def get_help_key(self) -> HelpCacheKey:
         """
         Get the help cache key for the given CommandEvent.
