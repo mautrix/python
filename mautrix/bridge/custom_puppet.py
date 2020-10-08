@@ -134,12 +134,12 @@ class CustomPuppetMixin(ABC):
             secret = cls.login_shared_secret_map[server]
         except KeyError:
             return None
-        if server == cls.az.domain:
-            base_url = cls.az.intent.api.base_url
-        else:
-            try:
-                base_url = cls.homeserver_url_map[server]
-            except KeyError:
+        try:
+            base_url = cls.homeserver_url_map[server]
+        except KeyError:
+            if server == cls.az.domain:
+                base_url = cls.az.intent.api.base_url
+            else:
                 return None
         password = hmac.new(secret, mxid.encode("utf-8"), hashlib.sha512).hexdigest()
         url = base_url / str(Path.login)
