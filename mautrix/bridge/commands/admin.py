@@ -29,3 +29,49 @@ async def set_power_level(evt: CommandEvent) -> EventID:
     except (MatrixRequestError, IntentError):
         evt.log.exception("Failed to update power levels")
         return await evt.reply("Failed to update power levels (see logs for more details)")
+
+@command_handler(needs_admin=True, needs_auth=False, name="set-avatar",
+                 help_section=SECTION_ADMIN, help_args="<_mxc_uri_> [_mxid_]",
+                 help_text="Sets an avatar for a ghost user.")
+async def set_ghost_avatar(evt: CommandEvent) -> EventID:
+    try:
+        mxc_uri = evt.args[0]
+    except (KeyError, IndexError):
+        return await evt.reply("**Usage:** `$cmdprefix+sp set-avatar <mxc_uri> [mxid]`")
+    if not mxc_uri.startswith("mxc://"):
+        return await evt.reply("The URI has to start with mxc://.")
+    if len(evt.args) > 1:
+        puppet = await evt.processor.bridge.get_puppet(evt.args[1])
+        if puppet is None:
+            return await evt.reply("The given mxid was not a valid ghost user.")
+        intent = puppet.intent
+    elif evt.is_portal:
+        portal = await evt.processor.bridge.get_portal(evt.room_id)
+        intent = portal.main_intent
+    else:
+        return await evt.reply("No mxid given and not in a portal.")
+    try:
+        return await intent.set_avatar_url(mxc_uri)
+    except (MatrixRequestError, IntentError):
+        evt.log.exception("Failed to set avatar.")
+        return await evt.reply("Failed to set avatar (see logs for more details).")
+
+@command_handler(needs_admin=True, needs_auth=False, name="remove-avatar",
+                 help_section=SECTION_ADMIN, help_args="[_mxid_]",
+                 help_text="Removes an avatar for a ghost user.")
+async def remove_ghost_avatar(evt: CommandEvent) -> EventID:
+    if len(evt.args) > 0:
+        puppet = await evt.processor.bridge.get_puppet(evt.args[0])
+        if puppet is None:
+            return await evt.reply("The given mxid was not a valid ghost user.")
+        intent = puppet.intent
+    elif evt.is_portal:
+        portal = await evt.processor.bridge.get_portal(evt.room_id)
+        intent = portal.main_intent
+    else:
+        return await evt.reply("No mxid given and not in a portal.")
+    try:
+        return await intent.set_avatar_url("")
+    except (MatrixRequestError, IntentError):
+        evt.log.exception("Failed to remove avatar.")
+        return await evt.reply("Failed to remove avatar (see logs for more details).")
