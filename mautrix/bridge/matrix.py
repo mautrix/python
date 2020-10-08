@@ -124,11 +124,12 @@ class BaseMatrixHandler:
     async def init_encryption(self) -> None:
         if self.e2ee:
             if not await self.e2ee.check_server_support():
-                self.log.error("Encryption enabled in config, but homeserver does not "
-                               "support appservice login")
-                self.e2ee = None
-            else:
-                await self.e2ee.start()
+                # Element iOS is broken, so the devs decided to break Synapse as well, which means
+                # there's no reliable way to check if appservice login is supported.
+                # Print a warning in the logs, then try to log in anyway and hope for the best.
+                self.log.warning("Encryption enabled in config, but homeserver does not advertise "
+                                 "appservice login")
+            await self.e2ee.start()
 
     @staticmethod
     async def allow_message(user: 'BaseUser') -> bool:
