@@ -224,6 +224,9 @@ class HTTPAPI:
             path = path[1:]
 
         try:
+            # TODO combining the path like this breaks in yarl 1.6+, because it re-url-encodes path,
+            #      which is already url-encoded. yarl is currently pinned to <1.6, but at some point
+            #      aiohttp will require yarl >=1.6
             return await self._send(method, self.base_url / path,
                                     content, query_params, headers or {})
         except ClientError as e:
