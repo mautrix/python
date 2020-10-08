@@ -286,7 +286,8 @@ class BaseMatrixHandler:
             self.log.trace("Ignoring command %s from %s", event_id, sender.mxid)
             return
 
-        is_management = await self.is_management(room_id)
+        has_two_members, bridge_bot_in_room = await self._is_direct_chat(room_id)
+        is_management = has_two_members and bridge_bot_in_room
 
         if is_command or is_management:
             try:
@@ -296,18 +297,18 @@ class BaseMatrixHandler:
                 # Not enough values to unpack, i.e. no arguments
                 command = text
                 args = []
-            await self.commands.handle(room_id, event_id, sender, command, args, message,
-                                       is_management, is_portal=portal is not None)
+            await self.commands.handle(room_id, event_id, sender, command, args, message, portal,
+                                       is_management, bridge_bot_in_room)
         else:
             self.log.trace("Ignoring event %s from %s: not a command and not a portal room",
                            event_id, sender.mxid)
 
-    async def is_management(self, room_id: RoomID) -> bool:
+    async def _is_direct_chat(self, room_id: RoomID) -> Tuple[bool, bool]:
         try:
             members = await self.az.intent.get_room_members(room_id)
-            return len(members) == 2 and self.az.bot_mxid in members
+            return len(members) == 2, self.az.bot_mxid in members
         except MatrixError:
-            return False
+            return False, False
 
     def filter_matrix_event(self, evt: Event) -> bool:
         if not isinstance(evt, (MessageEvent, StateEvent)):

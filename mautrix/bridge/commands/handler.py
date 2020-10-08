@@ -11,8 +11,10 @@ import traceback
 
 from mautrix.util import markdown
 from mautrix.types import RoomID, EventID, MessageEventContent
-from mautrix.appservice import AppService
+from mautrix.appservice import AppService, IntentAPI
+
 from ..user import BaseUser
+from ..portal import BasePortal
 from ..config import BaseBridgeConfig
 
 if TYPE_CHECKING:
@@ -22,7 +24,8 @@ command_handlers: Dict[str, 'CommandHandler'] = {}
 command_aliases: Dict[str, 'CommandHandler'] = {}
 
 HelpSection = NamedTuple('HelpSection', name=str, order=int, description=str)
-HelpCacheKey = NamedTuple('HelpCacheKey', is_management=bool, is_portal=bool)
+HelpCacheKey = NamedTuple('HelpCacheKey', is_management=bool, is_portal=bool,
+                          is_admin=bool, is_logged_in=bool)
 
 SECTION_GENERAL = HelpSection("General", 0, "")
 SECTION_ADMIN = HelpSection("Administration", 50, "")
@@ -46,12 +49,13 @@ class CommandEvent:
         command: The issued command.
         args: Arguments given with the issued command.
         content: The raw content in the command event.
-        is_management: Determines whether the room in which the command wa
-            issued is a management room.
-        is_portal: Determines whether the room in which the command was issued
-            is a portal.
+        portal: The portal the command was sent to.
+        is_management: Determines whether the room in which the command was
+            issued in is a management room.
+        has_bridge_bot: Whether or not the bridge bot is in the room.
     """
 
+    bridge: 'Bridge'
     az: AppService
     log: logging.Logger
     loop: asyncio.AbstractEventLoop
@@ -64,12 +68,14 @@ class CommandEvent:
     command: str
     args: List[str]
     content: MessageEventContent
+    portal: Optional[BasePortal]
     is_management: bool
-    is_portal: bool
+    has_bridge_bot: bool
 
     def __init__(self, processor: 'CommandProcessor', room_id: RoomID, event_id: EventID,
                  sender: 'BaseUser', command: str, args: List[str], content: MessageEventContent,
-                 is_management: bool, is_portal: bool) -> None:
+                 portal: Optional[BasePortal], is_management: bool, has_bridge_bot: bool) -> None:
+        self.bridge = processor.bridge
         self.az = processor.az
         self.log = processor.log
         self.loop = processor.loop
@@ -82,8 +88,9 @@ class CommandEvent:
         self.command = command
         self.args = args
         self.content = content
+        self.portal = portal
         self.is_management = is_management
-        self.is_portal = is_portal
+        self.has_bridge_bot = has_bridge_bot
 
     async def get_help_key(self) -> HelpCacheKey:
         """
@@ -100,7 +107,9 @@ class CommandEvent:
         When you override this property or otherwise extend CommandEvent, remember to pass the
         extended CommandEvent class when initializing your CommandProcessor.
         """
-        return HelpCacheKey(is_management=self.is_management, is_portal=self.is_portal)
+        return HelpCacheKey(is_management=self.is_management, is_portal=self.portal is not None,
+                            is_admin=self.sender.is_admin,
+                            is_logged_in=await self.sender.is_logged_in())
 
     @property
     def print_error_traceback(self) -> bool:
@@ -113,7 +122,12 @@ class CommandEvent:
         """
         return self.is_management
 
-    async def reply(self, message: str, allow_html: bool = False, render_markdown: bool = True
+    @property
+    def main_intent(self) -> IntentAPI:
+        return (self.portal.main_intent if self.portal and not self.has_bridge_bot
+                else self.az.intent)
+
+    def reply(self, message: str, allow_html: bool = False, render_markdown: bool = True
               ) -> Awaitable[EventID]:
         """Write a reply to the room in which the command was issued.
 
@@ -136,16 +150,11 @@ class CommandEvent:
         message = self._replace_command_prefix(message)
         html = self._render_message(message, allow_html=allow_html,
                                     render_markdown=render_markdown)
-
-        if self.is_portal:
-            portal = await self.processor.bridge.get_portal(self.room_id)
-            return await portal.main_intent.send_notice(self.room_id, message, html=html)
-        else:
-            return await self.az.intent.send_notice(self.room_id, message, html=html)
+        return self.main_intent.send_notice(self.room_id, message, html=html)
 
     def mark_read(self) -> Awaitable[None]:
         """Marks the command as read by the bot."""
-        if not self.is_portal:
+        if self.has_bridge_bot:
             return self.az.intent.mark_read(self.room_id, self.event_id)
 
     def _replace_command_prefix(self, message: str) -> str:
@@ -338,9 +347,10 @@ class CommandProcessor:
                      ) -> Awaitable[Any]:
         return handler(evt)
 
-    async def handle(self, room_id: RoomID, event_id: EventID, sender: 'BaseUser',
+    async def handle(self, room_id: RoomID, event_id: EventID, sender: BaseUser,
                      command: str, args: List[str], content: MessageEventContent,
-                     is_management: bool, is_portal: bool) -> None:
+                     portal: Optional[BasePortal], is_management: bool, has_bridge_bot: bool,
+                     ) -> None:
         """Handles the raw commands issued by a user to the Matrix bot.
 
         If the command is not known, it might be a followup command and is
@@ -354,8 +364,9 @@ class CommandProcessor:
             command: The issued command, case insensitive.
             args: Arguments given with the command.
             content: The raw content in the command event.
+            portal: The portal the command was sent to.
             is_management: Whether the room is a management room.
-            is_portal: Whether the room is a portal.
+            has_bridge_bot: Whether or not the bridge bot is in the room.
 
         Returns:
             The result of the error message function or None if no error
@@ -365,7 +376,7 @@ class CommandProcessor:
             raise ValueError("command_handlers are not properly initialized.")
 
         evt = self.event_class(self, room_id, event_id, sender, command, args, content,
-                               is_management, is_portal)
+                               portal, is_management, has_bridge_bot)
         orig_command = command
         command = command.lower()
         try:

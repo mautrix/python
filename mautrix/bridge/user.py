@@ -29,6 +29,7 @@ class BaseUser(ABC):
     loop: asyncio.AbstractEventLoop
 
     is_whitelisted: bool
+    is_admin: bool
     mxid: UserID
     command_status: Optional[Dict[str, Any]]
 
