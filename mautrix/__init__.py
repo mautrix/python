@@ -1,3 +1,3 @@
-__version__ = "0.8.0+dev"
+__version__ = "0.8.0.beta1"
 __author__ = "Tulir Asokan <tulir@maunium.net>"
 __all__ = ["api", "appservice", "bridge", "client", "crypto", "errors", "util", "types"]
