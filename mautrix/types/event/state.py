@@ -31,7 +31,7 @@ class PowerLevelStateEventContent(SerializableAttrs['PowerLevelStateEventContent
     redact: int = 50
 
     def get_user_level(self, user_id: UserID) -> int:
-        return self.users.get(user_id, self.users_default)
+        return int(self.users.get(user_id, self.users_default))
 
     def set_user_level(self, user_id: UserID, level: int) -> None:
         if level == self.users_default:
@@ -46,8 +46,8 @@ class PowerLevelStateEventContent(SerializableAttrs['PowerLevelStateEventContent
         return False
 
     def get_event_level(self, event_type: EventType) -> int:
-        return self.events.get(event_type,
-                               self.state_default if event_type.is_state else self.events_default)
+        return int(self.events.get(event_type, (self.state_default if event_type.is_state
+                                                else self.events_default)))
 
     def set_event_level(self, event_type: EventType, level: int) -> None:
         if level == self.state_default if event_type.is_state else self.events_default:
