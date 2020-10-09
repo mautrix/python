@@ -15,7 +15,7 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
                            PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent,
                            EncryptedEvent)
-from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError
+from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound
 from mautrix.appservice import AppService
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Histogram
@@ -324,18 +324,43 @@ class BaseMatrixHandler:
     async def send_encryption_error_notice(self, evt: EncryptedEvent,
                                            error: DecryptionError) -> None:
         await self.az.intent.send_notice(evt.room_id,
-                                         f"\u26a0 Your message was not bridged: {error}. Try "
-                                         f"restarting your client if this error keeps happening.")
+                                         f"\u26a0 Your message was not bridged: {error}")
 
     async def handle_encrypted(self, evt: EncryptedEvent) -> None:
         try:
-            decrypted = await self.e2ee.decrypt(evt)
+            decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=5)
+        except SessionNotFound as e:
+            await self._handle_encrypted_wait(evt, e, wait=10)
         except DecryptionError as e:
             self.log.warning("Failed to decrypt event %s: %s", evt.event_id, e)
             self.log.trace("%s decryption traceback:", evt.event_id, exc_info=True)
             await self.send_encryption_error_notice(evt, e)
         else:
             await self.int_handle_event(decrypted)
+
+    async def _handle_encrypted_wait(self, evt: EncryptedEvent, err: SessionNotFound, wait: int
+                                     ) -> None:
+        self.log.warning(f"Didn't find session {err.session_id}, waiting even longer")
+        msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption "
+               f"keys. The bridge will retry for {wait} seconds. If this error keeps happening, "
+               "try restarting your client.")
+        event_id = await self.az.intent.send_notice(evt.room_id, msg)
+        got_keys = await self.e2ee.crypto.wait_for_session(evt.room_id, err.sender_key,
+                                                           err.session_id, timeout=wait)
+        if got_keys:
+            try:
+                decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=0)
+            except DecryptionError as e:
+                msg = f"\u26a0 Your message was not bridged: {e}"
+            else:
+                await self.int_handle_event(decrypted)
+                return
+        else:
+            msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption "
+                   "keys. If this error keeps happening, try restarting your client.")
+        content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=msg)
+        content.set_edit(event_id)
+        await self.az.intent.send_message(evt.room_id, content)
 
     async def handle_encryption(self, evt: StateEvent) -> None:
         await self.az.state_store.set_encryption_info(evt.room_id, evt.content)

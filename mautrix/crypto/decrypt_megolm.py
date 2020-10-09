@@ -37,7 +37,7 @@ class MegolmDecryptionMachine(BaseOlmMachine):
                                                             evt.content.session_id)
         if session is None:
             # TODO check if olm session is wedged
-            raise SessionNotFound(evt.content.session_id)
+            raise SessionNotFound(evt.content.session_id, evt.content.sender_key)
         try:
             plaintext, index = session.decrypt(evt.content.ciphertext)
         except olm.OlmGroupSessionError as e:
