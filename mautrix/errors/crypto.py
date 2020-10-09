@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from .base import MatrixError
 
 if TYPE_CHECKING:
-    from mautrix.types import SessionID
+    from mautrix.types import SessionID, IdentityKey
 
 
 class CryptoError(MatrixError):
@@ -34,10 +34,11 @@ class MatchingSessionDecryptionError(DecryptionError):
 
 
 class SessionNotFound(DecryptionError):
-    def __init__(self, session_id: 'SessionID') -> None:
+    def __init__(self, session_id: 'SessionID', sender_key: 'IdentityKey') -> None:
         super().__init__("Failed to decrypt megolm event: "
                          f"no session with given ID {session_id} found")
         self.session_id = session_id
+        self.sender_key = sender_key
 
 
 class DuplicateMessageIndex(DecryptionError):

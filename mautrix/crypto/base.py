@@ -11,7 +11,7 @@ import json
 import olm
 
 from mautrix.types import (UserID, DeviceID, SigningKey, EncryptionKeyAlgorithm, SessionID,
-                           RequestedKeyInfo)
+                           RequestedKeyInfo, RoomID, IdentityKey)
 from mautrix.client import Client
 from mautrix.util.logging import TraceLogger
 
@@ -47,7 +47,8 @@ class BaseOlmMachine:
     # Futures that wait for a session to be received (either normally or through a key request)
     _inbound_session_waiters: Dict[SessionID, asyncio.Future]
 
-    async def wait_for_session(self, session_id: SessionID, timeout: float = 3) -> bool:
+    async def wait_for_session(self, room_id: RoomID, sender_key: IdentityKey,
+                               session_id: SessionID, timeout: float = 3) -> bool:
         try:
             fut = self._inbound_session_waiters[session_id]
         except KeyError:
@@ -55,7 +56,7 @@ class BaseOlmMachine:
         try:
             return await asyncio.wait_for(asyncio.shield(fut), timeout)
         except asyncio.TimeoutError:
-            return False
+            return await self.crypto_store.has_group_session(room_id, sender_key, session_id)
 
     def _mark_session_received(self, session_id: SessionID) -> None:
         try:
