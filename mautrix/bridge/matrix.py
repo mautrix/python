@@ -353,6 +353,7 @@ class BaseMatrixHandler:
             except DecryptionError as e:
                 msg = f"\u26a0 Your message was not bridged: {e}"
             else:
+                await self.az.intent.redact(evt.room_id, event_id)
                 await self.int_handle_event(decrypted)
                 return
         else:
