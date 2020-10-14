@@ -306,8 +306,9 @@ def command_handler(_func: Optional[CommandHandlerFunc] = None, *, management_on
 
     def decorator(func: CommandHandlerFunc) -> CommandHandler:
         actual_name = name or func.__name__.replace("_", "-")
-        handler = _handler_class(func, management_only, actual_name, help_text, help_args,
-                                 help_section, needs_auth, needs_admin, **kwargs)
+        handler = _handler_class(func, management_only=management_only, name=actual_name,
+                                 help_text=help_text, help_args=help_args, help_section=help_section,
+                                 needs_auth=needs_auth, needs_admin=needs_admin, **kwargs)
         command_handlers[handler.name] = handler
         if aliases:
             for alias in aliases:
@@ -379,8 +380,9 @@ class CommandProcessor:
         if not command_handlers or "unknown-command" not in command_handlers:
             raise ValueError("command_handlers are not properly initialized.")
 
-        evt = self.event_class(self, room_id, event_id, sender, command, args, content,
-                               portal, is_management, has_bridge_bot)
+        evt = self.event_class(processor=self, room_id=room_id, event_id=event_id, sender=sender,
+                               command=command, args=args, content=content, portal=portal,
+                               is_management=is_management, has_bridge_bot=has_bridge_bot)
         orig_command = command
         command = command.lower()
         try:
