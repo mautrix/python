@@ -124,7 +124,7 @@ class CommandEvent:
 
         Bridges may want to limit tracebacks to bridge admins.
         """
-        return self.is_management
+        return self.sender.is_admin
 
     @property
     def main_intent(self) -> IntentAPI:
