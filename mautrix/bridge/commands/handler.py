@@ -128,7 +128,7 @@ class CommandEvent:
 
     @property
     def main_intent(self) -> IntentAPI:
-        return (self.portal.main_intent if self.portal and not self.has_bridge_bot
+        return (self.portal.main_intent if self.portal
                 else self.az.intent)
 
     def reply(self, message: str, allow_html: bool = False, render_markdown: bool = True
@@ -154,7 +154,10 @@ class CommandEvent:
         message = self._replace_command_prefix(message)
         html = self._render_message(message, allow_html=allow_html,
                                     render_markdown=render_markdown)
-        return self.main_intent.send_notice(self.room_id, message, html=html)
+        if self.has_bridge_bot:
+            return self.az.intent.send_notice(self.room_id, message, html=html)
+        else:
+            return self.main_intent.send_notice(self.room_id, message, html=html)
 
     def mark_read(self) -> Awaitable[None]:
         """Marks the command as read by the bot."""
