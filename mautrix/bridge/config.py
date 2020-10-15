@@ -74,6 +74,8 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("appservice.as_token")
         copy("appservice.hs_token")
 
+        copy("appservice.ephemeral_events")
+
         copy("logging")
 
     @property
@@ -123,3 +125,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
             "sender_localpart": self._new_token(),
             "rate_limited": False
         }
+
+        if self["appservice.ephemeral_events"]:
+            self._registration["de.sorunome.msc2409.push_ephemeral"] = True
+            self._registration["push_ephemeral"] = True

@@ -10,7 +10,7 @@ from aiohttp import web
 import asyncio
 import logging
 
-from mautrix.types import JSON, UserID, RoomAlias, Event, SerializerError
+from mautrix.types import JSON, UserID, RoomAlias, Event, EphemeralEvent, SerializerError
 
 QueryFunc = Callable[[web.Request], Awaitable[Optional[web.Response]]]
 HandlerFunc = Callable[[Event], Awaitable]
@@ -21,6 +21,7 @@ class AppServiceServerMixin:
     log: logging.Logger
 
     hs_token: str
+    ephemeral_events: bool
 
     query_user: Callable[[UserID], JSON]
     query_alias: Callable[[RoomAlias], JSON]
@@ -28,9 +29,10 @@ class AppServiceServerMixin:
     transactions: Set[str]
     event_handlers: List[HandlerFunc]
 
-    def __init__(self) -> None:
+    def __init__(self, ephemeral_events: bool = False) -> None:
         self.transactions = set()
         self.event_handlers = []
+        self.ephemeral_events = ephemeral_events
 
         async def default_query_handler(_):
             return None
@@ -64,45 +66,45 @@ class AppServiceServerMixin:
 
     async def _http_query_user(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
-            return web.Response(status=401)
+            return web.json_response({"error": "Invalid auth token"}, status=401)
 
         try:
             user_id = request.match_info["user_id"]
         except KeyError:
-            return web.Response(status=400)
+            return web.json_response({"error": "Missing user_id parameter"}, status=400)
 
         try:
             response = await self.query_user(user_id)
         except Exception:
             self.log.exception("Exception in user query handler")
-            return web.Response(status=500)
+            return web.json_response({"error": "Internal appservice error"}, status=500)
 
         if not response:
-            return web.Response(status=404)
+            return web.json_response({}, status=404)
         return web.json_response(response)
 
     async def _http_query_alias(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
-            return web.Response(status=401)
+            return web.json_response({"error": "Invalid auth token"}, status=401)
 
         try:
             alias = request.match_info["alias"]
         except KeyError:
-            return web.Response(status=400)
+            return web.json_response({"error": "Missing alias parameter"}, status=400)
 
         try:
             response = await self.query_alias(alias)
         except Exception:
             self.log.exception("Exception in alias query handler")
-            return web.Response(status=500)
+            return web.json_response({"error": "Internal appservice error"}, status=500)
 
         if not response:
-            return web.Response(status=404)
+            return web.json_response({}, status=404)
         return web.json_response(response)
 
     async def _http_handle_transaction(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
-            return web.Response(status=401)
+            return web.json_response({"error": "Invalid auth token"}, status=401)
 
         transaction_id = request.match_info["transaction_id"]
         if transaction_id in self.transactions:
@@ -111,15 +113,26 @@ class AppServiceServerMixin:
         try:
             json = await request.json()
         except JSONDecodeError:
-            return web.Response(status=400)
+            return web.json_response({"error": "Body is not JSON"}, status=400)
 
         try:
             events = json["events"]
         except KeyError:
-            return web.Response(status=400)
+            return web.json_response({"error": "Missing events object in body"}, status=400)
+
+        if self.ephemeral_events:
+            try:
+                ephemeral = json["ephemeral"]
+            except KeyError:
+                try:
+                    ephemeral = json["de.sorunome.msc2409.ephemeral"]
+                except KeyError:
+                    ephemeral = None
+        else:
+            ephemeral = None
 
         try:
-            await self.handle_transaction(transaction_id, events)
+            await self.handle_transaction(transaction_id, events=events, ephemeral=ephemeral)
         except Exception:
             self.log.exception("Exception in transaction handler")
 
@@ -137,7 +150,15 @@ class AppServiceServerMixin:
             except KeyError:
                 pass
 
-    async def handle_transaction(self, txn_id: str, events: List[JSON]) -> None:
+    async def handle_transaction(self, txn_id: str, events: List[JSON],
+                                 ephemeral: Optional[List[JSON]] = None) -> None:
+        for raw_edu in ephemeral:
+            try:
+                edu = EphemeralEvent.deserialize(raw_edu)
+            except SerializerError:
+                self.log.exception("Failed to deserialize ephemeral event %s", raw_edu)
+            else:
+                self.handle_matrix_event(edu)
         for raw_event in events:
             try:
                 self._fix_prev_content(raw_event)
