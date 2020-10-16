@@ -14,7 +14,7 @@ from yarl import URL
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
                            PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent,
-                           EncryptedEvent, ReceiptType)
+                           EncryptedEvent, ReceiptType, SingleReceiptEventContent)
 from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound
 from mautrix.appservice import AppService
 from mautrix.util.logging import TraceLogger
@@ -323,10 +323,10 @@ class BaseMatrixHandler:
                 if not portal:
                     continue
 
-                await self.handle_read_receipt(user, portal, event_id)
+                await self.handle_read_receipt(user, portal, event_id, data)
 
-    async def handle_read_receipt(self, user: 'BaseUser', portal: 'BasePortal', event_id: EventID
-                                  ) -> None:
+    async def handle_read_receipt(self, user: 'BaseUser', portal: 'BasePortal', event_id: EventID,
+                                  data: SingleReceiptEventContent) -> None:
         pass
 
     def filter_matrix_event(self, evt: Event) -> bool:
