@@ -13,6 +13,7 @@ from mautrix.appservice import AppService
 from mautrix.types import UserID, RoomID, EventType, Membership
 from mautrix.errors import MNotFound
 from mautrix.util.logging import TraceLogger
+from mautrix.util.opt_prometheus import Gauge
 
 from .portal import BasePortal
 
@@ -32,6 +33,7 @@ class BaseUser(ABC):
     is_admin: bool
     mxid: UserID
     command_status: Optional[Dict[str, Any]]
+    _metric_value: Dict[Gauge, bool]
 
     dm_update_lock: asyncio.Lock
 
@@ -81,3 +83,11 @@ class BaseUser(ABC):
                 # Add DM statuses for all rooms in our database
                 current_dms.update(dms)
                 await puppet.intent.set_account_data(EventType.DIRECT, current_dms)
+
+    def _track_metric(self, metric: Gauge, value: bool) -> None:
+        if self._metric_value[metric] != value:
+            if value:
+                metric.inc(1)
+            else:
+                metric.dec(1)
+            self._metric_value[metric] = value
