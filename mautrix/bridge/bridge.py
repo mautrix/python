@@ -157,7 +157,7 @@ class Bridge(Program, ABC):
             await self.matrix.e2ee.stop()
 
     @abstractmethod
-    async def get_user(self, user_id: UserID) -> 'BaseUser':
+    async def get_user(self, user_id: UserID, create: bool = True) -> 'BaseUser':
         pass
 
     @abstractmethod

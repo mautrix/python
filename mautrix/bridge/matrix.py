@@ -14,7 +14,7 @@ from yarl import URL
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
                            PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent,
-                           EncryptedEvent)
+                           EncryptedEvent, ReceiptType)
 from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound
 from mautrix.appservice import AppService
 from mautrix.util.logging import TraceLogger
@@ -191,7 +191,8 @@ class BaseMatrixHandler:
 
     async def handle_ephemeral_event(self, evt: Union[ReceiptEvent, PresenceEvent, TypingEvent]
                                      ) -> None:
-        pass
+        if evt.type == EventType.RECEIPT:
+            await self.handle_receipt(evt)
 
     async def send_permission_error(self, room_id: RoomID) -> None:
         await self.az.intent.send_notice(
@@ -310,6 +311,23 @@ class BaseMatrixHandler:
             return len(members) == 2, self.az.bot_mxid in members
         except MatrixError:
             return False, False
+
+    async def handle_receipt(self, evt: ReceiptEvent) -> None:
+        for event_id, receipts in evt.content.items():
+            for user_id, data in receipts[ReceiptType.READ].items():
+                user = await self.bridge.get_user(user_id, create=False)
+                if not user or not await user.is_logged_in():
+                    continue
+
+                portal = await self.bridge.get_portal(evt.room_id)
+                if not portal:
+                    continue
+
+                await self.handle_read_receipt(user, portal, event_id)
+
+    async def handle_read_receipt(self, user: 'BaseUser', portal: 'BasePortal', event_id: EventID
+                                  ) -> None:
+        pass
 
     def filter_matrix_event(self, evt: Event) -> bool:
         if not isinstance(evt, (MessageEvent, StateEvent)):

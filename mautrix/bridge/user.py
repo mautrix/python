@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Any, Optional, List, TYPE_CHECKING
-from abc import ABC
+from abc import ABC, abstractmethod
 import logging
 import asyncio
 
@@ -37,8 +37,9 @@ class BaseUser(ABC):
 
     dm_update_lock: asyncio.Lock
 
+    @abstractmethod
     async def is_logged_in(self) -> bool:
-        return False
+        raise NotImplementedError()
 
     async def is_in_portal(self, portal: BasePortal) -> bool:
         try:
