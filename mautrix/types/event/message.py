@@ -66,7 +66,7 @@ class InReplyTo:
     @event_id.setter
     def event_id(self, event_id: EventID) -> None:
         if self._proxy_target:
-            self._proxy_target.rel_type = RelationType.REFERENCE
+            self._proxy_target.rel_type = RelationType.REPLY
             self._proxy_target.event_id = event_id
         else:
             self._event_id = event_id
@@ -76,6 +76,7 @@ class RelationType(ExtensibleEnum):
     ANNOTATION: 'RelationType' = "m.annotation"
     REFERENCE: 'RelationType' = "m.reference"
     REPLACE: 'RelationType' = "m.replace"
+    REPLY: 'RelationType' = "net.maunium.reply"
 
 
 @dataclass
@@ -100,7 +101,7 @@ class RelatesTo(Serializable):
         except KeyError:
             pass
         try:
-            return cls(rel_type=RelationType.REFERENCE, event_id=data["m.in_reply_to"]["event_id"])
+            return cls(rel_type=RelationType.REPLY, event_id=data["m.in_reply_to"]["event_id"])
         except KeyError:
             pass
         return None
@@ -112,7 +113,7 @@ class RelatesTo(Serializable):
             **self._extra,
             "rel_type": self.rel_type.serialize(),
         }
-        if self.rel_type == RelationType.REFERENCE:
+        if self.rel_type == RelationType.REPLY:
             data["m.in_reply_to"] = {
                 "event_id": self.event_id
             }
@@ -143,7 +144,7 @@ class BaseMessageEventContentFuncs:
     _relates_to: Optional[RelatesTo]
 
     def set_reply(self, reply_to: Union[EventID, 'MessageEvent'], **kwargs) -> None:
-        self.relates_to.rel_type = RelationType.REFERENCE
+        self.relates_to.rel_type = RelationType.REPLY
         self.relates_to.event_id = reply_to if isinstance(reply_to, str) else reply_to.event_id
 
     def set_edit(self, edits: Union[EventID, 'MessageEvent']) -> None:
@@ -174,7 +175,7 @@ class BaseMessageEventContentFuncs:
         self._relates_to = relates_to
 
     def get_reply_to(self) -> Optional[EventID]:
-        if self._relates_to and self._relates_to.rel_type == RelationType.REFERENCE:
+        if self._relates_to and self._relates_to.rel_type == RelationType.REPLY:
             return self._relates_to.event_id
         return None
 
