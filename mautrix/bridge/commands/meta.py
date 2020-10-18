@@ -11,7 +11,7 @@ from .handler import (HelpSection, HelpCacheKey, command_handler, CommandEvent, 
                       SECTION_GENERAL)
 
 
-@command_handler(help_section=SECTION_GENERAL,
+@command_handler(needs_auth=False, help_section=SECTION_GENERAL,
                  help_text="Cancel an ongoing action.")
 async def cancel(evt: CommandEvent) -> EventID:
     if evt.sender.command_status:
@@ -22,7 +22,7 @@ async def cancel(evt: CommandEvent) -> EventID:
         return await evt.reply("No ongoing command.")
 
 
-@command_handler(help_section=SECTION_GENERAL,
+@command_handler(needs_auth=False, help_section=SECTION_GENERAL,
                  help_text="Get the bridge version.")
 async def version(evt: CommandEvent) -> None:
     if not evt.processor.bridge:
@@ -32,7 +32,7 @@ async def version(evt: CommandEvent) -> None:
                         f"{evt.processor.bridge.markdown_version or evt.processor.bridge.version}")
 
 
-@command_handler()
+@command_handler(needs_auth=False)
 async def unknown_command(evt: CommandEvent) -> EventID:
     return await evt.reply("Unknown command. Try `$cmdprefix+sp help` for help.")
 
@@ -63,8 +63,7 @@ def _get_management_status(evt: CommandEvent) -> str:
     return "**This is not a management room**: you must prefix commands with `$cmdprefix`."
 
 
-@command_handler(name="help",
-                 help_section=SECTION_GENERAL,
+@command_handler(name="help", needs_auth=False, help_section=SECTION_GENERAL,
                  help_text="Show this help message.")
 async def help_cmd(evt: CommandEvent) -> EventID:
     return await evt.reply(_get_management_status(evt) + "\n" + await _get_help_text(evt))

@@ -444,6 +444,9 @@ class BaseMatrixHandler:
         else:
             if evt.type.is_state and isinstance(evt, StateEvent):
                 await self.handle_state_event(evt)
+            elif evt.type.is_ephemeral and isinstance(evt, (PresenceEvent, TypingEvent,
+                                                            ReceiptEvent)):
+                await self.handle_ephemeral_event(evt)
             else:
                 await self.handle_event(evt)
 

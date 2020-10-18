@@ -11,6 +11,7 @@ import asyncio
 import logging
 
 from mautrix.types import JSON, UserID, RoomAlias
+from mautrix.util.logging import TraceLogger
 
 from .api import AppServiceAPI, IntentAPI
 from .state_store import ASStateStore, FileASStateStore
@@ -47,7 +48,7 @@ class AppService(AppServiceServerMixin):
     live: bool
 
     loop: asyncio.AbstractEventLoop
-    log: logging.Logger
+    log: TraceLogger
     app: web.Application
     runner: web.AppRunner
 
@@ -57,8 +58,9 @@ class AppService(AppServiceServerMixin):
                  tls_cert: Optional[str] = None, tls_key: Optional[str] = None,
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
-                 state_store: ASStateStore = None, aiohttp_params: Dict = None) -> None:
-        super().__init__()
+                 state_store: ASStateStore = None, aiohttp_params: Dict = None,
+                 ephemeral_events: bool = False) -> None:
+        super().__init__(ephemeral_events=ephemeral_events)
         self.server = server
         self.domain = domain
         self.id = id
