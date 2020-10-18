@@ -152,7 +152,7 @@ class AppServiceServerMixin:
 
     async def handle_transaction(self, txn_id: str, events: List[JSON],
                                  ephemeral: Optional[List[JSON]] = None) -> None:
-        for raw_edu in ephemeral:
+        for raw_edu in ephemeral or []:
             try:
                 edu = EphemeralEvent.deserialize(raw_edu)
             except SerializerError:
