@@ -211,14 +211,15 @@ class PgCryptoStore(CryptoStore, SyncStore):
 
     async def validate_message_index(self, sender_key: IdentityKey, session_id: SessionID,
                                      event_id: EventID, index: int, timestamp: int) -> bool:
-        row = await self.db.fetchrow("SELECT event_id, timestamp FROM crypto_message_index "
-                                     'WHERE sender_key=$1 AND session_id=$2 AND "index"=$3',
-                                     sender_key, session_id, index)
-        if row is None:
-            await self.db.execute("INSERT INTO crypto_message_index (sender_key, session_id, index,"
-                                  " event_id, timestamp) VALUES ($1, $2, $3, $4, $5)",
-                                  sender_key, session_id, index, event_id, timestamp)
-            return True
+        q = ("WITH existing AS ("
+             " INSERT INTO crypto_message_index(sender_key, session_id, index, event_id, timestamp)"
+             " VALUES ($1, $2, $3, $4, $5)"
+             # have to update something so that RETURNING * always returns the row
+             " ON CONFLICT (sender_key, session_id, index) DO UPDATE SET sender_key=$1"
+             " RETURNING *"
+             ")"
+             "SELECT * FROM existing")
+        row = await self.db.fetchrow(q, sender_key, session_id, index, event_id, timestamp)
         return row["event_id"] == event_id and row["timestamp"] == timestamp
 
     async def get_devices(self, user_id: UserID) -> Optional[Dict[DeviceID, DeviceIdentity]]:
