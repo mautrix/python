@@ -93,7 +93,7 @@ class ToDeviceEvent(BaseEvent, SerializableAttrs['ToDeviceEvent']):
     def deserialize(cls, data: JSON) -> 'ToDeviceEvent':
         try:
             evt_type = EventType.find(data.get("type"), t_class=EventType.Class.TO_DEVICE)
-            data.get("content", {})["__mautrix_event_type"] = evt_type
+            data.setdefault("content", {})["__mautrix_event_type"] = evt_type
         except ValueError:
             return Obj(**data)
         return super().deserialize(data)
