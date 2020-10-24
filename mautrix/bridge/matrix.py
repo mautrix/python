@@ -388,7 +388,7 @@ class BaseMatrixHandler:
     async def handle_encryption(self, evt: StateEvent) -> None:
         await self.az.state_store.set_encryption_info(evt.room_id, evt.content)
         portal = await self.bridge.get_portal(evt.room_id)
-        if portal.encrypted:
+        if portal:
             portal.encrypted = True
             await portal.save()
 
