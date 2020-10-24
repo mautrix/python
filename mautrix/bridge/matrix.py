@@ -330,7 +330,7 @@ class BaseMatrixHandler:
         pass
 
     def filter_matrix_event(self, evt: Event) -> bool:
-        if not isinstance(evt, (MessageEvent, StateEvent)):
+        if not isinstance(evt, (MessageEvent, StateEvent, ReceiptEvent)):
             return False
         return evt.sender == self.az.bot_mxid
 

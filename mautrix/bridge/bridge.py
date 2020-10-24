@@ -115,6 +115,7 @@ class Bridge(Program, ABC):
                              tls_key=self.config.get("appservice.tls_key", None),
 
                              bot_localpart=self.config["appservice.bot_username"],
+                             ephemeral_events=self.config["appservice.ephemeral_events"],
 
                              log="mau.as",
                              loop=self.loop,
