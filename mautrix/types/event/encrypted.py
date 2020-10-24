@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, NewType
 from enum import IntEnum, Enum
 from attr import dataclass
 import attr
@@ -73,7 +73,8 @@ class EncryptedMegolmEventContent(SerializableAttrs['EncryptedMegolmEventContent
         self._relates_to = relates_to
 
 
-EncryptedEventContent = Union[EncryptedOlmEventContent, EncryptedMegolmEventContent]
+EncryptedEventContent = NewType('EncryptedEventContent',
+                                Union[EncryptedOlmEventContent, EncryptedMegolmEventContent])
 
 
 @deserializer(EncryptedEventContent)
