@@ -22,7 +22,7 @@ class CommunityHelper:
     async def create(self, localpart: str) -> Tuple[CommunityID, bool]:
         try:
             resp = await self.az.intent.api.request(Method.POST, Path.create_group, {
-                "localpart": localpart
+                "localpart": localpart.lower(),
             })
             return CommunityID(resp["group_id"]), True
         except MatrixStandardRequestError as e:
