@@ -3,15 +3,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from abc import ABC, abstractmethod
 import asyncio
 import logging
 
 from mautrix.appservice import AppService, IntentAPI
 from mautrix.types import (RoomID, EventID, MessageEventContent, EventType, EncryptionAlgorithm,
-                           RoomEncryptionStateEventContent as Encryption)
-from mautrix.errors import MatrixError
+                           RoomEncryptionStateEventContent as Encryption, UserID)
+from mautrix.errors import MatrixError, MatrixRequestError
 from mautrix.util.logging import TraceLogger
 from mautrix.util.simple_lock import SimpleLock
 
@@ -29,6 +29,7 @@ class BasePortal(ABC):
     loop: asyncio.AbstractEventLoop
     main_intent: IntentAPI
     mxid: Optional[RoomID]
+    name: Optional[str]
     encrypted: bool
     backfill_lock: SimpleLock
 
@@ -78,14 +79,15 @@ class BasePortal(ABC):
     async def delete(self) -> None:
         pass
 
-    async def cleanup_room(self, intent: IntentAPI, room_id: RoomID,
-                           message: str = "Portal deleted", puppets_only: bool = False) -> None:
+    @classmethod
+    async def cleanup_room(cls, intent: IntentAPI, room_id: RoomID, message: str = "Cleaning room",
+                           puppets_only: bool = False) -> None:
         try:
             members = await intent.get_room_members(room_id)
         except MatrixError:
             members = []
         for user_id in members:
-            puppet = await self.bridge.get_puppet(user_id, create=False)
+            puppet = await cls.bridge.get_puppet(user_id, create=False)
             if user_id != intent.mxid and (not puppets_only or puppet):
                 try:
                     if puppet:
@@ -97,14 +99,30 @@ class BasePortal(ABC):
         try:
             await intent.leave_room(room_id)
         except MatrixError:
-            pass
+            cls.log.warning(f"Failed to leave room {room_id} when cleaning up room", exc_info=True)
+
+    async def cleanup_portal(self, message: str, puppets_only: bool = False) -> None:
+        await self.cleanup_room(self.main_intent, self.mxid, message, puppets_only)
+        await self.delete()
 
     async def unbridge(self) -> None:
-        await self.cleanup_room(self.main_intent, self.mxid, "Room unbridged", puppets_only=True)
-        await self.delete()
+        await self.cleanup_portal("Room unbridged", puppets_only=True)
 
     async def cleanup_and_delete(self) -> None:
-        await self.cleanup_room(self.main_intent, self.mxid)
-        await self.delete()
+        await self.cleanup_portal("Portal deleted")
+
+    async def get_authenticated_matrix_users(self) -> List[UserID]:
+        """
+        Get the list of Matrix user IDs who can be bridged. This is used to determine if the portal
+        is empty (and should be cleaned up) or not. Bridges should override this to check that the
+        users are either logged in or the portal has a relaybot.
+        """
+        try:
+            members = await self.main_intent.get_room_members(self.mxid)
+        except MatrixRequestError:
+            return []
+        return [member for member in members
+                if (not self.bridge.is_bridge_ghost(member)
+                    and member != self.az.bot_mxid)]
 
     # endregion
