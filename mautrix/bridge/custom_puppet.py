@@ -332,7 +332,7 @@ class CustomPuppetMixin(ABC):
         except asyncio.CancelledError:
             self.log.info(f"Syncing for {self.custom_mxid} cancelled")
         except Exception:
-            self.log.exception(f"Fatal error syncing {self.custom_mxid}")
+            self.log.critical(f"Fatal error syncing {self.custom_mxid}", exc_info=True)
 
     async def _sync(self) -> None:
         if not self.is_real_user:
@@ -348,7 +348,10 @@ class CustomPuppetMixin(ABC):
                 cur_batch = self.next_batch
                 sync_resp = await self.intent.sync(filter_id=filter_id, since=cur_batch,
                                                    set_presence=PresenceState.OFFLINE)
-                self.next_batch = sync_resp.get("next_batch", None)
+                try:
+                    self.next_batch = sync_resp.get("next_batch", None)
+                except Exception:
+                    self.log.warning("Failed to store next batch", exc_info=True)
                 errors = 0
                 if cur_batch is not None:
                     self._handle_sync(sync_resp)

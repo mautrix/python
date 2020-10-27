@@ -314,7 +314,7 @@ class Syncer(ABC):
         except asyncio.CancelledError:
             self.log.debug("Syncing cancelled")
         except Exception as e:
-            self.log.exception("Fatal error while syncing")
+            self.log.critical("Fatal error while syncing", exc_info=True)
             await self.run_internal_event(InternalEventType.SYNC_STOPPED, error=e)
             return
         else:
@@ -351,7 +351,10 @@ class Syncer(ABC):
                 "is_first": is_first,
             }
             next_batch = data.get("next_batch")
-            await self.sync_store.put_next_batch(next_batch)
+            try:
+                await self.sync_store.put_next_batch(next_batch)
+            except Exception:
+                self.log.warning("Failed to store next batch", exc_info=True)
             await self.run_internal_event(InternalEventType.SYNC_SUCCESSFUL, data=data)
             if (self.ignore_first_sync and is_first) or (self.ignore_initial_sync and is_initial):
                 is_first = False

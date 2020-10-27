@@ -78,7 +78,7 @@ class EncryptionManager:
         else:
             raise RuntimeError("Unsupported database scheme")
         self.client = Client(base_url=homeserver_address, mxid=self.az.bot_mxid, loop=self.loop,
-                             sync_store=self.crypto_store)
+                             sync_store=self.crypto_store, log=self.log.getChild("client"))
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
         self.crypto.allow_key_share = self.allow_key_share
 
