@@ -82,9 +82,7 @@ class MemoryStateStore(StateStore):
             return None
 
     async def set_members(self, room_id: RoomID,
-                          members: Dict[UserID, Union[Member, MemberStateEventContent]],
-                          joined_only: bool = False) -> None:
-        # TODO if joined_only is true, don't forget invited/left members
+                          members: Dict[UserID, Union[Member, MemberStateEventContent]]) -> None:
         self.members[room_id] = {user_id: (member if isinstance(member, Member)
                                            else Member(membership=member.membership,
                                                        avatar_url=member.avatar_url,

@@ -67,15 +67,12 @@ class PgStateStore(StateStore):
         return [profile["user_id"] for profile in res]
 
     async def set_members(self, room_id: RoomID,
-                          members: Dict[UserID, Union[Member, MemberStateEventContent]],
-                          joined_only: bool = False) -> None:
+                          members: Dict[UserID, Union[Member, MemberStateEventContent]]) -> None:
         columns = ["room_id", "user_id", "membership", "displayname", "avatar_url"]
         records = [(room_id, user_id, str(member.membership), member.displayname, member.avatar_url)
                    for user_id, member in members.items()]
         async with self.db.acquire() as conn, conn.transaction():
             del_q = "DELETE FROM mx_user_profile WHERE room_id=$1"
-            if joined_only:
-                del_q = "DELETE FROM mx_user_profile WHERE room_id=$1 AND membership='join'"
             await conn.execute(del_q, room_id)
             await conn.copy_records_to_table("mx_user_profile", records=records, columns=columns)
 

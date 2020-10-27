@@ -56,12 +56,9 @@ class UserProfile(Base):
             conn.execute(cls.t.delete().where(cls.c.room_id == room_id))
 
     @classmethod
-    def bulk_replace(cls, room_id: RoomID, members: Dict[UserID, Member],
-                     joined_only: bool = False) -> None:
+    def bulk_replace(cls, room_id: RoomID, members: Dict[UserID, Member]) -> None:
         with cls.db.begin() as conn:
             delete_condition = cls.c.room_id == room_id
-            if joined_only:
-                delete_condition &= cls.c.membership == Membership.JOIN
             cls.db.execute(cls.t.delete().where(delete_condition))
             conn.execute(cls.t.insert(),
                          [dict(room_id=room_id, user_id=user_id, membership=member.membership,

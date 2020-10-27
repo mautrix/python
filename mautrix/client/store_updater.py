@@ -55,7 +55,7 @@ class StoreUpdatingAPI(ClientAPI):
     async def get_joined_members(self, room_id: RoomID) -> Dict[UserID, Member]:
         members = await super().get_joined_members(room_id)
         if self.state_store:
-            await self.state_store.set_members(room_id, members, joined_only=True)
+            await self.state_store.set_members(room_id, members)
         return members
 
     async def get_members(self, room_id: RoomID) -> List[StateEvent]:
