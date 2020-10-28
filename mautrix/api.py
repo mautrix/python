@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Dict, Union, TYPE_CHECKING
-from urllib.parse import quote as urllib_quote
+from urllib.parse import quote as urllib_quote, urljoin as urllib_join
 from json.decoder import JSONDecodeError
 from enum import Enum
 from time import time
@@ -184,6 +184,15 @@ class HTTPAPI:
                          "user": as_user,
                      }})
 
+    def _full_path(self, path: Union[PathBuilder, str]) -> str:
+        path = str(path)
+        if path and path[0] == "/":
+            path = path[1:]
+        base_path = self.base_url.raw_path
+        if base_path[-1] != "/":
+            base_path += "/"
+        return urllib_join(base_path, path)
+
     async def request(self, method: Method, path: Union[PathBuilder, str],
                       content: Optional[Union[dict, list, bytes, str]] = None,
                       headers: Optional[Dict[str, str]] = None,
@@ -218,17 +227,10 @@ class HTTPAPI:
             content = json.dumps(content)
 
         self._log_request(method, path, content, orig_content, query_params)
-
-        path = str(path)
-        if path and path[0] == "/":
-            path = path[1:]
+        full_url = self.base_url.with_path(self._full_path(path), encoded=True)
 
         try:
-            # TODO combining the path like this breaks in yarl 1.6+, because it re-url-encodes path,
-            #      which is already url-encoded. yarl is currently pinned to <1.6, but at some point
-            #      aiohttp will require yarl >=1.6
-            return await self._send(method, self.base_url / path,
-                                    content, query_params, headers or {})
+            return await self._send(method, full_url, content, query_params, headers or {})
         except ClientError as e:
             raise MatrixConnectionError(str(e)) from e
 
