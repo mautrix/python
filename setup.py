@@ -18,7 +18,7 @@ setuptools.setup(
     install_requires=[
         "aiohttp>=3,<4",
         "attrs>=18.1.0",
-        "yarl>1,<2",
+        "yarl>=1,<2",
     ],
     extras_require={
         "detect_mimetype": ["python-magic>=0.4.15,<0.5"],
