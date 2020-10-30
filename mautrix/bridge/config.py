@@ -4,13 +4,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Optional, List, Any
-from abc import ABC, abstractmethod
+from abc import ABC
 import random
 import string
+import time
 import re
 
 from mautrix.util.config import (BaseFileConfig, ConfigUpdateHelper, BaseValidatableConfig,
-                                 ForbiddenDefault, ForbiddenKey, yaml)
+                                 ForbiddenDefault, yaml)
 
 
 class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
@@ -85,9 +86,9 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         https://matrix.org/docs/spec/application_service/r0.1.0.html#application-services
         """
         homeserver = self["homeserver.domain"]
-
-        username_format = self["bridge.username_template"].format(userid=".*")
-        alias_format = (self["bridge.alias_template"].format(groupname=".*")
+        regex_ph = f"regexplaceholder{int(time.time())}"
+        username_format = self["bridge.username_template"].format(userid=regex_ph)
+        alias_format = (self["bridge.alias_template"].format(groupname=regex_ph)
                         if "bridge.alias_template" in self else None)
         group_id = ({"group_id": self["appservice.community_id"]}
                     if self["appservice.community_id"] else {})
@@ -95,12 +96,12 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         return {
             "users": [{
                 "exclusive": True,
-                "regex": f"@{username_format}:{homeserver}",
+                "regex": re.escape(f"@{username_format}:{homeserver}").replace(regex_ph, ".*"),
                 **group_id,
             }],
             "aliases": [{
                 "exclusive": True,
-                "regex": f"#{alias_format}:{homeserver}",
+                "regex": re.escape(f"#{alias_format}:{homeserver}").replace(regex_ph, ".*"),
             }] if alias_format else []
         }
 
