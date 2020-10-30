@@ -42,7 +42,7 @@ class EventType(Serializable):
         try:
             return cls.by_event_type[t].with_class(t_class)
         except KeyError:
-            return EventType(t, t_class=t_class)
+            return EventType(t, t_class=t_class or cls.Class.UNKNOWN)
 
     def json(self) -> str:
         return json.dumps(self.serialize())
@@ -61,7 +61,7 @@ class EventType(Serializable):
         return self.t
 
     def __repr__(self):
-        return f"EventType(\"{self.t}\", EventType.Class.{self.t_class.name})"
+        return f'EventType("{self.t}", EventType.Class.{self.t_class.name})'
 
     def __hash__(self):
         return hash(self.t) ^ hash(self.t_class)
