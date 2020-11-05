@@ -3,3 +3,7 @@ ruamel.yaml
 SQLAlchemy
 commonmark
 lxml
+asyncpg
+prometheus_client
+setuptools
+uvloop
