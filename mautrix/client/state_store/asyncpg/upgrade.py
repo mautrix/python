@@ -31,3 +31,12 @@ async def upgrade_v1(conn: Connection) -> None:
         avatar_url  VARCHAR(255),
         PRIMARY KEY (room_id, user_id)
     )""")
+
+
+@upgrade_table.register(description="Stop using size-limited string fields")
+async def upgrade_v2(conn: Connection) -> None:
+    await conn.execute("ALTER TABLE mx_room_state ALTER COLUMN room_id TYPE TEXT")
+    await conn.execute("ALTER TABLE mx_user_profile ALTER COLUMN room_id TYPE TEXT")
+    await conn.execute("ALTER TABLE mx_user_profile ALTER COLUMN user_id TYPE TEXT")
+    await conn.execute("ALTER TABLE mx_user_profile ALTER COLUMN displayname TYPE TEXT")
+    await conn.execute("ALTER TABLE mx_user_profile ALTER COLUMN avatar_url TYPE TEXT")

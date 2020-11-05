@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Iterable, Dict
 
-from sqlalchemy import Column, String, Enum
+from sqlalchemy import Column, Text, Enum
 
 from mautrix.types import RoomID, UserID, ContentURI, Member, Membership
 from mautrix.util.db import Base
@@ -16,11 +16,11 @@ from .mx_room_state import RoomState
 class UserProfile(Base):
     __tablename__ = "mx_user_profile"
 
-    room_id: RoomID = Column(String(255), primary_key=True)
-    user_id: UserID = Column(String(255), primary_key=True)
+    room_id: RoomID = Column(Text, primary_key=True)
+    user_id: UserID = Column(Text, primary_key=True)
     membership: Membership = Column(Enum(Membership), nullable=False, default=Membership.LEAVE)
-    displayname: str = Column(String, nullable=True)
-    avatar_url: ContentURI = Column(String(255), nullable=True)
+    displayname: str = Column(Text, nullable=True)
+    avatar_url: ContentURI = Column(Text, nullable=True)
 
     def member(self) -> Member:
         return Member(membership=self.membership, displayname=self.displayname,

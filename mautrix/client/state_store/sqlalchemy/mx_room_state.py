@@ -6,7 +6,7 @@
 from typing import Optional, Type
 import json
 
-from sqlalchemy import Column, String, Boolean, types
+from sqlalchemy import Column, Text, Boolean, types
 
 from mautrix.types import (RoomID, PowerLevelStateEventContent as PowerLevels,
                            RoomEncryptionStateEventContent as EncryptionInfo, Serializable)
@@ -41,7 +41,7 @@ class SerializableType(types.TypeDecorator):
 class RoomState(Base):
     __tablename__ = "mx_room_state"
 
-    room_id: RoomID = Column(String(255), primary_key=True)
+    room_id: RoomID = Column(Text, primary_key=True)
     is_encrypted: bool = Column(Boolean, nullable=True)
     has_full_member_list: bool = Column(Boolean, nullable=True)
     encryption: EncryptionInfo = Column(SerializableType(EncryptionInfo), nullable=True)

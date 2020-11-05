@@ -87,3 +87,19 @@ async def upgrade_v2(conn: Connection) -> None:
     await add_account_id_column("crypto_olm_session", ["session_id"])
     await add_account_id_column("crypto_megolm_inbound_session", ["session_id"])
     await add_account_id_column("crypto_megolm_outbound_session", ["room_id"])
+
+
+@upgrade_table.register(description="Stop using size-limited string fields")
+async def upgrade_v3(conn: Connection) -> None:
+    await conn.execute("ALTER TABLE crypto_account ALTER COLUMN account_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_account ALTER COLUMN device_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_message_index ALTER COLUMN event_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_tracked_user ALTER COLUMN user_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_device ALTER COLUMN user_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_device ALTER COLUMN device_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_device ALTER COLUMN name TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_olm_session ALTER COLUMN account_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_megolm_inbound_session ALTER COLUMN account_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_megolm_inbound_session ALTER COLUMN room_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_megolm_outbound_session ALTER COLUMN account_id TYPE TEXT")
+    await conn.execute("ALTER TABLE crypto_megolm_outbound_session ALTER COLUMN room_id TYPE TEXT")
