@@ -336,6 +336,11 @@ class TextMessageEventContent(BaseMessageEventContent,
                                    + self.formatted_body)
             self.body = reply_to.make_reply_fallback_text(displayname) + self.body
 
+    def formatted(self, format: Format) -> Optional[str]:
+        if self.format == format:
+            return self.formatted_body
+        return None
+
     def trim_reply_fallback(self) -> None:
         if self.get_reply_to():
             self._trim_reply_fallback_text()
