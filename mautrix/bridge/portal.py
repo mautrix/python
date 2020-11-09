@@ -11,9 +11,10 @@ import logging
 from mautrix.appservice import AppService, IntentAPI
 from mautrix.types import (RoomID, EventID, MessageEventContent, EventType, EncryptionAlgorithm,
                            RoomEncryptionStateEventContent as Encryption, UserID)
-from mautrix.errors import MatrixError, MatrixRequestError, MatrixConnectionError
+from mautrix.errors import MatrixError, MatrixRequestError
 from mautrix.util.logging import TraceLogger
 from mautrix.util.simple_lock import SimpleLock
+from mautrix.util.network_retry import call_with_net_retry
 
 if TYPE_CHECKING:
     from .user import BaseUser
@@ -23,7 +24,6 @@ if TYPE_CHECKING:
 
 class BasePortal(ABC):
     log: TraceLogger = logging.getLogger("mau.portal")
-    bad_gateway_sleep: int = 5
     az: AppService
     matrix: 'BaseMatrixHandler'
     bridge: 'Bridge'
@@ -57,32 +57,16 @@ class BasePortal(ABC):
         return True
 
     async def _send_message(self, intent: IntentAPI, content: MessageEventContent,
-                            event_type: EventType = EventType.ROOM_MESSAGE, retries: int = 4,
-                            **kwargs) -> EventID:
-        while True:
-            try:
-                return await self._send_message_direct(intent, content, event_type, **kwargs)
-            except MatrixRequestError as e:
-                if not retries or e.http_status not in (502, 504):
-                    raise
-                self.log.warning("Got gateway error trying to send message, retrying in "
-                                 f"{self.bad_gateway_sleep} seconds")
-            except MatrixConnectionError as e:
-                if not retries:
-                    raise
-                self.log.warning(f"Got connection error trying to send message: {e}, retrying in "
-                                 f"{self.bad_gateway_sleep} seconds")
-            await asyncio.sleep(self.bad_gateway_sleep)
-            retries -= 1
-
-    async def _send_message_direct(self, intent: IntentAPI, content: MessageEventContent,
-                                   event_type: EventType = EventType.ROOM_MESSAGE, **kwargs
-                                   ) -> EventID:
+                            event_type: EventType = EventType.ROOM_MESSAGE, **kwargs
+                            ) -> EventID:
         if self.encrypted and self.matrix.e2ee:
             if intent.api.is_real_user:
                 content[intent.api.real_user_content_key] = True
-            event_type, content = await self.matrix.e2ee.encrypt(self.mxid, event_type, content)
-        return await intent.send_message_event(self.mxid, event_type, content, **kwargs)
+            event_type, content = await call_with_net_retry(self.matrix.e2ee.encrypt, self.mxid,
+                                                            event_type, content,
+                                                            _action="encrypt message")
+        return await call_with_net_retry(intent.send_message_event, self.mxid, event_type, content,
+                                         **kwargs, _action="send message")
 
     @property
     @abstractmethod
