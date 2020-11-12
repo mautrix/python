@@ -418,7 +418,7 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
     def make_reply_fallback_html(self, displayname: Optional[str] = None) -> str:
         """Generate the HTML fallback for messages replying to this event."""
         if self.content.msgtype.is_text:
-            body = self.content.formatted_body or escape(self.content.body).replace("\n", "<br/")
+            body = self.content.formatted_body or escape(self.content.body).replace("\n", "<br/>")
         else:
             sent_type = media_reply_fallback_body_map[self.content.msgtype] or "a message"
             body = f"sent {sent_type}"
