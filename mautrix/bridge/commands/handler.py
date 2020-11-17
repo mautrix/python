@@ -159,10 +159,10 @@ class CommandEvent:
         else:
             return self.main_intent.send_notice(self.room_id, message, html=html)
 
-    def mark_read(self) -> Awaitable[None]:
+    async def mark_read(self) -> None:
         """Marks the command as read by the bot."""
         if self.has_bridge_bot:
-            return self.az.intent.mark_read(self.room_id, self.event_id)
+            await self.az.intent.mark_read(self.room_id, self.event_id)
 
     def _replace_command_prefix(self, message: str) -> str:
         """Returns the string with the proper command prefix entered."""
