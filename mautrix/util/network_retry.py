@@ -32,7 +32,7 @@ async def call_with_net_retry(func: Callable, *args: Any, _action: str, _attempt
         try:
             return await func(*args, **kwargs)
         except MatrixRequestError as e:
-            if e.http_status not in (502, 504):
+            if e.http_status not in (502, 503, 504):
                 raise
             error = f"Got gateway error trying to {_action}"
         except MatrixConnectionError as e:
