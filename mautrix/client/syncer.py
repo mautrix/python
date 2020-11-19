@@ -332,6 +332,8 @@ class Syncer(ABC):
             try:
                 data = await self.sync(since=next_batch, filter_id=filter_id,
                                        set_presence=self.presence)
+                if fail_sleep != 5:
+                    self.log.debug("Sync error resolved")
                 fail_sleep = 5
             except (asyncio.CancelledError, MUnknownToken):
                 raise
