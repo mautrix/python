@@ -137,7 +137,7 @@ class BaseClientAPI:
             elif resp.status != 200:
                 raise WellKnownUnexpectedStatus(resp.status)
             try:
-                data = await resp.json()
+                data = await resp.json(content_type=None)
             except (json.JSONDecodeError, ContentTypeError) as e:
                 raise WellKnownNotJSON() from e
 
