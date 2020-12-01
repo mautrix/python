@@ -11,7 +11,7 @@ import logging
 from mautrix.appservice import AppService, IntentAPI
 from mautrix.types import (RoomID, EventID, MessageEventContent, EventType, EncryptionAlgorithm,
                            RoomEncryptionStateEventContent as Encryption, UserID)
-from mautrix.errors import MatrixError, MatrixRequestError
+from mautrix.errors import MatrixError, MatrixRequestError, MNotFound
 from mautrix.util.logging import TraceLogger
 from mautrix.util.simple_lock import SimpleLock
 from mautrix.util.network_retry import call_with_net_retry
@@ -32,6 +32,7 @@ class BasePortal(ABC):
     mxid: Optional[RoomID]
     name: Optional[str]
     encrypted: bool
+    is_direct: bool
     backfill_lock: SimpleLock
 
     @abstractmethod
@@ -43,12 +44,27 @@ class BasePortal(ABC):
                                     event_id: EventID) -> None:
         pass
 
+    async def check_dm_encryption(self) -> Optional[bool]:
+        try:
+            evt = await self.main_intent.get_state_event(self.mxid, EventType.ROOM_ENCRYPTION)
+            self.log.debug("Found existing encryption event in direct portal: %s", evt)
+            if evt and evt.algorithm == EncryptionAlgorithm.MEGOLM_V1:
+                self.encrypted = True
+        except MNotFound:
+            pass
+        if self.is_direct and self.matrix.e2ee and (self.bridge.config["bridge.encryption.default"]
+                                                    or self.encrypted):
+            return await self.enable_dm_encryption()
+        return None
+
     async def enable_dm_encryption(self) -> bool:
+        self.log.debug("Inviting bridge bot to room for end-to-bridge encryption")
         try:
             await self.main_intent.invite_user(self.mxid, self.az.bot_mxid)
             await self.az.intent.join_room_by_id(self.mxid)
-            await self.main_intent.send_state_event(self.mxid, EventType.ROOM_ENCRYPTION,
-                                                    Encryption(EncryptionAlgorithm.MEGOLM_V1))
+            if not self.encrypted:
+                await self.main_intent.send_state_event(self.mxid, EventType.ROOM_ENCRYPTION,
+                                                        Encryption(EncryptionAlgorithm.MEGOLM_V1))
         except Exception:
             self.log.warning(f"Failed to enable end-to-bridge encryption", exc_info=True)
             return False
