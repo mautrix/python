@@ -106,7 +106,7 @@ class SerializableEnum(Serializable, Enum):
         return cls.deserialize(json.loads(data))
 
     def __str__(self):
-        return self.value
+        return str(self.value)
 
     def __repr__(self):
-        return self.value
+        return f"{self.__class__.__name__}.{self.name}"
