@@ -10,6 +10,7 @@ import logging
 import traceback
 
 from mautrix.util import markdown
+from mautrix.util.logging import TraceLogger
 from mautrix.types import RoomID, EventID, MessageEventContent
 from mautrix.appservice import AppService, IntentAPI
 
@@ -57,7 +58,7 @@ class CommandEvent:
 
     bridge: 'Bridge'
     az: AppService
-    log: logging.Logger
+    log: TraceLogger
     loop: asyncio.AbstractEventLoop
     config: BaseBridgeConfig
     processor: 'CommandProcessor'
@@ -324,7 +325,7 @@ def command_handler(_func: Optional[CommandHandlerFunc] = None, *, management_on
 class CommandProcessor:
     """Handles the raw commands issued by a user to the Matrix bot."""
 
-    log = logging.getLogger("mau.commands")
+    log: TraceLogger = logging.getLogger("mau.commands")
     az: AppService
     config: BaseBridgeConfig
     loop: asyncio.AbstractEventLoop
