@@ -22,5 +22,8 @@ class TraceLogger(OldLogger):
     def silly(self, msg, *args, **kwargs) -> None:
         self.log(SILLY, msg, *args, **kwargs)
 
+    def getChild(self, suffix: str) -> 'TraceLogger':
+        return cast(TraceLogger, super().getChild(suffix))
+
 
 logging.setLoggerClass(TraceLogger)
