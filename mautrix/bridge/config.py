@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Optional, List, Any
 from abc import ABC
-import random
+import secrets
 import string
 import time
 import re
@@ -33,7 +33,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
 
     @staticmethod
     def _new_token() -> str:
-        return "".join(random.choices(string.ascii_lowercase + string.digits, k=64))
+        return secrets.token_urlsafe(48)
 
     @property
     def forbidden_defaults(self) -> List[ForbiddenDefault]:
