@@ -338,8 +338,8 @@ class Syncer(ABC):
             except (asyncio.CancelledError, MUnknownToken):
                 raise
             except Exception as e:
-                self.log.exception(f"Sync request errored, waiting {fail_sleep}"
-                                   " seconds before continuing")
+                self.log.warning(f"Sync request errored: {e}, waiting {fail_sleep}"
+                                 " seconds before continuing")
                 await self.run_internal_event(InternalEventType.SYNC_ERRORED, error=e,
                                               sleep_for=fail_sleep)
                 await asyncio.sleep(fail_sleep, loop=self.loop)
