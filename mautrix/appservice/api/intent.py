@@ -41,6 +41,8 @@ ENSURE_REGISTERED_METHODS = (
     ClientAPI.search_users, ClientAPI.set_displayname, ClientAPI.set_avatar_url,
 
     ClientAPI.upload_media,
+
+    ClientAPI.send_receipt, ClientAPI.set_fully_read_marker,
 )
 
 ENSURE_JOINED_METHODS = (
@@ -50,7 +52,6 @@ ENSURE_JOINED_METHODS = (
     ClientAPI.get_event, ClientAPI.get_state_event, ClientAPI.get_state,
     ClientAPI.get_joined_members, ClientAPI.get_messages, ClientAPI.send_state_event,
     ClientAPI.send_message_event, ClientAPI.redact,
-    ClientAPI.send_receipt, ClientAPI.set_fully_read_marker,
 )
 
 
