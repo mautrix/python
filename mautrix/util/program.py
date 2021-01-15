@@ -190,7 +190,7 @@ class Program:
             self.loop.run_until_complete(self.start())
             end_ts = time()
             self.log.info(f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
-                           "now running forever")
+                          "now running forever")
             self._stop_task = self.loop.create_future()
             self.loop.run_until_complete(self._stop_task)
             self.log.debug("manual_stop() called, stopping...")

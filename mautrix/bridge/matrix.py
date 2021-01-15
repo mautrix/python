@@ -8,6 +8,7 @@ import logging
 import asyncio
 import os.path
 import time
+import sys
 
 from yarl import URL
 
@@ -124,11 +125,9 @@ class BaseMatrixHandler:
     async def init_encryption(self) -> None:
         if self.e2ee:
             if not await self.e2ee.check_server_support():
-                # Element iOS is broken, so the devs decided to break Synapse as well, which means
-                # there's no reliable way to check if appservice login is supported.
-                # Print a warning in the logs, then try to log in anyway and hope for the best.
-                self.log.warning("Encryption enabled in config, but homeserver does not advertise "
-                                 "appservice login")
+                self.log.critical("Encryption enabled in config, but homeserver does not advertise "
+                                  "appservice login")
+                sys.exit(30)
             await self.e2ee.start()
 
     @staticmethod
