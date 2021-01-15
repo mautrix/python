@@ -90,6 +90,8 @@ immutable = (int, str, float, bool, type(None))
 def _safe_default(val: T) -> T:
     if isinstance(val, immutable):
         return val
+    elif val is attr.NOTHING:
+        return None
     return copy.copy(val)
 
 
