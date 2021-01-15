@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
 from abc import ABC
+import pkgutil
 import logging
 
 from yarl import URL
@@ -13,11 +14,6 @@ from ruamel.yaml.comments import CommentedMap
 
 from .base import BaseConfig
 from .recursive_dict import RecursiveDict
-
-try:
-    import pkg_resources
-except ImportError:
-    pkg_resources = None
 
 yaml = YAML()
 yaml.indent(4)
@@ -39,11 +35,8 @@ class BaseFileConfig(BaseConfig, ABC):
 
     def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
         if self.base_path.startswith("pkg://"):
-            if pkg_resources is None:
-                raise ValueError("pkg:// paths can only be used with setuptools installed")
             url = URL(self.base_path)
-            return RecursiveDict(yaml.load(pkg_resources.resource_stream(url.host, url.path)),
-                                 CommentedMap)
+            return RecursiveDict(yaml.load(pkgutil.get_data(url.host, url.path)), CommentedMap)
         try:
             with open(self.base_path, 'r') as stream:
                 return RecursiveDict(yaml.load(stream), CommentedMap)
