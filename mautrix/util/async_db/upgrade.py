@@ -37,14 +37,15 @@ class UpgradeTable:
         self.database_name = database_name
         self.log = log or logging.getLogger("mau.db.upgrade")
 
-    def register(self, index: int = -1, description: str = "", _outer_fn: Optional[Upgrade] = None
-                 ) -> Union[Upgrade, Callable[[Upgrade], Upgrade]]:
+    def register(self, index: int = -1, description: str = "", _outer_fn: Optional[Upgrade] = None,
+                 transaction: bool = True) -> Union[Upgrade, Callable[[Upgrade], Upgrade]]:
         if isinstance(index, str):
             description = index
             index = -1
 
         def actually_register(fn: Upgrade) -> Upgrade:
             fn.__mau_db_upgrade_description__ = description
+            fn.__mau_db_upgrade_transaction__ = transaction
             if index == -1 or index == len(self.upgrades):
                 self.upgrades.append(fn)
             else:
@@ -88,7 +89,12 @@ class UpgradeTable:
                 suffix = f": {desc}" if desc else ""
                 self.log.debug(f"Upgrading {self.database_name} "
                                f"from v{version} to v{new_version}{suffix}")
-                async with conn.transaction():
+                if getattr(upgrade, "__mau_db_upgrade_transaction", True):
+                    async with conn.transaction():
+                        await upgrade(conn)
+                        version = new_version
+                        await self._save_version(conn, version)
+                else:
                     await upgrade(conn)
                     version = new_version
                     await self._save_version(conn, version)
