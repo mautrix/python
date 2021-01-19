@@ -64,7 +64,7 @@ class EncryptionManager:
         self._share_session_events = {}
         self.key_sharing_config = key_sharing_config or {}
         pickle_key = "mautrix.bridge.e2ee"
-        if db_url.startswith("postgres://"):
+        if db_url.startswith("postgres://") or db_url.startswith("postgresql://"):
             if not PgCryptoStore or not PgCryptoStateStore:
                 raise RuntimeError("Database URL is set to postgres, but asyncpg is not installed")
             self.crypto_db = Database(url=db_url, upgrade_table=PgCryptoStore.upgrade_table,
