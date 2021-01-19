@@ -76,7 +76,10 @@ class BaseUser(ABC):
                                             content=dms, headers={"X-Asmux-Auth": self.az.as_token})
         else:
             async with self.dm_update_lock:
-                current_dms = await puppet.intent.get_account_data(EventType.DIRECT)
+                try:
+                    current_dms = await puppet.intent.get_account_data(EventType.DIRECT)
+                except MNotFound:
+                    current_dms = {}
                 if replace:
                     # Filter away all existing DM statuses with bridge users
                     current_dms = {user: rooms for user, rooms in current_dms.items()
