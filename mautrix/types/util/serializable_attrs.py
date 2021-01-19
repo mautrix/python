@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Type, TypeVar, Any, Union, Optional, Tuple, Iterator, Callable, NewType
 from uuid import UUID
+import logging
 import attr
 import copy
 import sys
@@ -26,6 +27,7 @@ deserializer_map: Dict[Type[T], Deserializer] = {
 }
 
 no_value = object()
+log = logging.getLogger("mau.attrs")
 
 
 def serializer(elem_type: Type[T]) -> Callable[[Serializer], Serializer]:
@@ -121,8 +123,9 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
         for key, field in _fields(attrs_type):
             json_key = field.metadata.get("json", key)
             if field.default is attr.NOTHING and json_key not in new_items:
-                raise SerializerError(
-                    f"Missing value for required key {field.name} in {attrs_type.__name__}") from e
+                log.debug("Failed to deserialize %s into %s", new_items, attrs_type.__name__)
+                raise SerializerError("Missing value for required key "
+                                      f"{field.name} in {attrs_type.__name__}") from e
         raise SerializerError("Unknown serialization error") from e
     if len(unrecognized) > 0:
         obj.unrecognized_ = unrecognized
