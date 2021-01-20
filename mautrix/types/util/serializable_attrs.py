@@ -11,7 +11,8 @@ import copy
 import sys
 
 from ..primitive import JSON
-from .serializable import SerializerError, Serializable, GenericSerializable
+from .serializable import (SerializerError, UnknownSerializationError, Serializable,
+                           GenericSerializable)
 from .obj import Obj, Lst
 
 T = TypeVar("T")
@@ -113,8 +114,17 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
             unrecognized[key] = value
             continue
         name = field.name.lstrip("_")
-        new_items[name] = _try_deserialize(field.type, value, field.default,
-                                           field.metadata.get("ignore_errors", False))
+        try:
+            new_items[name] = _try_deserialize(field.type, value, field.default,
+                                               field.metadata.get("ignore_errors", False))
+        except UnknownSerializationError as e:
+            raise SerializerError(f"Failed to deserialize {value} into "
+                                  f"key {name} of {attrs_type.__name__}") from e
+        except SerializerError:
+            raise
+        except Exception as e:
+            raise SerializerError(f"Failed to deserialize {value} into "
+                                  f"key {name} of {attrs_type.__name__}") from e
     if len(new_items) == 0 and default_if_empty and default is not attr.NOTHING:
         return _safe_default(default)
     try:
@@ -126,7 +136,7 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
                 log.debug("Failed to deserialize %s into %s", new_items, attrs_type.__name__)
                 raise SerializerError("Missing value for required key "
                                       f"{field.name} in {attrs_type.__name__}") from e
-        raise SerializerError("Unknown serialization error") from e
+        raise UnknownSerializationError() from e
     if len(unrecognized) > 0:
         obj.unrecognized_ = unrecognized
     return obj
@@ -141,7 +151,7 @@ def _try_deserialize(cls: Type[T], value: JSON, default: Optional[T] = None,
             raise
     except (TypeError, ValueError, KeyError) as e:
         if not ignore_errors:
-            raise SerializerError("Unknown serialization error") from e
+            raise UnknownSerializationError() from e
 
 
 def _has_custom_deserializer(cls) -> bool:

@@ -33,6 +33,11 @@ class SerializerError(Exception):
     pass
 
 
+class UnknownSerializationError(SerializerError):
+    def __init__(self) -> None:
+        super().__init__("Unknown serialization error")
+
+
 class GenericSerializable(ABC, Generic[T], Serializable):
     """
     An abstract Serializable that adds ``@abstractmethod`` decorators and a `Generic[T]` base class.
