@@ -133,7 +133,7 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
         for key, field in _fields(attrs_type):
             json_key = field.metadata.get("json", key)
             if field.default is attr.NOTHING and json_key not in new_items:
-                log.debug("Failed to deserialize %s into %s", new_items, attrs_type.__name__)
+                log.debug("Failed to deserialize %s into %s", data, attrs_type.__name__)
                 raise SerializerError("Missing value for required key "
                                       f"{field.name} in {attrs_type.__name__}") from e
         raise UnknownSerializationError() from e
