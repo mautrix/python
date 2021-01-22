@@ -156,7 +156,8 @@ class CustomPuppetMixin(ABC):
         data = await resp.json()
         return data["access_token"]
 
-    async def switch_mxid(self, access_token: Optional[str], mxid: Optional[UserID]) -> None:
+    async def switch_mxid(self, access_token: Optional[str], mxid: Optional[UserID],
+                          start_sync_task: bool = True) -> None:
         """
         Switch to a real Matrix user or away from one.
 
@@ -165,6 +166,7 @@ class CustomPuppetMixin(ABC):
                           the appservice-owned ID.
             mxid: The expected Matrix user ID of the custom account, or ``None`` when
                   ``access_token`` is None.
+            start_sync_task: Whether or not syncing should be started after logging in.
         """
         if access_token == "auto":
             access_token = await self._login_with_shared_secret(mxid)
@@ -196,7 +198,7 @@ class CustomPuppetMixin(ABC):
         self.base_url = base_url
         self.intent = self._fresh_intent()
 
-        await self.start()
+        await self.start(start_sync_task=start_sync_task)
 
         try:
             del self.by_custom_mxid[prev_mxid]
@@ -216,7 +218,7 @@ class CustomPuppetMixin(ABC):
         except Exception:
             self.log.exception("Failed to initialize custom mxid")
 
-    async def start(self, retry_auto_login: bool = False) -> None:
+    async def start(self, retry_auto_login: bool = False, start_sync_task: bool = True) -> None:
         """Initialize the custom account this puppet uses. Should be called at startup to start
         the /sync task. Is called by :meth:`switch_mxid` automatically."""
         if not self.is_real_user:
@@ -227,7 +229,7 @@ class CustomPuppetMixin(ABC):
         except MatrixInvalidToken as e:
             if retry_auto_login and self.custom_mxid and self.can_auto_login(self.custom_mxid):
                 self.log.debug(f"Got {e.errcode} while trying to initialize custom mxid")
-                await self.switch_mxid("auto", self.custom_mxid)
+                await self.switch_mxid("auto", self.custom_mxid, start_sync_task=start_sync_task)
                 return
             self.log.warning(f"Got {e.errcode} while trying to initialize custom mxid")
             mxid = None
@@ -242,7 +244,7 @@ class CustomPuppetMixin(ABC):
             if mxid != self.custom_mxid:
                 raise OnlyLoginSelf()
             raise InvalidAccessToken()
-        if self.sync_with_custom_puppets:
+        if self.sync_with_custom_puppets and start_sync_task:
             if self._sync_task:
                 self._sync_task.cancel()
             self.log.info(f"Initialized custom mxid: {mxid}. Starting sync task")
@@ -331,8 +333,7 @@ class CustomPuppetMixin(ABC):
 
         # Deserialize and handle all events
         for event in chain(ephemeral_events, presence_events):
-            asyncio.ensure_future(self.mx.try_handle_sync_event(Event.deserialize(event)),
-                                  loop=self.loop)
+            self.loop.create_task(self.mx.try_handle_sync_event(Event.deserialize(event)))
 
     async def _try_sync(self) -> None:
         try:
@@ -363,6 +364,17 @@ class CustomPuppetMixin(ABC):
                 errors = 0
                 if cur_batch is not None:
                     self._handle_sync(sync_resp)
+            except MatrixInvalidToken:
+                # TODO when not using syncing, we should still check this occasionally and relogin
+                self.log.warning(f"Access token for {custom_mxid} got invalidated, restarting...")
+                await self.start(retry_auto_login=True, start_sync_task=False)
+                if self.is_real_user:
+                    self.log.info("Successfully relogined custom puppet, continuing sync")
+                    filter_id = await self._create_sync_filter()
+                    access_token_at_start = self.access_token
+                else:
+                    self.log.warning("Something went wrong during relogin")
+                    raise
             except (MatrixError, ClientConnectionError, asyncio.TimeoutError) as e:
                 errors += 1
                 wait = min(errors, 11) ** 2
