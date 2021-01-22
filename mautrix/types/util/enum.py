@@ -25,6 +25,8 @@ class ExtensibleEnumMeta(type):
                   if not key.startswith("_") and not _is_descriptor(val)]
         classdict = {key: val for key, val in classdict.items()
                      if key.startswith("_") or _is_descriptor(val)}
+        classdict["_by_value"] = {}
+        classdict["_by_key"] = {}
         enum_class = cast(Type['ExtensibleEnum'], super().__new__(mcs, name, bases, classdict))
         for key, val in create:
             ExtensibleEnum.__new__(enum_class, val).key = key
@@ -72,15 +74,15 @@ class ExtensibleEnumMeta(type):
 
 
 class ExtensibleEnum(Serializable, metaclass=ExtensibleEnumMeta):
-    _by_value: Dict[Any, 'ExtensibleEnum'] = {}
-    _by_key: Dict[str, 'ExtensibleEnum'] = {}
+    _by_value: Dict[Any, 'ExtensibleEnum']
+    _by_key: Dict[str, 'ExtensibleEnum']
 
-    _inited: bool = False
+    _inited: bool
     _key: Optional[str]
     value: Any
 
     def __init__(self, value: Any) -> None:
-        if self._inited:
+        if getattr(self, "_inited", False):
             return
         self.value = value
         self._key = None
