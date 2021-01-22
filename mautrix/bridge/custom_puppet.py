@@ -210,13 +210,13 @@ class CustomPuppetMixin(ABC):
                 self.log.warning("Error when leaving rooms with default user", exc_info=True)
         await self.save()
 
-    async def try_start(self) -> None:
+    async def try_start(self, retry_auto_login: bool = True) -> None:
         try:
-            await self.start()
+            await self.start(retry_auto_login=retry_auto_login)
         except Exception:
             self.log.exception("Failed to initialize custom mxid")
 
-    async def start(self) -> None:
+    async def start(self, retry_auto_login: bool = False) -> None:
         """Initialize the custom account this puppet uses. Should be called at startup to start
         the /sync task. Is called by :meth:`switch_mxid` automatically."""
         if not self.is_real_user:
@@ -224,12 +224,20 @@ class CustomPuppetMixin(ABC):
 
         try:
             mxid = await self.intent.whoami()
-        except MatrixInvalidToken:
+        except MatrixInvalidToken as e:
+            if retry_auto_login and self.custom_mxid and self.can_auto_login(self.custom_mxid):
+                self.log.debug(f"Got {e.errcode} while trying to initialize custom mxid")
+                await self.switch_mxid("auto", self.custom_mxid)
+                return
+            self.log.warning(f"Got {e.errcode} while trying to initialize custom mxid")
             mxid = None
         if not mxid or mxid != self.custom_mxid:
+            if self.custom_mxid and self.by_custom_mxid.get(self.custom_mxid) == self:
+                del self.by_custom_mxid[self.custom_mxid]
             self.custom_mxid = None
             self.access_token = None
             self.next_batch = None
+            await self.save()
             self.intent = self._fresh_intent()
             if mxid != self.custom_mxid:
                 raise OnlyLoginSelf()
