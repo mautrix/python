@@ -32,6 +32,9 @@ def quote(*args, **kwargs):
     return urllib_quote(*args, **kwargs, safe="")
 
 
+_bridgebot = object()
+
+
 ENSURE_REGISTERED_METHODS = (
     # Room methods
     ClientAPI.create_room, ClientAPI.add_room_alias, ClientAPI.remove_room_alias,
@@ -311,30 +314,35 @@ class IntentAPI(StoreUpdatingAPI):
     # endregion
     # region Ensure functions
 
-    async def ensure_joined(self, room_id: RoomID, ignore_cache: bool = False) -> bool:
+    async def ensure_joined(self, room_id: RoomID, ignore_cache: bool = False,
+                            bot: Optional['IntentAPI'] = _bridgebot) -> bool:
         if not room_id:
             raise ValueError("Room ID not given")
         if not ignore_cache and await self.state_store.is_joined(room_id, self.mxid):
             return False
+        if bot is _bridgebot:
+            bot = self.bot
+        if bot is self:
+            bot = None
         await self.ensure_registered()
         try:
             await self.join_room(room_id, max_retries=0)
             await self.state_store.joined(room_id, self.mxid)
         except MForbidden as e:
-            if not self.bot:
+            if not bot:
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e
             try:
-                await self.bot.invite_user(room_id, self.mxid)
+                await bot.invite_user(room_id, self.mxid)
                 await self.join_room(room_id, max_retries=0)
                 await self.state_store.joined(room_id, self.mxid)
             except MatrixRequestError as e2:
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e2
         except MBadState as e:
-            if not self.bot:
+            if not bot:
                 raise IntentError(f"Failed to join room {room_id} as {self.mxid}") from e
             try:
-                await self.bot.unban_user(room_id, self.mxid)
-                await self.bot.invite_user(room_id, self.mxid)
+                await bot.unban_user(room_id, self.mxid)
+                await bot.invite_user(room_id, self.mxid)
                 await self.join_room(room_id, max_retries=0)
                 await self.state_store.joined(room_id, self.mxid)
             except MatrixRequestError as e2:
