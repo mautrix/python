@@ -14,7 +14,7 @@ from mautrix.types import (StateEvent, EventType, StateEventContent, EventID, Co
                            RoomTopicStateEventContent, PowerLevelStateEventContent,
                            RoomPinnedEventsStateEventContent, Membership, Member)
 from mautrix.client import ClientAPI, StoreUpdatingAPI
-from mautrix.errors import MForbidden, MBadState, MatrixRequestError, IntentError
+from mautrix.errors import MForbidden, MBadState, MatrixRequestError, IntentError, MNotFound
 from mautrix.util.logging import TraceLogger
 
 from ..state_store import ASStateStore
@@ -209,7 +209,10 @@ class IntentAPI(StoreUpdatingAPI):
 
     async def get_pinned_messages(self, room_id: RoomID) -> List[EventID]:
         await self.ensure_joined(room_id)
-        content = await self.get_state_event(room_id, EventType.ROOM_PINNED_EVENTS)
+        try:
+            content = await self.get_state_event(room_id, EventType.ROOM_PINNED_EVENTS)
+        except MNotFound:
+            return []
         return content["pinned"]
 
     def set_pinned_messages(self, room_id: RoomID, events: List[EventID], **kwargs
