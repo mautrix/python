@@ -81,8 +81,9 @@ class BasePortal(ABC):
             event_type, content = await call_with_net_retry(self.matrix.e2ee.encrypt, self.mxid,
                                                             event_type, content,
                                                             _action="encrypt message")
+        txn_id = intent.api.get_txn_id()
         return await call_with_net_retry(intent.send_message_event, self.mxid, event_type, content,
-                                         **kwargs, _action="send message")
+                                         txn_id=txn_id, **kwargs, _action="send message")
 
     @property
     @abstractmethod

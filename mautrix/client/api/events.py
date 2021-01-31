@@ -286,7 +286,8 @@ class EventMethods(BaseClientAPI):
             raise MatrixResponseError("`event_id` not in response.")
 
     async def send_message_event(self, room_id: RoomID, event_type: EventType,
-                                 content: EventContent, **kwargs) -> EventID:
+                                 content: EventContent, txn_id: Optional[str] = None,
+                                 **kwargs) -> EventID:
         """
         Send a message event to a room. Message events allow access to historical events and
         pagination, making them suited for "once-off" activity in a room.
@@ -296,6 +297,7 @@ class EventMethods(BaseClientAPI):
             room_id: The ID of the room to send the message to.
             event_type: The type of message to send.
             content: The content to send.
+            txn_id: The transaction ID to use.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method. Used by
                 :class:`IntentAPI` to pass the timestamp massaging field to
                 :meth:`AppServiceAPI.request`.
@@ -310,7 +312,7 @@ class EventMethods(BaseClientAPI):
             raise ValueError("Room ID not given")
         elif not event_type:
             raise ValueError("Event type not given")
-        url = Path.rooms[room_id].send[event_type][self.api.get_txn_id()]
+        url = Path.rooms[room_id].send[event_type][txn_id or self.api.get_txn_id()]
         content = content.serialize() if isinstance(content, Serializable) else content
         resp = await self.api.request(Method.PUT, url, content, **kwargs)
         try:
