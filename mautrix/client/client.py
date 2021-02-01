@@ -5,6 +5,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, TYPE_CHECKING
 
+from mautrix.types import EventType, Event, StateEvent
+
 from .state_store import SyncStore, StateStore
 from .syncer import Syncer
 from .encryption_manager import EncryptingAPI, DecryptionDispatcher
@@ -20,6 +22,12 @@ class Client(EncryptingAPI, Syncer):
                  state_store: Optional[StateStore] = None, **kwargs) -> None:
         EncryptingAPI.__init__(self, *args, state_store=state_store, **kwargs)
         Syncer.__init__(self, sync_store)
+        self.add_event_handler(EventType.ALL, self._update_state)
+
+    async def _update_state(self, evt: Event) -> None:
+        if not isinstance(evt, StateEvent):
+            return
+        await self.state_store.update_state(evt)
 
     @EncryptingAPI.crypto.setter
     def crypto(self, crypto: 'OlmMachine') -> None:
