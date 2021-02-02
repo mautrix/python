@@ -15,7 +15,7 @@ from yarl import URL
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
                            PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent,
-                           EncryptedEvent, ReceiptType, SingleReceiptEventContent)
+                           EncryptedEvent, ReceiptType, SingleReceiptEventContent, StateUnsigned)
 from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound
 from mautrix.appservice import AppService
 from mautrix.util.logging import TraceLogger
@@ -405,7 +405,8 @@ class BaseMatrixHandler:
 
         if evt.type == EventType.ROOM_MEMBER:
             evt: StateEvent
-            prev_content = evt.unsigned.prev_content or MemberStateEventContent()
+            unsigned = evt.unsigned or StateUnsigned()
+            prev_content = unsigned.prev_content or MemberStateEventContent()
             prev_membership = prev_content.membership if prev_content else Membership.JOIN
             if evt.content.membership == Membership.INVITE:
                 await self.int_handle_invite(evt.room_id, UserID(evt.state_key), evt.sender,
