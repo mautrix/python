@@ -195,7 +195,10 @@ class IntentAPI(StoreUpdatingAPI):
             levels = await self.state_store.get_power_levels(room_id)
             if levels:
                 return levels
-        levels = await self.get_state_event(room_id, EventType.ROOM_POWER_LEVELS)
+        try:
+            levels = await self.get_state_event(room_id, EventType.ROOM_POWER_LEVELS)
+        except MNotFound:
+            levels = PowerLevelStateEventContent()
         await self.state_store.set_power_levels(room_id, levels)
         return levels
 
