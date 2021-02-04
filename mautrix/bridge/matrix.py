@@ -90,7 +90,7 @@ class BaseMatrixHandler:
                 await self.az.intent.whoami()
                 break
             except MForbidden as e:
-                if "has not registered this user" in e.message and not tried_to_register:
+                if not tried_to_register:
                     self.log.debug("Whoami endpoint returned M_FORBIDDEN, "
                                    "trying to register bridge bot before retrying...")
                     await self.az.intent.ensure_registered()
