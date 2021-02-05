@@ -161,7 +161,14 @@ class RoomMethods(BaseClientAPI):
             alias_localpart: The room alias to remove.
         """
         room_alias = f"#{alias_localpart}:{self.domain}"
-        await self.api.request(Method.DELETE, Path.directory.room[room_alias])
+        try:
+            await self.api.request(Method.DELETE, Path.directory.room[room_alias])
+        except MatrixRequestError as e:
+            if e.http_status == 404:
+                self.log.exception(
+                    f"Failed to remove {room_alias} which was not found.")
+            else:
+                raise
 
     async def get_room_alias(self, room_alias: RoomAlias) -> RoomAliasInfo:
         """
