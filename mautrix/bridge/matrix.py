@@ -348,6 +348,9 @@ class BaseMatrixHandler:
                                          f"\u26a0 Your message was not bridged: {error}")
 
     async def handle_encrypted(self, evt: EncryptedEvent) -> None:
+        if not self.e2ee:
+            await self.handle_encrypted_unsupported(evt)
+            return
         try:
             decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=5)
         except SessionNotFound as e:
@@ -358,6 +361,12 @@ class BaseMatrixHandler:
             await self.send_encryption_error_notice(evt, e)
         else:
             await self.int_handle_event(decrypted)
+
+    async def handle_encrypted_unsupported(self, evt: EncryptedEvent) -> None:
+        self.log.debug("Got encrypted message %s from %s, but encryption is not enabled",
+                       evt.event_id, evt.sender)
+        await self.az.intent.send_notice(evt.room_id, "🔒️ This bridge has not been configured "
+                                                      "to support encryption")
 
     async def _handle_encrypted_wait(self, evt: EncryptedEvent, err: SessionNotFound, wait: int
                                      ) -> None:
@@ -441,7 +450,7 @@ class BaseMatrixHandler:
             if evt.type != EventType.ROOM_MESSAGE:
                 evt.content.msgtype = MessageType(str(evt.type))
             await self.handle_message(evt.room_id, evt.sender, evt.content, evt.event_id)
-        elif evt.type == EventType.ROOM_ENCRYPTED and self.e2ee:
+        elif evt.type == EventType.ROOM_ENCRYPTED:
             await self.handle_encrypted(evt)
         elif evt.type == EventType.ROOM_ENCRYPTION:
             await self.handle_encryption(evt)
