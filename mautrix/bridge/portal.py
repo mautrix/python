@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
+from collections import defaultdict
 from abc import ABC, abstractmethod
 import asyncio
 import logging
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 
 class BasePortal(ABC):
     log: TraceLogger = logging.getLogger("mau.portal")
+    _async_get_locks: Dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
     az: AppService
     matrix: 'BaseMatrixHandler'
     bridge: 'Bridge'
