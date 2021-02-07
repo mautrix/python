@@ -29,6 +29,7 @@ class Database:
     log: logging.Logger
 
     _pool: Optional[asyncpg.pool.Pool]
+    _pool_override: bool
     db_args: Dict[str, Any]
     upgrade_table: UpgradeTable
 
@@ -37,7 +38,8 @@ class Database:
     def __init__(self, url: str, db_args: Optional[Dict[str, Any]] = None,
                  upgrade_table: Union[None, UpgradeTable, str] = None,
                  log: Optional[logging.Logger] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+                 loop: Optional[asyncio.AbstractEventLoop] = None,
+                 pool_override: Optional[asyncpg.pool.Pool] = None) -> None:
         self.url = url
         self.db_args = db_args or {}
         if isinstance(upgrade_table, str):
@@ -48,14 +50,20 @@ class Database:
             self.upgrade_table = UpgradeTable()
         else:
             raise ValueError(f"Can't use {type(upgrade_table)} as the upgrade table")
-        self._pool = None
+        self._pool = pool_override
+        self._pool_override = bool(pool_override)
         self.log = log or logging.getLogger("mau.db")
         self.loop = loop or asyncio.get_event_loop()
 
+    def override_pool(self, pool: asyncpg.pool.Pool) -> None:
+        self._pool = pool
+        self._pool_override = True
+
     async def start(self) -> None:
-        self.db_args["loop"] = self.loop
-        self.log.debug(f"Connecting to {self.url}")
-        self._pool = await asyncpg.create_pool(self.url, **self.db_args)
+        if not self._pool_override:
+            self.db_args["loop"] = self.loop
+            self.log.debug(f"Connecting to {self.url}")
+            self._pool = await asyncpg.create_pool(self.url, **self.db_args)
         try:
             await self.upgrade_table.upgrade(self.pool)
         except Exception:
@@ -69,7 +77,8 @@ class Database:
         return self._pool
 
     async def stop(self) -> None:
-        await self.pool.close()
+        if not self._pool_override:
+            await self.pool.close()
 
     async def execute(self, query: str, *args: Any, timeout: Optional[float] = None) -> str:
         async with self.acquire() as conn:
