@@ -25,7 +25,7 @@ class Client(EncryptingAPI, Syncer):
         self.add_event_handler(EventType.ALL, self._update_state)
 
     async def _update_state(self, evt: Event) -> None:
-        if not isinstance(evt, StateEvent):
+        if not isinstance(evt, StateEvent) or not self.state_store:
             return
         await self.state_store.update_state(evt)
 
