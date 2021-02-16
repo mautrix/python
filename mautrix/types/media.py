@@ -18,7 +18,7 @@ class MediaRepoConfig(SerializableAttrs['MediaRepoConfig']):
     .. _GET /_matrix/media/r0/config:
         https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-media-r0-config
     """
-    upload_size: int = attr.ib(metadata={"json": "m.upload_size"})
+    upload_size: int = attr.ib(metadata={"json": "m.upload.size"})
 
 
 @dataclass

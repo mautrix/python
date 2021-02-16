@@ -15,7 +15,8 @@ from yarl import URL
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
                            PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent,
-                           EncryptedEvent, ReceiptType, SingleReceiptEventContent, StateUnsigned)
+                           EncryptedEvent, ReceiptType, SingleReceiptEventContent, StateUnsigned,
+                           MediaRepoConfig)
 from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound
 from mautrix.appservice import AppService
 from mautrix.util.logging import TraceLogger
@@ -45,6 +46,7 @@ class BaseMatrixHandler:
     config: 'BaseBridgeConfig'
     bridge: 'Bridge'
     e2ee: Optional[EncryptionManager]
+    media_config: MediaRepoConfig
 
     user_id_prefix: str
     user_id_suffix: str
@@ -55,6 +57,7 @@ class BaseMatrixHandler:
         self.config = bridge.config
         self.bridge = bridge
         self.commands = command_processor or CommandProcessor(bridge=bridge)
+        self.media_config = MediaRepoConfig(upload_size=50 * 1024 * 1024)
         self.az.matrix_event_handler(self.int_handle_event)
 
         self.e2ee = None
@@ -104,6 +107,10 @@ class BaseMatrixHandler:
                     await asyncio.sleep(10)
                 else:
                     raise
+        try:
+            self.media_config = await self.az.intent.get_media_repo_config()
+        except Exception:
+            self.log.warning("Failed to fetch media repo config", exc_info=True)
 
     async def init_as_bot(self) -> None:
         self.log.debug("Initializing appservice bot")
