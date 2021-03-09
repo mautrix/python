@@ -388,6 +388,7 @@ class BaseMatrixHandler:
             try:
                 decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=0)
             except DecryptionError as e:
+                self.log.warning(f"Didn't get {err.session_id}, giving up on {evt.event_id}")
                 msg = f"\u26a0 Your message was not bridged: {e}"
             else:
                 await self.az.intent.redact(evt.room_id, event_id)
