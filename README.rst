@@ -1,13 +1,22 @@
 mautrix-python
 ==============
 
-|PyPI| |ReadTheDocs| |Python versions| |License|
+|PyPI| |Python versions| |License|
 
-A Python 3.6+ asyncio Matrix framework.
+A Python 3.7+ asyncio Matrix framework.
 
 Matrix room: `#maunium:maunium.net`_
 
-Components:
+Sponsors
+--------
+* `kumitterer`_
+
+
+.. _kumitterer: https://kumi.website/
+
+
+Components
+----------
 
 * Basic HTTP request sender (mautrix.api_)
 
