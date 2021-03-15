@@ -21,7 +21,7 @@ from .portal import BasePortal
 if TYPE_CHECKING:
     from .bridge import Bridge
 
-AsmuxPath = UnstableClientPath["net.maunium.asmux"]
+AsmuxPath = UnstableClientPath["com.beeper.asmux"]
 
 
 class BaseUser(ABC):
