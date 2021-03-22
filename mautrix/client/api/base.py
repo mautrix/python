@@ -11,7 +11,7 @@ import json
 from yarl import URL
 from aiohttp import ClientSession, ContentTypeError, ClientError
 
-from mautrix.api import HTTPAPI, Method, Path
+from mautrix.api import HTTPAPI, Method
 from mautrix.types import UserID, DeviceID, VersionsResponse, SerializerError
 from mautrix.util.logging import TraceLogger
 from mautrix.errors import (WellKnownNotURL, WellKnownNotJSON, WellKnownMissingHomeserver,
@@ -123,7 +123,7 @@ class BaseClientAPI:
             WellKnownError: for other errors
         """
         if session is None:
-            async with ClientSession() as sess:
+            async with ClientSession(headers={"User-Agent": HTTPAPI.default_ua}) as sess:
                 return await cls._discover(domain, sess)
         else:
             return await cls._discover(domain, session)

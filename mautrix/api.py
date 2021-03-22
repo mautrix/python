@@ -8,16 +8,18 @@ from urllib.parse import quote as urllib_quote, urljoin as urllib_join
 from json.decoder import JSONDecodeError
 from enum import Enum
 from time import time
-import json
+import platform
 import logging
 import asyncio
+import json
 
 from yarl import URL
-from aiohttp import ClientSession
+from aiohttp import ClientSession,  __version__ as aiohttp_version
 from aiohttp.client_exceptions import ContentTypeError, ClientError
 
 from mautrix.errors import make_request_error, MatrixConnectionError
 from mautrix.util.logging import TraceLogger
+from mautrix import __version__ as mautrix_version
 
 if TYPE_CHECKING:
     from mautrix.types import JSON
@@ -120,6 +122,8 @@ class HTTPAPI:
     loop: asyncio.AbstractEventLoop
     session: ClientSession
     txn_id: Optional[int]
+    default_ua: str = (f"mautrix-python/{mautrix_version} aiohttp/{aiohttp_version} "
+                       f"Python/{platform.python_version()}")
 
     def __init__(self, base_url: Union[URL, str], token: str = "", *,
                  client_session: ClientSession = None,
@@ -137,7 +141,8 @@ class HTTPAPI:
         self.token = token
         self.log = log or logging.getLogger("mau.http")
         self.loop = loop or asyncio.get_event_loop()
-        self.session = client_session or ClientSession(loop=self.loop)
+        self.session = client_session or ClientSession(loop=self.loop,
+                                                       headers={"User-Agent": self.default_ua})
         if txn_id is not None:
             self.txn_id = txn_id
 
