@@ -3,16 +3,18 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Iterator, Optional, TypeVar, Type, Dict, List, Any, cast
+from typing import Iterator, Optional, TypeVar, Type, Dict, List, Any, cast, TYPE_CHECKING
 from contextlib import contextmanager
 
 from sqlalchemy import Table, Constraint
 from sqlalchemy.engine.base import Engine, Connection
-from sqlalchemy.engine.result import RowProxy, ResultProxy
 from sqlalchemy.sql.base import ImmutableColumnCollection
 from sqlalchemy.sql.expression import Select, ClauseElement, and_
 from sqlalchemy.ext.declarative import as_declarative, declarative_base
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine.result import RowProxy, ResultProxy
 
 T = TypeVar('T', bound='BaseClass')
 
@@ -45,7 +47,7 @@ class BaseClass:
         return copy
 
     @classmethod
-    def _one_or_none(cls: Type[T], rows: ResultProxy) -> Optional[T]:
+    def _one_or_none(cls: Type[T], rows: 'ResultProxy') -> Optional[T]:
         """
         Try scanning one row from a ResultProxy and return ``None`` if it fails.
 
@@ -61,7 +63,7 @@ class BaseClass:
             return None
 
     @classmethod
-    def _all(cls: Type[T], rows: ResultProxy) -> Iterator[T]:
+    def _all(cls: Type[T], rows: 'ResultProxy') -> Iterator[T]:
         """
         Scan all rows from a ResultProxy.
 
@@ -75,7 +77,7 @@ class BaseClass:
             yield cls.scan(row)
 
     @classmethod
-    def scan(cls: Type[T], row: RowProxy) -> T:
+    def scan(cls: Type[T], row: 'RowProxy') -> T:
         """
         Read the data from a row into an object.
 
