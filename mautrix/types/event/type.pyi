@@ -1,11 +1,15 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Any, Dict
 
-from mautrix.types import JSON, Serializable, SerializableEnum
+from mautrix.types import JSON, Serializable, SerializableEnum, ExtensibleEnum
+
+
+class RoomType(ExtensibleEnum):
+    SPACE: 'RoomType'
 
 
 class EventType(Serializable):
@@ -32,6 +36,9 @@ class EventType(Serializable):
     ROOM_PINNED_EVENTS: 'EventType'
     ROOM_TOMBSTONE: 'EventType'
     ROOM_ENCRYPTION: 'EventType'
+
+    SPACE_CHILD: 'EventType'
+    SPACE_PARENT: 'EventType'
 
     ROOM_REDACTION: 'EventType'
     ROOM_MESSAGE: 'EventType'

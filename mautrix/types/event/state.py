@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,7 +9,8 @@ import attr
 
 from ..primitive import JSON, UserID, EventID, ContentURI, RoomID, RoomAlias
 from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
-from .base import BaseRoomEvent, BaseUnsigned, EventType
+from .base import BaseRoomEvent, BaseUnsigned
+from .type import EventType, RoomType
 from .encrypted import EncryptionAlgorithm
 
 
@@ -126,11 +127,40 @@ class RoomEncryptionStateEventContent(SerializableAttrs['RoomEncryptionStateEven
     rotation_period_msgs: int = 100
 
 
+@dataclass
+class RoomPredecessor(SerializableAttrs['RoomPredecessor']):
+    room_id: RoomID = None
+    event_id: EventID = None
+
+
+@dataclass
+class RoomCreateStateEventContent(SerializableAttrs['RoomCreateStateEventContent']):
+    room_version: str = "1"
+    federate: bool = attr.ib(metadata={"json": "m.federate", "omitdefault": True}, default=True)
+    predecessor: Optional[RoomPredecessor] = None
+    type: Optional[RoomType] = attr.ib(metadata={"json": "org.matrix.msc1772.type"}, default=None)
+
+
+@dataclass
+class SpaceChildStateEventContent(SerializableAttrs['SpaceChildStateEventContent']):
+    via: List[str] = None
+    order: str = ""
+    suggested: bool = False
+
+
+@dataclass
+class SpaceParentStateEventContent(SerializableAttrs['SpaceParentStateEventContent']):
+    via: List[str] = None
+    canonical: bool = False
+
+
 StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
                           AliasesStateEventContent, CanonicalAliasStateEventContent,
                           RoomNameStateEventContent, RoomAvatarStateEventContent,
                           RoomTopicStateEventContent, RoomPinnedEventsStateEventContent,
-                          RoomTombstoneStateEventContent, RoomEncryptionStateEventContent, Obj]
+                          RoomTombstoneStateEventContent, RoomEncryptionStateEventContent,
+                          RoomCreateStateEventContent, SpaceChildStateEventContent,
+                          SpaceParentStateEventContent, Obj]
 
 
 @dataclass
@@ -175,6 +205,7 @@ class StateUnsigned(StrippedStateUnsigned, SerializableAttrs['StateUnsigned']):
 
 
 state_event_content_map = {
+    EventType.ROOM_CREATE: RoomCreateStateEventContent,
     EventType.ROOM_POWER_LEVELS: PowerLevelStateEventContent,
     EventType.ROOM_MEMBER: MemberStateEventContent,
     EventType.ROOM_ALIASES: AliasesStateEventContent,
@@ -185,6 +216,8 @@ state_event_content_map = {
     EventType.ROOM_TOPIC: RoomTopicStateEventContent,
     EventType.ROOM_TOMBSTONE: RoomTombstoneStateEventContent,
     EventType.ROOM_ENCRYPTION: RoomEncryptionStateEventContent,
+    EventType.SPACE_CHILD: SpaceChildStateEventContent,
+    EventType.SPACE_PARENT: SpaceParentStateEventContent,
 }
 
 

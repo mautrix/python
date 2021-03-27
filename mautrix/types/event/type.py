@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7,7 +7,11 @@ from typing import Any, Dict, Optional
 import json
 
 from ..primitive import JSON
-from ..util import SerializableEnum, Serializable
+from ..util import SerializableEnum, ExtensibleEnum, Serializable
+
+
+class RoomType(ExtensibleEnum):
+    SPACE = "org.matrix.msc1772.space"
 
 
 class EventType(Serializable):
@@ -117,6 +121,9 @@ _standard_types = {
         "m.room.pinned_events": "ROOM_PINNED_EVENTS",
         "m.room.tombstone": "ROOM_TOMBSTONE",
         "m.room.encryption": "ROOM_ENCRYPTION",
+
+        "org.matrix.msc1772.space.child": "SPACE_CHILD",
+        "org.matrix.msc1772.space.parent": "SPACE_PARENT",
     },
     EventType.Class.MESSAGE: {
         "m.room.redaction": "ROOM_REDACTION",
