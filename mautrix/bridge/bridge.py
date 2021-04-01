@@ -9,6 +9,7 @@ import sys
 
 from mautrix.types import RoomID, UserID
 from mautrix.appservice import AppService, ASStateStore
+from mautrix.api import HTTPAPI
 
 from ..util.program import Program
 from .config import BaseBridgeConfig
@@ -116,6 +117,8 @@ class Bridge(Program, ABC):
 
                              bot_localpart=self.config["appservice.bot_username"],
                              ephemeral_events=self.config["appservice.ephemeral_events"],
+
+                             default_ua=f"{self.name}/{self.version} {HTTPAPI.default_ua}",
 
                              log="mau.as",
                              loop=self.loop,
