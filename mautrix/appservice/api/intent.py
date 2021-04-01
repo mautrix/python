@@ -283,7 +283,7 @@ class IntentAPI(StoreUpdatingAPI):
     async def send_state_event(self, room_id: RoomID, event_type: EventType,
                                content: Union[StateEventContent, Dict],
                                state_key: Optional[str] = "", **kwargs) -> EventID:
-        await self._ensure_has_power_level_for(room_id, event_type)
+        await self._ensure_has_power_level_for(room_id, event_type, state_key=state_key)
         return await super().send_state_event(room_id, event_type, content, state_key, **kwargs)
 
     async def get_room_members(self, room_id: RoomID,
@@ -374,13 +374,18 @@ class IntentAPI(StoreUpdatingAPI):
                 # return
         await self.state_store.registered(self.mxid)
 
-    async def _ensure_has_power_level_for(self, room_id: RoomID, event_type: EventType) -> None:
+    async def _ensure_has_power_level_for(self, room_id: RoomID, event_type: EventType,
+                                          state_key: str = "") -> None:
         if not room_id:
             raise ValueError("Room ID not given")
         elif not event_type:
             raise ValueError("Event type not given")
 
+        if event_type == EventType.ROOM_MEMBER:
+            # TODO: if state_key doesn't equal self.mxid, check invite/kick/ban permissions
+            return
         if not await self.state_store.has_power_levels_cached(room_id):
+            # TODO add option to not try to fetch power levels from server
             await self.get_power_levels(room_id, ignore_cache=True)
         if not await self.state_store.has_power_level(room_id, self.mxid, event_type):
             # TODO implement something better
