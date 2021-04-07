@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Optional, List
 from collections import defaultdict
+from datetime import timedelta
 
 from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
 from mautrix.client.state_store import SyncStore
@@ -165,6 +166,9 @@ class PgCryptoStore(CryptoStore, SyncStore):
 
     async def add_outbound_group_session(self, session: OutboundGroupSession) -> None:
         pickle = session.pickle(self.pickle_key)
+        max_age = session.max_age
+        if self.db.scheme == "sqlite":
+            max_age = max_age.total_seconds()
         await self.db.execute("INSERT INTO crypto_megolm_outbound_session (room_id, session_id, "
                               "session, shared, max_messages, message_count, max_age, created_at, "
                               "last_used, account_id) "
@@ -173,7 +177,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
                               "session=$3, shared=$4, max_messages=$5, message_count=$6, "
                               "max_age=$7, created_at=$8, last_used=$9",
                               session.room_id, session.id, pickle, session.shared,
-                              session.max_messages, session.message_count, session.max_age,
+                              session.max_messages, session.message_count, max_age,
                               session.creation_time, session.use_time, self.account_id)
 
     async def update_outbound_group_session(self, session: OutboundGroupSession) -> None:
@@ -192,11 +196,14 @@ class PgCryptoStore(CryptoStore, SyncStore):
                                      room_id, self.account_id)
         if row is None:
             return None
+        max_age = row["max_age"]
+        if self.db.scheme == "sqlite":
+            max_age = timedelta(seconds=max_age)
         return OutboundGroupSession.from_pickle(row["session"], passphrase=self.pickle_key,
                                                 room_id=row["room_id"], shared=row["shared"],
                                                 max_messages=row["max_messages"],
                                                 message_count=row["message_count"],
-                                                max_age=row["max_age"], use_time=row["last_used"],
+                                                max_age=max_age, use_time=row["last_used"],
                                                 creation_time=row["created_at"])
 
     async def remove_outbound_group_session(self, room_id: RoomID) -> None:
@@ -205,22 +212,44 @@ class PgCryptoStore(CryptoStore, SyncStore):
                               room_id, self.account_id)
 
     async def remove_outbound_group_sessions(self, rooms: List[RoomID]) -> None:
-        await self.db.execute("DELETE FROM crypto_megolm_outbound_session "
-                              "WHERE room_id=ANY($1) AND account_id=$2",
-                              rooms, self.account_id)
+        if self.db.scheme == "postgres":
+            await self.db.execute("DELETE FROM crypto_megolm_outbound_session "
+                                  "WHERE account_id=$1 AND room_id=ANY($2)",
+                                  self.account_id, rooms)
+        else:
+            params = ",".join(["?"] * len(rooms))
+            await self.db.execute("DELETE FROM crypto_megolm_outbound_session "
+                                  f"WHERE account_id=? AND room_id IN ({params})",
+                                  self.account_id, *rooms)
+
+    _validate_message_index_query = (
+        "WITH existing AS ("
+        " INSERT INTO crypto_message_index(sender_key, session_id, index, event_id, timestamp)"
+        " VALUES ($1, $2, $3, $4, $5)"
+        # have to update something so that RETURNING * always returns the row
+        " ON CONFLICT (sender_key, session_id, index) DO UPDATE SET sender_key=$1"
+        " RETURNING *"
+        ")"
+        "SELECT * FROM existing"
+    )
 
     async def validate_message_index(self, sender_key: IdentityKey, session_id: SessionID,
                                      event_id: EventID, index: int, timestamp: int) -> bool:
-        q = ("WITH existing AS ("
-             " INSERT INTO crypto_message_index(sender_key, session_id, index, event_id, timestamp)"
-             " VALUES ($1, $2, $3, $4, $5)"
-             # have to update something so that RETURNING * always returns the row
-             " ON CONFLICT (sender_key, session_id, index) DO UPDATE SET sender_key=$1"
-             " RETURNING *"
-             ")"
-             "SELECT * FROM existing")
-        row = await self.db.fetchrow(q, sender_key, session_id, index, event_id, timestamp)
-        return row["event_id"] == event_id and row["timestamp"] == timestamp
+        if self.db.scheme == "postgres":
+            row = await self.db.fetchrow(self._validate_message_index_query, sender_key, session_id,
+                                         index, event_id, timestamp)
+            return row["event_id"] == event_id and row["timestamp"] == timestamp
+        else:
+            row = await self.db.fetchrow("SELECT event_id, timestamp FROM crypto_message_index "
+                                         'WHERE sender_key=$1 AND session_id=$2 AND "index"=$3',
+                                         sender_key, session_id, index)
+            if row is not None:
+                return row["event_id"] == event_id and row["timestamp"] == timestamp
+            await self.db.execute("INSERT INTO crypto_message_index(sender_key, session_id, "
+                                  '                                 "index", event_id, timestamp) '
+                                  "VALUES ($1, $2, $3, $4, $5)",
+                                  sender_key, session_id, index, event_id, timestamp)
+            return True
 
     async def get_devices(self, user_id: UserID) -> Optional[Dict[DeviceID, DeviceIdentity]]:
         tracked_user_id = await self.db.fetchval("SELECT user_id FROM crypto_tracked_user "
@@ -260,9 +289,19 @@ class PgCryptoStore(CryptoStore, SyncStore):
             await conn.execute("INSERT INTO crypto_tracked_user (user_id) VALUES ($1) "
                                "ON CONFLICT (user_id) DO NOTHING", user_id)
             await conn.execute("DELETE FROM crypto_device WHERE user_id=$1", user_id)
-            await conn.copy_records_to_table("crypto_device", records=data, columns=columns)
+            if self.db.scheme == "postgres":
+                await conn.copy_records_to_table("crypto_device", records=data, columns=columns)
+            else:
+                await conn.executemany("INSERT INTO crypto_device (user_id, device_id, "
+                                       "identity_key, signing_key, trust, deleted, name) "
+                                       "VALUES ($1, $2, $3, $4, $5, $6, $7)", data)
 
     async def filter_tracked_users(self, users: List[UserID]) -> List[UserID]:
-        rows = await self.db.fetch("SELECT user_id FROM crypto_tracked_user "
-                                   "WHERE user_id = ANY($1)", users)
+        if self.db.scheme == "postgres":
+            rows = await self.db.fetch("SELECT user_id FROM crypto_tracked_user "
+                                       "WHERE user_id = ANY($1)", users)
+        else:
+            params = ",".join(["?"] * len(users))
+            rows = await self.db.fetch("SELECT user_id FROM crypto_tracked_user "
+                                       f"WHERE user_id IN ({params})", *users)
         return [row["user_id"] for row in rows]

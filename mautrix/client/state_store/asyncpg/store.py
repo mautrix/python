@@ -72,9 +72,14 @@ class PgStateStore(StateStore):
         records = [(room_id, user_id, str(member.membership), member.displayname, member.avatar_url)
                    for user_id, member in members.items()]
         async with self.db.acquire() as conn, conn.transaction():
-            del_q = "DELETE FROM mx_user_profile WHERE room_id=$1"
-            await conn.execute(del_q, room_id)
-            await conn.copy_records_to_table("mx_user_profile", records=records, columns=columns)
+            await conn.execute("DELETE FROM mx_user_profile WHERE room_id=$1", room_id)
+            if self.db.scheme == "postgres":
+                await conn.copy_records_to_table("mx_user_profile", records=records,
+                                                 columns=columns)
+            else:
+                await conn.executemany("INSERT INTO mx_user_profile (room_id, user_id, membership, "
+                                       "displayname, avatar_url) VALUES ($1, $2, $3, $4, $5)",
+                                       records)
 
     async def has_full_member_list(self, room_id: RoomID) -> bool:
         return bool(await self.db.fetchval("SELECT has_full_member_list FROM mx_room_state "

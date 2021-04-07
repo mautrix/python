@@ -14,7 +14,7 @@ upgrade_table = UpgradeTable(version_table_name="mx_version", database_name="mat
 
 
 @upgrade_table.register(description="Initial revision")
-async def upgrade_v1(conn: Connection) -> None:
+async def upgrade_v1(conn: Connection, scheme: str) -> None:
     await conn.execute("""CREATE TABLE mx_room_state (
         room_id              VARCHAR(255) PRIMARY KEY,
         is_encrypted         BOOLEAN,
@@ -22,7 +22,9 @@ async def upgrade_v1(conn: Connection) -> None:
         encryption           TEXT,
         power_levels         TEXT
     )""")
-    await conn.execute("CREATE TYPE membership AS ENUM ('join', 'leave', 'invite', 'ban', 'knock')")
+    if scheme != "sqlite":
+        await conn.execute("CREATE TYPE membership AS ENUM "
+                           "('join', 'leave', 'invite', 'ban', 'knock')")
     await conn.execute("""CREATE TABLE mx_user_profile (
         room_id     VARCHAR(255),
         user_id     VARCHAR(255),
@@ -34,7 +36,10 @@ async def upgrade_v1(conn: Connection) -> None:
 
 
 @upgrade_table.register(description="Stop using size-limited string fields")
-async def upgrade_v2(conn: Connection) -> None:
+async def upgrade_v2(conn: Connection, scheme: str) -> None:
+    if scheme == "sqlite":
+        # SQLite doesn't care about types
+        return
     await conn.execute("ALTER TABLE mx_room_state ALTER COLUMN room_id TYPE TEXT")
     await conn.execute("ALTER TABLE mx_user_profile ALTER COLUMN room_id TYPE TEXT")
     await conn.execute("ALTER TABLE mx_user_profile ALTER COLUMN user_id TYPE TEXT")

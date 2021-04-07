@@ -1,23 +1,27 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Callable, Awaitable, List, Dict, Optional, Union
+from typing import Callable, Awaitable, List, Dict, Optional, Union, TYPE_CHECKING
+import functools
 import logging
-
-import asyncpg
+import inspect
 
 from ..logging import TraceLogger
 
-Upgrade = Callable[[asyncpg.Connection], Awaitable[None]]
+if TYPE_CHECKING:
+    from .database import Database
+    from asyncpg import Connection
+
+Upgrade = Callable[['Connection', str], Awaitable[None]]
 
 
 class UnsupportedDatabaseVersion(Exception):
     pass
 
 
-async def noop_upgrade(_: asyncpg.Connection) -> None:
+async def noop_upgrade(_: 'Connection') -> None:
     pass
 
 
@@ -44,6 +48,16 @@ class UpgradeTable:
             index = -1
 
         def actually_register(fn: Upgrade) -> Upgrade:
+            params = inspect.signature(fn).parameters
+            if len(params) == 1:
+                _wrapped: Callable[['Connection'], Awaitable[None]] = fn
+
+                @functools.wraps(_wrapped)
+                async def _wrapper(conn: 'Connection', _: str) -> None:
+                    return await _wrapped(conn)
+
+                fn = _wrapper
+
             fn.__mau_db_upgrade_description__ = description
             fn.__mau_db_upgrade_transaction__ = transaction
             if index == -1 or index == len(self.upgrades):
@@ -56,46 +70,45 @@ class UpgradeTable:
 
         return actually_register(_outer_fn) if _outer_fn else actually_register
 
-    async def _save_version(self, conn: asyncpg.Connection, version: int) -> None:
+    async def _save_version(self, conn: 'Connection', version: int) -> None:
         self.log.trace(f"Saving current version (v{version}) to database")
         await conn.execute(f"DELETE FROM {self.version_table_name}")
         await conn.execute(f"INSERT INTO {self.version_table_name} (version) VALUES ($1)",
                            version)
 
-    async def upgrade(self, pool: asyncpg.pool.Pool) -> None:
-        async with pool.acquire() as conn:
-            await conn.execute(f"""CREATE TABLE IF NOT EXISTS {self.version_table_name} (
-                version INTEGER PRIMARY KEY
-            )""")
-            row: asyncpg.Record = await conn.fetchrow("SELECT version FROM "
-                                                      f"{self.version_table_name} LIMIT 1")
-            version = row["version"] if row else 0
+    async def upgrade(self, db: 'Database') -> None:
+        await db.execute(f"""CREATE TABLE IF NOT EXISTS {self.version_table_name} (
+            version INTEGER PRIMARY KEY
+        )""")
+        row = await db.fetchrow(f"SELECT version FROM {self.version_table_name} LIMIT 1")
+        version = row["version"] if row else 0
 
-            if len(self.upgrades) < version:
-                error = (f"Unsupported database version v{version} "
-                         f"(latest known is v{len(self.upgrades) - 1})")
-                if not self.allow_unsupported:
-                    raise UnsupportedDatabaseVersion(error)
-                else:
-                    self.log.warning(error)
-                    return
-            elif len(self.upgrades) == version:
-                self.log.debug(f"Database at v{version}, not upgrading")
+        if len(self.upgrades) < version:
+            error = (f"Unsupported database version v{version} "
+                     f"(latest known is v{len(self.upgrades) - 1})")
+            if not self.allow_unsupported:
+                raise UnsupportedDatabaseVersion(error)
+            else:
+                self.log.warning(error)
                 return
+        elif len(self.upgrades) == version:
+            self.log.debug(f"Database at v{version}, not upgrading")
+            return
 
+        async with db.acquire() as conn:
             for new_version in range(version + 1, len(self.upgrades)):
                 upgrade = self.upgrades[new_version]
                 desc = getattr(upgrade, "__mau_db_upgrade_description__", None)
                 suffix = f": {desc}" if desc else ""
                 self.log.debug(f"Upgrading {self.database_name} "
                                f"from v{version} to v{new_version}{suffix}")
-                if getattr(upgrade, "__mau_db_upgrade_transaction", True):
+                if getattr(upgrade, "__mau_db_upgrade_transaction__", True):
                     async with conn.transaction():
-                        await upgrade(conn)
+                        await upgrade(conn, db.scheme)
                         version = new_version
                         await self._save_version(conn, version)
                 else:
-                    await upgrade(conn)
+                    await upgrade(conn, db.scheme)
                     version = new_version
                     await self._save_version(conn, version)
 

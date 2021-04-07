@@ -10,6 +10,7 @@ from mautrix.types import RoomID, UserID, RoomEncryptionStateEventContent
 from mautrix.crypto import StateStore
 
 from mautrix.bridge.portal import BasePortal
+from mautrix.util.async_db import Database
 
 GetPortalFunc = Callable[[RoomID], Awaitable[BasePortal]]
 
@@ -45,30 +46,24 @@ except ImportError:
     RoomState = None
     SQLCryptoStateStore = None
 
-try:
-    from mautrix.util.async_db import Database
 
+class PgCryptoStateStore(BaseCryptoStateStore):
+    db: Database
 
-    class PgCryptoStateStore(BaseCryptoStateStore):
-        db: Database
+    def __init__(self, db: Database, get_portal: GetPortalFunc) -> None:
+        super().__init__(get_portal)
+        self.db = db
 
-        def __init__(self, db: Database, get_portal: GetPortalFunc) -> None:
-            super().__init__(get_portal)
-            self.db = db
+    async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]:
+        rows = await self.db.fetch("SELECT room_id FROM mx_user_profile "
+                                   "LEFT JOIN portal ON portal.mxid=mx_user_profile.room_id "
+                                   "WHERE user_id=$1 AND portal.encrypted=true", user_id)
+        return [row["room_id"] for row in rows]
 
-        async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]:
-            rows = await self.db.fetch("SELECT room_id FROM mx_user_profile "
-                                       "LEFT JOIN portal ON portal.mxid=mx_user_profile.room_id "
-                                       "WHERE user_id=$1 AND portal.encrypted=true", user_id)
-            return [row["room_id"] for row in rows]
-
-        async def get_encryption_info(self, room_id: RoomID
-                                      ) -> Optional[RoomEncryptionStateEventContent]:
-            val = await self.db.fetchval("SELECT encryption FROM mx_room_state WHERE room_id=$1",
-                                         room_id)
-            if not val:
-                return None
-            return RoomEncryptionStateEventContent.parse_json(val)
-except ImportError:
-    Database = None
-    PgStateStore = None
+    async def get_encryption_info(self, room_id: RoomID
+                                  ) -> Optional[RoomEncryptionStateEventContent]:
+        val = await self.db.fetchval("SELECT encryption FROM mx_room_state WHERE room_id=$1",
+                                     room_id)
+        if not val:
+            return None
+        return RoomEncryptionStateEventContent.parse_json(val)

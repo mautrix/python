@@ -4,6 +4,7 @@ SQLAlchemy
 commonmark
 lxml
 asyncpg
+aiosqlite
 prometheus_client
 setuptools
 uvloop

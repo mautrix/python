@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,11 +14,11 @@ from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, Sta
 from mautrix.appservice import AppService
 from mautrix.errors import EncryptionError, SessionNotFound
 from mautrix.client import Client, SyncStore
-from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore, PickleCryptoStore,
+from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore,
                             DeviceIdentity, RejectKeyShare, TrustState)
 from mautrix.util.logging import TraceLogger
 
-from .crypto_state_store import PgCryptoStateStore, SQLCryptoStateStore
+from .crypto_state_store import PgCryptoStateStore
 
 try:
     from mautrix.client.state_store.sqlalchemy import UserProfile
@@ -64,19 +64,10 @@ class EncryptionManager:
         self._share_session_events = {}
         self.key_sharing_config = key_sharing_config or {}
         pickle_key = "mautrix.bridge.e2ee"
-        if db_url.startswith("postgres://") or db_url.startswith("postgresql://"):
-            if not PgCryptoStore or not PgCryptoStateStore:
-                raise RuntimeError("Database URL is set to postgres, but asyncpg is not installed")
-            self.crypto_db = Database(url=db_url, upgrade_table=PgCryptoStore.upgrade_table,
-                                      log=logging.getLogger("mau.crypto.db"), loop=self.loop)
-            self.crypto_store = PgCryptoStore("", pickle_key, self.crypto_db)
-            self.state_store = PgCryptoStateStore(self.crypto_db, bridge.get_portal)
-        elif db_url.startswith("pickle:///"):
-            self.crypto_db = None
-            self.crypto_store = PickleCryptoStore("", pickle_key, db_url[len("pickle:///"):])
-            self.state_store = SQLCryptoStateStore(bridge.get_portal)
-        else:
-            raise RuntimeError("Unsupported database scheme")
+        self.crypto_db = Database.create(url=db_url, upgrade_table=PgCryptoStore.upgrade_table,
+                                         log=logging.getLogger("mau.crypto.db"))
+        self.crypto_store = PgCryptoStore("", pickle_key, self.crypto_db)
+        self.state_store = PgCryptoStateStore(self.crypto_db, bridge.get_portal)
         self.client = Client(base_url=homeserver_address, mxid=self.az.bot_mxid, loop=self.loop,
                              sync_store=self.crypto_store, log=self.log.getChild("client"))
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
