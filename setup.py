@@ -35,5 +35,11 @@ setuptools.setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
-    ]
+    ],
+
+    package_data={
+        "mautrix.types.event": ["type.pyi"],
+        "mautrix.util": ["opt_prometheus.pyi"],
+        "mautrix.util.formatter": ["html_reader.pyi"],
+    },
 )
