@@ -1,5 +1,0 @@
-Sphinx
-sphinx-autobuild
-sphinx-autodoc-typehints
-sphinx-rtd-theme
--r ../requirements.txt
