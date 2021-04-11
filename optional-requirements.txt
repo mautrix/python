@@ -7,3 +7,6 @@ asyncpg
 prometheus_client
 setuptools
 uvloop
+python-olm
+unpaddedbase64
+pycryptodome
