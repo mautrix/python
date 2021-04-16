@@ -222,6 +222,7 @@ class HTTPAPI:
                 If the headers don't contain ``Content-Type``, it'll be set to ``application/json``.
                 The ``Authorization`` header is always overridden if :attr:`token` is set.
             query_params: A dict of query parameters to send.
+            retry_count: Number of times to retry if the homeserver isn't reachable.
 
         Returns:
             The parsed response JSON.

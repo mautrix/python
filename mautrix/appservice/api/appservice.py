@@ -169,7 +169,8 @@ class AppServiceAPI(HTTPAPI):
     def request(self, method: Method, path: PathBuilder,
                 content: Optional[Union[Dict, bytes, str]] = None, timestamp: Optional[int] = None,
                 headers: Optional[Dict[str, str]] = None,
-                query_params: Optional[Dict[str, Any]] = None) -> Awaitable[Dict]:
+                query_params: Optional[Dict[str, Any]] = None,
+                retry_count: Optional[int] = None) -> Awaitable[Dict]:
         """
         Make a raw HTTP request, with optional AppService timestamp massaging and external_url
         setting.
@@ -182,6 +183,7 @@ class AppServiceAPI(HTTPAPI):
             timestamp: The timestamp query param used for timestamp massaging.
             headers: The dict of HTTP headers to send.
             query_params: The dict of query parameters to send.
+            retry_count: Number of times to retry if the homeserver isn't reachable.
 
         Returns:
             The response as a dict.
@@ -194,7 +196,7 @@ class AppServiceAPI(HTTPAPI):
         if not self.is_real_user:
             query_params["user_id"] = self.identity or self.bot_mxid
 
-        return super().request(method, path, content, headers, query_params)
+        return super().request(method, path, content, headers, query_params, retry_count)
 
 
 class ChildAppServiceAPI(AppServiceAPI):
