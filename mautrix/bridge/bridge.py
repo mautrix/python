@@ -1,9 +1,9 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Type, Any
+from typing import Optional, Type
 from abc import ABC, abstractmethod
 import sys
 
@@ -104,6 +104,7 @@ class Bridge(Program, ABC):
     def prepare_appservice(self) -> None:
         self.make_state_store()
         mb = 1024 ** 2
+        default_http_retry_count = self.config.get("homeserver.http_retry_count", None)
         self.az = AppService(server=self.config["homeserver.address"],
                              domain=self.config["homeserver.domain"],
                              verify_ssl=self.config["homeserver.verify_ssl"],
@@ -119,6 +120,7 @@ class Bridge(Program, ABC):
                              ephemeral_events=self.config["appservice.ephemeral_events"],
 
                              default_ua=f"{self.name}/{self.version} {HTTPAPI.default_ua}",
+                             default_http_retry_count=default_http_retry_count,
 
                              log="mau.as",
                              loop=self.loop,

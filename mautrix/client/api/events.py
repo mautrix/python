@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -54,7 +54,7 @@ class EventMethods(BaseClientAPI):
             request["full_state"] = "true" if full_state else "false"
         if set_presence:
             request["set_presence"] = str(set_presence)
-        return self.api.request(Method.GET, Path.sync, query_params=request)
+        return self.api.request(Method.GET, Path.sync, query_params=request, retry_count=0)
 
     # endregion
     # region 8.3 Getting events for a room

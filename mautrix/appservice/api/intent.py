@@ -293,7 +293,7 @@ class IntentAPI(StoreUpdatingAPI):
             memberships = await self.get_joined_members(room_id)
             return list(memberships.keys())
         member_events = await self.get_members(room_id)
-        return [evt.state_key for evt in member_events
+        return [UserID(evt.state_key) for evt in member_events
                 if evt.content.membership in allowed_memberships]
 
     async def leave_room(self, room_id: RoomID) -> None:

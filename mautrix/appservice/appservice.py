@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -39,6 +39,7 @@ class AppService(AppServiceServerMixin):
     hs_token: str
     bot_mxid: UserID
     default_ua: str
+    default_http_retry_count: int
     real_user_content_key: str
     state_store: ASStateStore
 
@@ -61,7 +62,8 @@ class AppService(AppServiceServerMixin):
                  query_user: QueryFunc = None, query_alias: QueryFunc = None,
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
                  state_store: ASStateStore = None, aiohttp_params: Dict = None,
-                 ephemeral_events: bool = False, default_ua: str = HTTPAPI.default_ua) -> None:
+                 ephemeral_events: bool = False, default_ua: str = HTTPAPI.default_ua,
+                 default_http_retry_count: int = 0) -> None:
         super().__init__(ephemeral_events=ephemeral_events)
         self.server = server
         self.domain = domain
@@ -73,6 +75,7 @@ class AppService(AppServiceServerMixin):
         self.hs_token = hs_token
         self.bot_mxid = UserID(f"@{bot_localpart}:{domain}")
         self.default_ua = default_ua
+        self.default_http_retry_count = default_http_retry_count
         self.real_user_content_key: str = real_user_content_key
         if not state_store:
             file = state_store if isinstance(state_store, str) else "mx-state.json"
@@ -133,7 +136,8 @@ class AppService(AppServiceServerMixin):
         self._intent = AppServiceAPI(base_url=self.server, bot_mxid=self.bot_mxid, log=self.log,
                                      token=self.as_token, state_store=self.state_store,
                                      real_user_content_key=self.real_user_content_key,
-                                     client_session=self._http_session).bot_intent()
+                                     client_session=self._http_session,
+                                     default_retry_count=self.default_http_retry_count).bot_intent()
         ssl_ctx = None
         if self.tls_cert and self.tls_key:
             ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)

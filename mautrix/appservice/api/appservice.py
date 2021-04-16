@@ -44,7 +44,7 @@ class AppServiceAPI(HTTPAPI):
                  identity: Optional[UserID] = None, log: TraceLogger = None,
                  state_store: 'ASStateStore' = None, client_session: ClientSession = None,
                  child: bool = False, real_user: bool = False,
-                 real_user_content_key: Optional[str] = None,
+                 real_user_content_key: Optional[str] = None, default_retry_count: int = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         """
         Args:
@@ -63,7 +63,8 @@ class AppServiceAPI(HTTPAPI):
         self.base_log = log
         api_log = self.base_log.getChild("api").getChild(identity or "bot")
         super().__init__(base_url=base_url, token=token, loop=loop, log=api_log,
-                         client_session=client_session, txn_id=0 if not child else None)
+                         client_session=client_session, txn_id=0 if not child else None,
+                         default_retry_count=default_retry_count)
         self.identity = identity
         self.bot_mxid = bot_mxid
         self._bot_intent = None
@@ -125,7 +126,8 @@ class AppServiceAPI(HTTPAPI):
             child = type(self)(base_url=base_url or self.base_url, token=token, identity=mxid,
                                log=self.base_log, state_store=self.state_store,
                                client_session=self.session, real_user=True,
-                               real_user_content_key=self.real_user_content_key, loop=self.loop)
+                               real_user_content_key=self.real_user_content_key, loop=self.loop,
+                               default_retry_count=self.default_retry_count)
             self.real_users[mxid] = child
         return child
 
@@ -210,7 +212,8 @@ class ChildAppServiceAPI(AppServiceAPI):
         """
         super().__init__(parent.base_url, parent.bot_mxid, parent.token, user, parent.base_log,
                          parent.state_store, parent.session, child=True, loop=parent.loop,
-                         real_user_content_key=parent.real_user_content_key)
+                         real_user_content_key=parent.real_user_content_key,
+                         default_retry_count=parent.default_retry_count)
         self.parent = parent
 
     @property

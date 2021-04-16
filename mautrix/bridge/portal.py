@@ -15,7 +15,6 @@ from mautrix.types import (RoomID, EventID, MessageEventContent, EventType, Encr
 from mautrix.errors import MatrixError, MatrixRequestError, MNotFound
 from mautrix.util.logging import TraceLogger
 from mautrix.util.simple_lock import SimpleLock
-from mautrix.util.network_retry import call_with_net_retry
 
 if TYPE_CHECKING:
     from .user import BaseUser
@@ -75,17 +74,12 @@ class BasePortal(ABC):
         return True
 
     async def _send_message(self, intent: IntentAPI, content: MessageEventContent,
-                            event_type: EventType = EventType.ROOM_MESSAGE, **kwargs
-                            ) -> EventID:
+                            event_type: EventType = EventType.ROOM_MESSAGE, **kwargs) -> EventID:
         if self.encrypted and self.matrix.e2ee:
             if intent.api.is_real_user:
                 content[intent.api.real_user_content_key] = True
-            event_type, content = await call_with_net_retry(self.matrix.e2ee.encrypt, self.mxid,
-                                                            event_type, content,
-                                                            _action="encrypt message")
-        txn_id = intent.api.get_txn_id()
-        return await call_with_net_retry(intent.send_message_event, self.mxid, event_type, content,
-                                         txn_id=txn_id, **kwargs, _action="send message")
+            event_type, content = await self.matrix.e2ee.encrypt(self.mxid, event_type, content)
+        return await intent.send_message_event(self.mxid, event_type, content, **kwargs)
 
     @property
     @abstractmethod

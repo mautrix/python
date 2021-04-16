@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -77,8 +77,10 @@ class EncryptionManager:
             self.state_store = SQLCryptoStateStore(bridge.get_portal)
         else:
             raise RuntimeError("Unsupported database scheme")
+        default_http_retry_count = bridge.config.get("homeserver.http_retry_count", None)
         self.client = Client(base_url=homeserver_address, mxid=self.az.bot_mxid, loop=self.loop,
-                             sync_store=self.crypto_store, log=self.log.getChild("client"))
+                             sync_store=self.crypto_store, log=self.log.getChild("client"),
+                             default_retry_count=default_http_retry_count)
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
         self.crypto.allow_key_share = self.allow_key_share
 

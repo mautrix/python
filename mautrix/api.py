@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,10 +14,10 @@ import asyncio
 import json
 
 from yarl import URL
-from aiohttp import ClientSession,  __version__ as aiohttp_version
+from aiohttp import ClientSession, __version__ as aiohttp_version
 from aiohttp.client_exceptions import ContentTypeError, ClientError
 
-from mautrix.errors import make_request_error, MatrixConnectionError
+from mautrix.errors import make_request_error, MatrixConnectionError, MatrixRequestError
 from mautrix.util.logging import TraceLogger
 from mautrix import __version__ as mautrix_version
 
@@ -112,6 +112,14 @@ ClientPath = Path
 UnstableClientPath = PathBuilder(APIPath.CLIENT_UNSTABLE)
 MediaPath = PathBuilder(APIPath.MEDIA)
 
+_req_id = 0
+
+
+def next_global_req_id() -> int:
+    global _req_id
+    _req_id += 1
+    return _req_id
+
 
 class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
@@ -124,9 +132,11 @@ class HTTPAPI:
     txn_id: Optional[int]
     default_ua: str = (f"mautrix-python/{mautrix_version} aiohttp/{aiohttp_version} "
                        f"Python/{platform.python_version()}")
+    global_default_retry_count: int = 0
+    default_retry_count: int
 
     def __init__(self, base_url: Union[URL, str], token: str = "", *,
-                 client_session: ClientSession = None,
+                 client_session: ClientSession = None, default_retry_count: int = None,
                  txn_id: int = 0, log: Optional[TraceLogger] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         """
@@ -136,6 +146,7 @@ class HTTPAPI:
             client_session: The aiohttp ClientSession to use.
             txn_id: The outgoing transaction ID to start with.
             log: The logging.Logger instance to log requests with.
+            default_retry_count: Default number of retries to do when encountering network errors.
         """
         self.base_url = URL(base_url)
         self.token = token
@@ -145,43 +156,39 @@ class HTTPAPI:
                                                        headers={"User-Agent": self.default_ua})
         if txn_id is not None:
             self.txn_id = txn_id
+        if default_retry_count is not None:
+            self.default_retry_count = default_retry_count
+        else:
+            self.default_retry_count = self.global_default_retry_count
 
     async def _send(self, method: Method, url: URL, content: Union[bytes, str],
                     query_params: Dict[str, str], headers: Dict[str, str]) -> 'JSON':
-        while True:
-            request = self.session.request(str(method), url, data=content,
-                                           params=query_params, headers=headers)
-            async with request as response:
-                if response.status < 200 or response.status >= 300:
-                    errcode = message = None
-                    try:
-                        response_data = await response.json()
-                        errcode = response_data["errcode"]
-                        message = response_data["error"]
-                    except (JSONDecodeError, ContentTypeError, KeyError):
-                        pass
-                    raise make_request_error(http_status=response.status,
-                                             text=await response.text(),
-                                             errcode=errcode, message=message)
-
-                if response.status == 429:
-                    resp = await response.json()
-                    seconds = resp["retry_after_ms"] / 1000
-                    self.log.debug(f"Request to {url} returned 429, "
-                                   f"waiting {seconds} seconds and retrying")
-                    await asyncio.sleep(seconds, loop=self.loop)
-                else:
-                    return await response.json()
+        request = self.session.request(str(method), url, data=content,
+                                       params=query_params, headers=headers)
+        async with request as response:
+            if response.status < 200 or response.status >= 300:
+                errcode = message = None
+                try:
+                    response_data = await response.json()
+                    errcode = response_data["errcode"]
+                    message = response_data["error"]
+                except (JSONDecodeError, ContentTypeError, KeyError):
+                    pass
+                raise make_request_error(http_status=response.status,
+                                         text=await response.text(),
+                                         errcode=errcode, message=message)
+            return await response.json()
 
     def _log_request(self, method: Method, path: PathBuilder, content: Union[str, bytes],
-                     orig_content, query_params: Dict[str, str]) -> None:
+                     orig_content, query_params: Dict[str, str], req_id: int) -> None:
         if not self.log:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = query_params.get("user_id", None)
         level = 1 if path == Path.sync else 5
-        self.log.log(level, f"{method} /{path} {log_content}".strip(" "),
+        self.log.log(level, f"{method}#{req_id} /{path} {log_content}".strip(" "),
                      extra={"matrix_http_request": {
+                         "req_id": req_id,
                          "method": str(method),
                          "path": str(path),
                          "content": (orig_content if isinstance(orig_content, (dict, list))
@@ -201,7 +208,8 @@ class HTTPAPI:
     async def request(self, method: Method, path: Union[PathBuilder, str],
                       content: Optional[Union[dict, list, bytes, str]] = None,
                       headers: Optional[Dict[str, str]] = None,
-                      query_params: Optional[Dict[str, str]] = None) -> 'JSON':
+                      query_params: Optional[Dict[str, str]] = None,
+                      retry_count: Optional[int] = None) -> 'JSON':
         """
         Make a raw Matrix API request.
 
@@ -230,14 +238,31 @@ class HTTPAPI:
         orig_content = content
         if is_json and isinstance(content, (dict, list)):
             content = json.dumps(content)
-
-        self._log_request(method, path, content, orig_content, query_params)
         full_url = self.base_url.with_path(self._full_path(path), encoded=True)
+        req_id = next_global_req_id()
 
-        try:
-            return await self._send(method, full_url, content, query_params, headers or {})
-        except ClientError as e:
-            raise MatrixConnectionError(str(e)) from e
+        if retry_count is None:
+            retry_count = self.default_retry_count
+        backoff = 4
+        while True:
+            self._log_request(method, path, content, orig_content, query_params, req_id)
+            try:
+                return await self._send(method, full_url, content, query_params, headers or {})
+            except MatrixRequestError as e:
+                if retry_count > 0 and e.http_status in (502, 503, 504):
+                    self.log.warning(f"Request #{req_id} failed with HTTP {e.http_status}, "
+                                     f"retrying in {backoff} seconds")
+                else:
+                    raise
+            except ClientError as e:
+                if retry_count > 0:
+                    self.log.warning(f"Request #{req_id} failed with {e}, "
+                                     f"retrying in {backoff} seconds")
+                else:
+                    raise MatrixConnectionError(str(e)) from e
+            await asyncio.sleep(backoff)
+            backoff *= 2
+            retry_count -= 1
 
     def get_txn_id(self) -> str:
         """Get a new unique transaction ID."""

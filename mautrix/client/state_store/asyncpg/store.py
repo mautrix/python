@@ -81,7 +81,7 @@ class PgStateStore(StateStore):
                                            "WHERE room_id=$1", room_id))
 
     async def has_power_levels_cached(self, room_id: RoomID) -> bool:
-        return bool(await self.db.fetchval("SELECT power_levels IS NULL FROM mx_room_state "
+        return bool(await self.db.fetchval("SELECT power_levels IS NOT NULL FROM mx_room_state "
                                            "WHERE room_id=$1", room_id))
 
     async def get_power_levels(self, room_id: RoomID) -> Optional[PowerLevelStateEventContent]:
