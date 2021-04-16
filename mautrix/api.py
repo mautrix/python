@@ -226,18 +226,21 @@ class HTTPAPI:
         Returns:
             The parsed response JSON.
         """
-        content = content or {}
         headers = headers or {}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
         query_params = query_params or {}
 
-        if "Content-Type" not in headers:
-            headers["Content-Type"] = "application/json"
-        is_json = headers.get("Content-Type", None) == "application/json"
-        orig_content = content
-        if is_json and isinstance(content, (dict, list)):
-            content = json.dumps(content)
+        if method != Method.GET:
+            content = content or {}
+            if "Content-Type" not in headers:
+                headers["Content-Type"] = "application/json"
+            orig_content = content
+            is_json = headers.get("Content-Type", None) == "application/json"
+            if is_json and isinstance(content, (dict, list)):
+                content = json.dumps(content)
+        else:
+            orig_content = content = None
         full_url = self.base_url.with_path(self._full_path(path), encoded=True)
         req_id = next_global_req_id()
 
