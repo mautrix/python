@@ -33,6 +33,11 @@ from .event import (EventType, GenericEvent,
                     RoomKeyWithheldEventContent, RoomKeyEventContent, KeyRequestAction,
                     RequestedKeyInfo, RoomKeyRequestEventContent, ForwardedRoomKeyEventContent,
 
+                    CallData, CallHangupReason, CallDataType, CallCandidate, CallInviteEventContent,
+                    CallCandidatesEventContent, CallSelectAnswerEventContent, CallEventContent,
+                    CallAnswerEventContent, CallHangupEventContent, CallNegotiateEventContent,
+                    CallEvent, CallRejectEventContent,
+
                     Event, EventContent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
                    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages,

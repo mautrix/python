@@ -25,7 +25,11 @@ from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, Presence
 from .encrypted import (EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm,
                         EncryptedOlmEventContent, EncryptedMegolmEventContent,
                         EncryptionKeyAlgorithm, OlmMsgType, OlmCiphertext)
-from .to_device import (ToDeviceEvent, ToDeviceEventContent,  RoomKeyWithheldCode,
+from .to_device import (ToDeviceEvent, ToDeviceEventContent, RoomKeyWithheldCode,
                         RoomKeyWithheldEventContent, RoomKeyEventContent, KeyRequestAction,
                         RequestedKeyInfo, RoomKeyRequestEventContent, ForwardedRoomKeyEventContent)
+from .voip import (CallData, CallHangupReason, CallDataType, CallCandidate, CallInviteEventContent,
+                   CallCandidatesEventContent, CallSelectAnswerEventContent, CallAnswerEventContent,
+                   CallHangupEventContent, CallNegotiateEventContent, CallEventContent, CallEvent,
+                   CallRejectEventContent)
 from .generic import Event, EventContent

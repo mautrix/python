@@ -17,14 +17,16 @@ from .account_data import AccountDataEvent, AccountDataEventContent
 from .to_device import ToDeviceEvent, ToDeviceEventContent
 from .ephemeral import (ReceiptEvent, PresenceEvent, TypingEvent, ReceiptEventContent,
                         TypingEventContent, EphemeralEvent)
+from .voip import CallEvent, CallEventContent, type_to_class as voip_types
 
 Event = NewType("Event", Union[MessageEvent, ReactionEvent, RedactionEvent, StateEvent, TypingEvent,
                                ReceiptEvent, PresenceEvent, EncryptedEvent, ToDeviceEvent,
-                               GenericEvent])
+                               CallEvent, GenericEvent])
 
 EventContent = Union[MessageEventContent, RedactionEventContent, ReactionEventContent,
                      StateEventContent, AccountDataEventContent, ReceiptEventContent,
-                     TypingEventContent, EncryptedEventContent, ToDeviceEventContent, Obj]
+                     TypingEventContent, EncryptedEventContent, ToDeviceEventContent,
+                     CallEventContent, Obj]
 
 
 @deserializer(Event)
@@ -41,6 +43,8 @@ def deserialize_event(data: JSON) -> Event:
         return RedactionEvent.deserialize(data)
     elif event_type == EventType.ROOM_ENCRYPTED:
         return EncryptedEvent.deserialize(data)
+    elif event_type in voip_types.keys():
+        return CallEvent.deserialize(data, event_type=event_type)
     elif event_type.is_to_device:
         return ToDeviceEvent.deserialize(data)
     elif event_type.is_state:

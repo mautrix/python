@@ -46,6 +46,14 @@ class EventType(Serializable):
     STICKER: 'EventType'
     REACTION: 'EventType'
 
+    CALL_INVITE: 'EventType'
+    CALL_CANDIDATES: 'EventType'
+    CALL_SELECT_ANSWER: 'EventType'
+    CALL_ANSWER: 'EventType'
+    CALL_HANGUP: 'EventType'
+    CALL_REJECT: 'EventType'
+    CALL_NEGOTIATE: 'EventType'
+
     RECEIPT: 'EventType'
     TYPING: 'EventType'
     PRESENCE: 'EventType'

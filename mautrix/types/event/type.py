@@ -131,6 +131,14 @@ _standard_types = {
         "m.room.encrypted": "ROOM_ENCRYPTED",
         "m.sticker": "STICKER",
         "m.reaction": "REACTION",
+
+        "m.call.invite": "CALL_INVITE",
+        "m.call.candidates": "CALL_CANDIDATES",
+        "m.call.select_answer": "CALL_SELECT_ANSWER",
+        "m.call.answer": "CALL_ANSWER",
+        "m.call.hangup": "CALL_HANGUP",
+        "m.call.reject": "CALL_REJECT",
+        "m.call.negotiate": "CALL_NEGOTIATE",
     },
     EventType.Class.EPHEMERAL: {
         "m.receipt": "RECEIPT",
