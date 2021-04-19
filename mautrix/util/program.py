@@ -240,11 +240,12 @@ class Program:
     def add_shutdown_actions(self, *actions: NewTask) -> None:
         self.shutdown_actions = self._add_actions(self.shutdown_actions, actions)
 
-    async def _unpack_async_iterator(self, iterable: AsyncIterable[Awaitable[Any]]) -> None:
+    @staticmethod
+    async def _unpack_async_iterator(iterable: AsyncIterable[Awaitable[Any]]) -> None:
         tasks = []
         async for task in iterable:
             if inspect.isawaitable(task):
-                tasks.append(asyncio.ensure_future(task, loop=self.loop))
+                tasks.append(asyncio.create_task(task))
         await asyncio.gather(*tasks)
 
     def _add_actions(self, to: TaskList, add: Tuple[NewTask, ...]) -> TaskList:

@@ -258,7 +258,7 @@ class RoomMethods(BaseClientAPI):
                     wait = tries * 10
                     self.log.exception(
                         f"Failed to join room {room_id_or_alias}, retrying in {wait} seconds...")
-                    await asyncio.sleep(wait, loop=self.loop)
+                    await asyncio.sleep(wait)
                 else:
                     raise
         try:

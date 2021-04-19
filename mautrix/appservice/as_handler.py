@@ -180,7 +180,7 @@ class AppServiceServerMixin:
                 self.log.exception("Exception in Matrix event handler")
 
         for handler in self.event_handlers:
-            self.loop.create_task(try_handle(handler))
+            asyncio.create_task(try_handle(handler))
 
     def matrix_event_handler(self, func: HandlerFunc) -> HandlerFunc:
         self.event_handlers.append(func)

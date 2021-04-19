@@ -209,7 +209,7 @@ class Syncer(ABC):
             handlers = self.global_event_handlers + handlers
         tasks = []
         for handler, wait_sync in handlers:
-            task = self.loop.create_task(self._catch_errors(handler, data))
+            task = asyncio.create_task(self._catch_errors(handler, data))
             if force_synchronous or wait_sync:
                 tasks.append(task)
         return tasks
@@ -303,7 +303,7 @@ class Syncer(ABC):
         """
         if self.syncing_task is not None:
             self.syncing_task.cancel()
-        self.syncing_task = self.loop.create_task(self._try_start(filter_data))
+        self.syncing_task = asyncio.create_task(self._try_start(filter_data))
         return self.syncing_task
 
     async def _try_start(self, filter_data: Optional[Union[FilterID, Filter]]) -> None:
@@ -342,7 +342,7 @@ class Syncer(ABC):
                                  " seconds before continuing")
                 await self.run_internal_event(InternalEventType.SYNC_ERRORED, error=e,
                                               sleep_for=fail_sleep)
-                await asyncio.sleep(fail_sleep, loop=self.loop)
+                await asyncio.sleep(fail_sleep)
                 if fail_sleep < 320:
                     fail_sleep *= 2
                 continue

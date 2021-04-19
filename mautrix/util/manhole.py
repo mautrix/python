@@ -329,7 +329,7 @@ class InterpreterFactory:
         conn_id = self.conn_id
 
         log.info(f"Manhole connection OPENED: {conn_id} from PID {pid} by {username}")
-        await asyncio.ensure_future(interpreter(reader, writer))
+        await asyncio.create_task(interpreter(reader, writer))
         log.info(f"Manhole connection CLOSED: {conn_id} from PID {pid} by {username}")
         self.clients.remove(interpreter)
 

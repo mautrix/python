@@ -248,7 +248,7 @@ class CustomPuppetMixin(ABC):
             if self._sync_task:
                 self._sync_task.cancel()
             self.log.info(f"Initialized custom mxid: {mxid}. Starting sync task")
-            self._sync_task = asyncio.ensure_future(self._try_sync(), loop=self.loop)
+            self._sync_task = asyncio.create_task(self._try_sync())
         else:
             self.log.info(f"Initialized custom mxid: {mxid}. Not starting sync task")
 
@@ -333,7 +333,7 @@ class CustomPuppetMixin(ABC):
 
         # Deserialize and handle all events
         for event in chain(ephemeral_events, presence_events):
-            self.loop.create_task(self.mx.try_handle_sync_event(Event.deserialize(event)))
+            asyncio.create_task(self.mx.try_handle_sync_event(Event.deserialize(event)))
 
     async def _try_sync(self) -> None:
         try:
