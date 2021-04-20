@@ -14,7 +14,7 @@ from .base import EventType, BaseEvent
 
 @dataclass
 class RoomTagInfo(SerializableAttrs['RoomTagInfo']):
-    order: int = None
+    order: Union[int, float, str] = None
 
 
 @dataclass
