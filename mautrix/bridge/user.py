@@ -84,11 +84,14 @@ class BaseUser(ABC):
                     current_dms = {}
                 if replace:
                     # Filter away all existing DM statuses with bridge users
-                    current_dms = {user: rooms for user, rooms in current_dms.items()
-                                   if not self.bridge.is_bridge_ghost(user)}
+                    filtered_dms = {user: rooms for user, rooms in current_dms.items()
+                                    if not self.bridge.is_bridge_ghost(user)}
+                else:
+                    filtered_dms = current_dms
                 # Add DM statuses for all rooms in our database
-                current_dms.update(dms)
-                await puppet.intent.set_account_data(EventType.DIRECT, current_dms)
+                new_dms = {**filtered_dms, **dms}
+                if current_dms != new_dms:
+                    await puppet.intent.set_account_data(EventType.DIRECT, new_dms)
 
     def _track_metric(self, metric: Gauge, value: bool) -> None:
         if self._metric_value[metric] != value:
