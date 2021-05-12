@@ -138,7 +138,7 @@ class RoomCreateStateEventContent(SerializableAttrs['RoomCreateStateEventContent
     room_version: str = "1"
     federate: bool = attr.ib(metadata={"json": "m.federate", "omitdefault": True}, default=True)
     predecessor: Optional[RoomPredecessor] = None
-    type: Optional[RoomType] = attr.ib(metadata={"json": "org.matrix.msc1772.type"}, default=None)
+    type: Optional[RoomType] = None
 
 
 @dataclass

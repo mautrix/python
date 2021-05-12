@@ -11,7 +11,7 @@ from ..util import SerializableEnum, ExtensibleEnum, Serializable
 
 
 class RoomType(ExtensibleEnum):
-    SPACE = "org.matrix.msc1772.space"
+    SPACE = "m.space"
 
 
 class EventType(Serializable):
@@ -122,8 +122,8 @@ _standard_types = {
         "m.room.tombstone": "ROOM_TOMBSTONE",
         "m.room.encryption": "ROOM_ENCRYPTION",
 
-        "org.matrix.msc1772.space.child": "SPACE_CHILD",
-        "org.matrix.msc1772.space.parent": "SPACE_PARENT",
+        "m.space.child": "SPACE_CHILD",
+        "m.space.parent": "SPACE_PARENT",
     },
     EventType.Class.MESSAGE: {
         "m.room.redaction": "ROOM_REDACTION",
