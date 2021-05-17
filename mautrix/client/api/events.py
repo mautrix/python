@@ -229,13 +229,10 @@ class EventMethods(BaseClientAPI):
         query_params = {
             "from": from_token,
             "dir": direction.value,
+            "to": to_token,
+            "limit": str(limit) if limit else None,
+            "filter_json": filter_json,
         }
-        if to_token:
-            query_params["to"] = to_token
-        if limit:
-            query_params["limit"] = str(limit)
-        if filter:
-            query_params["filter"] = filter_json
         content = await self.api.request(Method.GET, Path.rooms[room_id].messages,
                                          query_params=query_params)
         try:

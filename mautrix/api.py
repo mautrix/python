@@ -14,6 +14,7 @@ import asyncio
 import json
 
 from yarl import URL
+from multidict import CIMultiDict
 from aiohttp import ClientSession, __version__ as aiohttp_version
 from aiohttp.client_exceptions import ContentTypeError, ClientError
 
@@ -208,7 +209,7 @@ class HTTPAPI:
     async def request(self, method: Method, path: Union[PathBuilder, str],
                       content: Optional[Union[dict, list, bytes, str]] = None,
                       headers: Optional[Dict[str, str]] = None,
-                      query_params: Optional[Dict[str, str]] = None,
+                      query_params: Optional[Union[Dict[str, str], CIMultiDict[str, str]]] = None,
                       retry_count: Optional[int] = None) -> 'JSON':
         """
         Make a raw Matrix API request.
@@ -231,6 +232,8 @@ class HTTPAPI:
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
         query_params = query_params or {}
+        if isinstance(query_params, dict):
+            query_params = {k: v for k, v in query_params.items() if v is not None}
 
         if method != Method.GET:
             content = content or {}

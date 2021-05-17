@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Awaitable, List, Tuple, Union, TYPE_CHECKING
+from typing import Optional, Dict, Awaitable, List, Tuple, Union, Any, TYPE_CHECKING
 from urllib.parse import quote as urllib_quote
 import asyncio
 
@@ -142,8 +142,8 @@ class IntentAPI(StoreUpdatingAPI):
     # endregion
     # region Room actions
 
-    async def invite_user(self, room_id: RoomID, user_id: UserID, check_cache: bool = False
-                          ) -> None:
+    async def invite_user(self, room_id: RoomID, user_id: UserID, check_cache: bool = False,
+                          extra_content: Optional[Dict[str, Any]] = None) -> None:
         """
         Invite a user to participate in a particular room. They do not start participating in the
         room until they actually join the room.
@@ -160,13 +160,14 @@ class IntentAPI(StoreUpdatingAPI):
             user_id: The fully qualified user ID of the invitee.
             check_cache: Whether or not the function should be a no-op if the state store says the
                 user is already invited.
+            extra_content: Additional properties for the invite event content.
         """
         try:
             ok_states = (Membership.INVITE, Membership.JOIN)
             do_invite = (not check_cache or (await self.state_store.get_membership(room_id, user_id)
                                              not in ok_states))
             if do_invite:
-                await super().invite_user(room_id, user_id)
+                await super().invite_user(room_id, user_id, extra_content=extra_content)
                 await self.state_store.invited(room_id, user_id)
         except MatrixRequestError as e:
             if e.errcode != "M_FORBIDDEN":

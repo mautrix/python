@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,15 +11,17 @@ from multidict import CIMultiDict
 from mautrix.errors import MatrixResponseError, MatrixRequestError, MRoomInUse
 from mautrix.api import Method, Path
 from mautrix.types import (JSON, UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility,
-                           RoomAliasInfo, RoomCreatePreset, DirectoryPaginationToken,
-                           RoomDirectoryResponse, Serializable, StrippedStateEvent)
+                           RoomAliasInfo, RoomCreatePreset, DirectoryPaginationToken, Membership,
+                           RoomDirectoryResponse, Serializable, StrippedStateEvent, EventType,
+                           MemberStateEventContent, EventID)
 
+from .events import EventMethods
 from .base import BaseClientAPI
 
 InitialState = List[Union[StateEvent, StrippedStateEvent, Dict[str, Any]]]
 
 
-class RoomMethods(BaseClientAPI):
+class RoomMethods(EventMethods, BaseClientAPI):
     """
     Methods in section 9 Rooms of the spec. These methods are used for creating rooms, interacting
     with the room directory and using the easy room metadata editing endpoints. Generic state
@@ -210,6 +212,10 @@ class RoomMethods(BaseClientAPI):
         Returns:
             The ID of the room the user joined.
         """
+        if extra_content:
+            await self.send_member_event(room_id, user_id, Membership.BAN,
+                                         extra_content=extra_content)
+            return
         content = await self.api.request(Method.POST, Path.rooms[room_id].join, {
             "third_party_signed": third_party_signed,
         } if third_party_signed is not None else None)
@@ -218,8 +224,9 @@ class RoomMethods(BaseClientAPI):
         except KeyError:
             raise MatrixResponseError("`room_id` not in response.")
 
-    async def join_room(self, room_id_or_alias: Union[RoomID, RoomAlias], servers: List[str] = None,
-                        third_party_signed: JSON = None, max_retries: int = 4) -> RoomID:
+    async def join_room(self, room_id_or_alias: Union[RoomID, RoomAlias],
+                        servers: List[str] = None, third_party_signed: JSON = None,
+                        max_retries: int = 4) -> RoomID:
         """
         Start participating in a room, i.e. join it by its ID or alias, with an optional list of
         servers to ask about the ID from.
@@ -266,7 +273,16 @@ class RoomMethods(BaseClientAPI):
         except KeyError:
             raise MatrixResponseError("`room_id` not in response.")
 
-    async def invite_user(self, room_id: RoomID, user_id: UserID) -> None:
+    async def send_member_event(self, room_id: RoomID, user_id: UserID, membership: Membership,
+                                extra_content: Optional[Dict[str, Any]] = None) -> EventID:
+        content = MemberStateEventContent(membership=membership)
+        for key, value in extra_content.items():
+            content[key] = value
+        return await self.send_state_event(room_id, EventType.ROOM_MEMBER,
+                                           content=content, state_key=user_id)
+
+    async def invite_user(self, room_id: RoomID, user_id: UserID,
+                          extra_content: Optional[Dict[str, Any]] = None) -> None:
         """
         Invite a user to participate in a particular room. They do not start participating in the
         room until they actually join the room.
@@ -281,16 +297,23 @@ class RoomMethods(BaseClientAPI):
         Args:
             room_id: The ID of the room to which to invite the user.
             user_id: The fully qualified user ID of the invitee.
+            extra_content: Additional properties for the invite event content.
+                If a non-empty dict is passed, the invite will be created using
+                the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /invite``.
         """
-        await self.api.request(Method.POST, Path.rooms[room_id].invite, {
-            "user_id": user_id,
-        })
+        if extra_content:
+            await self.send_member_event(room_id, user_id, Membership.INVITE,
+                                         extra_content=extra_content)
+            return
+        await self.api.request(Method.POST, Path.rooms[room_id].invite,
+                               content={"user_id": user_id})
 
     # endregion
     # region 9.4.3 Leaving rooms
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#leaving-rooms
 
-    async def leave_room(self, room_id: RoomID) -> None:
+    async def leave_room(self, room_id: RoomID,
+                         extra_content: Optional[Dict[str, Any]] = None) -> None:
         """
         Stop participating in a particular room, i.e. leave the room.
 
@@ -308,7 +331,14 @@ class RoomMethods(BaseClientAPI):
 
         Args:
             room_id: The ID of the room to leave.
+            extra_content: Additional properties for the invite event content.
+                If a non-empty dict is passed, the invite will be created using
+                the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /leave``.
         """
+        if extra_content:
+            await self.send_member_event(room_id, self.mxid, Membership.LEAVE,
+                                         extra_content=extra_content)
+            return
         await self.api.request(Method.POST, Path.rooms[room_id].leave)
 
     async def forget_room(self, room_id: RoomID) -> None:
@@ -326,12 +356,11 @@ class RoomMethods(BaseClientAPI):
 
         Args:
             room_id: The ID of the room to forget.
-
-
         """
         await self.api.request(Method.POST, Path.rooms[room_id].forget)
 
-    async def kick_user(self, room_id: RoomID, user_id: UserID, reason: Optional[str] = "") -> None:
+    async def kick_user(self, room_id: RoomID, user_id: UserID, reason: Optional[str] = "",
+                        extra_content: Optional[Dict[str, Any]] = None) -> None:
         """
         Kick a user from the room.
 
@@ -349,7 +378,16 @@ class RoomMethods(BaseClientAPI):
             user_id: The fully qualified user ID of the user being kicked.
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
+            extra_content: Additional properties for the invite event content.
+                If a non-empty dict is passed, the invite will be created using
+                the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /kick``.
         """
+        if extra_content:
+            if reason and "reason" not in extra_content:
+                extra_content["reason"] = reason
+            await self.send_member_event(room_id, user_id, Membership.LEAVE,
+                                         extra_content=extra_content)
+            return
         await self.api.request(Method.POST, Path.rooms[room_id].kick, {
             "user_id": user_id,
             "reason": reason or None,
@@ -359,7 +397,8 @@ class RoomMethods(BaseClientAPI):
     # region 9.4.4 Banning users in a room
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#banning-users-in-a-room
 
-    async def ban_user(self, room_id: RoomID, user_id: UserID, reason: Optional[str] = "") -> None:
+    async def ban_user(self, room_id: RoomID, user_id: UserID, reason: Optional[str] = "",
+                       extra_content: Optional[Dict[str, Any]] = None) -> None:
         """
         Ban a user in the room. If the user is currently in the room, also kick them. When a user is
         banned from a room, they may not join it or be invited to it until they are unbanned. The
@@ -372,7 +411,16 @@ class RoomMethods(BaseClientAPI):
             user_id: The fully qualified user ID of the user being banned.
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
+            extra_content: Additional properties for the invite event content.
+                If a non-empty dict is passed, the invite will be created using
+                the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /ban``.
         """
+        if extra_content:
+            if reason and "reason" not in extra_content:
+                extra_content["reason"] = reason
+            await self.send_member_event(room_id, user_id, Membership.BAN,
+                                         extra_content=extra_content)
+            return
         await self.api.request(Method.POST, Path.rooms[room_id].ban, {
             "user_id": user_id,
             "reason": reason or None,
