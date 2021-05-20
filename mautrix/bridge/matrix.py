@@ -36,6 +36,11 @@ try:
 except ImportError:
     EncryptionManager = None
 
+try:
+    from mautrix.crypto.attachments import encrypt_attachment
+except ImportError:
+    encrypt_attachment = None
+
 EVENT_TIME = Histogram("bridge_matrix_event", "Time spent processing Matrix events", ["event_type"])
 
 
@@ -65,6 +70,9 @@ class BaseMatrixHandler:
             if not EncryptionManager:
                 self.log.error("Encryption enabled in config, but dependencies not installed.")
                 return
+            if not encrypt_attachment:
+                self.log.warning("Encryption enabled in config, but media encryption dependencies "
+                                 "not installed.")
             self.e2ee = EncryptionManager(
                 bridge=bridge,
                 user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
