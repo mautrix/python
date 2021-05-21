@@ -21,13 +21,20 @@ from binascii import Error as BinAsciiError
 from typing import Any, Dict, Generator, Iterable, Tuple, Union
 
 import unpaddedbase64
-from Crypto import Random
-from Crypto.Cipher import AES
-from Crypto.Hash import SHA256
-from Crypto.Util import Counter
 
 from mautrix.errors import DecryptionError
 from mautrix.types import EncryptedFile, JSONWebKey
+
+try:
+    from Crypto import Random
+    from Crypto.Cipher import AES
+    from Crypto.Hash import SHA256
+    from Crypto.Util import Counter
+except ImportError:
+    from Cryptodome import Random
+    from Cryptodome.Cipher import AES
+    from Cryptodome.Hash import SHA256
+    from Cryptodome.Util import Counter
 
 DataT = Union[bytes, Iterable[bytes]]
 

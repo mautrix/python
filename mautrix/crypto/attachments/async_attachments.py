@@ -20,14 +20,9 @@ import io
 from functools import partial
 from typing import Any, AsyncGenerator, AsyncIterable, Dict, Iterable, Union
 
-from Crypto import Random
-from Crypto.Cipher import AES
-from Crypto.Hash import SHA256
-from Crypto.Util import Counter
-
 from mautrix.types import EncryptedFile
 
-from .attachments import _get_decryption_info
+from .attachments import _get_decryption_info, Random, AES, SHA256, Counter
 
 AsyncDataT = Union[
     bytes,
