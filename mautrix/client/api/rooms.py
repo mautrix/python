@@ -198,7 +198,8 @@ class RoomMethods(EventMethods, BaseClientAPI):
     # region 9.4.2 Joining rooms
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#joining-rooms
 
-    async def join_room_by_id(self, room_id: RoomID, third_party_signed: JSON = None) -> RoomID:
+    async def join_room_by_id(self, room_id: RoomID, third_party_signed: JSON = None,
+                              extra_content: Optional[Dict[str, Any]] = None) -> RoomID:
         """
         Start participating in a room, i.e. join it by its ID.
 
@@ -208,6 +209,9 @@ class RoomMethods(EventMethods, BaseClientAPI):
             room_id: The ID of the room to join.
             third_party_signed: A signature of an ``m.third_party_invite`` token to prove that this
                 user owns a third party identity which has been invited to the room.
+            extra_content: Additional properties for the join event content.
+                If a non-empty dict is passed, the invite will be created using
+                the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /join``.
 
         Returns:
             The ID of the room the user joined.
@@ -331,7 +335,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
 
         Args:
             room_id: The ID of the room to leave.
-            extra_content: Additional properties for the invite event content.
+            extra_content: Additional properties for the leave event content.
                 If a non-empty dict is passed, the invite will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /leave``.
         """
@@ -378,7 +382,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             user_id: The fully qualified user ID of the user being kicked.
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
-            extra_content: Additional properties for the invite event content.
+            extra_content: Additional properties for the kick event content.
                 If a non-empty dict is passed, the invite will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /kick``.
         """
@@ -411,7 +415,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             user_id: The fully qualified user ID of the user being banned.
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
-            extra_content: Additional properties for the invite event content.
+            extra_content: Additional properties for the ban event content.
                 If a non-empty dict is passed, the invite will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /ban``.
         """

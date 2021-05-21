@@ -11,7 +11,7 @@ from .user_data import UserDataMethods
 from .modules import ModuleMethods
 
 
-class ClientAPI(ClientAuthenticationMethods, FilteringMethods, EventMethods, RoomMethods,
+class ClientAPI(ClientAuthenticationMethods, FilteringMethods, RoomMethods, EventMethods,
                 UserDataMethods, ModuleMethods):
     """
     ClientAPI is a medium-level wrapper around the HTTPAPI that provides many easy-to-use
