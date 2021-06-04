@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,6 +17,7 @@ from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Gauge
 
 from .portal import BasePortal
+from .state import BridgeState
 
 if TYPE_CHECKING:
     from .bridge import Bridge
@@ -34,10 +35,18 @@ class BaseUser(ABC):
     is_whitelisted: bool
     is_admin: bool
     mxid: UserID
-    command_status: Optional[Dict[str, Any]]
-    _metric_value: Dict[Gauge, bool]
 
     dm_update_lock: asyncio.Lock
+    command_status: Optional[Dict[str, Any]]
+    _metric_value: Dict[Gauge, bool]
+    _prev_bridge_status: Optional[BridgeState]
+
+    def __init__(self) -> None:
+        self.dm_update_lock = asyncio.Lock()
+        self.command_status = None
+        self._metric_value = defaultdict(lambda: False)
+        self._prev_bridge_status = None
+        self.log = self.log.getChild(self.mxid)
 
     @abstractmethod
     async def is_logged_in(self) -> bool:
@@ -100,3 +109,15 @@ class BaseUser(ABC):
             else:
                 metric.dec(1)
             self._metric_value[metric] = value
+
+    async def get_bridge_state(self) -> BridgeState:
+        raise NotImplementedError()
+
+    async def push_bridge_state(self, ok: bool, error: Optional[str] = None,
+                                message: Optional[str] = None, ttl: Optional[int] = None) -> None:
+        state = BridgeState(user_id=self.mxid, ok=ok, error=error, message=message, ttl=ttl).fill()
+        if state.should_deduplicate(self._prev_bridge_status):
+            return
+        self._prev_bridge_status = state
+        await state.send(self.bridge.config["homeserver.status_endpoint"],
+                         self.az.as_token, self.log)

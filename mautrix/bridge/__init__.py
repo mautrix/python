@@ -7,3 +7,4 @@ from .puppet import BasePuppet
 from .bridge import Bridge
 from .notification_disabler import NotificationDisabler
 from .async_getter_lock import async_getter_lock
+from .state import BridgeState
