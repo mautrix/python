@@ -18,6 +18,8 @@ class BridgeState(SerializableAttrs['BridgeState']):
     human_readable_errors: ClassVar[Dict[str, str]] = {}
 
     user_id: UserID = None
+    remote_id: str = None
+    remote_name: str = None
     ok: bool
     timestamp: int = None
     ttl: int = 0
@@ -63,7 +65,7 @@ class BridgeState(SerializableAttrs['BridgeState']):
                     text = await resp.text()
                     text = text.replace("\n", "\\n")
                     log.warning(f"Unexpected status code {resp.status} "
-                                     f"sending bridge state update: {text}")
+                                f"sending bridge state update: {text}")
                 else:
                     log.debug(f"Sent new bridge state {self}")
         except Exception as e:

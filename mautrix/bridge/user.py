@@ -110,12 +110,17 @@ class BaseUser(ABC):
                 metric.dec(1)
             self._metric_value[metric] = value
 
+    async def fill_bridge_state(self, state: BridgeState) -> None:
+        state.user_id = self.mxid
+        state.fill()
+
     async def get_bridge_state(self) -> BridgeState:
         raise NotImplementedError()
 
     async def push_bridge_state(self, ok: bool, error: Optional[str] = None,
                                 message: Optional[str] = None, ttl: Optional[int] = None) -> None:
-        state = BridgeState(user_id=self.mxid, ok=ok, error=error, message=message, ttl=ttl).fill()
+        state = BridgeState(ok=ok, error=error, message=message, ttl=ttl)
+        await self.fill_bridge_state(state)
         if state.should_deduplicate(self._prev_bridge_status):
             return
         self._prev_bridge_status = state

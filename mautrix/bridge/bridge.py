@@ -178,8 +178,8 @@ class Bridge(Program, ABC):
             state = await user.get_bridge_state()
         except NotImplementedError:
             return web.json_response({"error": "Bridge status not implemented"}, status=501)
-        state.user_id = user.mxid
-        return web.json_response(state.fill().serialize())
+        await user.fill_bridge_state(state)
+        return web.json_response(state.serialize())
 
     @abstractmethod
     async def get_user(self, user_id: UserID, create: bool = True) -> 'BaseUser':
