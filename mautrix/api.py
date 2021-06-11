@@ -34,6 +34,7 @@ class APIPath(Enum):
     CLIENT = "_matrix/client/r0"
     CLIENT_UNSTABLE = "_matrix/client/unstable"
     MEDIA = "_matrix/media/r0"
+    SYNAPSE_ADMIN = "_synapse/admin"
 
     def __repr__(self):
         return self.value
@@ -112,6 +113,7 @@ Path = PathBuilder(APIPath.CLIENT)
 ClientPath = Path
 UnstableClientPath = PathBuilder(APIPath.CLIENT_UNSTABLE)
 MediaPath = PathBuilder(APIPath.MEDIA)
+SynapseAdminPath = PathBuilder(APIPath.SYNAPSE_ADMIN)
 
 _req_id = 0
 
