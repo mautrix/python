@@ -38,6 +38,56 @@ no_value = object()
 log = logging.getLogger("mau.attrs")
 
 
+def field(default: Any = None, factory: Optional[Callable[[], Any]] = None,
+          json: Optional[str] = None, flatten: bool = False, hidden: bool = False,
+          ignore_errors: bool = False, omit_empty: bool = True, omit_default: bool = False,
+          metadata: Optional[Dict[str, Any]] = None, **kwargs):
+    """
+    A wrapper around :meth:`attr.ib` to conveniently add SerializableAttrs metadata fields.
+
+    Args:
+        default: Same as attr.ib, the default value for the field.
+        factory: Same as attr.ib, a factory function that creates the default value.
+        json: The JSON key used for de/serializing the object.
+        flatten: Set to flatten subfields inside this field to be a part of the parent object in
+            serialized objects. When deserializing, the input data will be deserialized into both
+            the parent and child fields, so the classes should ignore unknown keys.
+        hidden: Set to always omit the key from serialized objects.
+        ignore_errors: Set to ignore type errors while deserializing.
+        omit_empty: Set to omit the key from serialized objects if the value is false-y.
+        omit_default: Set to omit the key from serialized objects if the value is equal to the
+            default.
+        metadata: Additional metadata for attr.ib.
+        **kwargs: Additional keyword arguments for attr.ib.
+
+    Returns:
+        The decorator function returned by attr.ib.
+
+    Examples:
+        >>> from attr import dataclass
+        >>> from mautrix.types import SerializableAttrs, field
+        >>> @dataclass
+        ... class SomeData(SerializableAttrs):
+        ...     my_field: str = field(json="com.example.namespaced_field", default="hi")
+        ...
+        >>> SomeData().serialize()
+        {'com.example.namespaced_field': 'hi'}
+        >>> SomeData.deserialize({"com.example.namespaced_field": "hmm"})
+        SomeData(my_field='hmm')
+    """
+    custom_meta = {
+        META_JSON: json,
+        META_FLATTEN: flatten,
+        META_HIDDEN: hidden,
+        META_IGNORE_ERRORS: ignore_errors,
+        META_OMIT_EMPTY: omit_empty,
+        META_OMIT_DEFAULT: omit_default,
+    }
+    metadata = metadata or {}
+    metadata.update({k: v for k, v in custom_meta.items() if v is not None})
+    return attr.ib(default=default, factory=factory, metadata=metadata, **kwargs)
+
+
 def serializer(elem_type: Type[T]) -> Callable[[Serializer], Serializer]:
     """
     Define a custom serialization function for the given type.
@@ -46,7 +96,8 @@ def serializer(elem_type: Type[T]) -> Callable[[Serializer], Serializer]:
         elem_type: The type to define the serializer for.
 
     Returns:
-        Decorator for the function.
+        Decorator for the function. The decorator will simply add the function to a map of
+        deserializers and return the function.
 
     Examples:
         >>> from datetime import datetime
@@ -71,7 +122,8 @@ def deserializer(elem_type: Type[T]) -> Callable[[Deserializer], Deserializer]:
         elem_type: The type hint to define the deserializer for.
 
     Returns:
-        Decorator for the function:
+        Decorator for the function. The decorator will simply add the function to a map of
+        deserializers and return the function.
 
     Examples:
         >>> from datetime import datetime

@@ -50,6 +50,6 @@ from .auth import (LoginType, UserIdentifierType, MatrixUserIdentifier, ThirdPar
 from .crypto import UnsignedDeviceInfo, DeviceKeys, ClaimKeysResponse, QueryKeysResponse
 from .media import MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio
 from .util import (Obj, Lst, SerializerError, Serializable, SerializableEnum, SerializableAttrs,
-                   serializer, deserializer, ExtensibleEnum)
+                   field, serializer, deserializer, ExtensibleEnum)
 from .push_rules import (PushRuleID, PushAction, PushActionType, PushActionDict, PushOperator,
                          PushConditionKind, PushRuleKind, PushRuleScope, PushCondition, PushRule)
