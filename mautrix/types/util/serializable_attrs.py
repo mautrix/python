@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Type, TypeVar, Any, Union, Optional, Tuple, Iterator, Callable, NewType
+from typing import (Dict, Type, TypeVar, Any, Union, Optional, Tuple, Iterator, Callable, NewType,
+                    Generic)
 from uuid import UUID
 import logging
 import attr
@@ -273,7 +274,8 @@ def _serialize(val: Any) -> JSON:
     return val
 
 
-class SerializableAttrs(AbstractSerializable):
+# TODO remove Generic[T] backwards compatibility in v0.10.0
+class SerializableAttrs(AbstractSerializable, Generic[T]):
     """
     An abstract :class:`Serializable` that assumes the subclass is an attrs dataclass.
 
