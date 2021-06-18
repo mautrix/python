@@ -10,7 +10,7 @@ import re
 from attr import dataclass
 import attr
 
-from ..util import ExtensibleEnum, SerializableAttrs, Serializable, Obj, deserializer, no_value
+from ..util import ExtensibleEnum, SerializableAttrs, Serializable, Obj, deserializer
 from ..primitive import JSON, ContentURI, EventID
 from .base import BaseRoomEvent, BaseUnsigned
 
@@ -108,7 +108,7 @@ class RelatesTo(Serializable):
 
     def serialize(self) -> JSON:
         if not self:
-            return no_value
+            return attr.NOTHING
         data = {
             **self._extra,
             "rel_type": self.rel_type.serialize(),
@@ -203,7 +203,7 @@ class BaseMessageEventContent(BaseMessageEventContentFuncs):
 
 
 @dataclass
-class JSONWebKey(SerializableAttrs['JSONWebKey']):
+class JSONWebKey(SerializableAttrs):
     key: str = attr.ib(metadata={"json": "k"})
     algorithm: str = attr.ib(default="A256CTR", metadata={"json": "alg"})
     extractable: bool = attr.ib(default=True, metadata={"json": "ext"})
@@ -212,7 +212,7 @@ class JSONWebKey(SerializableAttrs['JSONWebKey']):
 
 
 @dataclass
-class EncryptedFile(SerializableAttrs['EncryptedFile']):
+class EncryptedFile(SerializableAttrs):
     key: JSONWebKey
     iv: str
     hashes: Dict[str, str]
@@ -221,13 +221,13 @@ class EncryptedFile(SerializableAttrs['EncryptedFile']):
 
 
 @dataclass
-class BaseFileInfo(SerializableAttrs['BaseFileInfo']):
+class BaseFileInfo(SerializableAttrs):
     mimetype: str = None
     size: int = None
 
 
 @dataclass
-class ThumbnailInfo(BaseFileInfo, SerializableAttrs['ThumbnailInfo']):
+class ThumbnailInfo(BaseFileInfo, SerializableAttrs):
     """Information about the thumbnail for a document, video, image or location."""
     height: int = attr.ib(default=None, metadata={"json": "h"})
     width: int = attr.ib(default=None, metadata={"json": "w"})
@@ -235,7 +235,7 @@ class ThumbnailInfo(BaseFileInfo, SerializableAttrs['ThumbnailInfo']):
 
 
 @dataclass
-class FileInfo(BaseFileInfo, SerializableAttrs['FileInfo']):
+class FileInfo(BaseFileInfo, SerializableAttrs):
     """Information about a document message."""
     thumbnail_info: Optional[ThumbnailInfo] = None
     thumbnail_file: Optional[EncryptedFile] = None
@@ -243,7 +243,7 @@ class FileInfo(BaseFileInfo, SerializableAttrs['FileInfo']):
 
 
 @dataclass
-class ImageInfo(FileInfo, SerializableAttrs['ImageInfo']):
+class ImageInfo(FileInfo, SerializableAttrs):
     """Information about an image message."""
     height: int = attr.ib(default=None, metadata={"json": "h"})
     width: int = attr.ib(default=None, metadata={"json": "w"})
@@ -251,14 +251,14 @@ class ImageInfo(FileInfo, SerializableAttrs['ImageInfo']):
 
 
 @dataclass
-class VideoInfo(ImageInfo, SerializableAttrs['VideoInfo']):
+class VideoInfo(ImageInfo, SerializableAttrs):
     """Information about a video message."""
     duration: int = None
     orientation: int = None
 
 
 @dataclass
-class AudioInfo(BaseFileInfo, SerializableAttrs['AudioInfo']):
+class AudioInfo(BaseFileInfo, SerializableAttrs):
     """Information about an audio message."""
     duration: int = None
 
@@ -267,7 +267,7 @@ MediaInfo = Union[ImageInfo, VideoInfo, AudioInfo, FileInfo, Obj]
 
 
 @dataclass
-class LocationInfo(SerializableAttrs['LocationInfo']):
+class LocationInfo(SerializableAttrs):
     """Information about a location message."""
     thumbnail_url: Optional[ContentURI] = None
     thumbnail_info: Optional[ThumbnailInfo] = None
@@ -279,7 +279,7 @@ class LocationInfo(SerializableAttrs['LocationInfo']):
 
 @dataclass
 class MediaMessageEventContent(BaseMessageEventContent,
-                               SerializableAttrs['MediaMessageEventContent']):
+                               SerializableAttrs):
     """The content of a media message event (m.image, m.audio, m.video, m.file)"""
     url: Optional[ContentURI] = None
     info: Optional[MediaInfo] = None
@@ -306,7 +306,7 @@ class MediaMessageEventContent(BaseMessageEventContent,
 
 @dataclass
 class LocationMessageEventContent(BaseMessageEventContent,
-                                  SerializableAttrs['LocationMessageEventContent']):
+                                  SerializableAttrs):
     geo_uri: str = None
     info: LocationInfo = None
 
@@ -318,7 +318,7 @@ html_reply_fallback_regex: Pattern = re.compile("^<mx-reply>"
 
 @dataclass
 class TextMessageEventContent(BaseMessageEventContent,
-                              SerializableAttrs['TextMessageEventContent']):
+                              SerializableAttrs):
     """The content of a text message event (m.text, m.notice, m.emote)"""
     format: Format = None
     formatted_body: str = None
@@ -368,7 +368,7 @@ MessageEventContent = Union[TextMessageEventContent, MediaMessageEventContent,
 # endregion
 
 @dataclass
-class MessageUnsigned(BaseUnsigned, SerializableAttrs['MessageUnsigned']):
+class MessageUnsigned(BaseUnsigned, SerializableAttrs):
     """Unsigned information sent with message events."""
     transaction_id: str = None
 
@@ -390,7 +390,7 @@ media_reply_fallback_body_map = {
 
 
 @dataclass
-class MessageEvent(BaseRoomEvent, SerializableAttrs['MessageEvent']):
+class MessageEvent(BaseRoomEvent, SerializableAttrs):
     """An m.room.message event"""
     content: MessageEventContent
     unsigned: Optional[MessageUnsigned] = None

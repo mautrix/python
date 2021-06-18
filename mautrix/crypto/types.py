@@ -33,12 +33,12 @@ class DeviceIdentity:
 
 
 @dataclass
-class OlmEventKeys(SerializableAttrs['OlmEventKeys']):
+class OlmEventKeys(SerializableAttrs):
     ed25519: SigningKey
 
 
 @dataclass
-class DecryptedOlmEvent(ToDeviceEvent, SerializableAttrs['EncryptedOlmEvent']):
+class DecryptedOlmEvent(ToDeviceEvent, SerializableAttrs):
     keys: OlmEventKeys
     recipient: UserID
     recipient_keys: OlmEventKeys

@@ -28,20 +28,20 @@ class CallHangupReason(ExtensibleEnum):
 
 
 @dataclass
-class CallData(SerializableAttrs['CallData']):
+class CallData(SerializableAttrs):
     sdp: str
     type: CallDataType
 
 
 @dataclass
-class CallCandidate(SerializableAttrs['CallCandidate']):
+class CallCandidate(SerializableAttrs):
     candidate: str
     sdp_m_line_index: int = attr.ib(metadata={"json": "sdpMLineIndex"}, default=None)
     sdp_mid: str = attr.ib(metadata={"json": "sdpMid"}, default=None)
 
 
 @dataclass
-class CallInviteEventContent(SerializableAttrs['CallInviteEventContent']):
+class CallInviteEventContent(SerializableAttrs):
     call_id: str
     lifetime: int
     version: int
@@ -51,7 +51,7 @@ class CallInviteEventContent(SerializableAttrs['CallInviteEventContent']):
 
 
 @dataclass
-class CallCandidatesEventContent(SerializableAttrs['CallCandidatesEventContent']):
+class CallCandidatesEventContent(SerializableAttrs):
     call_id: str
     version: int
     candidates: List[CallCandidate]
@@ -59,7 +59,7 @@ class CallCandidatesEventContent(SerializableAttrs['CallCandidatesEventContent']
 
 
 @dataclass
-class CallSelectAnswerEventContent(SerializableAttrs['CallSelectAnswerEventContent']):
+class CallSelectAnswerEventContent(SerializableAttrs):
     call_id: str
     version: int
     party_id: str
@@ -67,7 +67,7 @@ class CallSelectAnswerEventContent(SerializableAttrs['CallSelectAnswerEventConte
 
 
 @dataclass
-class CallAnswerEventContent(SerializableAttrs['CallAnswerEventContent']):
+class CallAnswerEventContent(SerializableAttrs):
     call_id: str
     version: int
     answer: CallData
@@ -75,7 +75,7 @@ class CallAnswerEventContent(SerializableAttrs['CallAnswerEventContent']):
 
 
 @dataclass
-class CallHangupEventContent(SerializableAttrs['CallHangupEventContent']):
+class CallHangupEventContent(SerializableAttrs):
     call_id: str
     version: int
     reason: CallHangupReason = CallHangupReason.USER_HANGUP
@@ -83,14 +83,14 @@ class CallHangupEventContent(SerializableAttrs['CallHangupEventContent']):
 
 
 @dataclass
-class CallRejectEventContent(SerializableAttrs['CallRejectEventContent']):
+class CallRejectEventContent(SerializableAttrs):
     call_id: str
     version: int
     party_id: str
 
 
 @dataclass
-class CallNegotiateEventContent(SerializableAttrs['CallNegotiateEventContent']):
+class CallNegotiateEventContent(SerializableAttrs):
     call_id: str
     version: int
     lifetime: int
@@ -116,7 +116,7 @@ T = TypeVar('T', bound=CallEventContent)
 
 
 @dataclass
-class CallEvent(BaseRoomEvent, SerializableAttrs['CallEvent'], Generic[T]):
+class CallEvent(BaseRoomEvent, SerializableAttrs, Generic[T]):
     content: T
 
     @classmethod

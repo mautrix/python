@@ -12,12 +12,12 @@ from .event.encrypted import EncryptionAlgorithm, EncryptionKeyAlgorithm
 
 
 @dataclass
-class UnsignedDeviceInfo(SerializableAttrs['UnsignedDeviceInfo']):
+class UnsignedDeviceInfo(SerializableAttrs):
     device_display_name: Optional[str] = None
 
 
 @dataclass
-class DeviceKeys(SerializableAttrs['DeviceKeys']):
+class DeviceKeys(SerializableAttrs):
     user_id: UserID
     device_id: DeviceID
     algorithms: List[EncryptionAlgorithm]
@@ -45,12 +45,12 @@ class DeviceKeys(SerializableAttrs['DeviceKeys']):
 
 
 @dataclass
-class QueryKeysResponse(SerializableAttrs['QueryKeysResponse']):
+class QueryKeysResponse(SerializableAttrs):
     failures: Dict[str, Any]
     device_keys: Dict[UserID, Dict[DeviceID, DeviceKeys]]
 
 
 @dataclass
-class ClaimKeysResponse(SerializableAttrs['ClaimKeysResponse']):
+class ClaimKeysResponse(SerializableAttrs):
     failures: Dict[str, Any]
     one_time_keys: Dict[UserID, Dict[DeviceID, Dict[str, Any]]]

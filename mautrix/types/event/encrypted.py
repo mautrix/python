@@ -1,13 +1,12 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional, Dict, Union, NewType
-from enum import IntEnum, Enum
+from enum import IntEnum
 from attr import dataclass
 import attr
-import sys
 
 from ..primitive import JSON, IdentityKey, SessionID, DeviceID
 from ..util import SerializableAttrs, Serializable, ExtensibleEnum, Obj, deserializer
@@ -26,8 +25,7 @@ class EncryptionKeyAlgorithm(ExtensibleEnum):
     SIGNED_CURVE25519: 'EncryptionKeyAlgorithm' = "signed_curve25519"
 
 
-# IntEnum had a bug in Python 3.6 where it broke when using mixins
-class OlmMsgType(Serializable, IntEnum if sys.version_info >= (3, 7) else Enum):
+class OlmMsgType(Serializable, IntEnum):
     PREKEY = 0
     MESSAGE = 1
 
@@ -40,20 +38,20 @@ class OlmMsgType(Serializable, IntEnum if sys.version_info >= (3, 7) else Enum):
 
 
 @dataclass
-class OlmCiphertext(SerializableAttrs['OlmCiphertext']):
+class OlmCiphertext(SerializableAttrs):
     body: str
     type: OlmMsgType
 
 
 @dataclass
-class EncryptedOlmEventContent(SerializableAttrs['EncryptedOlmEventContent']):
+class EncryptedOlmEventContent(SerializableAttrs):
     ciphertext: Dict[str, OlmCiphertext]
     sender_key: IdentityKey
     algorithm: EncryptionAlgorithm = EncryptionAlgorithm.OLM_V1
 
 
 @dataclass
-class EncryptedMegolmEventContent(SerializableAttrs['EncryptedMegolmEventContent']):
+class EncryptedMegolmEventContent(SerializableAttrs):
     """The content of an m.room.encrypted event"""
     ciphertext: str
     sender_key: IdentityKey
@@ -91,7 +89,7 @@ setattr(EncryptedEventContent, "deserialize", deserialize_encrypted)
 
 
 @dataclass
-class EncryptedEvent(BaseRoomEvent, SerializableAttrs['EncryptedEvent']):
+class EncryptedEvent(BaseRoomEvent, SerializableAttrs):
     """A m.room.encrypted event"""
     content: EncryptedEventContent
     _unsigned: Optional[BaseUnsigned] = attr.ib(default=None, metadata={"json": "unsigned"})

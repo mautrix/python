@@ -11,7 +11,7 @@ from .util import SerializableAttrs
 
 
 @dataclass
-class MediaRepoConfig(SerializableAttrs['MediaRepoConfig']):
+class MediaRepoConfig(SerializableAttrs):
     """
     Matrix media repo config. See `GET /_matrix/media/r0/config`_.
 
@@ -22,7 +22,7 @@ class MediaRepoConfig(SerializableAttrs['MediaRepoConfig']):
 
 
 @dataclass
-class OpenGraphImage(SerializableAttrs['OpenGraphImage']):
+class OpenGraphImage(SerializableAttrs):
     url: ContentURI = attr.ib(default=None, metadata={"json": "og:image"})
     mimetype: str = attr.ib(default=None, metadata={"json": "og:image:type"})
     height: int = attr.ib(default=None, metadata={"json": "og:image:width"})
@@ -31,7 +31,7 @@ class OpenGraphImage(SerializableAttrs['OpenGraphImage']):
 
 
 @dataclass
-class OpenGraphVideo(SerializableAttrs['OpenGraphVideo']):
+class OpenGraphVideo(SerializableAttrs):
     url: ContentURI = attr.ib(default=None, metadata={"json": "og:video"})
     mimetype: str = attr.ib(default=None, metadata={"json": "og:video:type"})
     height: int = attr.ib(default=None, metadata={"json": "og:video:width"})
@@ -40,13 +40,13 @@ class OpenGraphVideo(SerializableAttrs['OpenGraphVideo']):
 
 
 @dataclass
-class OpenGraphAudio(SerializableAttrs['OpenGraphAudio']):
+class OpenGraphAudio(SerializableAttrs):
     url: ContentURI = attr.ib(default=None, metadata={"json": "og:audio"})
     mimetype: str = attr.ib(default=None, metadata={"json": "og:audio:type"})
 
 
 @dataclass
-class MXOpenGraph(SerializableAttrs['MXOpenGraph']):
+class MXOpenGraph(SerializableAttrs):
     """
     Matrix URL preview response. See `GET /_matrix/media/r0/preview_url`_.
 

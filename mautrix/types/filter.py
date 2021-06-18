@@ -23,7 +23,7 @@ class EventFormat(SerializableEnum):
 
 
 @dataclass
-class EventFilter(SerializableAttrs['EventFilter']):
+class EventFilter(SerializableAttrs):
     """
     Event filter object, as specified in the `create filter endpoint`_.
 
@@ -51,7 +51,7 @@ class EventFilter(SerializableAttrs['EventFilter']):
 
 
 @dataclass
-class RoomEventFilter(EventFilter, SerializableAttrs['RoomEventFilter']):
+class RoomEventFilter(EventFilter, SerializableAttrs):
     """
     Room event filter object, as specified in the `create filter endpoint`_.
 
@@ -82,7 +82,7 @@ class RoomEventFilter(EventFilter, SerializableAttrs['RoomEventFilter']):
 
 
 @dataclass
-class StateFilter(RoomEventFilter, SerializableAttrs['RoomEventFilter']):
+class StateFilter(RoomEventFilter, SerializableAttrs):
     """
     State event filter object, as specified in the `create filter endpoint`_. Currently this is the
     same as :class:`RoomEventFilter`.
@@ -94,7 +94,7 @@ class StateFilter(RoomEventFilter, SerializableAttrs['RoomEventFilter']):
 
 
 @dataclass
-class RoomFilter(SerializableAttrs['RoomFilter']):
+class RoomFilter(SerializableAttrs):
     """
     Room filter object, as specified in the `create filter endpoint`_.
 
@@ -126,7 +126,7 @@ class RoomFilter(SerializableAttrs['RoomFilter']):
 
 
 @dataclass
-class Filter(SerializableAttrs['Filter']):
+class Filter(SerializableAttrs):
     """
     Base filter object, as specified in the `create filter endpoint`_.
 

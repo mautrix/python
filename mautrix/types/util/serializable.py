@@ -1,16 +1,16 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Generic, TypeVar, Any
+from typing import TypeVar, Type
 from abc import ABC, abstractmethod
 from enum import Enum
 import json
 
 from ..primitive import JSON
 
-T = TypeVar("T")
+SerializableSubtype = TypeVar('SerializableSubtype', bound='SerializableAttrs')
 
 
 class Serializable:
@@ -21,9 +21,18 @@ class Serializable:
         raise NotImplementedError()
 
     @classmethod
-    def deserialize(cls, raw: JSON) -> Any:
+    def deserialize(cls: Type[SerializableSubtype], raw: JSON) -> SerializableSubtype:
         """Convert the given data parsed from JSON into an object of this type."""
         raise NotImplementedError()
+
+    def json(self) -> str:
+        """Serialize this object and dump the output as JSON."""
+        return json.dumps(self.serialize())
+
+    @classmethod
+    def parse_json(cls: Type[SerializableSubtype], data: str) -> SerializableSubtype:
+        """Parse the given string as JSON and deserialize the result into this type."""
+        return cls.deserialize(json.loads(data))
 
 
 class SerializerError(Exception):
@@ -38,30 +47,19 @@ class UnknownSerializationError(SerializerError):
         super().__init__("Unknown serialization error")
 
 
-class GenericSerializable(ABC, Generic[T], Serializable):
+class AbstractSerializable(ABC, Serializable):
     """
-    An abstract Serializable that adds ``@abstractmethod`` decorators and a `Generic[T]` base class.
+    An abstract Serializable that adds ``@abstractmethod`` decorators.
     """
-    @classmethod
-    @abstractmethod
-    def deserialize(cls, raw: JSON) -> T:
-        pass
 
     @abstractmethod
     def serialize(self) -> JSON:
         pass
 
-    def json(self) -> str:
-        """Serialize this object and dump the output as JSON."""
-        return json.dumps(self.serialize())
-
     @classmethod
-    def parse_json(cls, data: str) -> T:
-        """Parse the given string as JSON and deserialize the result into this type."""
-        return cls.deserialize(json.loads(data))
-
-
-SerializableEnumChild = TypeVar("SerializableEnumChild", bound='SerializableEnum')
+    @abstractmethod
+    def deserialize(cls: Type[SerializableSubtype], raw: JSON) -> SerializableSubtype:
+        pass
 
 
 class SerializableEnum(Serializable, Enum):
@@ -93,7 +91,7 @@ class SerializableEnum(Serializable, Enum):
         return self.value
 
     @classmethod
-    def deserialize(cls, raw: str) -> SerializableEnumChild:
+    def deserialize(cls: Type[SerializableSubtype], raw: str) -> SerializableSubtype:
         """
         Convert the given data parsed from JSON into an object of this type, i.e. find the enum
         value for the given string using ``cls(raw)``.
@@ -102,13 +100,6 @@ class SerializableEnum(Serializable, Enum):
             return cls(raw)
         except ValueError as e:
             raise SerializerError() from e
-
-    def json(self) -> str:
-        return json.dumps(self.serialize())
-
-    @classmethod
-    def parse_json(cls, data: str) -> SerializableEnumChild:
-        return cls.deserialize(json.loads(data))
 
     def __str__(self):
         return str(self.value)

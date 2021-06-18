@@ -14,7 +14,7 @@ from mautrix.types import SerializableAttrs, UserID
 
 
 @dataclass(kw_only=True)
-class BridgeState(SerializableAttrs['BridgeState']):
+class BridgeState(SerializableAttrs):
     human_readable_errors: ClassVar[Dict[str, str]] = {}
 
     user_id: UserID = None

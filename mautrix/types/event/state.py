@@ -15,7 +15,7 @@ from .encrypted import EncryptionAlgorithm
 
 
 @dataclass
-class PowerLevelStateEventContent(SerializableAttrs['PowerLevelStateEventContent']):
+class PowerLevelStateEventContent(SerializableAttrs):
     """The content of a power level event."""
     users: Dict[UserID, int] = attr.ib(default=attr.Factory(dict), metadata={"omitempty": False})
     users_default: int = 0
@@ -73,7 +73,7 @@ class Membership(SerializableEnum):
 
 
 @dataclass
-class MemberStateEventContent(SerializableAttrs['MemberStateEventContent']):
+class MemberStateEventContent(SerializableAttrs):
     """The content of a membership event."""
     membership: Membership = Membership.LEAVE
     avatar_url: str = None
@@ -84,57 +84,57 @@ class MemberStateEventContent(SerializableAttrs['MemberStateEventContent']):
 
 
 @dataclass
-class AliasesStateEventContent(SerializableAttrs['AliasesStateEventContent']):
+class AliasesStateEventContent(SerializableAttrs):
     aliases: List[RoomAlias] = None
 
 
 @dataclass
-class CanonicalAliasStateEventContent(SerializableAttrs['CanonicalAliasStateEventContent']):
+class CanonicalAliasStateEventContent(SerializableAttrs):
     canonical_alias: RoomAlias = attr.ib(default=None, metadata={"json": "alias"})
     alt_aliases: List[RoomAlias] = attr.ib(factory=lambda: [])
 
 
 @dataclass
-class RoomNameStateEventContent(SerializableAttrs['RoomNameStateEventContent']):
+class RoomNameStateEventContent(SerializableAttrs):
     name: str = None
 
 
 @dataclass
-class RoomTopicStateEventContent(SerializableAttrs['RoomTopicStateEventContent']):
+class RoomTopicStateEventContent(SerializableAttrs):
     topic: str = None
 
 
 @dataclass
-class RoomAvatarStateEventContent(SerializableAttrs['RoomAvatarStateEventContent']):
+class RoomAvatarStateEventContent(SerializableAttrs):
     url: Optional[ContentURI] = None
 
 
 @dataclass
-class RoomPinnedEventsStateEventContent(SerializableAttrs['RoomPinnedEventsStateEventContent']):
+class RoomPinnedEventsStateEventContent(SerializableAttrs):
     pinned: List[EventID] = None
 
 
 @dataclass
-class RoomTombstoneStateEventContent(SerializableAttrs['RoomID, UserID']):
+class RoomTombstoneStateEventContent(SerializableAttrs):
     body: str = None
     replacement_room: RoomID = None
 
 
 @dataclass
-class RoomEncryptionStateEventContent(SerializableAttrs['RoomEncryptionStateEventContent']):
+class RoomEncryptionStateEventContent(SerializableAttrs):
     algorithm: EncryptionAlgorithm = None
     rotation_period_ms: int = 604800000
     rotation_period_msgs: int = 100
 
 
 @dataclass
-class RoomPredecessor(SerializableAttrs['RoomPredecessor']):
+class RoomPredecessor(SerializableAttrs):
     room_id: RoomID = None
     event_id: EventID = None
 
 
 @dataclass
-class RoomCreateStateEventContent(SerializableAttrs['RoomCreateStateEventContent']):
+class RoomCreateStateEventContent(SerializableAttrs):
     room_version: str = "1"
     federate: bool = attr.ib(metadata={"json": "m.federate", "omitdefault": True}, default=True)
     predecessor: Optional[RoomPredecessor] = None
@@ -142,14 +142,14 @@ class RoomCreateStateEventContent(SerializableAttrs['RoomCreateStateEventContent
 
 
 @dataclass
-class SpaceChildStateEventContent(SerializableAttrs['SpaceChildStateEventContent']):
+class SpaceChildStateEventContent(SerializableAttrs):
     via: List[str] = None
     order: str = ""
     suggested: bool = False
 
 
 @dataclass
-class SpaceParentStateEventContent(SerializableAttrs['SpaceParentStateEventContent']):
+class SpaceParentStateEventContent(SerializableAttrs):
     via: List[str] = None
     canonical: bool = False
 
@@ -164,7 +164,7 @@ StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
 
 
 @dataclass
-class StrippedStateUnsigned(BaseUnsigned, SerializableAttrs['StrippedStateUnsigned']):
+class StrippedStateUnsigned(BaseUnsigned, SerializableAttrs):
     """Unsigned information sent with state events."""
     prev_content: StateEventContent = None
     prev_sender: UserID = None
@@ -172,7 +172,7 @@ class StrippedStateUnsigned(BaseUnsigned, SerializableAttrs['StrippedStateUnsign
 
 
 @dataclass
-class StrippedStateEvent(SerializableAttrs['StrippedStateEvent']):
+class StrippedStateEvent(SerializableAttrs):
     """Stripped state events included with some invite events."""
     content: StateEventContent = None
     room_id: RoomID = None
@@ -200,7 +200,7 @@ class StrippedStateEvent(SerializableAttrs['StrippedStateEvent']):
 
 
 @dataclass
-class StateUnsigned(StrippedStateUnsigned, SerializableAttrs['StateUnsigned']):
+class StateUnsigned(StrippedStateUnsigned, SerializableAttrs):
     invite_room_state: Optional[List[StrippedStateEvent]] = None
 
 
@@ -222,7 +222,7 @@ state_event_content_map = {
 
 
 @dataclass
-class StateEvent(BaseRoomEvent, SerializableAttrs['StateEvent']):
+class StateEvent(BaseRoomEvent, SerializableAttrs):
     """A room state event."""
     state_key: str
     content: StateEventContent

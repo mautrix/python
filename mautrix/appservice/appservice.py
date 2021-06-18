@@ -90,7 +90,7 @@ class AppService(AppServiceServerMixin):
 
         self.loop = loop or asyncio.get_event_loop()
         self.log = (logging.getLogger(log) if isinstance(log, str)
-                    else log or logging.getLogger("mautrix_appservice"))
+                    else log or logging.getLogger("mau.appservice"))
 
         self.query_user = query_user or self.query_user
         self.query_alias = query_alias or self.query_alias

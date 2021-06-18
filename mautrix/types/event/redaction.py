@@ -13,13 +13,13 @@ from .base import BaseRoomEvent, BaseUnsigned
 
 
 @dataclass
-class RedactionEventContent(SerializableAttrs['RedactionEventContent']):
+class RedactionEventContent(SerializableAttrs):
     """The content of an m.room.redaction event"""
     reason: str = None
 
 
 @dataclass
-class RedactionEvent(BaseRoomEvent, SerializableAttrs['RedactionEvent']):
+class RedactionEvent(BaseRoomEvent, SerializableAttrs):
     """A m.room.redaction event"""
     content: RedactionEventContent
     redacts: EventID

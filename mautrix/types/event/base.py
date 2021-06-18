@@ -37,7 +37,7 @@ class BaseRoomEvent(BaseEvent):
 
 
 @dataclass
-class GenericEvent(BaseEvent, SerializableAttrs['GenericEvent']):
+class GenericEvent(BaseEvent, SerializableAttrs):
     """
     An event class that contains all possible top-level event keys and uses generic Obj's for object
     keys (content and unsigned)

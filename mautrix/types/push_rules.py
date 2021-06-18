@@ -21,7 +21,7 @@ class PushActionType(ExtensibleEnum):
 
 
 @dataclass
-class PushActionDict(SerializableAttrs['PushActionDict']):
+class PushActionDict(SerializableAttrs):
     set_tweak: Optional[str] = None
     value: Optional[str] = None
 
@@ -65,7 +65,7 @@ class PushRuleKind(ExtensibleEnum):
 
 
 @dataclass
-class PushCondition(SerializableAttrs['PushCondition']):
+class PushCondition(SerializableAttrs):
     kind: PushConditionKind
     key: Optional[str] = None
     pattern: Optional[str] = None
@@ -74,7 +74,7 @@ class PushCondition(SerializableAttrs['PushCondition']):
 
 
 @dataclass
-class PushRule(SerializableAttrs['PushRule']):
+class PushRule(SerializableAttrs):
     rule_id: PushRuleID
     default: bool
     enabled: bool

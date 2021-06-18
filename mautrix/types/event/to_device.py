@@ -23,7 +23,7 @@ class RoomKeyWithheldCode(ExtensibleEnum):
 
 
 @dataclass
-class RoomKeyWithheldEventContent(SerializableAttrs['RoomKeyWithheldEventContent']):
+class RoomKeyWithheldEventContent(SerializableAttrs):
     algorithm: EncryptionAlgorithm
     sender_key: IdentityKey
     code: RoomKeyWithheldCode
@@ -33,7 +33,7 @@ class RoomKeyWithheldEventContent(SerializableAttrs['RoomKeyWithheldEventContent
 
 
 @dataclass
-class RoomKeyEventContent(SerializableAttrs['RoomKeyEventContent']):
+class RoomKeyEventContent(SerializableAttrs):
     algorithm: EncryptionAlgorithm
     room_id: RoomID
     session_id: SessionID
@@ -46,7 +46,7 @@ class KeyRequestAction(ExtensibleEnum):
 
 
 @dataclass
-class RequestedKeyInfo(SerializableAttrs['RequestedKeyInfo']):
+class RequestedKeyInfo(SerializableAttrs):
     algorithm: EncryptionAlgorithm
     room_id: RoomID
     sender_key: IdentityKey
@@ -54,7 +54,7 @@ class RequestedKeyInfo(SerializableAttrs['RequestedKeyInfo']):
 
 
 @dataclass
-class RoomKeyRequestEventContent(SerializableAttrs['RoomKeyRequestEventContent']):
+class RoomKeyRequestEventContent(SerializableAttrs):
     action: KeyRequestAction
     requesting_device_id: DeviceID
     request_id: str
@@ -63,7 +63,7 @@ class RoomKeyRequestEventContent(SerializableAttrs['RoomKeyRequestEventContent']
 
 @dataclass
 class ForwardedRoomKeyEventContent(RoomKeyEventContent,
-                                   SerializableAttrs['ForwardedRoomKeyEventContent']):
+                                   SerializableAttrs):
     sender_key: IdentityKey
     signing_key: SigningKey = attr.ib(metadata={"json": "sender_claimed_ed25519_key"})
     forwarding_key_chain: List[str] = attr.ib(metadata={"json": "forwarding_curve25519_key_chain"})
@@ -85,7 +85,7 @@ to_device_event_content_map = {
 
 
 @dataclass
-class ToDeviceEvent(BaseEvent, SerializableAttrs['ToDeviceEvent']):
+class ToDeviceEvent(BaseEvent, SerializableAttrs):
     sender: UserID
     content: ToDeviceEventContent
 

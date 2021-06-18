@@ -3,17 +3,16 @@
 from typing import Dict, List
 
 from ..primitive import JSON
-from .serializable import GenericSerializable, Serializable
+from .serializable import Serializable, AbstractSerializable
 
 
-class Obj(GenericSerializable['Obj']):
+class Obj(AbstractSerializable):
     """"""
     def __init__(self, **kwargs):
         self.__dict__ = {k: Obj(**v) if isinstance(v, dict) else (
             Lst(v) if isinstance(v, list) else v) for k, v in kwargs.items()}
 
     def __getattr__(self, name):
-        # FIXME: Why is this function needed? Is it just to strip the '_' from the name?
         name = name.rstrip('_')
         obj = self.__dict__.get(name)
         if obj is None:
@@ -64,7 +63,7 @@ class Obj(GenericSerializable['Obj']):
         return cls(**data)
 
 
-class Lst(list, GenericSerializable['Lst']):
+class Lst(list, AbstractSerializable):
     def __init__(self, iterable=()):
         list.__init__(self, (Obj(**x) if isinstance(x, dict)
                              else (Lst(x) if isinstance(x, list)

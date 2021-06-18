@@ -12,14 +12,14 @@ from .util import SerializableAttrs
 
 
 @dataclass
-class Member(SerializableAttrs['Member']):
+class Member(SerializableAttrs):
     membership: Membership = None
     avatar_url: ContentURI = None
     displayname: str = None
 
 
 @dataclass
-class User(SerializableAttrs['User']):
+class User(SerializableAttrs):
     user_id: UserID
     avatar_url: ContentURI = None
     displayname: str = None

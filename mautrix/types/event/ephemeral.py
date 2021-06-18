@@ -14,12 +14,12 @@ from .base import BaseEvent, GenericEvent
 
 
 @dataclass
-class TypingEventContent(SerializableAttrs['TypingEventContent']):
+class TypingEventContent(SerializableAttrs):
     user_ids: List[UserID]
 
 
 @dataclass
-class TypingEvent(BaseEvent, SerializableAttrs['TypingEvent']):
+class TypingEvent(BaseEvent, SerializableAttrs):
     room_id: RoomID
     content: TypingEventContent
 
@@ -31,7 +31,7 @@ class PresenceState(SerializableEnum):
 
 
 @dataclass
-class PresenceEventContent(SerializableAttrs['PresenceEventContent']):
+class PresenceEventContent(SerializableAttrs):
     presence: PresenceState
     last_active_ago: int = None
     status_msg: str = None
@@ -39,13 +39,13 @@ class PresenceEventContent(SerializableAttrs['PresenceEventContent']):
 
 
 @dataclass
-class PresenceEvent(BaseEvent, SerializableAttrs['PresenceEvent']):
+class PresenceEvent(BaseEvent, SerializableAttrs):
     sender: UserID
     content: PresenceEventContent
 
 
 @dataclass
-class SingleReceiptEventContent(SerializableAttrs['SingleReceiptEventContent']):
+class SingleReceiptEventContent(SerializableAttrs):
     ts: int
 
 
@@ -57,7 +57,7 @@ ReceiptEventContent = Dict[EventID, Dict[ReceiptType, Dict[UserID, SingleReceipt
 
 
 @dataclass
-class ReceiptEvent(BaseEvent, SerializableAttrs['ReceiptEvent']):
+class ReceiptEvent(BaseEvent, SerializableAttrs):
     room_id: RoomID
     content: ReceiptEventContent
 

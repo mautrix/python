@@ -27,7 +27,7 @@ class LoginType(ExtensibleEnum):
 
 
 @dataclass
-class LoginFlow(SerializableAttrs['LoginFlow']):
+class LoginFlow(SerializableAttrs):
     """
     A login flow, as specified in the `GET /login endpoint`_
 
@@ -38,7 +38,7 @@ class LoginFlow(SerializableAttrs['LoginFlow']):
 
 
 @dataclass
-class LoginFlowList(SerializableAttrs['LoginFlowList']):
+class LoginFlowList(SerializableAttrs):
     flows: List[LoginFlow]
 
     def supports_type(self, type: LoginType) -> bool:
@@ -61,7 +61,7 @@ class UserIdentifierType(ExtensibleEnum):
 
 
 @dataclass
-class MatrixUserIdentifier(SerializableAttrs['MatrixUserIdentifier']):
+class MatrixUserIdentifier(SerializableAttrs):
     """
     A client can identify a user using their Matrix ID. This can either be the fully qualified
     Matrix user ID, or just the localpart of the user ID.
@@ -75,7 +75,7 @@ class MatrixUserIdentifier(SerializableAttrs['MatrixUserIdentifier']):
 
 
 @dataclass
-class ThirdPartyIdentifier(SerializableAttrs['ThirdPartyIdentifier']):
+class ThirdPartyIdentifier(SerializableAttrs):
     """
     A client can identify a user using a 3PID associated with the user's account on the homeserver,
     where the 3PID was previously associated using the `/account/3pid`_ API. See the `3PID Types`_
@@ -92,7 +92,7 @@ class ThirdPartyIdentifier(SerializableAttrs['ThirdPartyIdentifier']):
 
 
 @dataclass
-class PhoneIdentifier(SerializableAttrs['PhoneIdentifier']):
+class PhoneIdentifier(SerializableAttrs):
     """
     A client can identify a user using a phone number associated with the user's account, where the
     phone number was previously associated using the `/account/3pid`_ API. The phone number can be
@@ -132,23 +132,23 @@ setattr(UserIdentifier, "deserialize", deserialize_user_identifier)
 
 
 @dataclass
-class DiscoveryServer(SerializableAttrs['DiscoveryServer']):
+class DiscoveryServer(SerializableAttrs):
     base_url: Optional[str] = None
 
 
 @dataclass
-class DiscoveryIntegrationServer(SerializableAttrs['DiscoveryIntegrations']):
+class DiscoveryIntegrationServer(SerializableAttrs):
     ui_url: Optional[str] = None
     api_url: Optional[str] = None
 
 
 @dataclass
-class DiscoveryIntegrations(SerializableAttrs['DiscoveryIntegrations']):
+class DiscoveryIntegrations(SerializableAttrs):
     managers: List[DiscoveryIntegrationServer] = attr.ib(factory=lambda: [])
 
 
 @dataclass
-class DiscoveryInformation(SerializableAttrs['DiscoveryInformation']):
+class DiscoveryInformation(SerializableAttrs):
     homeserver: Optional[DiscoveryServer] = attr.ib(metadata={"json": "m.homeserver"},
                                                     factory=DiscoveryServer)
     identity_server: Optional[DiscoveryServer] = attr.ib(metadata={"json": "m.identity_server"},
@@ -158,7 +158,7 @@ class DiscoveryInformation(SerializableAttrs['DiscoveryInformation']):
 
 
 @dataclass
-class LoginResponse(SerializableAttrs['LoginResponse']):
+class LoginResponse(SerializableAttrs):
     """
     The response for a login request, as specified in the `POST /login endpoint`_
 

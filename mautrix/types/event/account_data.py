@@ -13,12 +13,12 @@ from .base import EventType, BaseEvent
 
 
 @dataclass
-class RoomTagInfo(SerializableAttrs['RoomTagInfo']):
+class RoomTagInfo(SerializableAttrs):
     order: Union[int, float, str] = None
 
 
 @dataclass
-class RoomTagAccountDataEventContent(SerializableAttrs['RoomTagAccountDataEventContent']):
+class RoomTagAccountDataEventContent(SerializableAttrs):
     tags: Dict[str, RoomTagInfo] = attr.ib(default=None, metadata={"json": "tags"})
 
 
@@ -35,7 +35,7 @@ account_data_event_content_map = {
 
 
 @dataclass
-class AccountDataEvent(BaseEvent, SerializableAttrs['AccountDataEvent']):
+class AccountDataEvent(BaseEvent, SerializableAttrs):
     content: AccountDataEventContent
 
     @classmethod

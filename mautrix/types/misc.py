@@ -52,7 +52,7 @@ class PaginationDirection(Enum):
 
 
 @dataclass
-class RoomAliasInfo(SerializableAttrs['RoomAliasInfo']):
+class RoomAliasInfo(SerializableAttrs):
     """
     Room alias query result, as specified in the `alias resolve endpoint`_
 
@@ -71,7 +71,7 @@ DirectoryPaginationToken = NewType("DirectoryPaginationToken", str)
 
 
 @dataclass
-class PublicRoomInfo(SerializableAttrs['PublicRoomInfo']):
+class PublicRoomInfo(SerializableAttrs):
     room_id: RoomID
 
     num_joined_members: int
@@ -88,7 +88,7 @@ class PublicRoomInfo(SerializableAttrs['PublicRoomInfo']):
 
 
 @dataclass
-class RoomDirectoryResponse(SerializableAttrs['RoomDirectoryResponse']):
+class RoomDirectoryResponse(SerializableAttrs):
     chunk: List[PublicRoomInfo]
     next_batch: DirectoryPaginationToken = None
     prev_batch: DirectoryPaginationToken = None
@@ -100,6 +100,6 @@ PaginatedMessages = NamedTuple("PaginatedMessages", start=SyncToken, end=SyncTok
 
 
 @dataclass
-class VersionsResponse(SerializableAttrs['VersionsResponse']):
+class VersionsResponse(SerializableAttrs):
     versions: List[str]
     unstable_features: Dict[str, bool] = attr.ib(factory=lambda: {})

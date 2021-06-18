@@ -13,7 +13,7 @@ from .message import RelatesTo
 
 
 @dataclass
-class ReactionEventContent(SerializableAttrs['ReactionEventContent']):
+class ReactionEventContent(SerializableAttrs):
     """The content of an m.reaction event"""
     _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
 
@@ -29,7 +29,7 @@ class ReactionEventContent(SerializableAttrs['ReactionEventContent']):
 
 
 @dataclass
-class ReactionEvent(BaseRoomEvent, SerializableAttrs['ReactionEvent']):
+class ReactionEvent(BaseRoomEvent, SerializableAttrs):
     """A m.reaction event"""
     content: ReactionEventContent
     _unsigned: Optional[BaseUnsigned] = attr.ib(default=None, metadata={"json": "unsigned"})
