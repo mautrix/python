@@ -49,7 +49,7 @@ class MatrixParser(Generic[T]):
     fs: Type[T] = MarkdownString
     read_html: Callable[[str], HTMLNode] = read_html
     ignore_less_relevant_links: bool = True
-    less_relevant_link_attrib: str = "data-mautrix-no-link"
+    exclude_plaintext_attrib: str = "data-mautrix-exclude-plaintext"
 
     @classmethod
     def list_bullet(cls, depth: int) -> str:
@@ -101,6 +101,8 @@ class MatrixParser(Generic[T]):
     @classmethod
     def basic_format_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         msg = cls.tag_aware_parse_node(node, ctx)
+        if cls.exclude_plaintext_attrib in node.attrib:
+            return msg
         if node.tag in ("b", "strong"):
             msg = msg.format(cls.e.BOLD)
         elif node.tag in ("i", "em"):
@@ -135,7 +137,7 @@ class MatrixParser(Generic[T]):
 
         # Custom attribute to tell the parser that the link isn't relevant and
         # shouldn't be included in plaintext representation.
-        if cls.ignore_less_relevant_links and node.attrib.get(cls.less_relevant_link_attrib, False):
+        if cls.ignore_less_relevant_links and cls.exclude_plaintext_attrib in node.attrib:
             return msg
 
         return cls.url_to_fstring(msg, href)
