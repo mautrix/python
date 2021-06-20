@@ -22,6 +22,7 @@ setuptools.setup(
     ],
     extras_require={
         "detect_mimetype": ["python-magic>=0.4.15,<0.5"],
+        "test": ["pytest"],
     },
     python_requires="~=3.7",
 

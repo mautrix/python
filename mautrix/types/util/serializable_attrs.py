@@ -38,7 +38,7 @@ no_value = object()
 log = logging.getLogger("mau.attrs")
 
 
-def field(default: Any = None, factory: Optional[Callable[[], Any]] = None,
+def field(default: Any = attr.NOTHING, factory: Optional[Callable[[], Any]] = None,
           json: Optional[str] = None, flatten: bool = False, hidden: bool = False,
           ignore_errors: bool = False, omit_empty: bool = True, omit_default: bool = False,
           metadata: Optional[Dict[str, Any]] = None, **kwargs):
@@ -54,7 +54,7 @@ def field(default: Any = None, factory: Optional[Callable[[], Any]] = None,
             the parent and child fields, so the classes should ignore unknown keys.
         hidden: Set to always omit the key from serialized objects.
         ignore_errors: Set to ignore type errors while deserializing.
-        omit_empty: Set to omit the key from serialized objects if the value is false-y.
+        omit_empty: Set to omit the key from serialized objects if the value is ``None``.
         omit_default: Set to omit the key from serialized objects if the value is equal to the
             default.
         metadata: Additional metadata for attr.ib.
@@ -286,7 +286,8 @@ def _serialize_attrs_field(data: T, field: T2) -> JSON:
     field_val = getattr(data, field.name)
     if field_val is None:
         if not field.metadata.get(META_OMIT_EMPTY, True):
-            field_val = field.default
+            if field.default is not attr.NOTHING:
+                field_val = field.default
         else:
             return attr.NOTHING
 
