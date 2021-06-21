@@ -34,7 +34,6 @@ META_IGNORE_ERRORS = "ignore_errors"
 META_OMIT_EMPTY = "omitempty"
 META_OMIT_DEFAULT = "omitdefault"
 
-no_value = object()
 log = logging.getLogger("mau.attrs")
 
 

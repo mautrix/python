@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from typing import Optional, List
 
 from attr import dataclass
 import pytest
@@ -38,6 +38,30 @@ def test_default():
     d2 = Default.deserialize({"no_default": 4, "defaultful_value": 6})
     assert d2.no_default == 4
     assert d2.defaultful_value == 6
+
+
+def test_factory():
+    @dataclass
+    class Factory(SerializableAttrs):
+        manufactured_value: List[str] = field(factory=lambda: ["hi"])
+
+    assert Factory.deserialize({}).manufactured_value == ["hi"]
+    factory1 = Factory.deserialize({})
+    factory2 = Factory.deserialize({})
+    assert factory1.manufactured_value is not factory2.manufactured_value
+    assert Factory.deserialize({"manufactured_value": ["bye"]}).manufactured_value == ["bye"]
+
+
+def test_hidden():
+    @dataclass
+    class HiddenField(SerializableAttrs):
+        visible: str
+        hidden: int = field(hidden=True, default=5)
+
+    deserialized_hidden = HiddenField.deserialize({"visible": "yay", "hidden": 4})
+    assert deserialized_hidden.hidden == 5
+    assert deserialized_hidden.unrecognized_["hidden"] == 4
+    assert HiddenField("hmm", 5).serialize() == {"visible": "hmm"}
 
 
 def test_ignore_errors():
