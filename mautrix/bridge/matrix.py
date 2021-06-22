@@ -292,8 +292,12 @@ class BaseMatrixHandler:
 
         is_command, text = self.is_command(message)
         portal = await self.bridge.get_portal(room_id)
-        if not is_command and portal and await self.allow_bridging_message(sender, portal):
-            await portal.handle_matrix_message(sender, message, event_id)
+        if not is_command and portal:
+            if await self.allow_bridging_message(sender, portal):
+                await portal.handle_matrix_message(sender, message, event_id)
+            else:
+                self.log.trace("Ignoring event %s from %s: not allowed to send to portal",
+                               event_id, sender.mxid)
             return
 
         if message.msgtype != MessageType.TEXT:
