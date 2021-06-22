@@ -74,6 +74,8 @@ class MegolmDecryptionMachine(BaseOlmMachine):
         if room_id != evt.room_id:
             raise MismatchingRoomError()
 
+        if evt.content.relates_to and "m.relates_to" not in content:
+            content["m.relates_to"] = evt.content.relates_to.serialize()
         result = Event.deserialize({
             "room_id": evt.room_id,
             "event_id": evt.event_id,
@@ -83,12 +85,6 @@ class MegolmDecryptionMachine(BaseOlmMachine):
             "content": content,
         })
         result.unsigned = evt.unsigned
-        if evt.content.relates_to:
-            if hasattr(result.content, "relates_to"):
-                if not result.content.relates_to:
-                    result.content.relates_to = evt.content.relates_to
-            elif "m.relates_to" not in result.content:
-                result.content["m.relates_to"] = evt.content.relates_to.serialize()
         result.type = result.type.with_class(evt.type.t_class)
         result["mautrix"] = {
             "verified": verified,
