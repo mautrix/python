@@ -29,6 +29,7 @@ HelpCacheKey = NamedTuple('HelpCacheKey', is_management=bool, is_portal=bool,
                           is_admin=bool, is_logged_in=bool)
 
 SECTION_GENERAL = HelpSection("General", 0, "")
+SECTION_AUTH = HelpSection("Authentication", 10, "")
 SECTION_ADMIN = HelpSection("Administration", 50, "")
 
 

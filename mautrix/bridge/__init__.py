@@ -1,5 +1,7 @@
 from .config import BaseBridgeConfig
-from .custom_puppet import CustomPuppetMixin, CustomPuppetError, OnlyLoginSelf, InvalidAccessToken
+from .custom_puppet import (CustomPuppetMixin, CustomPuppetError, OnlyLoginSelf,
+                            InvalidAccessToken, AutologinError, OnlyLoginTrustedDomain,
+                            HomeserverURLNotFound)
 from .matrix import BaseMatrixHandler
 from .portal import BasePortal
 from .user import BaseUser

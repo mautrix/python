@@ -17,6 +17,7 @@ from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Gauge
 
 from .portal import BasePortal
+from .puppet import BasePuppet
 from .state import BridgeState
 
 if TYPE_CHECKING:
@@ -50,6 +51,9 @@ class BaseUser(ABC):
 
     @abstractmethod
     async def is_logged_in(self) -> bool:
+        raise NotImplementedError()
+
+    async def get_puppet(self) -> Optional['BasePuppet']:
         raise NotImplementedError()
 
     async def is_in_portal(self, portal: BasePortal) -> bool:

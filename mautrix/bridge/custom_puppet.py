@@ -1,9 +1,9 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, List, Awaitable, Iterator
+from typing import Optional, Dict, List, Awaitable, Iterator, TYPE_CHECKING
 from abc import ABC, abstractmethod
 from itertools import chain
 import asyncio
@@ -23,7 +23,8 @@ from mautrix.errors import (IntentError, MatrixError, MatrixRequestError, Matrix
                             WellKnownError)
 from mautrix.api import Path
 
-from .matrix import BaseMatrixHandler
+if TYPE_CHECKING:
+    from .matrix import BaseMatrixHandler
 
 
 class CustomPuppetError(MatrixError):
@@ -49,6 +50,10 @@ class OnlyLoginTrustedDomain(CustomPuppetError):
     def __init__(self):
         super().__init__("This bridge doesn't allow double-puppeting "
                          "with accounts on untrusted servers.")
+
+
+class AutologinError(CustomPuppetError):
+    pass
 
 
 class CustomPuppetMixin(ABC):
@@ -88,7 +93,7 @@ class CustomPuppetMixin(ABC):
     az: AppService
     loop: asyncio.AbstractEventLoop
     log: logging.Logger
-    mx: BaseMatrixHandler
+    mx: 'BaseMatrixHandler'
 
     by_custom_mxid: Dict[UserID, 'CustomPuppetMixin'] = {}
 
@@ -128,19 +133,19 @@ class CustomPuppetMixin(ABC):
                                                           or server == cls.az.domain)
 
     @classmethod
-    async def _login_with_shared_secret(cls, mxid: UserID) -> Optional[str]:
+    async def _login_with_shared_secret(cls, mxid: UserID) -> str:
         _, server = cls.az.intent.parse_user_id(mxid)
         try:
             secret = cls.login_shared_secret_map[server]
         except KeyError:
-            return None
+            raise AutologinError(f"No shared secret configured for {server}")
         try:
             base_url = cls.homeserver_url_map[server]
         except KeyError:
             if server == cls.az.domain:
                 base_url = cls.az.intent.api.base_url
             else:
-                return None
+                raise AutologinError(f"No homeserver URL configured for {server}")
         password = hmac.new(secret, mxid.encode("utf-8"), hashlib.sha512).hexdigest()
         url = base_url / str(Path.login)
         resp = await cls.az.http_session.post(url, data=json.dumps({
@@ -154,7 +159,11 @@ class CustomPuppetMixin(ABC):
             "password": password
         }), headers={"Content-Type": "application/json"})
         data = await resp.json()
-        return data["access_token"]
+        try:
+            return data["access_token"]
+        except KeyError:
+            error_msg = data.get("error", data.get("errcode", f"HTTP {resp.status}"))
+            raise AutologinError(f"Didn't get an access token: {error_msg}") from None
 
     async def switch_mxid(self, access_token: Optional[str], mxid: Optional[UserID],
                           start_sync_task: bool = True) -> None:
@@ -170,8 +179,6 @@ class CustomPuppetMixin(ABC):
         """
         if access_token == "auto":
             access_token = await self._login_with_shared_secret(mxid)
-            if not access_token:
-                raise ValueError("Failed to log in with shared secret")
             self.log.debug(f"Logged in for {mxid} using shared secret")
 
         if mxid is not None:
