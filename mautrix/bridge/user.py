@@ -122,8 +122,9 @@ class BaseUser(ABC):
         raise NotImplementedError()
 
     async def push_bridge_state(self, ok: bool, error: Optional[str] = None,
-                                message: Optional[str] = None, ttl: Optional[int] = None) -> None:
-        state = BridgeState(ok=ok, error=error, message=message, ttl=ttl)
+                                message: Optional[str] = None, ttl: Optional[int] = None,
+                                remote_id: Optional[str] = None) -> None:
+        state = BridgeState(ok=ok, error=error, message=message, ttl=ttl, remote_id=remote_id)
         await self.fill_bridge_state(state)
         if state.should_deduplicate(self._prev_bridge_status):
             return
