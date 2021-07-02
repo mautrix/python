@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union, Dict, Any, Sequence
 import asyncio
 
 from multidict import CIMultiDict
@@ -18,7 +18,7 @@ from mautrix.types import (JSON, UserID, RoomID, RoomAlias, StateEvent, RoomDire
 from .events import EventMethods
 from .base import BaseClientAPI
 
-InitialState = List[Union[StateEvent, StrippedStateEvent, Dict[str, Any]]]
+InitialState = Sequence[Union[StateEvent, StrippedStateEvent, Dict[str, Any]]]
 
 
 class RoomMethods(EventMethods, BaseClientAPI):
