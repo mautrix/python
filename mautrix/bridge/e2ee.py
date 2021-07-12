@@ -31,7 +31,7 @@ except ImportError:
     Database = None
 
 if TYPE_CHECKING:
-    from mautrix.bridge import Bridge
+    from mautrix.util.bridge_state import Bridge
 
 
 class EncryptionManager:

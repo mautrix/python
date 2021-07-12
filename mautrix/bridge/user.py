@@ -15,10 +15,10 @@ from mautrix.types import UserID, RoomID, EventType, Membership
 from mautrix.errors import MNotFound
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Gauge
+from mautrix.util.bridge_state import BridgeState
 
 from .portal import BasePortal
 from .puppet import BasePuppet
-from .state import BridgeState
 
 if TYPE_CHECKING:
     from .bridge import Bridge
