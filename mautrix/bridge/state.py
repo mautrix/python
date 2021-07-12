@@ -16,6 +16,9 @@ from mautrix.types import SerializableAttrs, UserID
 @dataclass(kw_only=True)
 class BridgeState(SerializableAttrs):
     human_readable_errors: ClassVar[Dict[str, str]] = {}
+    default_error_source: ClassVar[str] = "bridge"
+    default_error_ttl: ClassVar[int] = 60
+    default_ok_ttl: ClassVar[int] = 240
 
     user_id: UserID = None
     remote_id: str = None
@@ -31,7 +34,8 @@ class BridgeState(SerializableAttrs):
         if not self.timestamp:
             self.timestamp = int(time.time())
         if not self.ok:
-            self.error_source = "bridge"
+            if not self.error_source:
+                self.error_source = self.default_error_source
             try:
                 msg = self.human_readable_errors[self.error]
             except KeyError:
@@ -39,12 +43,12 @@ class BridgeState(SerializableAttrs):
             else:
                 self.message = msg.format(message=self.message) if self.message else msg
             if not self.ttl:
-                self.ttl = 60
+                self.ttl = self.default_error_ttl
         else:
             self.error = None
             self.error_source = None
             if not self.ttl:
-                self.ttl = 240
+                self.ttl = self.default_ok_ttl
         return self
 
     def should_deduplicate(self, prev_state: 'BridgeState') -> bool:
@@ -54,7 +58,7 @@ class BridgeState(SerializableAttrs):
         # If there's more than ⅘ of the previous pong's time-to-live left, drop this one
         return prev_state.timestamp + (prev_state.ttl / 5) > self.timestamp
 
-    async def send(self, url: str, token: str, log: logging.Logger) -> None:
+    async def send(self, url: str, token: str, log: logging.Logger, log_sent: bool = True) -> None:
         if not url:
             return
         headers = {"Authorization": f"Bearer {token}"}
@@ -66,7 +70,7 @@ class BridgeState(SerializableAttrs):
                     text = text.replace("\n", "\\n")
                     log.warning(f"Unexpected status code {resp.status} "
                                 f"sending bridge state update: {text}")
-                else:
+                elif log_sent:
                     log.debug(f"Sent new bridge state {self}")
         except Exception as e:
             log.warning(f"Failed to send updated bridge state: {e}")
