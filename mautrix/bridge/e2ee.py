@@ -49,7 +49,6 @@ class EncryptionManager:
     _id_prefix: str
     _id_suffix: str
 
-    sync_task: asyncio.Future
     _share_session_events: Dict[RoomID, asyncio.Event]
 
     def __init__(self, bridge: 'Bridge', homeserver_address: str, user_id_prefix: str,
@@ -193,11 +192,11 @@ class EncryptionManager:
         if not device_id:
             await self.crypto_store.put_device_id(self.client.device_id)
             self.log.debug(f"Logged in with new device ID {self.client.device_id}")
-        self.sync_task = self.client.start(self._filter)
+        _ = self.client.start(self._filter)
         self.log.info("End-to-bridge encryption support is enabled")
 
     async def stop(self) -> None:
-        self.sync_task.cancel()
+        self.client.stop()
         await self.crypto_store.close()
         if self.crypto_db:
             await self.crypto_db.stop()
