@@ -13,8 +13,17 @@ from .primitive import RoomID, RoomAlias, SyncToken, ContentURI, UserID
 from .util import SerializableAttrs
 from .event import Event
 
-DeviceLists = NamedTuple("DeviceLists", changed=List[UserID], left=List[UserID])
-DeviceOTKCount = NamedTuple("DeviceOTKCount", curve25519=int, signed_curve25519=int)
+
+@dataclass
+class DeviceLists(SerializableAttrs):
+    changed: List[UserID] = attr.ib(factory=lambda: [])
+    left: List[UserID] = attr.ib(factory=lambda: [])
+
+
+@dataclass
+class DeviceOTKCount(SerializableAttrs):
+    curve25519: int
+    signed_curve25519: int
 
 
 class RoomCreatePreset(Enum):
