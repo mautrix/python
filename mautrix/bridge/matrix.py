@@ -422,8 +422,7 @@ class BaseMatrixHandler:
         if portal:
             portal.encrypted = True
             await portal.save()
-            # TODO replace with normal attribute access in v0.9
-            if getattr(portal, "is_direct", False):
+            if portal.is_direct:
                 portal.log.debug("Received encryption event in direct portal: %s", evt.content)
                 await portal.enable_dm_encryption()
 
