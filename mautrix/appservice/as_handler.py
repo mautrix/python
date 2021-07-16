@@ -56,7 +56,7 @@ class AppServiceServerMixin:
             token = request.rel_url.query["access_token"]
         except KeyError:
             try:
-                token = request.headers["Authorization"].lstrip("Bearer ")
+                token = request.headers["Authorization"].removeprefix("Bearer ")
             except (KeyError, AttributeError):
                 return False
 
