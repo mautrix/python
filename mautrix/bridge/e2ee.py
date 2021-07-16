@@ -160,11 +160,12 @@ class EncryptionManager:
         except SessionNotFound as e:
             if not wait_session_timeout:
                 raise
-            self.log.debug(f"Didn't find session {e.session_id},"
-                           f" waiting {wait_session_timeout} seconds for session to arrive")
+            self.log.debug(f"Couldn't find session {e.session_id} trying to decrypt {evt.event_id},"
+                           f" waiting {wait_session_timeout} seconds...")
             got_keys = await self.crypto.wait_for_session(evt.room_id, e.sender_key, e.session_id,
                                                           timeout=wait_session_timeout)
             if got_keys:
+                self.log.debug(f"Got session {e.session_id} after waiting, trying to decrypt {evt.event_id} again")
                 decrypted = await self.crypto.decrypt_megolm_event(evt)
             else:
                 raise

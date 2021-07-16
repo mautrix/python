@@ -375,7 +375,7 @@ class BaseMatrixHandler:
         except SessionNotFound as e:
             await self._handle_encrypted_wait(evt, e, wait=10)
         except DecryptionError as e:
-            self.log.warning("Failed to decrypt event %s: %s", evt.event_id, e)
+            self.log.warning(f"Failed to decrypt {evt.event_id}: {e}")
             self.log.trace("%s decryption traceback:", evt.event_id, exc_info=True)
             await self.send_encryption_error_notice(evt, e)
         else:
@@ -389,7 +389,7 @@ class BaseMatrixHandler:
 
     async def _handle_encrypted_wait(self, evt: EncryptedEvent, err: SessionNotFound, wait: int
                                      ) -> None:
-        self.log.warning(f"Didn't find session {err.session_id}, waiting even longer")
+        self.log.debug(f"Couldn't find session {err.session_id} trying to decrypt {evt.event_id}, waiting even longer")
         msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption "
                f"keys. The bridge will retry for {wait} seconds. If this error keeps happening, "
                "try restarting your client.")
@@ -397,16 +397,19 @@ class BaseMatrixHandler:
         got_keys = await self.e2ee.crypto.wait_for_session(evt.room_id, err.sender_key,
                                                            err.session_id, timeout=wait)
         if got_keys:
+            self.log.debug(f"Got session {err.session_id} after waiting more, trying to decrypt {evt.event_id} again")
             try:
                 decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=0)
             except DecryptionError as e:
-                self.log.warning(f"Didn't get {err.session_id}, giving up on {evt.event_id}")
+                self.log.warning(f"Failed to decrypt {evt.event_id}: {e}")
+                self.log.trace("%s decryption traceback:", evt.event_id, exc_info=True)
                 msg = f"\u26a0 Your message was not bridged: {e}"
             else:
                 await self.az.intent.redact(evt.room_id, event_id)
                 await self.int_handle_event(decrypted)
                 return
         else:
+            self.log.warning(f"Didn't get {err.session_id}, giving up on {evt.event_id}")
             msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption "
                    "keys. If this error keeps happening, try restarting your client.")
         content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=msg)
