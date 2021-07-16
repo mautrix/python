@@ -41,7 +41,7 @@ class Database:
                  loop: Optional[asyncio.AbstractEventLoop] = None,
                  pool_override: Optional[asyncpg.pool.Pool] = None) -> None:
         self.url = url
-        self.db_args = db_args or {}
+        self.db_args = {**db_args} if db_args else {}
         if isinstance(upgrade_table, str):
             self.upgrade_table = upgrade_tables[upgrade_table]
         elif isinstance(upgrade_table, UpgradeTable):
