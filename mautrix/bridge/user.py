@@ -15,7 +15,7 @@ from mautrix.types import UserID, RoomID, EventType, Membership
 from mautrix.errors import MNotFound
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Gauge
-from mautrix.util.bridge_state import BridgeState
+from mautrix.util.bridge_state import BridgeState, BridgeStateEvent
 
 from .portal import BasePortal
 from .puppet import BasePuppet
@@ -121,10 +121,16 @@ class BaseUser(ABC):
     async def get_bridge_state(self) -> BridgeState:
         raise NotImplementedError()
 
-    async def push_bridge_state(self, ok: bool, error: Optional[str] = None,
+    async def push_bridge_state(self, state_event: BridgeStateEvent, error: Optional[str] = None,
                                 message: Optional[str] = None, ttl: Optional[int] = None,
                                 remote_id: Optional[str] = None) -> None:
-        state = BridgeState(ok=ok, error=error, message=message, ttl=ttl, remote_id=remote_id)
+        state = BridgeState(
+            state_event=state_event,
+            error=error,
+            message=message,
+            ttl=ttl,
+            remote_id=remote_id,
+        )
         await self.fill_bridge_state(state)
         if state.should_deduplicate(self._prev_bridge_status):
             return

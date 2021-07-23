@@ -3,6 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from enum import Enum
 from typing import Optional, Dict, ClassVar
 import logging
 import time
@@ -13,46 +14,82 @@ import aiohttp
 from mautrix.types import SerializableAttrs, UserID
 
 
+class BridgeStateEvent(Enum):
+    # Bridge process is starting up (will not have valid remoteID)
+    Starting = "STARTING"
+    # Bridge has started but has no valid credentials (will not have valid remoteID)
+    Unconfigured = "UNCONFIGURED"
+    # Bridge has credentials and has started connecting to a remote network
+    Connecting = "CONNECTING"
+    # Bridge has begun backfilling
+    Backfilling = "BACKFILLING"
+    # Bridge has happily connected and is bridging messages
+    Connected = "CONNECTED"
+    # Bridge has temporarily disconnected, expected to reconnect automatically
+    TransientDisconnect = "TRANSIENT_DISCONNECT"
+    # Bridge has disconnected, will require user to log in again
+    BadCredentials = "BAD_CREDENTIALS"
+    # Bridge has disconnected for an unknown/unexpected reason - we should investigate
+    UnknownError = "UNKNOWN_ERROR"
+    # User has logged out - stop tracking this remote
+    LoggedOut = "LOGGED_OUT"
+
+
 @dataclass(kw_only=True)
 class BridgeState(SerializableAttrs):
-    human_readable_errors: ClassVar[Dict[str, str]] = {}
+    human_readable_errors: ClassVar[Dict[Optional[str], str]] = {}
     default_error_source: ClassVar[str] = "bridge"
     default_error_ttl: ClassVar[int] = 60
     default_ok_ttl: ClassVar[int] = 240
 
-    user_id: UserID = None
-    remote_id: str = None
-    remote_name: str = None
     ok: bool
-    timestamp: int = None
+    state_event: BridgeStateEvent
+    user_id: Optional[UserID] = None
+    remote_id: Optional[str] = None
+    remote_name: Optional[str] = None
+    timestamp: Optional[int] = None
     ttl: int = 0
     error_source: Optional[str] = None
     error: Optional[str] = None
     message: Optional[str] = None
 
     def fill(self) -> 'BridgeState':
-        if not self.timestamp:
-            self.timestamp = int(time.time())
-        if not self.ok:
-            if not self.error_source:
-                self.error_source = self.default_error_source
+        self.timestamp = self.timestamp or int(time.time())
+
+        if self.state_event == BridgeStateEvent.Connected:
+            self.error = None
+            self.error_source = None
+            self.ttl = self.ttl or self.default_ok_ttl
+            self.ok = True
+        elif self.state_event in (
+            BridgeStateEvent.Starting,
+            BridgeStateEvent.Unconfigured,
+            BridgeStateEvent.Connecting,
+            BridgeStateEvent.Backfilling,
+            BridgeStateEvent.LoggedOut,
+        ):
+            self.error = None
+            self.error_source = None
+            self.ttl = self.ttl or self.default_ok_ttl
+            self.ok = False
+        else:
+            self.error_source = self.error_source or self.default_error_source
+            self.ttl = self.ttl or self.default_error_ttl
+            self.ok = False
             try:
                 msg = self.human_readable_errors[self.error]
             except KeyError:
                 pass
             else:
                 self.message = msg.format(message=self.message) if self.message else msg
-            if not self.ttl:
-                self.ttl = self.default_error_ttl
-        else:
-            self.error = None
-            self.error_source = None
-            if not self.ttl:
-                self.ttl = self.default_ok_ttl
         return self
 
-    def should_deduplicate(self, prev_state: 'BridgeState') -> bool:
-        if not prev_state or prev_state.ok != self.ok or prev_state.error != self.error:
+    def should_deduplicate(self, prev_state: Optional['BridgeState']) -> bool:
+        if (
+            not prev_state
+            or prev_state.state_event != self.state_event
+            or prev_state.error != self.error
+        ):
             # If there's no previous state or the state was different, send this one.
             return False
         # If there's more than ⅘ of the previous pong's time-to-live left, drop this one
