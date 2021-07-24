@@ -46,6 +46,7 @@ def test_factory():
         manufactured_value: List[str] = field(factory=lambda: ["hi"])
 
     assert Factory.deserialize({}).manufactured_value == ["hi"]
+    assert Factory.deserialize({"manufactured_value": None}).manufactured_value == ["hi"]
     factory1 = Factory.deserialize({})
     factory2 = Factory.deserialize({})
     assert factory1.manufactured_value is not factory2.manufactured_value

@@ -155,6 +155,12 @@ def _safe_default(val: T) -> T:
         return val
     elif val is attr.NOTHING:
         return None
+    elif isinstance(val, attr.Factory):
+        if val.takes_self:
+            # TODO implement?
+            return None
+        else:
+            return val.factory()
     return copy.copy(val)
 
 
@@ -286,7 +292,7 @@ def _serialize_attrs_field(data: T, field: T2) -> JSON:
     if field_val is None:
         if not field.metadata.get(META_OMIT_EMPTY, True):
             if field.default is not attr.NOTHING:
-                field_val = field.default
+                field_val = _safe_default(field.default)
         else:
             return attr.NOTHING
 
