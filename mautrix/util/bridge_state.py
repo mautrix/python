@@ -3,7 +3,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from enum import Enum
 from typing import Optional, Dict, ClassVar
 import logging
 import time
@@ -11,28 +10,28 @@ import time
 from attr import dataclass
 import aiohttp
 
-from mautrix.types import SerializableAttrs, UserID
+from mautrix.types import SerializableAttrs, SerializableEnum, UserID
 
 
-class BridgeStateEvent(Enum):
+class BridgeStateEvent(SerializableEnum):
     # Bridge process is starting up (will not have valid remoteID)
-    Starting = "STARTING"
+    STARTING = "STARTING"
     # Bridge has started but has no valid credentials (will not have valid remoteID)
-    Unconfigured = "UNCONFIGURED"
+    UNCONFIGURED = "UNCONFIGURED"
     # Bridge has credentials and has started connecting to a remote network
-    Connecting = "CONNECTING"
+    CONNECTING = "CONNECTING"
     # Bridge has begun backfilling
-    Backfilling = "BACKFILLING"
+    BACKFILLING = "BACKFILLING"
     # Bridge has happily connected and is bridging messages
-    Connected = "CONNECTED"
+    CONNECTED = "CONNECTED"
     # Bridge has temporarily disconnected, expected to reconnect automatically
-    TransientDisconnect = "TRANSIENT_DISCONNECT"
+    TRANSIENT_DISCONNECT = "TRANSIENT_DISCONNECT"
     # Bridge has disconnected, will require user to log in again
-    BadCredentials = "BAD_CREDENTIALS"
+    BAD_CREDENTIALS = "BAD_CREDENTIALS"
     # Bridge has disconnected for an unknown/unexpected reason - we should investigate
-    UnknownError = "UNKNOWN_ERROR"
+    UNKNOWN_ERROR = "UNKNOWN_ERROR"
     # User has logged out - stop tracking this remote
-    LoggedOut = "LOGGED_OUT"
+    LOGGED_OUT = "LOGGED_OUT"
 
 
 @dataclass(kw_only=True)
@@ -56,17 +55,17 @@ class BridgeState(SerializableAttrs):
     def fill(self) -> 'BridgeState':
         self.timestamp = self.timestamp or int(time.time())
 
-        if self.state_event == BridgeStateEvent.Connected:
+        if self.state_event == BridgeStateEvent.CONNECTED:
             self.error = None
             self.error_source = None
             self.ttl = self.ttl or self.default_ok_ttl
             self.ok = True
         elif self.state_event in (
-            BridgeStateEvent.Starting,
-            BridgeStateEvent.Unconfigured,
-            BridgeStateEvent.Connecting,
-            BridgeStateEvent.Backfilling,
-            BridgeStateEvent.LoggedOut,
+            BridgeStateEvent.STARTING,
+            BridgeStateEvent.UNCONFIGURED,
+            BridgeStateEvent.CONNECTING,
+            BridgeStateEvent.BACKFILLING,
+            BridgeStateEvent.LOGGED_OUT,
         ):
             self.error = None
             self.error_source = None
