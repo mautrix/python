@@ -154,8 +154,9 @@ class BaseClientAPI:
         try:
             async with session.get(parsed_url / "_matrix/client/versions") as resp:
                 data = VersionsResponse.deserialize(await resp.json())
-                assert len(data.versions) > 0
-        except (ClientError, json.JSONDecodeError, SerializerError, AssertionError) as e:
+                if len(data.versions) == 0:
+                    raise ValueError("no versions defined in /_matrix/client/versions response")
+        except (ClientError, json.JSONDecodeError, SerializerError, ValueError) as e:
             raise WellKnownInvalidVersionsResponse() from e
 
         return parsed_url
