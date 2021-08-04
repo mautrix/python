@@ -14,6 +14,7 @@ from mautrix.appservice import AppService, ASStateStore
 from mautrix.api import HTTPAPI
 
 from ..util.program import Program
+from ..util.bridge_state import BridgeState, BridgeStateEvent
 from .config import BaseBridgeConfig
 from .matrix import BaseMatrixHandler
 from .portal import BasePortal
@@ -154,10 +155,19 @@ class Bridge(Program, ABC):
         self.log.debug("Starting appservice...")
         await self.az.start(self.config["appservice.hostname"], self.config["appservice.port"])
         await self.matrix.wait_for_connection()
+
+        status_endpoint = self.config["homeserver.status_endpoint"]
+        state = BridgeState(state_event=BridgeStateEvent.STARTING).fill()
+        await state.send(status_endpoint, self.az.as_token, self.log)
+
         await self.matrix.init_encryption()
         self.add_startup_actions(self.matrix.init_as_bot())
         await super().start()
         self.az.ready = True
+
+        if status_endpoint and await self.count_logged_in_users() > 0:
+            state = BridgeState(state_event=BridgeStateEvent.UNCONFIGURED).fill()
+            await state.send(status_endpoint, self.az.as_token, self.log)
 
     async def stop(self) -> None:
         await self.az.stop()
@@ -200,3 +210,7 @@ class Bridge(Program, ABC):
     @abstractmethod
     def is_bridge_ghost(self, user_id: UserID) -> bool:
         pass
+
+    @abstractmethod
+    async def count_logged_in_users(self) -> int:
+        return 0
