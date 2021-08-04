@@ -165,7 +165,7 @@ class Bridge(Program, ABC):
         await super().start()
         self.az.ready = True
 
-        if status_endpoint and await self.count_logged_in_users() > 0:
+        if status_endpoint and await self.count_logged_in_users() == 0:
             state = BridgeState(state_event=BridgeStateEvent.UNCONFIGURED).fill()
             await state.send(status_endpoint, self.az.as_token, self.log)
 
