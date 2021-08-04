@@ -41,7 +41,6 @@ class BridgeState(SerializableAttrs):
     default_error_ttl: ClassVar[int] = 60
     default_ok_ttl: ClassVar[int] = 240
 
-    ok: bool
     state_event: BridgeStateEvent
     user_id: Optional[UserID] = None
     remote_id: Optional[str] = None
@@ -59,7 +58,6 @@ class BridgeState(SerializableAttrs):
             self.error = None
             self.error_source = None
             self.ttl = self.ttl or self.default_ok_ttl
-            self.ok = True
         elif self.state_event in (
             BridgeStateEvent.STARTING,
             BridgeStateEvent.UNCONFIGURED,
@@ -70,11 +68,9 @@ class BridgeState(SerializableAttrs):
             self.error = None
             self.error_source = None
             self.ttl = self.ttl or self.default_ok_ttl
-            self.ok = False
         else:
             self.error_source = self.error_source or self.default_error_source
             self.ttl = self.ttl or self.default_error_ttl
-            self.ok = False
             try:
                 msg = self.human_readable_errors[self.error]
             except KeyError:
