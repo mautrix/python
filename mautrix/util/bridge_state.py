@@ -37,7 +37,7 @@ class BridgeStateEvent(SerializableEnum):
 @dataclass(kw_only=True)
 class BridgeState(SerializableAttrs):
     human_readable_errors: ClassVar[Dict[Optional[str], str]] = {}
-    default_error_source: ClassVar[str] = "bridge"
+    default_source: ClassVar[str] = "bridge"
     default_error_ttl: ClassVar[int] = 60
     default_ok_ttl: ClassVar[int] = 240
 
@@ -47,7 +47,7 @@ class BridgeState(SerializableAttrs):
     remote_name: Optional[str] = None
     timestamp: Optional[int] = None
     ttl: int = 0
-    error_source: Optional[str] = None
+    source: Optional[str] = None
     error: Optional[str] = None
     message: Optional[str] = None
 
@@ -56,7 +56,7 @@ class BridgeState(SerializableAttrs):
 
         if self.state_event == BridgeStateEvent.CONNECTED:
             self.error = None
-            self.error_source = None
+            self.source = None
             self.ttl = self.ttl or self.default_ok_ttl
         elif self.state_event in (
             BridgeStateEvent.STARTING,
@@ -66,10 +66,10 @@ class BridgeState(SerializableAttrs):
             BridgeStateEvent.LOGGED_OUT,
         ):
             self.error = None
-            self.error_source = None
+            self.source = None
             self.ttl = self.ttl or self.default_ok_ttl
         else:
-            self.error_source = self.error_source or self.default_error_source
+            self.source = self.source or self.default_source
             self.ttl = self.ttl or self.default_error_ttl
             try:
                 msg = self.human_readable_errors[self.error]
