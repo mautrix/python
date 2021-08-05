@@ -53,10 +53,10 @@ class BridgeState(SerializableAttrs):
 
     def fill(self) -> 'BridgeState':
         self.timestamp = self.timestamp or int(time.time())
+        self.source = self.source or self.default_source
 
         if self.state_event == BridgeStateEvent.CONNECTED:
             self.error = None
-            self.source = None
             self.ttl = self.ttl or self.default_ok_ttl
         elif self.state_event in (
             BridgeStateEvent.STARTING,
@@ -66,10 +66,8 @@ class BridgeState(SerializableAttrs):
             BridgeStateEvent.LOGGED_OUT,
         ):
             self.error = None
-            self.source = None
             self.ttl = self.ttl or self.default_ok_ttl
         else:
-            self.source = self.source or self.default_source
             self.ttl = self.ttl or self.default_error_ttl
             try:
                 msg = self.human_readable_errors[self.error]
