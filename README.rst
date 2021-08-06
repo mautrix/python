@@ -60,5 +60,5 @@ Components
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/mautrix.svg
    :target: https://mautrix.readthedocs.io
 .. |Python versions| image:: https://img.shields.io/pypi/pyversions/mautrix.svg
-.. |License| image:: https://img.shields.io/github/license/tulir/mautrix-python.svg
-   :target: https://github.com/tulir/mautrix-python/blob/master/LICENSE
+.. |License| image:: https://img.shields.io/github/license/mautrix/python.svg
+   :target: https://github.com/mautrix/python/blob/master/LICENSE
