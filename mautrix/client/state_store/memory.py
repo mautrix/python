@@ -75,7 +75,7 @@ class MemoryStateStore(StateStore):
 
     async def get_members(self, room_id: RoomID) -> Optional[List[UserID]]:
         try:
-            return [user_id for user_id, member in self.members[room_id]
+            return [user_id for user_id, member in self.members[room_id].items()
                     if (member.membership == Membership.JOIN
                         or member.membership == Membership.INVITE)]
         except KeyError:
