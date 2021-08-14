@@ -41,7 +41,8 @@ try:
 except ImportError:
     encrypt_attachment = None
 
-EVENT_TIME = Histogram("bridge_matrix_event", "Time spent processing Matrix events", ["event_type"])
+EVENT_TIME = Histogram("bridge_matrix_event", "Time spent processing Matrix events",
+                       ["event_type"])
 
 
 class BaseMatrixHandler:
@@ -140,8 +141,8 @@ class BaseMatrixHandler:
     async def init_encryption(self) -> None:
         if self.e2ee:
             if not await self.e2ee.check_server_support():
-                self.log.critical("Encryption enabled in config, but homeserver does not advertise "
-                                  "appservice login")
+                self.log.critical("Encryption enabled in config, but homeserver does not "
+                                  "advertise appservice login")
                 sys.exit(30)
             await self.e2ee.start()
 
@@ -389,15 +390,25 @@ class BaseMatrixHandler:
 
     async def _handle_encrypted_wait(self, evt: EncryptedEvent, err: SessionNotFound, wait: int
                                      ) -> None:
-        self.log.debug(f"Couldn't find session {err.session_id} trying to decrypt {evt.event_id}, waiting even longer")
+        self.log.debug(f"Couldn't find session {err.session_id} trying to decrypt {evt.event_id},"
+                       " waiting even longer")
         msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption "
                f"keys. The bridge will retry for {wait} seconds. If this error keeps happening, "
                "try restarting your client.")
-        event_id = await self.az.intent.send_notice(evt.room_id, msg)
+        try:
+            event_id = await self.az.intent.send_notice(evt.room_id, msg)
+        except IntentError:
+            self.log.debug("IntentError while sending encryption error", exc_info=True)
+            self.log.error("Got IntentError while trying to send encryption error message. "
+                           "This likely means the bridge bot is not in the room, which can "
+                           "happen if you force-enable e2ee on the homeserver without enabling "
+                           "it by default on the bridge (bridge -> encryption -> default).")
+            return
         got_keys = await self.e2ee.crypto.wait_for_session(evt.room_id, err.sender_key,
                                                            err.session_id, timeout=wait)
         if got_keys:
-            self.log.debug(f"Got session {err.session_id} after waiting more, trying to decrypt {evt.event_id} again")
+            self.log.debug(f"Got session {err.session_id} after waiting more, "
+                           f"trying to decrypt {evt.event_id} again")
             try:
                 decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=0)
             except DecryptionError as e:
@@ -410,8 +421,8 @@ class BaseMatrixHandler:
                 return
         else:
             self.log.warning(f"Didn't get {err.session_id}, giving up on {evt.event_id}")
-            msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption "
-                   "keys. If this error keeps happening, try restarting your client.")
+            msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption"
+                   " keys. If this error keeps happening, try restarting your client.")
         content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=msg)
         content.set_edit(event_id)
         await self.az.intent.send_message(evt.room_id, content)
