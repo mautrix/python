@@ -3,18 +3,18 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Type
+from typing import Optional, Type, Dict, Any
 from abc import ABC, abstractmethod
 import sys
-
-from aiohttp import web
 
 from mautrix.types import RoomID, UserID
 from mautrix.appservice import AppService, ASStateStore
 from mautrix.api import HTTPAPI
+from mautrix import __version__ as __mautrix_version__
 
 from ..util.program import Program
 from ..util.bridge_state import BridgeState, BridgeStateEvent
+from .commands.manhole import ManholeState
 from .config import BaseBridgeConfig
 from .matrix import BaseMatrixHandler
 from .portal import BasePortal
@@ -48,6 +48,7 @@ class Bridge(Program, ABC):
     repo_url: str
     markdown_version: str
     real_user_content_key: Optional[str] = None
+    manhole: Optional[ManholeState]
 
     def __init__(self, module: str = None, name: str = None, description: str = None,
                  command: str = None, version: str = None,
@@ -62,6 +63,7 @@ class Bridge(Program, ABC):
             self.matrix_class = matrix_class
         if state_store_class:
             self.state_store_class = state_store_class
+        self.manhole = None
 
     def prepare_arg_parser(self) -> None:
         super().prepare_arg_parser()
@@ -169,6 +171,9 @@ class Bridge(Program, ABC):
             await state.send(status_endpoint, self.az.as_token, self.log)
 
     async def stop(self) -> None:
+        if self.manhole:
+            self.manhole.close()
+            self.manhole = None
         await self.az.stop()
         await super().stop()
         if self.matrix.e2ee:
@@ -197,3 +202,28 @@ class Bridge(Program, ABC):
     @abstractmethod
     async def count_logged_in_users(self) -> int:
         return 0
+
+    async def manhole_global_namespace(self, user_id: UserID) -> Dict[str, Any]:
+        own_user = await self.get_user(user_id, create=False)
+        try:
+            own_puppet = await own_user.get_puppet()
+        except NotImplementedError:
+            own_puppet = None
+        return {
+            "bridge": self,
+            "own_user": own_user,
+            "own_puppet": own_puppet,
+        }
+
+    @property
+    def manhole_banner_python_version(self) -> str:
+        return f"Python {sys.version} on {sys.platform}"
+
+    @property
+    def manhole_banner_program_version(self) -> str:
+        return f"{self.name} {self.version} with mautrix-python {__mautrix_version__}"
+
+    def manhole_banner(self, user_id: UserID) -> str:
+        return (f"{self.manhole_banner_python_version}\n"
+                f"{self.manhole_banner_program_version}\n\n"
+                f"Manhole opened by {user_id}\n")

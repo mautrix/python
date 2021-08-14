@@ -79,6 +79,10 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
 
         copy("appservice.ephemeral_events")
 
+        copy("manhole.enabled")
+        copy("manhole.path")
+        copy("manhole.whitelist")
+
         copy("logging")
 
     @property
