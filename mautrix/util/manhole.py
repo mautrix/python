@@ -15,10 +15,12 @@ import functools
 import traceback
 import logging
 import asyncio
+import inspect
 import struct
 import codeop
 import pwd
 import ast
+import sys
 import os
 
 try:
@@ -29,6 +31,7 @@ except ImportError:
 log = logging.getLogger("mau.manhole")
 
 
+TOP_LEVEL_AWAIT = sys.version_info >= (3, 8)
 ASYNC_EVAL_WRAPPER: str = """
 async def __eval_async_expr():
     try:
@@ -38,14 +41,19 @@ async def __eval_async_expr():
 """
 
 
-def asyncify(tree: ast.AST, wrapper: str = ASYNC_EVAL_WRAPPER, module: str = "<ast>") -> CodeType:
-    # TODO in python 3.8+, switch to ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
-    insert_returns(tree.body)
-    wrapper_node: ast.AST = ast.parse(wrapper, "<async eval wrapper>", "single")
-    method_stmt = wrapper_node.body[0]
-    try_stmt = method_stmt.body[0]
-    try_stmt.body = tree.body
-    return compile(wrapper_node, module, "single")
+def compile_async(tree: ast.AST) -> CodeType:
+    flags = 0
+    if TOP_LEVEL_AWAIT:
+        flags += ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
+        node_to_compile = tree
+    else:
+        insert_returns(tree.body)
+        wrapper_node: ast.AST = ast.parse(ASYNC_EVAL_WRAPPER, "<async eval wrapper>", "single")
+        method_stmt = wrapper_node.body[0]
+        try_stmt = method_stmt.body[0]
+        try_stmt.body = tree.body
+        node_to_compile = wrapper_node
+    return compile(node_to_compile, "<ast>", "single", flags=flags)
 
 
 # From https://gist.github.com/nitros12/2c3c265813121492655bc95aa54da6b9
@@ -64,7 +72,6 @@ class StatefulCommandCompiler(codeop.CommandCompiler):
     """A command compiler that buffers input until a full command is available."""
 
     buf: BytesIO
-    wrapper: str = ASYNC_EVAL_WRAPPER
 
     def __init__(self) -> None:
         super().__init__()
@@ -86,7 +93,7 @@ class StatefulCommandCompiler(codeop.CommandCompiler):
 
         if codeobj:
             self.reset()
-            return asyncify(codeobj, wrapper=self.wrapper)
+            return compile_async(codeobj)
         return None
 
     def reset(self) -> None:
@@ -138,9 +145,14 @@ class AsyncInterpreter(Interpreter):
         await self.writer.drain()
 
     async def execute(self, codeobj: CodeType) -> Tuple[Any, str]:
-        exec(codeobj, self.namespace)
         with contextlib.redirect_stdout(StringIO()) as buf:
-            value = await eval("__eval_async_expr()", self.namespace)
+            if TOP_LEVEL_AWAIT:
+                value = eval(codeobj, self.namespace)
+                if codeobj.co_flags & inspect.CO_COROUTINE:
+                    value = await value
+            else:
+                exec(codeobj, self.namespace)
+                value = await eval("__eval_async_expr()", self.namespace)
 
         return value, buf.getvalue()
 
