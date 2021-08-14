@@ -53,7 +53,7 @@ def compile_async(tree: ast.AST) -> CodeType:
         try_stmt = method_stmt.body[0]
         try_stmt.body = tree.body
         node_to_compile = wrapper_node
-    return compile(node_to_compile, "<ast>", "single", flags=flags)
+    return compile(node_to_compile, "<manhole input>", "single", flags=flags)
 
 
 # From https://gist.github.com/nitros12/2c3c265813121492655bc95aa54da6b9

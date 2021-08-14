@@ -211,6 +211,7 @@ class Bridge(Program, ABC):
             own_puppet = None
         return {
             "bridge": self,
+            "manhole": self.manhole,
             "own_user": own_user,
             "own_puppet": own_puppet,
         }
