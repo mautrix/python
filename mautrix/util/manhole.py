@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,7 +19,6 @@ import struct
 import codeop
 import pwd
 import ast
-import sys
 import os
 
 try:
@@ -29,38 +28,6 @@ except ImportError:
 
 log = logging.getLogger("mau.manhole")
 
-
-class AwaitTransformer(ast.NodeTransformer):
-    def visit_Call(self, node: ast.Call) -> Union[ast.Call, ast.Await]:
-        if ((not isinstance(node.func, ast.Name) or node.func.id != AWAIT_FUNC_NAME
-             or len(node.args) != 1 or len(node.keywords) != 0)):
-            return node
-        return ast.copy_location(ast.Await(value=node.args[0]), node)
-
-
-class AwaitFallback:
-    def __str__(self) -> str:
-        return "magical await() AST transformer"
-
-    def __repr__(self) -> str:
-        return "magical await() AST transformer"
-
-    def __call__(self, *args, **kwargs) -> Any:
-        if len(args) != 1:
-            raise TypeError(f"{AWAIT_FUNC_NAME}() takes 1 positional argument "
-                            f"but {len(args)} were given")
-        elif len(kwargs) > 0:
-            raise TypeError(f"{AWAIT_FUNC_NAME}() got an unexpected keyword argument "
-                            f"'{list(kwargs.keys())[0]}'")
-        raise RuntimeError("AST transforming appears to have failed")
-
-
-# Python 3.6 doesn't even support parsing top-level awaits, so we use an AST transformer to
-# convert `await(coro)` into `await coro`.
-# Python 3.7 and up allow parsing top-level awaits and only throw errors if you try to execute them.
-AWAIT_TRANSFORM = sys.version_info < (3, 7)
-AWAIT_FUNC_NAME = "await"
-AWAIT_FALLBACK = AwaitFallback()
 
 ASYNC_EVAL_WRAPPER: str = """
 async def __eval_async_expr():
@@ -73,8 +40,6 @@ async def __eval_async_expr():
 
 def asyncify(tree: ast.AST, wrapper: str = ASYNC_EVAL_WRAPPER, module: str = "<ast>") -> CodeType:
     # TODO in python 3.8+, switch to ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
-    if AWAIT_TRANSFORM:
-        AwaitTransformer().visit(tree)
     insert_returns(tree.body)
     wrapper_node: ast.AST = ast.parse(wrapper, "<async eval wrapper>", "single")
     method_stmt = wrapper_node.body[0]
@@ -320,8 +285,6 @@ class InterpreterFactory:
             return
 
         namespace = {**self.namespace}
-        if AWAIT_TRANSFORM:
-            namespace[AWAIT_FUNC_NAME] = AWAIT_FALLBACK
         interpreter = self.interpreter_class(namespace=namespace, banner=self.banner,
                                              loop=self.loop)
         namespace["exit"] = interpreter.close
