@@ -67,14 +67,19 @@ class PgStateStore(StateStore):
         return [profile["user_id"] for profile in res]
 
     async def set_members(self, room_id: RoomID,
-                          members: Dict[UserID, Union[Member, MemberStateEventContent]]) -> None:
+                          members: Dict[UserID, Union[Member, MemberStateEventContent]],
+                          only_membership: Optional[Membership] = None) -> None:
         columns = ["room_id", "user_id", "membership", "displayname", "avatar_url"]
         records = [(room_id, user_id, str(member.membership), member.displayname, member.avatar_url)
                    for user_id, member in members.items()]
         async with self.db.acquire() as conn, conn.transaction():
-            del_q = "DELETE FROM mx_user_profile WHERE room_id=$1"
-            await conn.execute(del_q, room_id)
+            del_q = ("DELETE FROM mx_user_profile "
+                     "WHERE room_id=$1 AND ($2 IS NULL OR membership=$2 OR user_id = ANY($3))")
+            await conn.execute(del_q, room_id, only_membership.value, list(members.keys()))
             await conn.copy_records_to_table("mx_user_profile", records=records, columns=columns)
+            if not only_membership or only_membership == Membership.JOIN:
+                await conn.execute("UPDATE mx_room_state SET has_full_member_list=true "
+                                   "WHERE room_id=$1", room_id)
 
     async def has_full_member_list(self, room_id: RoomID) -> bool:
         return bool(await self.db.fetchval("SELECT has_full_member_list FROM mx_room_state "

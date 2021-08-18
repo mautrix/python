@@ -73,7 +73,8 @@ class SQLStateStore(StateStore):
         return [profile.user_id for profile
                 in UserProfile.all_in_room(room_id, not_suffix, not_prefix, not_id)]
 
-    async def set_members(self, room_id: RoomID, members: Dict[UserID, Member]) -> None:
+    async def set_members(self, room_id: RoomID, members: Dict[UserID, Member],
+                          only_membership: Optional[Membership] = None) -> None:
         UserProfile.bulk_replace(room_id, members)
         self._get_room_state(room_id, create=True).edit(has_full_member_list=True)
         try:

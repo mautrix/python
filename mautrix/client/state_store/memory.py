@@ -71,7 +71,7 @@ class MemoryStateStore(StateStore):
         try:
             room_members[user_id].membership = membership
         except (KeyError, TypeError):
-            room_id[user_id] = Member(membership=membership)
+            room_members[user_id] = Member(membership=membership)
 
     async def get_members(self, room_id: RoomID) -> Optional[List[UserID]]:
         try:
@@ -82,7 +82,8 @@ class MemoryStateStore(StateStore):
             return None
 
     async def set_members(self, room_id: RoomID,
-                          members: Dict[UserID, Union[Member, MemberStateEventContent]]) -> None:
+                          members: Dict[UserID, Union[Member, MemberStateEventContent]],
+                          only_membership: Optional[Membership] = None) -> None:
         self.members[room_id] = {user_id: (member if isinstance(member, Member)
                                            else Member(membership=member.membership,
                                                        avatar_url=member.avatar_url,

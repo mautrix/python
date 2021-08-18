@@ -76,7 +76,7 @@ class Membership(SerializableEnum):
 class MemberStateEventContent(SerializableAttrs):
     """The content of a membership event."""
     membership: Membership = Membership.LEAVE
-    avatar_url: str = None
+    avatar_url: ContentURI = None
     displayname: str = None
     is_direct: bool = False
     reason: str = None

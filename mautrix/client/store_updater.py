@@ -36,7 +36,8 @@ class StoreUpdatingAPI(ClientAPI):
     async def send_state_event(self, room_id: RoomID, event_type: EventType,
                                content: Union[StateEventContent, Dict],
                                state_key: Optional[str] = "", **kwargs) -> EventID:
-        event_id = await super().send_state_event(room_id, event_type, content, state_key, **kwargs)
+        event_id = await super().send_state_event(room_id, event_type, content, state_key,
+                                                  **kwargs)
         if self.state_store:
             fake_event = StateEvent(type=event_type, room_id=room_id, event_id=event_id,
                                     sender=self.mxid, state_key=state_key, timestamp=0,
@@ -57,14 +58,17 @@ class StoreUpdatingAPI(ClientAPI):
     async def get_joined_members(self, room_id: RoomID) -> Dict[UserID, Member]:
         members = await super().get_joined_members(room_id)
         if self.state_store:
-            await self.state_store.set_members(room_id, members)
+            await self.state_store.set_members(room_id, members, only_membership=Membership.JOIN)
         return members
 
-    async def get_members(self, room_id: RoomID) -> List[StateEvent]:
-        member_events = await super().get_members(room_id)
-        if self.state_store:
+    async def get_members(self, room_id: RoomID, at: Optional[SyncToken] = None,
+                          membership: Optional[Membership] = None,
+                          not_membership: Optional[Membership] = None) -> List[StateEvent]:
+        member_events = await super().get_members(room_id, at, membership, not_membership)
+        if self.state_store and not_membership != Membership.JOIN:
             await self.state_store.set_members(room_id, {evt.state_key: evt.content
-                                                         for evt in member_events})
+                                                         for evt in member_events},
+                                               only_membership=membership)
         return member_events
 
     async def fill_member_event(self, room_id: RoomID, user_id: UserID,
