@@ -53,6 +53,7 @@ class BaseClientAPI:
             self._mxid = None
             self.localpart = None
             self.domain = None
+        self.fill_member_event_callback = None
         self.device_id = device_id
         if loop:
             kwargs["loop"] = loop

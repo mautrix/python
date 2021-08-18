@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union, Dict, Any, Callable, Awaitable
 import asyncio
 
 from multidict import CIMultiDict
@@ -277,11 +277,51 @@ class RoomMethods(EventMethods, BaseClientAPI):
         except KeyError:
             raise MatrixResponseError("`room_id` not in response.")
 
+    fill_member_event_callback: Optional[Callable[[RoomID, UserID, MemberStateEventContent],
+                                                  Awaitable[Optional[MemberStateEventContent]]]]
+
+    async def fill_member_event(self, room_id: RoomID, user_id: UserID,
+                                content: MemberStateEventContent
+                                ) -> Optional[MemberStateEventContent]:
+        """
+        Fill a membership event content that is going to be sent in :meth:`send_member_event`.
+
+        This is used to set default fields like the displayname and avatar, which are usually set
+        by the server in the sugar membership endpoints like /join and /invite, but are not set
+        automatically when sending member events manually.
+
+        This default implementation only calls :prop:`fill_member_event_callback`.
+
+        Args:
+            room_id: The room where the member event is going to be sent.
+            user_id: The user whose membership is changing.
+            content: The new member event content.
+
+        Returns:
+            The filled member event content.
+        """
+        if self.fill_member_event_callback is not None:
+            return await self.fill_member_event_callback(room_id, user_id, content)
+        return None
+
     async def send_member_event(self, room_id: RoomID, user_id: UserID, membership: Membership,
                                 extra_content: Optional[Dict[str, Any]] = None) -> EventID:
+        """
+        Send a membership event manually.
+
+        Args:
+            room_id: The room to send the event to.
+            user_id: The user whose membership to change.
+            membership: The membership status.
+            extra_content: Additional content to put in the member event.
+
+        Returns:
+            The event ID of the new member event.
+        """
         content = MemberStateEventContent(membership=membership)
         for key, value in extra_content.items():
             content[key] = value
+        content = await self.fill_member_event(room_id, user_id, content) or content
         return await self.send_state_event(room_id, EventType.ROOM_MEMBER,
                                            content=content, state_key=user_id)
 

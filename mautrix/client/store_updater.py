@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -6,7 +6,9 @@
 from typing import Union, Optional, Dict, List
 import asyncio
 
-from mautrix.types import RoomID, UserID, EventID, EventType, StateEvent, StateEventContent, Member
+from mautrix.types import (RoomID, UserID, EventID, EventType, StateEvent, StateEventContent,
+                           Member, MemberStateEventContent, SyncToken, Membership)
+from mautrix.errors import MNotFound
 
 from .api import ClientAPI
 from .state_store import StateStore
@@ -64,3 +66,57 @@ class StoreUpdatingAPI(ClientAPI):
             await self.state_store.set_members(room_id, {evt.state_key: evt.content
                                                          for evt in member_events})
         return member_events
+
+    async def fill_member_event(self, room_id: RoomID, user_id: UserID,
+                                content: MemberStateEventContent
+                                ) -> Optional[MemberStateEventContent]:
+        """
+        Fill a membership event content that is going to be sent in :meth:`send_member_event`.
+
+        This is used to set default fields like the displayname and avatar, which are usually set
+        by the server in the sugar membership endpoints like /join and /invite, but are not set
+        automatically when sending member events manually.
+
+        This implementation in StoreUpdatingAPI will first try to call the default implementation
+        (which calls :prop:`fill_member_event_callback`). If that doesn't return anything, this
+        will try to get the profile from the current member event, and then fall back to fetching
+        the global profile from the server.
+
+        Args:
+            room_id: The room where the member event is going to be sent.
+            user_id: The user whose membership is changing.
+            content: The new member event content.
+
+        Returns:
+            The filled member event content.
+        """
+        callback_content = await super().fill_member_event(room_id, user_id, content)
+        if callback_content is not None:
+            self.log.trace("Filled new member event for %s using callback", user_id)
+            return callback_content
+
+        if content.displayname is None and content.avatar_url is None:
+            existing_member = await self.state_store.get_member(room_id, user_id)
+            if existing_member is not None:
+                self.log.trace("Found existing member event %s to fill new member event for %s",
+                               existing_member, user_id)
+                content.displayname = existing_member.displayname
+                content.avatar_url = existing_member.avatar_url
+                return content
+
+            try:
+                profile = await self.get_profile(user_id)
+            except MNotFound:
+                profile = None
+            if profile:
+                self.log.trace("Fetched profile %s to fill new member event of %s",
+                               profile, user_id)
+                content.displayname = profile.displayname
+                content.avatar_url = profile.avatar_url
+                return content
+            else:
+                self.log.trace("Didn't find profile info to fill new member event of %s", user_id)
+        else:
+            self.log.trace("Member event for %s already contains displayname or avatar, "
+                           "not re-filling", user_id)
+        return None
