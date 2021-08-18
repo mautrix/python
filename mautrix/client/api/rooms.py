@@ -217,9 +217,9 @@ class RoomMethods(EventMethods, BaseClientAPI):
             The ID of the room the user joined.
         """
         if extra_content:
-            await self.send_member_event(room_id, user_id, Membership.BAN,
+            await self.send_member_event(room_id, self.mxid, Membership.JOIN,
                                          extra_content=extra_content)
-            return
+            return room_id
         content = await self.api.request(Method.POST, Path.rooms[room_id].join, {
             "third_party_signed": third_party_signed,
         } if third_party_signed is not None else None)
