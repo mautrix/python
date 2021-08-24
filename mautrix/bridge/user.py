@@ -118,6 +118,9 @@ class BaseUser(ABC):
         state.user_id = self.mxid
         state.fill()
 
+    async def get_bridge_state(self) -> BridgeState:
+        raise NotImplementedError()
+
     async def push_bridge_state(self, state_event: BridgeStateEvent, error: Optional[str] = None,
                                 message: Optional[str] = None, ttl: Optional[int] = None,
                                 remote_id: Optional[str] = None) -> None:

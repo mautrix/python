@@ -137,6 +137,7 @@ class Bridge(Program, ABC):
                              aiohttp_params={
                                  "client_max_size": self.config["appservice.max_body_size"] * mb
                              })
+        self.az.app.router.add_post("/_matrix/app/com.beeper.bridge_state", self.get_bridge_state)
 
     def prepare_db(self) -> None:
         if not sql:
@@ -178,6 +179,22 @@ class Bridge(Program, ABC):
         await super().stop()
         if self.matrix.e2ee:
             await self.matrix.e2ee.stop()
+
+    async def get_bridge_state(self, req: web.Request) -> web.Response:
+        if not self.az._check_token(req):
+            return web.json_response({"error": "Invalid auth token"}, status=401)
+        try:
+            user = await self.get_user(UserID(req.url.query["user_id"]), create=False)
+        except KeyError:
+            user = None
+        if user is None:
+            return web.json_response({"error": "User not found"}, status=404)
+        try:
+            state = await user.get_bridge_state()
+        except NotImplementedError:
+            return web.json_response({"error": "Bridge status not implemented"}, status=501)
+        await user.fill_bridge_state(state)
+        return web.json_response(state.serialize())
 
     @abstractmethod
     async def get_user(self, user_id: UserID, create: bool = True) -> 'BaseUser':
