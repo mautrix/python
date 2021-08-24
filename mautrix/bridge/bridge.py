@@ -7,13 +7,15 @@ from typing import Optional, Type, Dict, Any
 from abc import ABC, abstractmethod
 import sys
 
+from aiohttp import web
+
 from mautrix.types import RoomID, UserID
 from mautrix.appservice import AppService, ASStateStore
 from mautrix.api import HTTPAPI
 from mautrix import __version__ as __mautrix_version__
 
 from ..util.program import Program
-from ..util.bridge_state import BridgeState, BridgeStateEvent
+from ..util.bridge_state import BridgeState, BridgeStateEvent, GlobalBridgeState
 from .commands.manhole import ManholeState
 from .config import BaseBridgeConfig
 from .matrix import BaseMatrixHandler
@@ -190,11 +192,16 @@ class Bridge(Program, ABC):
         if user is None:
             return web.json_response({"error": "User not found"}, status=404)
         try:
-            state = await user.get_bridge_state()
+            states = await user.get_bridge_states()
         except NotImplementedError:
             return web.json_response({"error": "Bridge status not implemented"}, status=501)
-        await user.fill_bridge_state(state)
-        return web.json_response(state.serialize())
+        for state in states:
+            await user.fill_bridge_state(state)
+        global_state = BridgeState(state_event=(BridgeStateEvent.RUNNING if len(states) > 0
+                                                else BridgeStateEvent.UNCONFIGURED)).fill()
+        evt = GlobalBridgeState(remote_states={state.remote_id: state for state in states},
+                                bridge_state=global_state)
+        return web.json_response(evt.serialize())
 
     @abstractmethod
     async def get_user(self, user_id: UserID, create: bool = True) -> 'BaseUser':

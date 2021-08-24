@@ -10,14 +10,27 @@ import time
 from attr import dataclass
 import aiohttp
 
-from mautrix.types import SerializableAttrs, SerializableEnum, UserID
+from mautrix.types import SerializableAttrs, SerializableEnum, UserID, field
 
 
 class BridgeStateEvent(SerializableEnum):
-    # Bridge process is starting up (will not have valid remoteID)
+    #####################################
+    # Global state events, no remote ID #
+    #####################################
+
+    # Bridge process is starting up
     STARTING = "STARTING"
-    # Bridge has started but has no valid credentials (will not have valid remoteID)
+    # Bridge has started but has no valid credentials
     UNCONFIGURED = "UNCONFIGURED"
+    # Bridge is running
+    RUNNING = "RUNNING"
+    # The server was unable to reach the bridge
+    BRIDGE_UNREACHABLE = "BRIDGE_UNREACHABLE"
+
+    ################################################
+    # Remote state events, should have a remote ID #
+    ################################################
+
     # Bridge has credentials and has started connecting to a remote network
     CONNECTING = "CONNECTING"
     # Bridge has begun backfilling
@@ -32,6 +45,12 @@ class BridgeStateEvent(SerializableEnum):
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
     # User has logged out - stop tracking this remote
     LOGGED_OUT = "LOGGED_OUT"
+
+
+ok_ish_states = (
+    BridgeStateEvent.STARTING, BridgeStateEvent.UNCONFIGURED, BridgeStateEvent.RUNNING,
+    BridgeStateEvent.CONNECTING, BridgeStateEvent.CONNECTED, BridgeStateEvent.BACKFILLING,
+)
 
 
 @dataclass(kw_only=True)
@@ -54,21 +73,11 @@ class BridgeState(SerializableAttrs):
     def fill(self) -> 'BridgeState':
         self.timestamp = self.timestamp or int(time.time())
         self.source = self.source or self.default_source
-
-        if self.state_event == BridgeStateEvent.CONNECTED:
-            self.error = None
-            self.ttl = self.ttl or self.default_ok_ttl
-        elif self.state_event in (
-            BridgeStateEvent.STARTING,
-            BridgeStateEvent.UNCONFIGURED,
-            BridgeStateEvent.CONNECTING,
-            BridgeStateEvent.BACKFILLING,
-            BridgeStateEvent.LOGGED_OUT,
-        ):
-            self.error = None
-            self.ttl = self.ttl or self.default_ok_ttl
-        else:
-            self.ttl = self.ttl or self.default_error_ttl
+        if not self.ttl:
+            self.ttl = (self.default_ok_ttl
+                        if self.state_event in ok_ish_states
+                        else self.default_error_ttl)
+        if self.error:
             try:
                 msg = self.human_readable_errors[self.error]
             except KeyError:
@@ -104,3 +113,9 @@ class BridgeState(SerializableAttrs):
                     log.debug(f"Sent new bridge state {self}")
         except Exception as e:
             log.warning(f"Failed to send updated bridge state: {e}")
+
+
+@dataclass(kw_only=True)
+class GlobalBridgeState(SerializableAttrs):
+    remote_states: Optional[Dict[str, BridgeState]] = field(json="remoteState")
+    bridge_state: BridgeState = field(json="bridgeState")
