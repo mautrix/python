@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,6 +9,7 @@ from json import JSONDecodeError
 from aiohttp import web
 import asyncio
 import logging
+import json
 
 from mautrix.types import (JSON, UserID, RoomAlias, Event, EphemeralEvent, SerializerError,
                            DeviceOTKCount, DeviceLists)
@@ -114,35 +115,44 @@ class AppServiceServerMixin:
             except KeyError:
                 return default
 
-    async def _http_handle_transaction(self, request: web.Request) -> web.Response:
+    async def _read_transaction_header(self, request: web.Request) -> tuple[str, dict[str, Any]]:
         if not self._check_token(request):
-            return web.json_response({"error": "Invalid auth token"}, status=401)
+            raise web.HTTPUnauthorized(content_type="application/json",
+                                       text=json.dumps({"error": "Invalid auth token",
+                                                        "errcode": "M_UNKNOWN_TOKEN"}))
 
         transaction_id = request.match_info["transaction_id"]
         if transaction_id in self.transactions:
-            return web.json_response({})
+            raise web.HTTPOk(content_type="application/json", text="{}")
 
         try:
-            json = await request.json()
+            return transaction_id, await request.json()
         except JSONDecodeError:
-            return web.json_response({"error": "Body is not JSON"}, status=400)
+            raise web.HTTPBadRequest(content_type="application/json",
+                                     text=json.dumps({"error": "Body is not JSON",
+                                                      "errcode": "M_NOT_JSON"}))
+
+    async def _http_handle_transaction(self, request: web.Request) -> web.Response:
+        transaction_id, data = await self._read_transaction_header(request)
 
         try:
-            events = json.pop("events")
+            events = data.pop("events")
         except KeyError:
-            return web.json_response({"error": "Missing events object in body"}, status=400)
+            raise web.HTTPBadRequest(content_type="application/json",
+                                     text=json.dumps({"error": "Missing events object in body",
+                                                      "errcode": "M_BAD_JSON"}))
 
-        ephemeral = (self._get_with_fallback(json, "ephemeral", "de.sorunome.msc2409")
+        ephemeral = (self._get_with_fallback(data, "ephemeral", "de.sorunome.msc2409")
                      if self.ephemeral_events else None)
         device_lists = DeviceLists.deserialize(
-            self._get_with_fallback(json, "device_lists", "org.matrix.msc3202"))
+            self._get_with_fallback(data, "device_lists", "org.matrix.msc3202"))
         otk_counts = {user_id: DeviceOTKCount.deserialize(count)
                       for user_id, count
-                      in self._get_with_fallback(json, "device_one_time_keys_count",
+                      in self._get_with_fallback(data, "device_one_time_keys_count",
                                                  "org.matrix.msc3202", default={}).items()}
 
         try:
-            output = await self.handle_transaction(transaction_id, events=events, extra_data=json,
+            output = await self.handle_transaction(transaction_id, events=events, extra_data=data,
                                                    ephemeral=ephemeral, device_lists=device_lists,
                                                    device_otk_count=otk_counts)
         except Exception:
