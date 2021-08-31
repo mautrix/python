@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
-from typing import Optional, Callable, Awaitable, List, Set, Dict, Any
+from typing import Optional, Callable, Awaitable, List, Set, Tuple, Dict, Any
 from json import JSONDecodeError
 from aiohttp import web
 import asyncio
@@ -115,7 +115,7 @@ class AppServiceServerMixin:
             except KeyError:
                 return default
 
-    async def _read_transaction_header(self, request: web.Request) -> tuple[str, dict[str, Any]]:
+    async def _read_transaction_header(self, request: web.Request) -> Tuple[str, Dict[str, Any]]:
         if not self._check_token(request):
             raise web.HTTPUnauthorized(content_type="application/json",
                                        text=json.dumps({"error": "Invalid auth token",
