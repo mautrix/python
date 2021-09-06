@@ -110,13 +110,17 @@ class Program:
         self.prepare_log()
         self.check_config()
 
+    @property
+    def _default_base_config(self) -> str:
+        return f"pkg://{self.module}/example-config.yaml"
+
     def prepare_arg_parser(self) -> None:
         """Pre-init lifecycle method. Extend this if you want custom command-line arguments."""
         self.parser = argparse.ArgumentParser(description=self.description, prog=self.command)
         self.parser.add_argument("-c", "--config", type=str, default="config.yaml",
                                  metavar="<path>", help="the path to your config file")
         self.parser.add_argument("-b", "--base-config", type=str,
-                                 default=f"pkg://{self.module}/example-config.yaml",
+                                 default=self._default_base_config,
                                  metavar="<path>", help="the path to the example config "
                                                         "(for automatic config updates)")
         self.parser.add_argument("-n", "--no-update", action="store_true",
@@ -132,8 +136,11 @@ class Program:
         try:
             self.config.update(save=not self.args.no_update)
         except BaseMissingError:
-            self.log.exception("Failed to read base config. Try specifying the correct path with "
-                               "the --base-config flag.")
+            if self.args.base_config != self._default_base_config:
+                print(f"Failed to read base config from {self.args.base_config}")
+            else:
+                print("Failed to read base config from the default path "
+                      f"({self._default_base_config}). Maybe your installation is corrupted?")
             sys.exit(12)
 
     def check_config(self) -> None:
