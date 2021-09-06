@@ -332,8 +332,7 @@ def _serialize(val: Any) -> JSON:
     return val
 
 
-# TODO remove Generic[T] backwards compatibility in v0.10.0
-class SerializableAttrs(AbstractSerializable, Generic[T]):
+class SerializableAttrs(AbstractSerializable):
     """
     An abstract :class:`Serializable` that assumes the subclass is an attrs dataclass.
 
