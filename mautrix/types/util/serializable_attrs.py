@@ -168,18 +168,18 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
                    default_if_empty: bool = False) -> T:
     data = data or {}
     unrecognized = {}
-    new_items = {field.name.lstrip("_"): _try_deserialize(field, data)
-                 for _, field in _fields(attrs_type, only_if_flatten=True)}
+    new_items = {field_meta.name.lstrip("_"): _try_deserialize(field_meta, data)
+                 for _, field_meta in _fields(attrs_type, only_if_flatten=True)}
     fields = dict(_fields(attrs_type, only_if_flatten=False))
     for key, value in data.items():
         try:
-            field = fields[key]
+            field_meta = fields[key]
         except KeyError:
             unrecognized[key] = value
             continue
-        name = field.name.lstrip("_")
+        name = field_meta.name.lstrip("_")
         try:
-            new_items[name] = _try_deserialize(field, value)
+            new_items[name] = _try_deserialize(field_meta, value)
         except UnknownSerializationError as e:
             raise SerializerError(f"Failed to deserialize {value} into "
                                   f"key {name} of {attrs_type.__name__}") from e
@@ -193,12 +193,12 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
     try:
         obj = attrs_type(**new_items)
     except TypeError as e:
-        for key, field in _fields(attrs_type):
-            json_key = field.metadata.get(META_JSON, key)
-            if field.default is attr.NOTHING and json_key not in new_items:
+        for key, field_meta in _fields(attrs_type):
+            if field_meta.default is attr.NOTHING and key not in new_items:
                 log.debug("Failed to deserialize %s into %s", data, attrs_type.__name__)
+                json_key = field_meta.metadata.get(META_JSON, key)
                 raise SerializerError("Missing value for required key "
-                                      f"{field.name} in {attrs_type.__name__}") from e
+                                      f"{json_key} in {attrs_type.__name__}") from e
         raise UnknownSerializationError() from e
     if len(unrecognized) > 0:
         obj.unrecognized_ = unrecognized
