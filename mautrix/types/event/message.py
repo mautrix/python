@@ -342,9 +342,10 @@ class TextMessageEventContent(BaseMessageEventContent,
         return None
 
     def trim_reply_fallback(self) -> None:
-        if self.get_reply_to():
+        if self.get_reply_to() and not getattr(self, "__reply_fallback_trimmed", False):
             self._trim_reply_fallback_text()
             self._trim_reply_fallback_html()
+            setattr(self, "__reply_fallback_trimmed", True)
 
     def _trim_reply_fallback_text(self) -> None:
         if not self.body.startswith("> ") or "\n" not in self.body:
