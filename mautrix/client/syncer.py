@@ -160,8 +160,12 @@ class Syncer(ABC):
         """
         if not isinstance(event_type, (EventType, InternalEventType)):
             raise ValueError("Invalid event type")
-        handler_list = (self.global_event_handlers if event_type == EventType.ALL
-                        else self.event_handlers[event_type])
+        try:
+            handler_list = (self.global_event_handlers if event_type == EventType.ALL
+                            else self.event_handlers[event_type])
+        except KeyError:
+            # No handlers for this event type registered
+            return
 
         # FIXME this is a bit hacky
         with suppress(ValueError):
