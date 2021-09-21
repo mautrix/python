@@ -1,18 +1,12 @@
+
 mautrix-python
 ==============
 
 |PyPI| |Python versions| |License|
 
-A Python 3.7+ asyncio Matrix framework.
+A Python 3.8+ asyncio Matrix framework.
 
 Matrix room: `#maunium:maunium.net`_
-
-Sponsors
---------
-* `kumitterer`_
-
-
-.. _kumitterer: https://kumi.website/
 
 
 Components
@@ -31,6 +25,7 @@ Components
 * Medium-level end-to-end encryption framework (mautrix.crypto_)
 
   * Handles all the complicated e2ee key exchange
+  * Uses libolm through python-olm for the low-level crypto
 
 * High-level bridging utility framework (mautrix.bridge_)
 
@@ -44,6 +39,15 @@ Components
   * Syncing and event handling helper.
   * End-to-end encryption helper.
 
+* Utilities (mautrix.util_)
+
+  * Matrix HTML parsing and generating utilities
+  * Manhole system (get a python shell in a running process)
+  * YAML config helpers
+  * Database helpers (new: asyncpg, legacy: SQLAlchemy)
+  * Color logging utility
+  * Very simple HMAC-SHA256 utility for signing tokens (like JWT, but hardcoded to use a single good algorithm)
+
 .. _#maunium:maunium.net: https://matrix.to/#/#maunium:maunium.net
 .. _python-appservice-framework: https://github.com/Cadair/python-appservice-framework/
 .. _Client API: https://matrix.org/docs/spec/client_server/r0.6.1.html
@@ -54,6 +58,7 @@ Components
 .. _mautrix.bridge: https://mautrix.readthedocs.io/en/latest/mautrix.bridge.html
 .. _mautrix.client: https://mautrix.readthedocs.io/en/latest/mautrix.client.html
 .. _mautrix.crypto: https://mautrix.readthedocs.io/en/latest/mautrix.crypto.html
+.. _mautrix.util: https://mautrix.readthedocs.io/en/latest/mautrix.util.html
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/mautrix.svg
    :target: https://pypi.python.org/pypi/mautrix
