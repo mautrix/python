@@ -197,8 +197,7 @@ class Bridge(Program, ABC):
             return web.json_response({"error": "Bridge status not implemented"}, status=501)
         for state in states:
             await user.fill_bridge_state(state)
-        global_state = BridgeState(state_event=(BridgeStateEvent.RUNNING if len(states) > 0
-                                                else BridgeStateEvent.UNCONFIGURED)).fill()
+        global_state = BridgeState(state_event=BridgeStateEvent.RUNNING).fill()
         evt = GlobalBridgeState(remote_states={state.remote_id: state for state in states},
                                 bridge_state=global_state)
         return web.json_response(evt.serialize())
