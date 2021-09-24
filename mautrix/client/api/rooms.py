@@ -8,7 +8,7 @@ import asyncio
 
 from multidict import CIMultiDict
 
-from mautrix.errors import MatrixResponseError, MatrixRequestError, MRoomInUse
+from mautrix.errors import MatrixResponseError, MatrixRequestError, MRoomInUse, MNotFound
 from mautrix.api import Method, Path
 from mautrix.types import (JSON, UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility,
                            RoomAliasInfo, RoomCreatePreset, DirectoryPaginationToken, Membership,
@@ -150,7 +150,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             else:
                 raise
 
-    async def remove_room_alias(self, alias_localpart: str) -> None:
+    async def remove_room_alias(self, alias_localpart: str, raise_404: bool = False) -> None:
         """
         Remove a mapping of room alias to room ID.
 
@@ -161,9 +161,15 @@ class RoomMethods(EventMethods, BaseClientAPI):
 
         Args:
             alias_localpart: The room alias to remove.
+            raise_404: Whether 404 errors should be raised as exceptions instead of ignored.
         """
         room_alias = f"#{alias_localpart}:{self.domain}"
-        await self.api.request(Method.DELETE, Path.directory.room[room_alias])
+        try:
+            await self.api.request(Method.DELETE, Path.directory.room[room_alias])
+        except MNotFound:
+            if raise_404:
+                raise
+            # else: ignore
 
     async def get_room_alias(self, room_alias: RoomAlias) -> RoomAliasInfo:
         """
