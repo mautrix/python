@@ -395,20 +395,16 @@ class CommandProcessor:
                                is_management=is_management, has_bridge_bot=has_bridge_bot)
         orig_command = command
         command = command.lower()
-        try:
-            handler = command_handlers[command]
-            if not handler.is_enabled_for(evt):
-                raise KeyError()
-        except KeyError:
-            try:
-                handler = command_aliases[command]
-            except KeyError:
-                if sender.command_status and "next" in sender.command_status:
-                    args.insert(0, orig_command)
-                    evt.command = ""
-                    handler = sender.command_status["next"]
-                else:
-                    handler = command_handlers["unknown-command"]
+
+        handler = command_handlers.get(command) or command_aliases.get(command)
+        if handler is None or not handler.is_enabled_for(evt):
+            if sender.command_status and "next" in sender.command_status:
+                args.insert(0, orig_command)
+                evt.command = ""
+                handler = sender.command_status["next"]
+            else:
+                handler = command_handlers["unknown-command"]
+
         try:
             await self._run_handler(handler, evt)
         except Exception:
