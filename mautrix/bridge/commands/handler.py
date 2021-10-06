@@ -396,7 +396,7 @@ class CommandProcessor:
         orig_command = command
         command = command.lower()
 
-        handler = command_handlers.get(command) or command_aliases.get(command)
+        handler = command_handlers.get(command, command_aliases.get(command))
         if handler is None or not handler.is_enabled_for(evt):
             if sender.command_status and "next" in sender.command_status:
                 args.insert(0, orig_command)
