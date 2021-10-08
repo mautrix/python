@@ -193,6 +193,7 @@ class CommandEvent:
 
 
 CommandHandlerFunc = Callable[[CommandEvent], Awaitable[Any]]
+IsEnabledForFunc = Callable[[CommandEvent], bool]
 
 
 class CommandHandler:
@@ -213,6 +214,7 @@ class CommandHandler:
     management_only: bool
     needs_admin: bool
     needs_auth: bool
+    is_enabled_for: IsEnabledForFunc
 
     _help_text: str
     _help_args: str
@@ -220,7 +222,9 @@ class CommandHandler:
 
     def __init__(self, handler: CommandHandlerFunc, management_only: bool, name: str,
                  help_text: str, help_args: str, help_section: HelpSection,
-                 needs_auth: bool, needs_admin: bool, **kwargs) -> None:
+                 needs_auth: bool, needs_admin: bool,
+                 is_enabled_for: IsEnabledForFunc = lambda _: True,
+                 **kwargs) -> None:
         """
         Args:
             handler: The function handling the execution of this command.
@@ -243,6 +247,7 @@ class CommandHandler:
         self._help_text = help_text
         self._help_args = help_args
         self.help_section = help_section
+        self.is_enabled_for = is_enabled_for
 
     async def get_permission_error(self, evt: CommandEvent) -> Optional[str]:
         """Returns the reason why the command could not be issued.
@@ -390,18 +395,16 @@ class CommandProcessor:
                                is_management=is_management, has_bridge_bot=has_bridge_bot)
         orig_command = command
         command = command.lower()
-        try:
-            handler = command_handlers[command]
-        except KeyError:
-            try:
-                handler = command_aliases[command]
-            except KeyError:
-                if sender.command_status and "next" in sender.command_status:
-                    args.insert(0, orig_command)
-                    evt.command = ""
-                    handler = sender.command_status["next"]
-                else:
-                    handler = command_handlers["unknown-command"]
+
+        handler = command_handlers.get(command, command_aliases.get(command))
+        if handler is None or not handler.is_enabled_for(evt):
+            if sender.command_status and "next" in sender.command_status:
+                args.insert(0, orig_command)
+                evt.command = ""
+                handler = sender.command_status["next"]
+            else:
+                handler = command_handlers["unknown-command"]
+
         try:
             await self._run_handler(handler, evt)
         except Exception:
