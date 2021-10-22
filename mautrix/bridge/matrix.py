@@ -261,9 +261,8 @@ class BaseMatrixHandler:
         has_two_members, bridge_bot_in_room = await self._is_direct_chat(room_id)
         is_management = has_two_members and bridge_bot_in_room
 
-        welcome_messages = []
+        welcome_messages = [self.management_room_text.get("welcome")]
 
-        welcome_messages.append(self.management_room_text.get("welcome"))
         if is_management:
             if await inviter.is_logged_in():
                 welcome_messages.append(self.management_room_text.get("welcome_connected"))
@@ -282,7 +281,7 @@ class BaseMatrixHandler:
                 await self.az.intent.send_notice(room_id, text=m, html=markdown.render(m))
         else:
             combined = "\n".join(welcome_messages)
-            combined_html = "".join([markdown.render(m) for m in welcome_messages])
+            combined_html = "".join(map(markdown.render, welcome_messages))
             await self.az.intent.send_notice(room_id, text=combined, html=combined_html)
 
     async def int_handle_invite(self, room_id: RoomID, user_id: UserID, invited_by: UserID,
