@@ -19,6 +19,7 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
                            MediaRepoConfig)
 from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound
 from mautrix.appservice import AppService
+from mautrix.util import markdown
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Histogram
 
@@ -80,6 +81,19 @@ class BaseMatrixHandler:
                 homeserver_address=self.config["homeserver.address"],
                 db_url=self._get_db_url(bridge.config),
                 key_sharing_config=self.config["bridge.encryption.key_sharing"])
+
+        self.management_room_text = self.config.get(
+            "bridge.management_room_text",
+            {
+                "welcome": "Hello, I'm a bridge bot.",
+                "welcome_connected": "Use `help` for help.",
+                "welcome_unconnected": "Use `help` for help on how to log in.",
+            },
+        )
+        self.management_room_multiple_messages = self.config.get(
+            "bridge.management_room_multiple_messages",
+            False,
+        )
 
     @staticmethod
     def _get_db_url(config: 'BaseBridgeConfig') -> str:
@@ -244,11 +258,32 @@ class BaseMatrixHandler:
         await self.send_welcome_message(room_id, inviter)
 
     async def send_welcome_message(self, room_id: RoomID, inviter: 'BaseUser') -> None:
-        await self.az.intent.send_notice(
-            room_id=room_id,
-            text=f"Hello, I'm a bridge bot. Use `{self.commands.command_prefix} help` for help.",
-            html=f"Hello, I'm a bridge bot. Use <code>{self.commands.command_prefix} help</code> "
-                 f"for help.")
+        has_two_members, bridge_bot_in_room = await self._is_direct_chat(room_id)
+        is_management = has_two_members and bridge_bot_in_room
+
+        welcome_messages = []
+
+        welcome_messages.append(self.management_room_text.get("welcome"))
+        if is_management:
+            if await inviter.is_logged_in():
+                welcome_messages.append(self.management_room_text.get("welcome_connected"))
+            else:
+                welcome_messages.append(self.management_room_text.get("welcome_unconnected"))
+
+            additional_help = self.management_room_text.get("additional_help")
+            if additional_help:
+                welcome_messages.append(additional_help)
+        else:
+            cmd_prefix = self.commands.command_prefix
+            welcome_messages.append(f"Use `{cmd_prefix} help` for help.")
+
+        if self.management_room_multiple_messages:
+            for m in welcome_messages:
+                await self.az.intent.send_notice(room_id, text=m, html=markdown.render(m))
+        else:
+            combined = "\n".join(welcome_messages)
+            combined_html = "".join([markdown.render(m) for m in welcome_messages])
+            await self.az.intent.send_notice(room_id, text=combined, html=combined_html)
 
     async def int_handle_invite(self, room_id: RoomID, user_id: UserID, invited_by: UserID,
                                 event_id: EventID) -> None:
