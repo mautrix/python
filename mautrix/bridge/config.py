@@ -79,6 +79,12 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
 
         copy("appservice.ephemeral_events")
 
+        copy("bridge.management_room_text.welcome")
+        copy("bridge.management_room_text.welcome_connected")
+        copy("bridge.management_room_text.welcome_unconnected")
+        copy("bridge.management_room_text.additional_help")
+        copy("bridge.management_room_multiple_messages")
+
         copy("manhole.enabled")
         copy("manhole.path")
         copy("manhole.whitelist")
