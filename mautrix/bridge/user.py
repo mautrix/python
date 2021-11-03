@@ -3,19 +3,27 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import asyncio
+import logging
+import time
 from typing import Dict, Any, Optional, List, TYPE_CHECKING
 from collections import defaultdict
 from abc import ABC, abstractmethod
-import logging
-import asyncio
 
 from mautrix.api import Method, UnstableClientPath
 from mautrix.appservice import AppService
 from mautrix.types import UserID, RoomID, EventType, Membership
 from mautrix.errors import MNotFound
-from mautrix.util.logging import TraceLogger
-from mautrix.util.opt_prometheus import Gauge
+from mautrix.types import MessageType, EventID
 from mautrix.util.bridge_state import BridgeState, BridgeStateEvent
+from mautrix.util.logging import TraceLogger
+from mautrix.util.message_send_checkpoint import (
+    MessageSendCheckpoint,
+    MessageSendCheckpointReportedBy,
+    MessageSendCheckpointStatus,
+    MessageSendCheckpointStep,
+)
+from mautrix.util.opt_prometheus import Gauge
 
 from .portal import BasePortal
 from .puppet import BasePuppet
@@ -137,3 +145,28 @@ class BaseUser(ABC):
         self._prev_bridge_status = state
         await state.send(self.bridge.config["homeserver.status_endpoint"],
                          self.az.as_token, self.log)
+
+    async def send_remote_checkpoint(
+        self,
+        status: MessageSendCheckpointStatus,
+        event_id: EventID,
+        room_id: RoomID,
+        event_type: EventType,
+        message_type: MessageType,
+        error: Optional[Exception] = None,
+    ):
+        await MessageSendCheckpoint(
+            event_id=event_id,
+            room_id=room_id,
+            step=MessageSendCheckpointStep.REMOTE,
+            timestamp=int(time.time() * 1000),
+            status=status,
+            reported_by=MessageSendCheckpointReportedBy.BRIDGE,
+            event_type=event_type,
+            message_type=message_type,
+            info=str(error) if error else None,
+        ).send(
+            self.log,
+            self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
+            self.az.as_token,
+        )
