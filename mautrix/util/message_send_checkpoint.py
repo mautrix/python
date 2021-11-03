@@ -37,6 +37,7 @@ class MessageSendCheckpoint(SerializableAttrs):
     event_type: str
     reported_by: MessageSendCheckpointReportedBy
     retry_num: int = 0
+    message_type: Optional[str] = None
     info: Optional[str] = None
 
     async def send(self, log: logging.Logger, endpoint: str, as_token: str):
