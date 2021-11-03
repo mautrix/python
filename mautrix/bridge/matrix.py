@@ -491,7 +491,7 @@ class BaseMatrixHandler:
 
         self.log.debug(f"Sending message send checkpoint for {evt.event_id} to API server.")
 
-        checkpoint = MessageSendCheckpoint(
+        await MessageSendCheckpoint(
             event_id=evt.event_id,
             room_id=evt.room_id,
             step=MessageSendCheckpointStep.BRIDGE,
@@ -499,23 +499,12 @@ class BaseMatrixHandler:
             status=MessageSendCheckpointStatus.SUCCESS,
             reported_by=MessageSendCheckpointReportedBy.BRIDGE,
             event_type=evt.type,
-        ).serialize()
-
-        try:
-            headers = {"Authorization": f"Bearer {self.az.as_token}"}
-            async with aiohttp.ClientSession() as sess, \
-                       sess.post(self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
-                                 json={"checkpoints": [checkpoint]}, headers=headers,
-                                 timeout=ClientTimeout(5)) as resp:
-                if not 200 <= resp.status < 300:
-                    text = await resp.text()
-                    text = text.replace("\n", "\\n")
-                    self.log.warning(f"Unexpected status code {resp.status} sending message send"
-                                     f" checkpoints for {evt.event_id}: {text}")
-                else:
-                    self.log.info(f"Successfully sent message send checkpoints for {evt.event_id}")
-        except Exception as e:
-            self.log.warning(f"Failed to send message send checkpoints for {evt.event_id}: {e}")
+            message_type=evt.content.msgtype if evt.type == EventType.ROOM_MESSAGE else None,
+        ).send(
+            self.log,
+            self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
+            self.az.as_token,
+        )
 
     async def int_handle_event(self, evt: Event) -> None:
         if isinstance(evt, StateEvent) and evt.type == EventType.ROOM_MEMBER and self.e2ee:

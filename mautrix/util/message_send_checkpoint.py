@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 from attr import dataclass
 
+import aiohttp
+from aiohttp.client import ClientTimeout
 from mautrix.types.event.type import EventType
 from mautrix.types.util.serializable import SerializableEnum
 from mautrix.types.util.serializable_attrs import SerializableAttrs
@@ -35,6 +38,23 @@ class MessageSendCheckpoint(SerializableAttrs):
     reported_by: MessageSendCheckpointReportedBy
     retry_num: int = 0
     info: Optional[str] = None
+
+    async def send(self, log: logging.Logger, endpoint: str, as_token: str):
+        try:
+            headers = {"Authorization": f"Bearer {as_token}"}
+            async with aiohttp.ClientSession() as sess, \
+                       sess.post(endpoint, json={"checkpoints": [self.serialize()]},
+                                 headers=headers, timeout=ClientTimeout(5)) as resp:
+                if not 200 <= resp.status < 300:
+                    text = await resp.text()
+                    text = text.replace("\n", "\\n")
+                    log.warning(f"Unexpected status code {resp.status} sending message send"
+                                     f" checkpoints for {self.event_id}: {text}")
+                else:
+                    log.info(f"Successfully sent message send checkpoints for {self.event_id}")
+        except Exception as e:
+            log.warning(f"Failed to send message send checkpoints for {self.event_id}: {e}")
+
 
 
 CHECKPOINT_TYPES = {
