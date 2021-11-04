@@ -43,19 +43,23 @@ class MessageSendCheckpoint(SerializableAttrs):
     async def send(self, log: logging.Logger, endpoint: str, as_token: str):
         try:
             headers = {"Authorization": f"Bearer {as_token}"}
-            async with aiohttp.ClientSession() as sess, \
-                       sess.post(endpoint, json={"checkpoints": [self.serialize()]},
-                                 headers=headers, timeout=ClientTimeout(5)) as resp:
+            async with aiohttp.ClientSession() as sess, sess.post(
+                endpoint,
+                json={"checkpoints": [self.serialize()]},
+                headers=headers,
+                timeout=ClientTimeout(5),
+            ) as resp:
                 if not 200 <= resp.status < 300:
                     text = await resp.text()
                     text = text.replace("\n", "\\n")
-                    log.warning(f"Unexpected status code {resp.status} sending message send"
-                                     f" checkpoints for {self.event_id}: {text}")
+                    log.warning(
+                        f"Unexpected status code {resp.status} sending message send checkpoints"
+                        f" for {self.event_id}: {text}"
+                    )
                 else:
                     log.info(f"Successfully sent message send checkpoints for {self.event_id}")
         except Exception as e:
             log.warning(f"Failed to send message send checkpoints for {self.event_id}: {e}")
-
 
 
 CHECKPOINT_TYPES = {
