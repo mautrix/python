@@ -19,7 +19,8 @@ from .database import Database
 class TxnConnection(aiosqlite.Connection):
     def __init__(self, path: str, **kwargs) -> None:
         def connector() -> sqlite3.Connection:
-            return sqlite3.connect(path, isolation_level=None, **kwargs)
+            return sqlite3.connect(path, detect_types=sqlite3.PARSE_DECLTYPES,
+                                   isolation_level=None, **kwargs)
 
         super().__init__(connector, iter_chunk_size=64)
 
@@ -69,7 +70,8 @@ class SQLiteDatabase(Database):
         self._path = urlparse(url).path
         if self._path.startswith("/"):
             self._path = self._path[1:]
-        self._pool = asyncio.Queue(self._db_args.pop("size", 5))
+        self._pool = asyncio.Queue(self._db_args.pop("min_size", 5))
+        self._db_args.pop("max_size", None)
         self._stopped = False
         self._conns = 0
 

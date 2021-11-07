@@ -76,9 +76,13 @@ class PgStateStore(StateStore):
             del_q = "DELETE FROM mx_user_profile WHERE room_id=$1"
             if only_membership is None:
                 await conn.execute(del_q, room_id)
-            else:
+            elif self.db.scheme == "postgres":
                 del_q = f"{del_q} AND (membership=$2 OR user_id = ANY($3))"
                 await conn.execute(del_q, room_id, only_membership.value, list(members.keys()))
+            else:
+                member_placeholders = ", ".join(f"${i+3}" for i in range(len(members)))
+                del_q = f"{del_q} AND (membership=$2 OR user_id IN ({member_placeholders}))"
+                await conn.execute(del_q, room_id, only_membership.value, *members.keys())
 
             if self.db.scheme == "postgres":
                 await conn.copy_records_to_table("mx_user_profile", records=records,
