@@ -79,7 +79,7 @@ class BaseMatrixHandler:
                 bridge=bridge,
                 user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
                 homeserver_address=self.config["homeserver.address"],
-                db_url=self._get_db_url(bridge.config),
+                db_url=self.config["appservice.database"],
                 key_sharing_config=self.config["bridge.encryption.key_sharing"])
 
         self.management_room_text = self.config.get(
@@ -94,18 +94,6 @@ class BaseMatrixHandler:
             "bridge.management_room_multiple_messages",
             False,
         )
-
-    @staticmethod
-    def _get_db_url(config: 'BaseBridgeConfig') -> str:
-        db_url = config["bridge.encryption.database"]
-        if not db_url or db_url == "default":
-            db_url = config["appservice.database"]
-            parsed_url = URL(db_url)
-            if parsed_url.scheme == "sqlite":
-                # Remove the extension to replace it with our own
-                path = os.path.splitext(parsed_url.path)[0]
-                db_url = f"pickle://{path}.crypto.pickle"
-        return db_url
 
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")

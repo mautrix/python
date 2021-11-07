@@ -44,11 +44,11 @@ async def upgrade_v1(conn: Connection) -> None:
         PRIMARY KEY (user_id, device_id)
     )""")
     await conn.execute("""CREATE TABLE IF NOT EXISTS crypto_olm_session (
-        session_id   CHAR(43)  PRIMARY KEY,
-        sender_key   CHAR(43)  NOT NULL,
-        session      bytea     NOT NULL,
-        created_at   timestamp NOT NULL,
-        last_used    timestamp NOT NULL
+        session_id CHAR(43)  PRIMARY KEY,
+        sender_key CHAR(43)  NOT NULL,
+        session    bytea     NOT NULL,
+        created_at timestamp NOT NULL,
+        last_used  timestamp NOT NULL
     )""")
     await conn.execute("""CREATE TABLE IF NOT EXISTS crypto_megolm_inbound_session (
         session_id   CHAR(43)     PRIMARY KEY,
@@ -72,25 +72,72 @@ async def upgrade_v1(conn: Connection) -> None:
 
 
 @upgrade_table.register(description="Add account_id primary key column")
-async def upgrade_v2(conn: Connection) -> None:
-    async def add_account_id_column(table: str, pkey_columns: List[str]) -> None:
-        await conn.execute(f"ALTER TABLE {table} ADD COLUMN account_id VARCHAR(255)")
-        await conn.execute(f"UPDATE {table} SET account_id=''")
-        await conn.execute(f"ALTER TABLE {table} ALTER COLUMN account_id SET NOT NULL")
-        await conn.execute(f"ALTER TABLE {table} DROP CONSTRAINT {table}_pkey")
-        pkey_columns.append("account_id")
-        pkey_columns_str = ", ".join(f'"{col}"' for col in pkey_columns)
-        await conn.execute(f"ALTER TABLE {table} ADD CONSTRAINT {table}_pkey "
-                           f"PRIMARY KEY ({pkey_columns_str})")
+async def upgrade_v2(conn: Connection, scheme: str) -> None:
+    if scheme == "sqlite":
+        await conn.execute("DROP TABLE crypto_account")
+        await conn.execute("DROP TABLE crypto_olm_session")
+        await conn.execute("DROP TABLE crypto_megolm_inbound_session")
+        await conn.execute("DROP TABLE crypto_megolm_outbound_session")
+        await conn.execute("""CREATE TABLE crypto_account (
+            account_id VARCHAR(255) PRIMARY KEY,
+            device_id  VARCHAR(255) NOT NULL,
+            shared     BOOLEAN      NOT NULL,
+            sync_token TEXT         NOT NULL,
+            account    bytea        NOT NULL
+        )""")
+        await conn.execute("""CREATE TABLE crypto_olm_session (
+            account_id   VARCHAR(255),
+            session_id   CHAR(43),
+            sender_key   CHAR(43)  NOT NULL,
+            session      bytea     NOT NULL,
+            created_at   timestamp NOT NULL,
+            last_used    timestamp NOT NULL,
+            PRIMARY KEY (account_id, session_id)
+        )""")
+        await conn.execute("""CREATE TABLE crypto_megolm_inbound_session (
+            account_id   VARCHAR(255),
+            session_id   CHAR(43),
+            sender_key   CHAR(43)     NOT NULL,
+            signing_key  CHAR(43)     NOT NULL,
+            room_id      VARCHAR(255) NOT NULL,
+            session      bytea        NOT NULL,
+            forwarding_chains TEXT    NOT NULL,
+            PRIMARY KEY (account_id, session_id)
+        )""")
+        await conn.execute("""CREATE TABLE crypto_megolm_outbound_session (
+            account_id    VARCHAR(255),
+            room_id       VARCHAR(255),
+            session_id    CHAR(43)     NOT NULL UNIQUE,
+            session       bytea        NOT NULL,
+            shared        BOOLEAN      NOT NULL,
+            max_messages  INTEGER      NOT NULL,
+            message_count INTEGER      NOT NULL,
+            max_age       INTERVAL     NOT NULL,
+            created_at    timestamp    NOT NULL,
+            last_used     timestamp    NOT NULL,
+            PRIMARY KEY (account_id, room_id)
+        )""")
+    else:
+        async def add_account_id_column(table: str, pkey_columns: List[str]) -> None:
+            await conn.execute(f"ALTER TABLE {table} ADD COLUMN account_id VARCHAR(255)")
+            await conn.execute(f"UPDATE {table} SET account_id=''")
+            await conn.execute(f"ALTER TABLE {table} ALTER COLUMN account_id SET NOT NULL")
+            await conn.execute(f"ALTER TABLE {table} DROP CONSTRAINT {table}_pkey")
+            pkey_columns.append("account_id")
+            pkey_columns_str = ", ".join(f'"{col}"' for col in pkey_columns)
+            await conn.execute(f"ALTER TABLE {table} ADD CONSTRAINT {table}_pkey "
+                               f"PRIMARY KEY ({pkey_columns_str})")
 
-    await add_account_id_column("crypto_account", [])
-    await add_account_id_column("crypto_olm_session", ["session_id"])
-    await add_account_id_column("crypto_megolm_inbound_session", ["session_id"])
-    await add_account_id_column("crypto_megolm_outbound_session", ["room_id"])
+        await add_account_id_column("crypto_account", [])
+        await add_account_id_column("crypto_olm_session", ["session_id"])
+        await add_account_id_column("crypto_megolm_inbound_session", ["session_id"])
+        await add_account_id_column("crypto_megolm_outbound_session", ["room_id"])
 
 
 @upgrade_table.register(description="Stop using size-limited string fields")
-async def upgrade_v3(conn: Connection) -> None:
+async def upgrade_v3(conn: Connection, scheme: str) -> None:
+    if scheme == "sqlite":
+        return
     await conn.execute("ALTER TABLE crypto_account ALTER COLUMN account_id TYPE TEXT")
     await conn.execute("ALTER TABLE crypto_account ALTER COLUMN device_id TYPE TEXT")
     await conn.execute("ALTER TABLE crypto_message_index ALTER COLUMN event_id TYPE TEXT")

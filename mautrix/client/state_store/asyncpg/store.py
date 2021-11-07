@@ -79,7 +79,15 @@ class PgStateStore(StateStore):
             else:
                 del_q = f"{del_q} AND (membership=$2 OR user_id = ANY($3))"
                 await conn.execute(del_q, room_id, only_membership.value, list(members.keys()))
-            await conn.copy_records_to_table("mx_user_profile", records=records, columns=columns)
+
+            if self.db.scheme == "postgres":
+                await conn.copy_records_to_table("mx_user_profile", records=records,
+                                                 columns=columns)
+            else:
+                await conn.executemany("INSERT INTO mx_user_profile (room_id, user_id, membership, "
+                                       "displayname, avatar_url) VALUES ($1, $2, $3, $4, $5)",
+                                       records)
+
             if not only_membership or only_membership == Membership.JOIN:
                 await conn.execute("UPDATE mx_room_state SET has_full_member_list=true "
                                    "WHERE room_id=$1", room_id)
