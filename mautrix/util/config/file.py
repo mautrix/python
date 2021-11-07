@@ -5,8 +5,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
 from abc import ABC
+import tempfile
 import pkgutil
 import logging
+import os
 
 from yarl import URL
 from ruamel.yaml import YAML
@@ -46,7 +48,24 @@ class BaseFileConfig(BaseConfig, ABC):
 
     def save(self) -> None:
         try:
-            with open(self.path, 'w') as stream:
-                yaml.dump(self._data, stream)
-        except OSError:
-            log.exception(f"Failed to overwrite the config in {self.path}")
+            tf = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml",
+                                             dir=os.path.dirname(self.path))
+        except OSError as e:
+            log.warning(f"Failed to create tempfile to write updated config to disk: {e}")
+            return
+        try:
+            yaml.dump(self._data, tf)
+        except OSError as e:
+            log.warning(f"Failed to write updated config to tempfile: {e}")
+            tf.file.close()
+            os.remove(tf.name)
+            return
+        tf.file.close()
+        try:
+            os.rename(tf.name, self.path)
+        except OSError as e:
+            log.warning(f"Failed to rename tempfile with updated config to {self.path}: {e}")
+            try:
+                os.remove(tf.name)
+            except FileNotFoundError:
+                pass
