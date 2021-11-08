@@ -9,6 +9,8 @@ import asyncio
 import os.path
 import time
 import sys
+import aiohttp
+from aiohttp.client import ClientTimeout
 
 from yarl import URL
 
@@ -22,6 +24,13 @@ from mautrix.appservice import AppService
 from mautrix.util import markdown
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Histogram
+from mautrix.util.message_send_checkpoint import (
+    CHECKPOINT_TYPES,
+    MessageSendCheckpoint,
+    MessageSendCheckpointReportedBy,
+    MessageSendCheckpointStatus,
+    MessageSendCheckpointStep,
+)
 
 from .commands import CommandProcessor
 
@@ -459,6 +468,32 @@ class BaseMatrixHandler:
                 portal.log.debug("Received encryption event in direct portal: %s", evt.content)
                 await portal.enable_dm_encryption()
 
+    async def send_message_send_checkpoint(self, evt: Event):
+        if not self.bridge.config["homeserver.message_send_checkpoint_endpoint"]:
+            return
+        if evt.type not in CHECKPOINT_TYPES:
+            return
+        # Exclude encrypted events because they will be decrypted and handled as normal events.
+        if evt.type == EventType.ROOM_ENCRYPTED:
+            return
+
+        self.log.debug(f"Sending message send checkpoint for {evt.event_id} to API server.")
+
+        await MessageSendCheckpoint(
+            event_id=evt.event_id,
+            room_id=evt.room_id,
+            step=MessageSendCheckpointStep.BRIDGE,
+            timestamp=int(time.time() * 1000),
+            status=MessageSendCheckpointStatus.SUCCESS,
+            reported_by=MessageSendCheckpointReportedBy.BRIDGE,
+            event_type=evt.type,
+            message_type=evt.content.msgtype if evt.type == EventType.ROOM_MESSAGE else None,
+        ).send(
+            self.log,
+            self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
+            self.az.as_token,
+        )
+
     async def int_handle_event(self, evt: Event) -> None:
         if isinstance(evt, StateEvent) and evt.type == EventType.ROOM_MEMBER and self.e2ee:
             await self.e2ee.handle_member_event(evt)
@@ -466,6 +501,8 @@ class BaseMatrixHandler:
             return
         self.log.trace("Received event: %s", evt)
         start_time = time.time()
+
+        asyncio.create_task(self.send_message_send_checkpoint(evt))
 
         if evt.type == EventType.ROOM_MEMBER:
             evt: StateEvent
