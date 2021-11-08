@@ -160,15 +160,12 @@ class Bridge(Program, ABC):
         await self.az.start(self.config["appservice.hostname"], self.config["appservice.port"])
         await self.matrix.wait_for_connection()
 
-        status_endpoint = self.config["homeserver.status_endpoint"]
-        state = BridgeState(state_event=BridgeStateEvent.STARTING).fill()
-        await state.send(status_endpoint, self.az.as_token, self.log)
-
         await self.matrix.init_encryption()
         self.add_startup_actions(self.matrix.init_as_bot())
         await super().start()
         self.az.ready = True
 
+        status_endpoint = self.config["homeserver.status_endpoint"]
         if status_endpoint and await self.count_logged_in_users() == 0:
             state = BridgeState(state_event=BridgeStateEvent.UNCONFIGURED).fill()
             await state.send(status_endpoint, self.az.as_token, self.log)
