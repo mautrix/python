@@ -155,6 +155,8 @@ class BaseUser(ABC):
         message_type: MessageType,
         error: Optional[Exception] = None,
     ):
+        if not self.bridge.config["homeserver.message_send_checkpoint_endpoint"]:
+            return
         await MessageSendCheckpoint(
             event_id=event_id,
             room_id=room_id,
