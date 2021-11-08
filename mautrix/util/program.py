@@ -217,9 +217,9 @@ class Program:
         First lifecycle method called inside the asyncio event loop. Extend this if you want more
         control over startup than just filling startup_actions in the prepare step.
         """
-        await asyncio.gather(*(self.startup_actions or []))
         if self._automatic_prometheus:
             self.start_prometheus()
+        await asyncio.gather(*(self.startup_actions or []))
 
     def prepare_stop(self) -> None:
         """
