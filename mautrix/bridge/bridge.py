@@ -115,6 +115,7 @@ class Bridge(Program, ABC):
         self.az = AppService(server=self.config["homeserver.address"],
                              domain=self.config["homeserver.domain"],
                              verify_ssl=self.config["homeserver.verify_ssl"],
+                             connection_limit=self.config["homeserver.connection_limit"],
 
                              id=self.config["appservice.id"],
                              as_token=self.config["appservice.as_token"],
