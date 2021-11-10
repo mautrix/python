@@ -152,7 +152,7 @@ class BaseUser(ABC):
         event_id: EventID,
         room_id: RoomID,
         event_type: EventType,
-        message_type: MessageType,
+        message_type: Optional[MessageType] = None,
         error: Optional[Exception] = None,
     ):
         if not self.bridge.config["homeserver.message_send_checkpoint_endpoint"]:
