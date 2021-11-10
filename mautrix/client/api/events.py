@@ -80,6 +80,7 @@ class EventMethods(BaseClientAPI):
         .. _/event/{eventId} API reference:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-event-eventid
         """
+        API_CALLS.labels(method="getEvent").inc()
         content = await self.api.request(Method.GET, Path.rooms[room_id].event[event_id])
         try:
             return Event.deserialize(content)
@@ -105,6 +106,7 @@ class EventMethods(BaseClientAPI):
         .. _GET /state/{eventType}/{stateKey} API reference:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
+        API_CALLS.labels(method="getStateEvent").inc()
         content = await self.api.request(Method.GET,
                                          Path.rooms[room_id].state[event_type][state_key])
         try:
@@ -127,6 +129,7 @@ class EventMethods(BaseClientAPI):
         .. _/state API reference:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-state
         """
+        API_CALLS.labels(method="getState").inc()
         content = await self.api.request(Method.GET, Path.rooms[room_id].state)
         try:
             return [StateEvent.deserialize(event) for event in content]
@@ -164,6 +167,7 @@ class EventMethods(BaseClientAPI):
             query["membership"] = membership.value
         if not_membership:
             query["not_membership"] = not_membership.value
+        API_CALLS.labels(method="getMembers").inc()
         content = await self.api.request(Method.GET, Path.rooms[room_id].members,
                                          query_params=query)
         try:
@@ -192,6 +196,7 @@ class EventMethods(BaseClientAPI):
         .. _/members:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-members
         """
+        API_CALLS.labels(method="getJoinedMembers").inc()
         content = await self.api.request(Method.GET, Path.rooms[room_id].joined_members)
         try:
             return {user_id: Member(membership=Membership.JOIN,
@@ -237,6 +242,7 @@ class EventMethods(BaseClientAPI):
             "limit": str(limit) if limit else None,
             "filter_json": filter_json,
         }
+        API_CALLS.labels(method="getMessages").inc()
         content = await self.api.request(Method.GET, Path.rooms[room_id].messages,
                                          query_params=query_params)
         try:
@@ -317,6 +323,7 @@ class EventMethods(BaseClientAPI):
             raise ValueError("Event type not given")
         url = Path.rooms[room_id].send[event_type][txn_id or self.api.get_txn_id()]
         content = content.serialize() if isinstance(content, Serializable) else content
+        API_CALLS.labels(method="sendMessageEvent").inc()
         resp = await self.api.request(Method.PUT, url, content, **kwargs)
         try:
             return resp["event_id"]
@@ -521,6 +528,7 @@ class EventMethods(BaseClientAPI):
             https://matrix.org/docs/spec/client_server/r0.5.0#put-matrix-client-r0-rooms-roomid-redact-eventid-txnid
         """
         url = Path.rooms[room_id].redact[event_id][self.api.get_txn_id()]
+        API_CALLS.labels(method="redact").inc()
         resp = await self.api.request(Method.PUT, url, content={"reason": reason}, **kwargs)
         try:
             return resp["event_id"]
