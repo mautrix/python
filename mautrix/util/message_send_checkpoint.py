@@ -13,6 +13,7 @@ class MessageSendCheckpointStep(SerializableEnum):
     HOMESERVER = "HOMESERVER"
     BRIDGE = "BRIDGE"
     REMOTE = "REMOTE"
+    COMMAND = "COMMAND"
 
 
 class MessageSendCheckpointStatus(SerializableEnum):
