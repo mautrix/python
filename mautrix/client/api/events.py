@@ -17,9 +17,9 @@ from mautrix.types.event.state import state_event_content_map
 from .base import BaseClientAPI
 
 API_CALLS = Counter("bridge_matrix_api_calls",
-                    "The number of Matrix client API calls made", ("update_type",))
+                    "The number of Matrix client API calls made", ("method",))
 API_CALLS_FAILED = Counter("bridge_matrix_api_calls_failed",
-                    "The number of Matrix client API calls which failed", ("update_type",))
+                    "The number of Matrix client API calls which failed", ("method",))
 
 class EventMethods(BaseClientAPI):
     """
