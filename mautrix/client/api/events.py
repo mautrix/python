@@ -61,15 +61,16 @@ class EventMethods(BaseClientAPI):
             request["full_state"] = "true" if full_state else "false"
         if set_presence:
             request["set_presence"] = str(set_presence)
-        API_CALLS.labels(method="sync").inc()
+        method = "sync"
+        API_CALLS.labels(method=method).inc()
         start_time = time.time()
         try:
             return await self.api.request(Method.GET, Path.sync, query_params=request, retry_count=0)
         except Exception:
-            API_CALLS_FAILED.labels(method="sync").inc()
+            API_CALLS_FAILED.labels(method=method).inc()
             raise
         finally:
-            API_CALLS_TIME.labels(method="sync").observe(time.time() - start_time)
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     # endregion
     # region 8.3 Getting events for a room
@@ -91,12 +92,20 @@ class EventMethods(BaseClientAPI):
         .. _/event/{eventId} API reference:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-event-eventid
         """
-        API_CALLS.labels(method="getEvent").inc()
-        content = await self.api.request(Method.GET, Path.rooms[room_id].event[event_id])
+        method = "getEvent"
+        API_CALLS.labels(method=method).inc()
+        start_time = time.time()
         try:
-            return Event.deserialize(content)
-        except SerializerError as e:
-            raise MatrixResponseError("Invalid event in response") from e
+            content = await self.api.request(Method.GET, Path.rooms[room_id].event[event_id])
+            try:
+                return Event.deserialize(content)
+            except SerializerError as e:
+                raise MatrixResponseError("Invalid event in response") from e
+        except Exception:
+            API_CALLS_FAILED.labels(method=method).inc()
+            raise
+        finally:
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     async def get_state_event(self, room_id: RoomID, event_type: EventType,
                               state_key: Optional[str] = None) -> StateEventContent:
@@ -117,7 +126,9 @@ class EventMethods(BaseClientAPI):
         .. _GET /state/{eventType}/{stateKey} API reference:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
-        API_CALLS.labels(method="getStateEvent").inc()
+        method = "getStateEvent"
+        API_CALLS.labels(method=method).inc()
+        start_time = time.time()
         content = await self.api.request(Method.GET,
                                          Path.rooms[room_id].state[event_type][state_key])
         try:
@@ -140,12 +151,20 @@ class EventMethods(BaseClientAPI):
         .. _/state API reference:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-state
         """
-        API_CALLS.labels(method="getState").inc()
-        content = await self.api.request(Method.GET, Path.rooms[room_id].state)
+        method = "getState"
+        API_CALLS.labels(method=method).inc()
+        start_time = time.time()
         try:
-            return [StateEvent.deserialize(event) for event in content]
-        except SerializerError as e:
-            raise MatrixResponseError("Invalid state events in response") from e
+            content = await self.api.request(Method.GET, Path.rooms[room_id].state)
+            try:
+                return [StateEvent.deserialize(event) for event in content]
+            except SerializerError as e:
+                raise MatrixResponseError("Invalid state events in response") from e
+        except Exception:
+            API_CALLS_FAILED.labels(method=method).inc()
+            raise
+        finally:
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     async def get_members(self, room_id: RoomID, at: Optional[SyncToken] = None,
                           membership: Optional[Membership] = None,
@@ -178,15 +197,23 @@ class EventMethods(BaseClientAPI):
             query["membership"] = membership.value
         if not_membership:
             query["not_membership"] = not_membership.value
-        API_CALLS.labels(method="getMembers").inc()
+        method = "getMembers"
+        API_CALLS.labels(method=method).inc()
+        start_time = time.time()
         content = await self.api.request(Method.GET, Path.rooms[room_id].members,
                                          query_params=query)
         try:
-            return [StateEvent.deserialize(event) for event in content["chunk"]]
-        except KeyError:
-            raise MatrixResponseError("`chunk` not in response.")
-        except SerializerError as e:
-            raise MatrixResponseError("Invalid state events in response") from e
+            try:
+                return [StateEvent.deserialize(event) for event in content["chunk"]]
+            except KeyError:
+                raise MatrixResponseError("`chunk` not in response.")
+            except SerializerError as e:
+                raise MatrixResponseError("Invalid state events in response") from e
+        except Exception:
+            API_CALLS_FAILED.labels(method=method).inc()
+            raise
+        finally:
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     async def get_joined_members(self, room_id: RoomID) -> Dict[UserID, Member]:
         """
@@ -207,17 +234,25 @@ class EventMethods(BaseClientAPI):
         .. _/members:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-members
         """
-        API_CALLS.labels(method="getJoinedMembers").inc()
-        content = await self.api.request(Method.GET, Path.rooms[room_id].joined_members)
+        method = "getJoinedMembers"
+        API_CALLS.labels(method=method).inc()
+        start_time = time.time()
         try:
-            return {user_id: Member(membership=Membership.JOIN,
-                                    displayname=member.get("display_name", ""),
-                                    avatar_url=member.get("avatar_url", ""))
-                    for user_id, member in content["joined"].items()}
-        except KeyError:
-            raise MatrixResponseError("`joined` not in response.")
-        except SerializerError as e:
-            raise MatrixResponseError("Invalid member objects in response") from e
+            content = await self.api.request(Method.GET, Path.rooms[room_id].joined_members)
+            try:
+                return {user_id: Member(membership=Membership.JOIN,
+                                        displayname=member.get("display_name", ""),
+                                        avatar_url=member.get("avatar_url", ""))
+                        for user_id, member in content["joined"].items()}
+            except KeyError:
+                raise MatrixResponseError("`joined` not in response.")
+            except SerializerError as e:
+                raise MatrixResponseError("Invalid member objects in response") from e
+        except Exception:
+            API_CALLS_FAILED.labels(method=method).inc()
+            raise
+        finally:
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     async def get_messages(self, room_id: RoomID, direction: PaginationDirection,
                            from_token: SyncToken, to_token: Optional[SyncToken] = None,
@@ -253,20 +288,28 @@ class EventMethods(BaseClientAPI):
             "limit": str(limit) if limit else None,
             "filter_json": filter_json,
         }
-        API_CALLS.labels(method="getMessages").inc()
-        content = await self.api.request(Method.GET, Path.rooms[room_id].messages,
-                                         query_params=query_params)
+        method = "getMessages"
+        API_CALLS.labels(method=method).inc()
+        start_time = time.time()
         try:
-            return PaginatedMessages(content["start"], content["end"],
-                                     [Event.deserialize(event) for event in content["chunk"]])
-        except KeyError:
-            if "start" not in content:
-                raise MatrixResponseError("`start` not in response.")
-            elif "end" not in content:
-                raise MatrixResponseError("`start` not in response.")
-            raise MatrixResponseError("`content` not in response.")
-        except SerializerError as e:
-            raise MatrixResponseError("Invalid events in response") from e
+            content = await self.api.request(Method.GET, Path.rooms[room_id].messages,
+                                            query_params=query_params)
+            try:
+                return PaginatedMessages(content["start"], content["end"],
+                                        [Event.deserialize(event) for event in content["chunk"]])
+            except KeyError:
+                if "start" not in content:
+                    raise MatrixResponseError("`start` not in response.")
+                elif "end" not in content:
+                    raise MatrixResponseError("`start` not in response.")
+                raise MatrixResponseError("`content` not in response.")
+            except SerializerError as e:
+                raise MatrixResponseError("Invalid events in response") from e
+        except Exception:
+            API_CALLS_FAILED.labels(method=method).inc()
+            raise
+        finally:
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     # endregion
     # region 8.4 Sending events to a room
@@ -296,14 +339,21 @@ class EventMethods(BaseClientAPI):
             https://matrix.org/docs/spec/client_server/r0.5.0#put-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
         content = content.serialize() if isinstance(content, Serializable) else content
-        API_CALLS.labels(method="sendStateEvent").inc()
+        method = "sendStateEvent"
+        API_CALLS.labels(method=method).inc()
+        start_time = time.time()
         resp = await self.api.request(Method.PUT, Path.rooms[room_id].state[event_type][state_key],
                                       content, **kwargs)
         try:
-            return resp["event_id"]
-        except KeyError:
-            API_CALLS_FAILED.labels(method="sendStateEvent").inc()
-            raise MatrixResponseError("`event_id` not in response.")
+            try:
+                return resp["event_id"]
+            except KeyError:
+                raise MatrixResponseError("`event_id` not in response.")
+        except Exception:
+            API_CALLS_FAILED.labels(method=method).inc()
+            raise
+        finally:
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     async def send_message_event(self, room_id: RoomID, event_type: EventType,
                                  content: EventContent, txn_id: Optional[str] = None,
@@ -334,12 +384,20 @@ class EventMethods(BaseClientAPI):
             raise ValueError("Event type not given")
         url = Path.rooms[room_id].send[event_type][txn_id or self.api.get_txn_id()]
         content = content.serialize() if isinstance(content, Serializable) else content
-        API_CALLS.labels(method="sendMessageEvent").inc()
-        resp = await self.api.request(Method.PUT, url, content, **kwargs)
+        method = "sendMessageEvent"
+        API_CALLS.labels(method=method).inc()
+        start_time = time.time()
         try:
-            return resp["event_id"]
-        except KeyError:
-            raise MatrixResponseError("`event_id` not in response.")
+            resp = await self.api.request(Method.PUT, url, content, **kwargs)
+            try:
+                return resp["event_id"]
+            except KeyError:
+                raise MatrixResponseError("`event_id` not in response.")
+        except Exception:
+            API_CALLS_FAILED.labels(method=method).inc()
+            raise
+        finally:
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     # region Message send helper functions
     def send_message(self, room_id: RoomID, content: MessageEventContent, **kwargs
@@ -539,11 +597,19 @@ class EventMethods(BaseClientAPI):
             https://matrix.org/docs/spec/client_server/r0.5.0#put-matrix-client-r0-rooms-roomid-redact-eventid-txnid
         """
         url = Path.rooms[room_id].redact[event_id][self.api.get_txn_id()]
-        API_CALLS.labels(method="redact").inc()
-        resp = await self.api.request(Method.PUT, url, content={"reason": reason}, **kwargs)
+        method = "redact"
+        API_CALLS.labels(method=method).inc()
+        start_time = time.time()
         try:
-            return resp["event_id"]
-        except KeyError:
-            raise MatrixResponseError("`event_id` not in response.")
+            resp = await self.api.request(Method.PUT, url, content={"reason": reason}, **kwargs)
+            try:
+                return resp["event_id"]
+            except KeyError:
+                raise MatrixResponseError("`event_id` not in response.")
+        except Exception:
+            API_CALLS_FAILED.labels(method=method).inc()
+            raise
+        finally:
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     # endregion
