@@ -206,9 +206,9 @@ class EventMethods(BaseClientAPI):
         method = "getMembers"
         API_CALLS.labels(method=method).inc()
         start_time = time.time()
-        content = await self.api.request(Method.GET, Path.rooms[room_id].members,
-                                         query_params=query)
         try:
+            content = await self.api.request(Method.GET, Path.rooms[room_id].members,
+                                            query_params=query)
             try:
                 return [StateEvent.deserialize(event) for event in content["chunk"]]
             except KeyError:
@@ -348,9 +348,9 @@ class EventMethods(BaseClientAPI):
         method = "sendStateEvent"
         API_CALLS.labels(method=method).inc()
         start_time = time.time()
-        resp = await self.api.request(Method.PUT, Path.rooms[room_id].state[event_type][state_key],
-                                      content, **kwargs)
         try:
+            resp = await self.api.request(Method.PUT, Path.rooms[room_id].state[event_type][state_key],
+                                        content, **kwargs)
             try:
                 return resp["event_id"]
             except KeyError:
