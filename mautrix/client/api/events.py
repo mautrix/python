@@ -65,9 +65,9 @@ class EventMethods(BaseClientAPI):
         start_time = time.time()
         try:
             return await self.api.request(Method.GET, Path.sync, query_params=request, retry_count=0)
-        except Error as e:
+        except Exception:
             API_CALLS_FAILED.labels(method="sync").inc()
-            raise e
+            raise
         finally:
             API_CALLS_TIME.labels(method="sync").observe(time.time() - start_time)
 
