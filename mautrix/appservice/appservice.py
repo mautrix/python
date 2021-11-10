@@ -63,7 +63,8 @@ class AppService(AppServiceServerMixin):
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
                  state_store: ASStateStore = None, aiohttp_params: Dict = None,
                  ephemeral_events: bool = False, default_ua: str = HTTPAPI.default_ua,
-                 default_http_retry_count: int = 0, connection_limit: int = None) -> None:
+                 default_http_retry_count: int = 0, connection_limit: Optional[int] = None
+                 ) -> None:
         super().__init__(ephemeral_events=ephemeral_events)
         self.server = server
         self.domain = domain
