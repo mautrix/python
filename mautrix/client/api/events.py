@@ -22,7 +22,7 @@ API_CALLS = Counter("bridge_matrix_api_calls",
 API_CALLS_FAILED = Counter("bridge_matrix_api_calls_failed",
                            "The number of Matrix client API calls which failed", ("method",))
 API_CALLS_TIME = Histogram("bridge_matrix_api_calls_update",
-                           "Time spent processing Telegram updates", ("method",))
+                           "Time spent on Matrix client API calls", ("method",))
 
 class EventMethods(BaseClientAPI):
     """
