@@ -129,14 +129,20 @@ class EventMethods(BaseClientAPI):
         method = "getStateEvent"
         API_CALLS.labels(method=method).inc()
         start_time = time.time()
-        content = await self.api.request(Method.GET,
-                                         Path.rooms[room_id].state[event_type][state_key])
         try:
-            return state_event_content_map[event_type].deserialize(content)
-        except KeyError:
-            return Obj(**content)
-        except SerializerError as e:
-            raise MatrixResponseError("Invalid state event in response") from e
+            content = await self.api.request(Method.GET,
+                                            Path.rooms[room_id].state[event_type][state_key])
+            try:
+                return state_event_content_map[event_type].deserialize(content)
+            except KeyError:
+                return Obj(**content)
+            except SerializerError as e:
+                raise MatrixResponseError("Invalid state event in response") from e
+        except Exception:
+            API_CALLS_FAILED.labels(method=method).inc()
+            raise
+        finally:
+            API_CALLS_TIME.labels(method=method).observe(time.time() - start_time)
 
     async def get_state(self, room_id: RoomID) -> List[StateEvent]:
         """
