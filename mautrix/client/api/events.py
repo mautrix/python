@@ -14,13 +14,15 @@ from mautrix.types import (JSON, UserID, RoomID, EventID, FilterID, SyncToken, P
                            MediaMessageEventContent, PresenceState, EventContent, Membership,
                            ReactionEventContent, RelationType, Obj, Serializable)
 from mautrix.types.event.state import state_event_content_map
-from mautrix.util.opt_prometheus import Counter
+from mautrix.util.opt_prometheus import Counter, Histogram
 from .base import BaseClientAPI
 
 API_CALLS = Counter("bridge_matrix_api_calls",
                     "The number of Matrix client API calls made", ("method",))
 API_CALLS_FAILED = Counter("bridge_matrix_api_calls_failed",
-                    "The number of Matrix client API calls which failed", ("method",))
+                           "The number of Matrix client API calls which failed", ("method",))
+API_CALLS_TIME = Histogram("bridge_matrix_api_calls_update",
+                           "Time spent processing Telegram updates", ("method",))
 
 class EventMethods(BaseClientAPI):
     """
@@ -60,11 +62,14 @@ class EventMethods(BaseClientAPI):
         if set_presence:
             request["set_presence"] = str(set_presence)
         API_CALLS.labels(method="sync").inc()
+        start_time = time.time()
         try:
             return await self.api.request(Method.GET, Path.sync, query_params=request, retry_count=0)
         except Error as e:
             API_CALLS_FAILED.labels(method="sync").inc()
             raise e
+        finally:
+            API_CALLS_TIME.labels(method="sync").observe(time.time() - start_time)
 
     # endregion
     # region 8.3 Getting events for a room
