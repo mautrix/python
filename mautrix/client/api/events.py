@@ -14,6 +14,7 @@ from mautrix.types import (JSON, UserID, RoomID, EventID, FilterID, SyncToken, P
                            MediaMessageEventContent, PresenceState, EventContent, Membership,
                            ReactionEventContent, RelationType, Obj, Serializable)
 from mautrix.types.event.state import state_event_content_map
+from mautrix.util.opt_prometheus import Counter
 from .base import BaseClientAPI
 
 API_CALLS = Counter("bridge_matrix_api_calls",
