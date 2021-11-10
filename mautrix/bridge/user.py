@@ -146,7 +146,7 @@ class BaseUser(ABC):
         await state.send(self.bridge.config["homeserver.status_endpoint"],
                          self.az.as_token, self.log)
 
-    async def send_remote_checkpoint(
+    def send_remote_checkpoint(
         self,
         status: MessageSendCheckpointStatus,
         event_id: EventID,
@@ -154,21 +154,30 @@ class BaseUser(ABC):
         event_type: EventType,
         message_type: Optional[MessageType] = None,
         error: Optional[Exception] = None,
-    ):
+    ) -> Optional[asyncio.Task]:
+        """
+        Send a remote checkpoint for the given ``event_id``. This function spaws an
+        :class:`asyncio.Task`` to send the checkpoint.
+
+        :returns: the checkpoint send task. This can be awaited if you want to block on the
+        checkpoint send.
+        """
         if not self.bridge.config["homeserver.message_send_checkpoint_endpoint"]:
-            return
-        await MessageSendCheckpoint(
-            event_id=event_id,
-            room_id=room_id,
-            step=MessageSendCheckpointStep.REMOTE,
-            timestamp=int(time.time() * 1000),
-            status=status,
-            reported_by=MessageSendCheckpointReportedBy.BRIDGE,
-            event_type=event_type,
-            message_type=message_type,
-            info=str(error) if error else None,
-        ).send(
-            self.log,
-            self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
-            self.az.as_token,
+            return None
+        return asyncio.create_task(
+            MessageSendCheckpoint(
+                event_id=event_id,
+                room_id=room_id,
+                step=MessageSendCheckpointStep.REMOTE,
+                timestamp=int(time.time() * 1000),
+                status=status,
+                reported_by=MessageSendCheckpointReportedBy.BRIDGE,
+                event_type=event_type,
+                message_type=message_type,
+                info=str(error) if error else None,
+            ).send(
+                self.log,
+                self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
+                self.az.as_token,
+            )
         )
