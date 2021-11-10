@@ -59,7 +59,12 @@ class EventMethods(BaseClientAPI):
             request["full_state"] = "true" if full_state else "false"
         if set_presence:
             request["set_presence"] = str(set_presence)
-        return self.api.request(Method.GET, Path.sync, query_params=request, retry_count=0)
+        API_CALLS.labels(method="sync").inc()
+        try:
+            return await self.api.request(Method.GET, Path.sync, query_params=request, retry_count=0)
+        except Error as e:
+            API_CALLS_FAILED.labels(method="sync").inc()
+            raise e
 
     # endregion
     # region 8.3 Getting events for a room
