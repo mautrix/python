@@ -16,6 +16,10 @@ from mautrix.types import (JSON, UserID, RoomID, EventID, FilterID, SyncToken, P
 from mautrix.types.event.state import state_event_content_map
 from .base import BaseClientAPI
 
+API_CALLS = Counter("bridge_matrix_api_calls",
+                    "The number of Matrix client API calls made", ("update_type",))
+API_CALLS_FAILED = Counter("bridge_matrix_api_calls_failed",
+                    "The number of Matrix client API calls which failed", ("update_type",))
 
 class EventMethods(BaseClientAPI):
     """
@@ -275,11 +279,13 @@ class EventMethods(BaseClientAPI):
             https://matrix.org/docs/spec/client_server/r0.5.0#put-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
         content = content.serialize() if isinstance(content, Serializable) else content
+        API_CALLS.labels(method="sendStateEvent").inc()
         resp = await self.api.request(Method.PUT, Path.rooms[room_id].state[event_type][state_key],
                                       content, **kwargs)
         try:
             return resp["event_id"]
         except KeyError:
+            API_CALLS_FAILED.labels(method="sendStateEvent").inc()
             raise MatrixResponseError("`event_id` not in response.")
 
     async def send_message_event(self, room_id: RoomID, event_type: EventType,
