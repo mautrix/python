@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Optional, Union, TYPE_CHECKING
+from typing import Callable, Tuple, Optional, Union, TYPE_CHECKING
 import logging
 import asyncio
 import os.path
@@ -311,10 +311,29 @@ class BaseMatrixHandler:
 
     async def handle_message(self, room_id: RoomID, user_id: UserID, message: MessageEventContent,
                              event_id: EventID) -> None:
+        async def bail(error_text: str, step=MessageSendCheckpointStep.REMOTE) -> None:
+            self.log.debug(error_text)
+            await MessageSendCheckpoint(
+                event_id=event_id,
+                room_id=room_id,
+                step=step,
+                timestamp=int(time.time() * 1000),
+                status=MessageSendCheckpointStatus.PERM_FAILURE,
+                reported_by=MessageSendCheckpointReportedBy.BRIDGE,
+                event_type=EventType.ROOM_MESSAGE,
+                message_type=message.msgtype,
+                info=error_text
+            ).send(
+                self.log,
+                self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
+                self.az.as_token,
+            )
+
         sender = await self.bridge.get_user(user_id)
         if not sender or not await self.allow_message(sender):
-            self.log.debug(f"Ignoring message {event_id} from {user_id} to {room_id}:"
-                           " User is not whitelisted.")
+            await bail(
+                f"Ignoring message {event_id} from {user_id} to {room_id}: User is not whitelisted."
+            )
             return
         self.log.debug(f"Received Matrix event {event_id} from {sender.mxid} in {room_id}")
         self.log.trace("Event %s content: %s", event_id, message)
@@ -328,14 +347,19 @@ class BaseMatrixHandler:
             if await self.allow_bridging_message(sender, portal):
                 await portal.handle_matrix_message(sender, message, event_id)
             else:
-                self.log.trace("Ignoring event %s from %s: not allowed to send to portal",
-                               event_id, sender.mxid)
+                await bail(
+                    f"Ignoring event {event_id} from {sender.mxid}: not allowed to send to portal"
+                )
             return
 
         if message.msgtype != MessageType.TEXT:
+            await bail(f"Event {event_id} is not m.text. Ignoring.")
             return
         elif not await self.allow_command(sender):
-            self.log.trace("Ignoring command %s from %s", event_id, sender.mxid)
+            await bail(
+                f"Ignoring command {event_id} from {sender.mxid}: not allowed to perform command",
+                step=MessageSendCheckpointStep.COMMAND,
+            )
             return
 
         has_two_members, bridge_bot_in_room = await self._is_direct_chat(room_id)
@@ -349,11 +373,31 @@ class BaseMatrixHandler:
                 # Not enough values to unpack, i.e. no arguments
                 command = text
                 args = []
-            await self.commands.handle(room_id, event_id, sender, command, args, message, portal,
-                                       is_management, bridge_bot_in_room)
+
+            try:
+                await self.commands.handle(room_id, event_id, sender, command, args, message,
+                                           portal, is_management, bridge_bot_in_room)
+            except Exception as e:
+                await bail(repr(e), step=MessageSendCheckpointStep.COMMAND)
+            else:
+                await MessageSendCheckpoint(
+                    event_id=event_id,
+                    room_id=room_id,
+                    step=MessageSendCheckpointStep.COMMAND,
+                    timestamp=int(time.time() * 1000),
+                    status=MessageSendCheckpointStatus.SUCCESS,
+                    reported_by=MessageSendCheckpointReportedBy.BRIDGE,
+                    event_type=EventType.ROOM_MESSAGE,
+                    message_type=message.msgtype,
+                ).send(
+                    self.log,
+                    self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
+                    self.az.as_token,
+                )
         else:
-            self.log.trace("Ignoring event %s from %s: not a command and not a portal room",
-                           event_id, sender.mxid)
+            await bail(
+                f"Ignoring event {event_id} from {sender.mxid}: not a command and not a portal room"
+            )
 
     async def _is_direct_chat(self, room_id: RoomID) -> Tuple[bool, bool]:
         try:
