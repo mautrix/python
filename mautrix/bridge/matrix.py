@@ -357,7 +357,8 @@ class BaseMatrixHandler:
             return
         elif not await self.allow_command(sender):
             await bail(
-                f"Ignoring command {event_id} from {sender.mxid}: not allowed to perform command"
+                f"Ignoring command {event_id} from {sender.mxid}: not allowed to perform command",
+                step=MessageSendCheckpointStep.COMMAND,
             )
             return
 
