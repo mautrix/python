@@ -359,7 +359,8 @@ class IntentAPI(StoreUpdatingAPI):
         return True
 
     def _register(self) -> Awaitable[dict]:
-        content = {"username": self.localpart, "type": "m.login.application_service"}
+        content = {"username": self.localpart, "type": "m.login.application_service",
+                   "inhibit_login": True}
         query_params = {"kind": "user"}
         return self.api.request(Method.POST, Path.register, content, query_params=query_params)
 
