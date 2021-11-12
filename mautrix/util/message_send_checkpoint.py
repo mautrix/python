@@ -4,9 +4,8 @@ from attr import dataclass
 
 import aiohttp
 from aiohttp.client import ClientTimeout
-from mautrix.types.event.type import EventType
-from mautrix.types.util.serializable import SerializableEnum
-from mautrix.types.util.serializable_attrs import SerializableAttrs
+
+from mautrix.types import EventType, MessageType, SerializableEnum, SerializableAttrs
 
 
 class MessageSendCheckpointStep(SerializableEnum):
@@ -14,6 +13,7 @@ class MessageSendCheckpointStep(SerializableEnum):
     HOMESERVER = "HOMESERVER"
     BRIDGE = "BRIDGE"
     REMOTE = "REMOTE"
+    COMMAND = "COMMAND"
 
 
 class MessageSendCheckpointStatus(SerializableEnum):
@@ -34,10 +34,10 @@ class MessageSendCheckpoint(SerializableAttrs):
     step: MessageSendCheckpointStep
     timestamp: int
     status: MessageSendCheckpointStatus
-    event_type: str
+    event_type: EventType
     reported_by: MessageSendCheckpointReportedBy
     retry_num: int = 0
-    message_type: Optional[str] = None
+    message_type: Optional[MessageType] = None
     info: Optional[str] = None
 
     async def send(self, log: logging.Logger, endpoint: str, as_token: str):

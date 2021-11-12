@@ -56,6 +56,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("homeserver.domain")
         copy("homeserver.verify_ssl")
         copy("homeserver.http_retry_count")
+        copy("homeserver.connection_limit")
         copy("homeserver.status_endpoint")
         copy("homeserver.message_send_checkpoint_endpoint")
 

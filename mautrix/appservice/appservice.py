@@ -63,7 +63,8 @@ class AppService(AppServiceServerMixin):
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
                  state_store: ASStateStore = None, aiohttp_params: Dict = None,
                  ephemeral_events: bool = False, default_ua: str = HTTPAPI.default_ua,
-                 default_http_retry_count: int = 0) -> None:
+                 default_http_retry_count: int = 0, connection_limit: Optional[int] = None
+                 ) -> None:
         super().__init__(ephemeral_events=ephemeral_events)
         self.server = server
         self.domain = domain
@@ -71,6 +72,7 @@ class AppService(AppServiceServerMixin):
         self.verify_ssl = verify_ssl
         self.tls_cert = tls_cert
         self.tls_key = tls_key
+        self.connection_limit = connection_limit or 100
         self.as_token = as_token
         self.hs_token = hs_token
         self.bot_mxid = UserID(f"@{bot_localpart}:{domain}")
@@ -126,10 +128,11 @@ class AppService(AppServiceServerMixin):
 
     async def start(self, host: str = "127.0.0.1", port: int = 8080) -> None:
         await self.state_store.open()
-        connector = None
         self.log.debug(f"Starting appservice web server on {host}:{port}")
         if self.server.startswith("https://") and not self.verify_ssl:
-            connector = aiohttp.TCPConnector(verify_ssl=False)
+            connector = aiohttp.TCPConnector(limit=self.connection_limit, verify_ssl=False)
+        else:
+            connector = aiohttp.TCPConnector(limit=self.connection_limit)
         default_headers = {"User-Agent": self.default_ua}
         self._http_session = aiohttp.ClientSession(loop=self.loop, connector=connector,
                                                    headers=default_headers)

@@ -419,4 +419,5 @@ class CommandProcessor:
             else:
                 await evt.reply("Unhandled error while handling command. "
                                 f"Check logs for more details (ref: {ref_no}).")
+            raise
         return None

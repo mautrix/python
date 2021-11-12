@@ -58,8 +58,7 @@ class TxnConnection(aiosqlite.Connection):
 
 class SQLiteDatabase(Database):
     scheme = "sqlite"
-    _pool: asyncio.Queue[TxnConnection]
-    _conns_in_use: asyncio.Queue[asyncio.Future]
+    _pool: 'asyncio.Queue[TxnConnection]'
     _stopped: bool
     _conns: int
 
