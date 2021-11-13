@@ -40,7 +40,9 @@ class MessageSendCheckpoint(SerializableAttrs):
     message_type: Optional[MessageType] = None
     info: Optional[str] = None
 
-    async def send(self, log: logging.Logger, endpoint: str, as_token: str):
+    async def send(self, log: logging.Logger, endpoint: str, as_token: str) -> None:
+        if not endpoint:
+            return
         try:
             headers = {"Authorization": f"Bearer {as_token}"}
             async with aiohttp.ClientSession() as sess, sess.post(
