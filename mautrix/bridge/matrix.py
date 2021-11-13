@@ -1,18 +1,12 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Callable, Tuple, Optional, Union, TYPE_CHECKING
+from typing import Tuple, Optional, Union, TYPE_CHECKING
 import logging
 import asyncio
-import os.path
 import time
-import sys
-import aiohttp
-from aiohttp.client import ClientTimeout
-
-from yarl import URL
 
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
@@ -151,10 +145,6 @@ class BaseMatrixHandler:
 
     async def init_encryption(self) -> None:
         if self.e2ee:
-            if not await self.e2ee.check_server_support():
-                self.log.critical("Encryption enabled in config, but homeserver does not "
-                                  "advertise appservice login")
-                sys.exit(30)
             await self.e2ee.start()
 
     @staticmethod

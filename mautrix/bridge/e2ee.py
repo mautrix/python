@@ -6,6 +6,7 @@
 from typing import Tuple, Union, Optional, Dict, TYPE_CHECKING
 import logging
 import asyncio
+import sys
 
 from mautrix.types import (Filter, RoomFilter, EventFilter, RoomEventFilter, StateFilter, EventType,
                            RoomID, Serializable, JSON, MessageEvent, EncryptedEvent, StateEvent,
@@ -165,10 +166,16 @@ class EncryptionManager:
 
     async def check_server_support(self) -> bool:
         flows = await self.client.get_login_flows()
-        return flows.supports_type(LoginType.APPSERVICE)
+        return flows.supports_type(LoginType.APPSERVICE, LoginType.UNSTABLE_APPSERVICE)
 
     async def start(self) -> None:
-        self.log.debug("Logging in with bridge bot user")
+        flows = await self.client.get_login_flows()
+        flow = flows.get_first_of_type(LoginType.APPSERVICE, LoginType.UNSTABLE_APPSERVICE)
+        if flow is None:
+            self.log.critical("Encryption enabled in config, but homeserver does not "
+                              "advertise appservice login")
+            sys.exit(30)
+        self.log.debug(f"Logging in with bridge bot user (using login type {flow.type.value})")
         if self.crypto_db:
             await self.crypto_db.start()
         await self.crypto_store.open()
@@ -178,7 +185,7 @@ class EncryptionManager:
         # We set the API token to the AS token here to authenticate the appservice login
         # It'll get overridden after the login
         self.client.api.token = self.az.as_token
-        await self.client.login(login_type=LoginType.APPSERVICE, device_name=self.device_name,
+        await self.client.login(login_type=flow.type, device_name=self.device_name,
                                 device_id=device_id, store_access_token=True, update_hs_url=False)
         await self.crypto.load()
         if not device_id:

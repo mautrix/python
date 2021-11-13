@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Optional, List, NewType
+from typing import Union, Optional, List, NewType, Iterable
 from attr import dataclass
 import attr
 
@@ -21,9 +21,10 @@ class LoginType(ExtensibleEnum):
     PASSWORD: 'LoginType' = "m.login.password"
     TOKEN: 'LoginType' = "m.login.token"
     SSO: 'LoginType' = "m.login.sso"
+    APPSERVICE: 'LoginType' = "m.login.application_service"
 
-    JWT: 'LoginType' = "org.matrix.login.jwt"
-    APPSERVICE: 'LoginType' = "uk.half-shot.msc2778.login.application_service"
+    UNSTABLE_JWT: 'LoginType' = "org.matrix.login.jwt"
+    UNSTABLE_APPSERVICE: 'LoginType' = "uk.half-shot.msc2778.login.application_service"
 
 
 @dataclass
@@ -41,11 +42,14 @@ class LoginFlow(SerializableAttrs):
 class LoginFlowList(SerializableAttrs):
     flows: List[LoginFlow]
 
-    def supports_type(self, type: LoginType) -> bool:
+    def get_first_of_type(self, *types: LoginType) -> Optional[LoginFlow]:
         for flow in self.flows:
-            if flow.type == type:
-                return True
-        return False
+            if flow.type in types:
+                return flow
+        return None
+
+    def supports_type(self, *types: LoginType) -> bool:
+        return self.get_first_of_type(*types) is not None
 
 
 class UserIdentifierType(ExtensibleEnum):
