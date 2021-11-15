@@ -25,6 +25,12 @@ from mautrix import __version__ as mautrix_version
 if TYPE_CHECKING:
     from mautrix.types import JSON
 
+API_CALLS = Counter("bridge_matrix_api_calls",
+                    "The number of Matrix client API calls made", ("method",))
+API_CALLS_FAILED = Counter("bridge_matrix_api_calls_failed",
+                           "The number of Matrix client API calls which failed", ("method",))
+MATRIX_REQUEST_SECONDS = Histogram("matrix_request_seconds",
+                                   "Time spent on Matrix client API calls", ("method","outcome",))
 
 class APIPath(Enum):
     """
@@ -212,7 +218,8 @@ class HTTPAPI:
                       content: Optional[Union[dict, list, bytes, str]] = None,
                       headers: Optional[Dict[str, str]] = None,
                       query_params: Optional[Union[Dict[str, str], CIMultiDict[str, str]]] = None,
-                      retry_count: Optional[int] = None) -> 'JSON':
+                      retry_count: Optional[int] = None,
+                      metrics_method: Optional[str] = "") -> 'JSON':
         """
         Make a raw Matrix API request.
 
@@ -256,7 +263,17 @@ class HTTPAPI:
         while True:
             self._log_request(method, path, content, orig_content, query_params, req_id)
             try:
-                return await self._send(method, full_url, content, query_params, headers or {})
+                start_time = time.time()
+                outcome = "success"
+                API_CALLS.labels(method=metrics_method).inc()
+                try:
+                    return await self._send(method, full_url, content, query_params, headers or {})
+                except Exception:
+                    API_CALLS_FAILED.labels(method=metrics_method).inc()
+                    outcome = "fail"
+                    raise
+                finally:
+                    MATRIX_REQUEST_SECONDS.labels(method=metrics_method, outcome=outcome).observe(time.time() - start_time)
             except MatrixRequestError as e:
                 if retry_count > 0 and e.http_status in (502, 503, 504):
                     self.log.warning(f"Request #{req_id} failed with HTTP {e.http_status}, "
