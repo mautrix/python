@@ -63,7 +63,8 @@ class AppService(AppServiceServerMixin):
                  real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
                  state_store: ASStateStore = None, aiohttp_params: Dict = None,
                  ephemeral_events: bool = False, default_ua: str = HTTPAPI.default_ua,
-                 default_http_retry_count: int = 0, connection_limit: Optional[int] = None
+                 default_http_retry_count: int = 0, connection_limit: Optional[int] = None,
+                 connection_limit_per_user: Optional[int] = None,
                  ) -> None:
         super().__init__(ephemeral_events=ephemeral_events)
         self.server = server
@@ -73,6 +74,7 @@ class AppService(AppServiceServerMixin):
         self.tls_cert = tls_cert
         self.tls_key = tls_key
         self.connection_limit = connection_limit or 100
+        self.connection_limit_per_user = connection_limit_per_user or 10
         self.as_token = as_token
         self.hs_token = hs_token
         self.bot_mxid = UserID(f"@{bot_localpart}:{domain}")
@@ -126,20 +128,23 @@ class AppService(AppServiceServerMixin):
     async def __aexit__(self) -> None:
         await self.stop()
 
+    def _create_session(self, connection_limit: int) -> aiohttp.ClientSession:
+        if self.server.startswith("https://") and not self.verify_ssl:
+            connector = aiohttp.TCPConnector(limit=connection_limit, verify_ssl=False)
+        else:
+            connector = aiohttp.TCPConnector(limit=connection_limit)
+        default_headers = {"User-Agent": self.default_ua}
+        return aiohttp.ClientSession(loop=self.loop, connector=connector, headers=default_headers)
+
     async def start(self, host: str = "127.0.0.1", port: int = 8080) -> None:
         await self.state_store.open()
         self.log.debug(f"Starting appservice web server on {host}:{port}")
-        if self.server.startswith("https://") and not self.verify_ssl:
-            connector = aiohttp.TCPConnector(limit=self.connection_limit, verify_ssl=False)
-        else:
-            connector = aiohttp.TCPConnector(limit=self.connection_limit)
-        default_headers = {"User-Agent": self.default_ua}
-        self._http_session = aiohttp.ClientSession(loop=self.loop, connector=connector,
-                                                   headers=default_headers)
+        self._http_session = self._create_session(connection_limit=self.connection_limit)
         self._intent = AppServiceAPI(base_url=self.server, bot_mxid=self.bot_mxid, log=self.log,
                                      token=self.as_token, state_store=self.state_store,
                                      real_user_content_key=self.real_user_content_key,
                                      client_session=self._http_session,
+                                     create_child_session=lambda: self._create_session(connection_limit=self.connection_limit_per_user),
                                      default_retry_count=self.default_http_retry_count).bot_intent()
         ssl_ctx = None
         if self.tls_cert and self.tls_key:

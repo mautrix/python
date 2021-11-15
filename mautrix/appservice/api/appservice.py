@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Awaitable, Union, Any, TYPE_CHECKING
+from typing import Callable, Optional, Dict, Awaitable, Union, Any, TYPE_CHECKING
 from datetime import datetime, timezone
 import asyncio
 
@@ -43,6 +43,7 @@ class AppServiceAPI(HTTPAPI):
     def __init__(self, base_url: Union[URL, str], bot_mxid: UserID = None, token: str = None,
                  identity: Optional[UserID] = None, log: TraceLogger = None,
                  state_store: 'ASStateStore' = None, client_session: ClientSession = None,
+                 create_child_session: Callable[[], ClientSession] = None,
                  child: bool = False, real_user: bool = False,
                  real_user_content_key: Optional[str] = None, default_retry_count: int = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
@@ -55,6 +56,7 @@ class AppServiceAPI(HTTPAPI):
             log: The logging.Logger instance to log requests with.
             state_store: The StateStore instance to use.
             client_session: The aiohttp ClientSession to use.
+            create_child_session: Function returning an aiohttp ClientSession to use for a child.
             child: Whether or not this is instance is a child of another AppServiceAPI.
             real_user: Whether or not this is a real (non-appservice-managed) user.
             real_user_content_key: The key to inject in outgoing message events sent through real
@@ -71,6 +73,7 @@ class AppServiceAPI(HTTPAPI):
         self.state_store = state_store
         self.is_real_user = real_user
         self.real_user_content_key = real_user_content_key
+        self.create_child_session = create_child_session
 
         if not child:
             self.txn_id = 0
@@ -125,7 +128,7 @@ class AppServiceAPI(HTTPAPI):
         except KeyError:
             child = type(self)(base_url=base_url or self.base_url, token=token, identity=mxid,
                                log=self.base_log, state_store=self.state_store,
-                               client_session=self.session, real_user=True,
+                               client_session=self.create_child_session(), real_user=True,
                                real_user_content_key=self.real_user_content_key, loop=self.loop,
                                default_retry_count=self.default_retry_count)
             self.real_users[mxid] = child
@@ -213,7 +216,8 @@ class ChildAppServiceAPI(AppServiceAPI):
             parent: The parent AppServiceAPI instance.
         """
         super().__init__(parent.base_url, parent.bot_mxid, parent.token, user, parent.base_log,
-                         parent.state_store, parent.session, child=True, loop=parent.loop,
+                         parent.state_store, client_session=parent.create_child_session(),
+                         child=True, loop=parent.loop,
                          real_user_content_key=parent.real_user_content_key,
                          default_retry_count=parent.default_retry_count)
         self.parent = parent
