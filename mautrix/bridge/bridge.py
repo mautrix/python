@@ -116,6 +116,7 @@ class Bridge(Program, ABC):
                              domain=self.config["homeserver.domain"],
                              verify_ssl=self.config["homeserver.verify_ssl"],
                              connection_limit=self.config["homeserver.connection_limit"],
+                             connection_limit_per_user=self.config["homeserver.connection_limit_per_user"],
 
                              id=self.config["appservice.id"],
                              as_token=self.config["appservice.as_token"],
