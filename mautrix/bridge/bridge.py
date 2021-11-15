@@ -201,19 +201,19 @@ class Bridge(Program, ABC):
         return web.json_response(evt.serialize())
 
     @abstractmethod
-    async def get_user(self, user_id: UserID, create: bool = True) -> 'BaseUser':
+    async def get_user(self, user_id: UserID, create: bool = True) -> Optional['BaseUser']:
         pass
 
     @abstractmethod
-    async def get_portal(self, room_id: RoomID) -> 'BasePortal':
+    async def get_portal(self, room_id: RoomID) -> Optional['BasePortal']:
         pass
 
     @abstractmethod
-    async def get_puppet(self, user_id: UserID, create: bool = False) -> 'BasePuppet':
+    async def get_puppet(self, user_id: UserID, create: bool = False) -> Optional['BasePuppet']:
         pass
 
     @abstractmethod
-    async def get_double_puppet(self, user_id: UserID) -> 'BasePuppet':
+    async def get_double_puppet(self, user_id: UserID) -> Optional['BasePuppet']:
         pass
 
     @abstractmethod

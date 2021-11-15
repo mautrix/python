@@ -1,7 +1,7 @@
 from .primitive import (UserID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken,
                         DeviceID, SessionID, SigningKey, IdentityKey, JSON)
 from .filter import Filter, EventFilter, RoomFilter, StateFilter, RoomEventFilter
-from .event import (EventType, GenericEvent,
+from .event import (EventType, GenericEvent, BaseRoomEvent, BaseEvent, BaseUnsigned,
 
                     RedactionEvent, RedactionEventContent,
                     ReactionEventContent, ReactionEvent,
