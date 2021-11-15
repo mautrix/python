@@ -20,6 +20,7 @@ from aiohttp.client_exceptions import ContentTypeError, ClientError
 
 from mautrix.errors import make_request_error, MatrixConnectionError, MatrixRequestError
 from mautrix.util.logging import TraceLogger
+from mautrix.util.opt_prometheus import Counter, Histogram
 from mautrix import __version__ as mautrix_version
 
 if TYPE_CHECKING:
