@@ -73,7 +73,7 @@ class AppServiceAPI(HTTPAPI):
         self.state_store = state_store
         self.is_real_user = real_user
         self.real_user_content_key = real_user_content_key
-        self.create_child_session = create_child_session
+        self.create_child_session = create_child_session or (lambda: self.session)
 
         if not child:
             self.txn_id = 0
