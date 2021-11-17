@@ -63,7 +63,7 @@ class EventMethods(BaseClientAPI):
             request["set_presence"] = str(set_presence)
         method = "sync"
         API_CALLS.labels(method=method).inc()
-        start_time = time.time()
+        start_time = time()
         outcome = "success"
         try:
             return await self.api.request(Method.GET, Path.sync, query_params=request, retry_count=0)
