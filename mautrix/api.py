@@ -30,7 +30,7 @@ API_CALLS = Counter("bridge_matrix_api_calls",
                     "The number of Matrix client API calls made", ("method",))
 API_CALLS_FAILED = Counter("bridge_matrix_api_calls_failed",
                            "The number of Matrix client API calls which failed", ("method",))
-MATRIX_REQUEST_SECONDS = Histogram("matrix_request_seconds",
+MATRIX_REQUEST_SECONDS = Histogram("bridge_matrix_request_seconds",
                                    "Time spent on Matrix client API calls", ("method","outcome",))
 
 class APIPath(Enum):
