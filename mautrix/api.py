@@ -264,7 +264,7 @@ class HTTPAPI:
         while True:
             self._log_request(method, path, content, orig_content, query_params, req_id)
             try:
-                start_time = time.time()
+                start_time = time()
                 outcome = "success"
                 API_CALLS.labels(method=metrics_method).inc()
                 try:
