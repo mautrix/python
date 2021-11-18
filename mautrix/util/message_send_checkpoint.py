@@ -5,6 +5,7 @@ from attr import dataclass
 import aiohttp
 from aiohttp.client import ClientTimeout
 
+from mautrix.api import HTTPAPI
 from mautrix.types import EventType, MessageType, SerializableEnum, SerializableAttrs
 
 
@@ -44,7 +45,7 @@ class MessageSendCheckpoint(SerializableAttrs):
         if not endpoint:
             return
         try:
-            headers = {"Authorization": f"Bearer {as_token}"}
+            headers = {"Authorization": f"Bearer {as_token}", "User-Agent": HTTPAPI.default_ua}
             async with aiohttp.ClientSession() as sess, sess.post(
                 endpoint,
                 json={"checkpoints": [self.serialize()]},

@@ -112,6 +112,8 @@ class Bridge(Program, ABC):
         self.make_state_store()
         mb = 1024 ** 2
         default_http_retry_count = self.config.get("homeserver.http_retry_count", None)
+        if self.name not in HTTPAPI.default_ua:
+            HTTPAPI.default_ua = f"{self.name}/{self.version} {HTTPAPI.default_ua}"
         self.az = AppService(server=self.config["homeserver.address"],
                              domain=self.config["homeserver.domain"],
                              verify_ssl=self.config["homeserver.verify_ssl"],
@@ -127,7 +129,7 @@ class Bridge(Program, ABC):
                              bot_localpart=self.config["appservice.bot_username"],
                              ephemeral_events=self.config["appservice.ephemeral_events"],
 
-                             default_ua=f"{self.name}/{self.version} {HTTPAPI.default_ua}",
+                             default_ua=HTTPAPI.default_ua,
                              default_http_retry_count=default_http_retry_count,
 
                              log="mau.as",
