@@ -13,6 +13,7 @@ class MessageSendCheckpointStep(SerializableEnum):
     CLIENT = "CLIENT"
     HOMESERVER = "HOMESERVER"
     BRIDGE = "BRIDGE"
+    DECRYPTED = "DECRYPTED"
     REMOTE = "REMOTE"
     COMMAND = "COMMAND"
 
