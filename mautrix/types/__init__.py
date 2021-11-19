@@ -46,7 +46,7 @@ from .users import User, Member, UserSearchResults
 from .auth import (LoginType, UserIdentifierType, MatrixUserIdentifier, ThirdPartyIdentifier,
                    PhoneIdentifier, UserIdentifier, LoginResponse, DiscoveryInformation,
                    DiscoveryServer, DiscoveryIntegrations, DiscoveryIntegrationServer,
-                   LoginFlow, LoginFlowList)
+                   LoginFlow, LoginFlowList, WhoamiResponse)
 from .crypto import UnsignedDeviceInfo, DeviceKeys, ClaimKeysResponse, QueryKeysResponse
 from .media import MediaRepoConfig, MXOpenGraph, OpenGraphVideo, OpenGraphImage, OpenGraphAudio
 from .util import (Obj, Lst, SerializerError, Serializable, SerializableEnum, SerializableAttrs,

@@ -1,14 +1,14 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from mautrix.errors import MatrixResponseError
 from mautrix.api import Method, Path
 from mautrix.types import (UserID, LoginType, UserIdentifier, LoginResponse, LoginFlowList,
-                           MatrixUserIdentifier)
+                           MatrixUserIdentifier, WhoamiResponse)
 
 from .base import BaseClientAPI
 
@@ -144,17 +144,14 @@ class ClientAuthenticationMethods(BaseClientAPI):
     # region 5.7 Current account information
     # API reference: https://matrix.org/docs/spec/client_server/r0.6.1.html#current-account-information
 
-    async def whoami(self) -> UserID:
+    async def whoami(self) -> WhoamiResponse:
         """
         Get information about the current user.
 
         Returns:
-            The user ID of the current user.
+            The user ID and device ID of the current user.
         """
         resp = await self.api.request(Method.GET, Path.account.whoami)
-        try:
-            return resp["user_id"]
-        except KeyError:
-            raise MatrixResponseError("`user_id` not in response.")
+        return WhoamiResponse.deserialize(resp)
 
     # endregion

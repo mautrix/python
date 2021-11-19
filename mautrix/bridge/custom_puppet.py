@@ -232,15 +232,15 @@ class CustomPuppetMixin(ABC):
             return
 
         try:
-            mxid = await self.intent.whoami()
+            whoami = await self.intent.whoami()
         except MatrixInvalidToken as e:
             if retry_auto_login and self.custom_mxid and self.can_auto_login(self.custom_mxid):
                 self.log.debug(f"Got {e.errcode} while trying to initialize custom mxid")
                 await self.switch_mxid("auto", self.custom_mxid, start_sync_task=start_sync_task)
                 return
             self.log.warning(f"Got {e.errcode} while trying to initialize custom mxid")
-            mxid = None
-        if not mxid or mxid != self.custom_mxid:
+            whoami = None
+        if not whoami or whoami.user_id != self.custom_mxid:
             if self.custom_mxid and self.by_custom_mxid.get(self.custom_mxid) == self:
                 del self.by_custom_mxid[self.custom_mxid]
             self.custom_mxid = None
@@ -248,16 +248,16 @@ class CustomPuppetMixin(ABC):
             self.next_batch = None
             await self.save()
             self.intent = self._fresh_intent()
-            if mxid != self.custom_mxid:
+            if whoami.user_id != self.custom_mxid:
                 raise OnlyLoginSelf()
             raise InvalidAccessToken()
         if self.sync_with_custom_puppets and start_sync_task:
             if self._sync_task:
                 self._sync_task.cancel()
-            self.log.info(f"Initialized custom mxid: {mxid}. Starting sync task")
+            self.log.info(f"Initialized custom mxid: {whoami.user_id}. Starting sync task")
             self._sync_task = asyncio.create_task(self._try_sync())
         else:
-            self.log.info(f"Initialized custom mxid: {mxid}. Not starting sync task")
+            self.log.info(f"Initialized custom mxid: {whoami.user_id}. Not starting sync task")
 
     def stop(self) -> None:
         """Cancel the sync task."""
