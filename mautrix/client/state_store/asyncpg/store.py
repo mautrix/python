@@ -5,8 +5,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, List, Optional, Union, NamedTuple
 
-from mautrix.types import (Member, MemberStateEventContent, Membership, PowerLevelStateEventContent,
-                           RoomEncryptionStateEventContent, RoomID, UserID)
+from mautrix.types import (Member, MemberStateEventContent, Membership, RoomID, UserID,
+                           PowerLevelStateEventContent, RoomEncryptionStateEventContent)
 from mautrix.util.async_db import Database
 
 from ..abstract import StateStore
@@ -70,8 +70,10 @@ class PgStateStore(StateStore):
                           members: Dict[UserID, Union[Member, MemberStateEventContent]],
                           only_membership: Optional[Membership] = None) -> None:
         columns = ["room_id", "user_id", "membership", "displayname", "avatar_url"]
-        records = [(room_id, user_id, str(member.membership), member.displayname, member.avatar_url)
-                   for user_id, member in members.items()]
+        records = [
+            (room_id, user_id, str(member.membership), member.displayname, member.avatar_url)
+            for user_id, member in members.items()
+        ]
         async with self.db.acquire() as conn, conn.transaction():
             del_q = "DELETE FROM mx_user_profile WHERE room_id=$1"
             if only_membership is None:
@@ -80,7 +82,7 @@ class PgStateStore(StateStore):
                 del_q = f"{del_q} AND (membership=$2 OR user_id = ANY($3))"
                 await conn.execute(del_q, room_id, only_membership.value, list(members.keys()))
             else:
-                member_placeholders = ", ".join(f"${i+3}" for i in range(len(members)))
+                member_placeholders = ", ".join(f"${i + 3}" for i in range(len(members)))
                 del_q = f"{del_q} AND (membership=$2 OR user_id IN ({member_placeholders}))"
                 await conn.execute(del_q, room_id, only_membership.value, *members.keys())
 
@@ -88,13 +90,20 @@ class PgStateStore(StateStore):
                 await conn.copy_records_to_table("mx_user_profile", records=records,
                                                  columns=columns)
             else:
-                await conn.executemany("INSERT INTO mx_user_profile (room_id, user_id, membership, "
-                                       "displayname, avatar_url) VALUES ($1, $2, $3, $4, $5)",
-                                       records)
+                q = ("INSERT INTO mx_user_profile (room_id, user_id, membership, "
+                     "displayname, avatar_url) VALUES ($1, $2, $3, $4, $5)")
+                await conn.executemany(q, records)
 
             if not only_membership or only_membership == Membership.JOIN:
                 await conn.execute("UPDATE mx_room_state SET has_full_member_list=true "
                                    "WHERE room_id=$1", room_id)
+
+    async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]:
+        q = ("SELECT mx_user_profile.room_id FROM mx_user_profile "
+             "LEFT JOIN mx_room_state ON mx_room_state.room_id=mx_user_profile.room_id "
+             "WHERE user_id=$1 AND mx_room_state.is_encrypted=true")
+        rows = await self.db.fetch(q, user_id)
+        return [row["room_id"] for row in rows]
 
     async def has_full_member_list(self, room_id: RoomID) -> bool:
         return bool(await self.db.fetchval("SELECT has_full_member_list FROM mx_room_state "
@@ -111,7 +120,8 @@ class PgStateStore(StateStore):
             return None
         return PowerLevelStateEventContent.parse_json(power_levels_json)
 
-    async def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
+    async def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent
+                               ) -> None:
         await self.db.execute("INSERT INTO mx_room_state (room_id, power_levels) VALUES ($1, $2) "
                               "ON CONFLICT (room_id) DO UPDATE SET power_levels=$2",
                               room_id, content.json())
