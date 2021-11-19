@@ -436,18 +436,22 @@ class BaseMatrixHandler:
 
     async def handle_encrypted(self, evt: EncryptedEvent) -> None:
         if not self.e2ee:
+            self.send_decrypted_checkpoint(evt, "Encryption unsupported", True)
             await self.handle_encrypted_unsupported(evt)
             return
         try:
             decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=5)
         except SessionNotFound as e:
+            self.send_decrypted_checkpoint(evt, e, False)
             await self._handle_encrypted_wait(evt, e, wait=10)
         except DecryptionError as e:
             self.log.warning(f"Failed to decrypt {evt.event_id}: {e}")
             self.log.trace("%s decryption traceback:", evt.event_id, exc_info=True)
+            self.send_decrypted_checkpoint(evt, e, True)
             await self.send_encryption_error_notice(evt, e)
         else:
-            await self.int_handle_event(decrypted)
+            self.send_decrypted_checkpoint(decrypted)
+            await self.int_handle_event(decrypted, send_bridge_checkpoint=False)
 
     async def handle_encrypted_unsupported(self, evt: EncryptedEvent) -> None:
         self.log.debug("Got encrypted message %s from %s, but encryption is not enabled",
@@ -479,15 +483,19 @@ class BaseMatrixHandler:
             try:
                 decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=0)
             except DecryptionError as e:
+                self.send_decrypted_checkpoint(evt, e, True)
                 self.log.warning(f"Failed to decrypt {evt.event_id}: {e}")
                 self.log.trace("%s decryption traceback:", evt.event_id, exc_info=True)
                 msg = f"\u26a0 Your message was not bridged: {e}"
             else:
+                self.send_decrypted_checkpoint(decrypted)
                 await self.az.intent.redact(evt.room_id, event_id)
-                await self.int_handle_event(decrypted)
+                await self.int_handle_event(decrypted, send_bridge_checkpoint=False)
                 return
         else:
-            self.log.warning(f"Didn't get {err.session_id}, giving up on {evt.event_id}")
+            error_message = f"Didn't get {err.session_id}, giving up on {evt.event_id}"
+            self.log.warning(error_message)
+            self.send_decrypted_checkpoint(evt, error_message, True)
             msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption"
                    " keys. If this error keeps happening, try restarting your client.")
         content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=msg)
@@ -504,29 +512,46 @@ class BaseMatrixHandler:
                 portal.log.debug("Received encryption event in direct portal: %s", evt.content)
                 await portal.enable_dm_encryption()
 
-    def send_message_send_checkpoint(self, evt: Event) -> None:
+    def send_message_send_checkpoint(
+        self,
+        evt: Event,
+        step: MessageSendCheckpointStep,
+        err: Optional[Union[Exception, str]] = None,
+        permanent: bool = False,
+    ) -> None:
         endpoint = self.bridge.config["homeserver.message_send_checkpoint_endpoint"]
         if not endpoint:
             return
         if evt.type not in CHECKPOINT_TYPES:
             return
-        # Exclude encrypted events because they will be decrypted and handled as normal events.
-        if evt.type == EventType.ROOM_ENCRYPTED:
-            return
 
         self.log.debug(f"Sending message send checkpoint for {evt.event_id} to API server.")
+        status = MessageSendCheckpointStatus.SUCCESS
+        if err:
+            status = (
+                MessageSendCheckpointStatus.PERM_FAILURE if permanent
+                else MessageSendCheckpointStatus.WILL_RETRY
+            )
 
         checkpoint = MessageSendCheckpoint(
             event_id=evt.event_id,
             room_id=evt.room_id,
-            step=MessageSendCheckpointStep.BRIDGE,
+            step=step,
             timestamp=int(time.time() * 1000),
-            status=MessageSendCheckpointStatus.SUCCESS,
+            status=status,
             reported_by=MessageSendCheckpointReportedBy.BRIDGE,
             event_type=evt.type,
             message_type=evt.content.msgtype if evt.type == EventType.ROOM_MESSAGE else None,
+            info=str(err) if err else None,
         )
         asyncio.create_task(checkpoint.send(self.log, endpoint, self.az.as_token))
+
+    def send_bridge_checkpoint(self, evt: Event) -> None:
+        self.send_message_send_checkpoint(evt, MessageSendCheckpointStep.BRIDGE)
+
+    def send_decrypted_checkpoint(self, evt: Event, err: Optional[Union[Exception, str]] = None,
+                                  permanent: bool = False,) -> None:
+        self.send_message_send_checkpoint(evt, MessageSendCheckpointStep.DECRYPTED, err, permanent)
 
     allowed_event_classes: Tuple[type, ...] = (
         MessageEvent, StateEvent, ReactionEvent, EncryptedEvent, RedactionEvent,
@@ -552,14 +577,15 @@ class BaseMatrixHandler:
         # For non-room events and non-bridge-originated room events, allow.
         return True
 
-    async def int_handle_event(self, evt: Event) -> None:
+    async def int_handle_event(self, evt: Event, send_bridge_checkpoint: bool = True) -> None:
         if isinstance(evt, StateEvent) and evt.type == EventType.ROOM_MEMBER and self.e2ee:
             await self.e2ee.handle_member_event(evt)
         if not await self.allow_matrix_event(evt):
             return
         self.log.trace("Received event: %s", evt)
 
-        self.send_message_send_checkpoint(evt)
+        if send_bridge_checkpoint:
+            self.send_bridge_checkpoint(evt)
         start_time = time.time()
 
         if evt.type == EventType.ROOM_MEMBER:
