@@ -37,9 +37,15 @@ class PgCryptoStore(CryptoStore, SyncStore):
         self.pickle_key = pickle_key
 
         self._sync_token = None
-        self._device_id = ""
+        self._device_id = DeviceID("")
         self._account = None
         self._olm_cache = defaultdict(lambda: {})
+
+    async def delete(self) -> None:
+        tables = ("crypto_account", "crypto_olm_session", "crypto_megolm_outbound_session")
+        async with self.db.acquire() as conn, conn.transaction():
+            for table in tables:
+                await conn.execute(f"DELETE FROM {table} WHERE account_id=$1", self.account_id)
 
     async def get_device_id(self) -> Optional[DeviceID]:
         device_id = await self.db.fetchval("SELECT device_id FROM crypto_account "
