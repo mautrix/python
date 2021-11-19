@@ -283,7 +283,6 @@ class Syncer(ABC):
             # These aren't required by the spec, so make sure they're set
             raw_invite.setdefault("event_id", None)
             raw_invite.setdefault("origin_server_ts", int(time() * 1000))
-            raw_invite.setdefault("unsigned", {})
 
             invite = StateEvent.deserialize(raw_invite)
             invite.unsigned.invite_room_state = [StrippedStateEvent.deserialize(raw_event)

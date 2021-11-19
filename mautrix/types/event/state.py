@@ -8,7 +8,7 @@ from attr import dataclass
 import attr
 
 from ..primitive import JSON, UserID, EventID, ContentURI, RoomID, RoomAlias
-from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer
+from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer, field
 from .base import BaseRoomEvent, BaseUnsigned
 from .type import EventType, RoomType
 from .encrypted import EncryptionAlgorithm
@@ -226,7 +226,7 @@ class StateEvent(BaseRoomEvent, SerializableAttrs):
     """A room state event."""
     state_key: str
     content: StateEventContent
-    unsigned: Optional[StateUnsigned] = None
+    unsigned: Optional[StateUnsigned] = field(factory=lambda: StateUnsigned())
 
     @property
     def prev_content(self) -> StateEventContent:
