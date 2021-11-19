@@ -442,6 +442,7 @@ class BaseMatrixHandler:
         try:
             decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=5)
         except SessionNotFound as e:
+            self.send_decrypted_checkpoint(evt, e, False)
             await self._handle_encrypted_wait(evt, e, wait=10)
         except DecryptionError as e:
             self.log.warning(f"Failed to decrypt {evt.event_id}: {e}")
