@@ -95,7 +95,8 @@ class MemoryStateStore(StateStore):
                                            else Member(membership=member.membership,
                                                        avatar_url=member.avatar_url,
                                                        displayname=member.displayname))
-                                 for user_id, member in members.items()} | old_members
+                                 for user_id, member in members.items()}
+        self.members[room_id].update(old_members)
         self.full_member_list[room_id] = True
 
     async def has_full_member_list(self, room_id: RoomID) -> bool:
