@@ -2,7 +2,7 @@ import setuptools
 
 from mautrix import __version__
 
-test_dependencies = ["aiosqlite", "sqlalchemy"]
+test_dependencies = ["aiosqlite", "sqlalchemy", "asyncpg"]
 
 setuptools.setup(
     name="mautrix",
