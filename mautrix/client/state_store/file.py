@@ -1,9 +1,9 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Optional, TYPE_CHECKING
+from typing import Union, Optional, Dict, TYPE_CHECKING
 
 from mautrix.types import (RoomID, UserID, Member, Membership, PowerLevelStateEventContent,
                            RoomEncryptionStateEventContent, MemberStateEventContent)
@@ -29,6 +29,12 @@ class FileStateStore(FileStore, MemoryStateStore):
     async def set_member(self, room_id: RoomID, user_id: UserID,
                          member: Union[Member, MemberStateEventContent]) -> None:
         await super().set_member(room_id, user_id, member)
+        self._time_limited_flush()
+
+    async def set_members(self, room_id: RoomID,
+                          members: Dict[UserID, Union[Member, MemberStateEventContent]],
+                          only_membership: Optional[Membership] = None) -> None:
+        await super().set_members(room_id, members, only_membership)
         self._time_limited_flush()
 
     async def set_encryption_info(self, room_id: RoomID,
