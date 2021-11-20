@@ -297,7 +297,8 @@ class IntentAPI(StoreUpdatingAPI):
         return [UserID(evt.state_key) for evt in member_events
                 if evt.content.membership in allowed_memberships]
 
-    async def leave_room(self, room_id: RoomID) -> None:
+    async def leave_room(self, room_id: RoomID,
+                         extra_content: Optional[Dict[str, Any]] = None) -> None:
         if not room_id:
             raise ValueError("Room ID not given")
         await self.ensure_registered()
@@ -307,11 +308,6 @@ class IntentAPI(StoreUpdatingAPI):
         except MatrixRequestError as e:
             if "not in room" not in e.message:
                 raise
-
-    async def get_state(self, room_id: RoomID) -> List[StateEvent]:
-        state = await super().get_state(room_id)
-        await asyncio.gather(*[self.state_store.update_state(evt) for evt in state])
-        return state
 
     async def mark_read(self, room_id: RoomID, event_id: EventID) -> None:
         if self.state_store.get_read(room_id, self.mxid) != event_id:
