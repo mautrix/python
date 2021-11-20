@@ -118,9 +118,11 @@ async def test_updates(request, store: StateStore) -> None:
                                         "@telegram_374880943:example.com",
                                         "@telegram_987654321:example.com",
                                         "@telegram_123456789:example.com"}
-    full_members = joined_members | {"@telegram_476034259:example.com", "@whatsappbot:example.com"}
+    left_members = {"@telegram_476034259:example.com", "@whatsappbot:example.com"}
+    full_members = joined_members | left_members
     any_membership = (Membership.JOIN, Membership.INVITE, Membership.LEAVE, Membership.BAN,
                       Membership.KNOCK)
+    leave_memberships = (Membership.BAN, Membership.LEAVE)
     assert set(await store.get_members(room_id)) == initial_members
     await get_all_members(request, store)
     assert set(await store.get_members(room_id)) == joined_members
@@ -128,3 +130,4 @@ async def test_updates(request, store: StateStore) -> None:
     await get_joined_members(request, store)
     assert set(await store.get_members(room_id)) == joined_members
     assert set(await store.get_members(room_id, memberships=any_membership)) == full_members
+    assert set(await store.get_members(room_id, memberships=leave_memberships)) == left_members
