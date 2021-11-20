@@ -69,12 +69,12 @@ class StateStore(ABC):
             not_id: The user ID to disallow.
             memberships: The membership states to include.
         """
-        members = await self.get_members(room_id)
+        members = await self.get_members(room_id, memberships=memberships)
         if members is None:
             return None
         return [user_id for user_id in members
-                if user_id != not_id and (not user_id.startswith(not_prefix)
-                                          and not user_id.endswith(not_suffix))]
+                if user_id != not_id and not (user_id.startswith(not_prefix)
+                                              and user_id.endswith(not_suffix))]
 
     @abstractmethod
     async def set_members(self, room_id: RoomID,

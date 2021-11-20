@@ -131,3 +131,7 @@ async def test_updates(request, store: StateStore) -> None:
     assert set(await store.get_members(room_id)) == joined_members
     assert set(await store.get_members(room_id, memberships=any_membership)) == full_members
     assert set(await store.get_members(room_id, memberships=leave_memberships)) == left_members
+    assert set(await store.get_members_filtered(
+        room_id, memberships=leave_memberships,
+        not_id="", not_prefix="@telegram_", not_suffix=":example.com",
+    )) == {"@whatsappbot:example.com"}
