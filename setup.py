@@ -2,6 +2,8 @@ import setuptools
 
 from mautrix import __version__
 
+test_dependencies = ["aiosqlite", "sqlalchemy"]
+
 setuptools.setup(
     name="mautrix",
     version=__version__,
@@ -22,9 +24,9 @@ setuptools.setup(
     ],
     extras_require={
         "detect_mimetype": ["python-magic>=0.4.15,<0.5"],
-        "test": ["pytest", "pytest-asyncio"],
+        "test": ["pytest", "pytest-asyncio", *test_dependencies],
     },
-    tests_require=["aiosqlite", "sqlalchemy"],
+    tests_require=test_dependencies,
     python_requires="~=3.7",
 
     classifiers=[
