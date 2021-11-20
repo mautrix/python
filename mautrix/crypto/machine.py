@@ -38,7 +38,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
 
     _fetch_keys_lock: asyncio.Lock
 
-    account: OlmAccount
+    account: Optional[OlmAccount]
 
     allow_unverified_devices: bool
 
@@ -50,6 +50,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         self.log = log or logging.getLogger("mau.crypto")
         self.crypto_store = crypto_store
         self.state_store = state_store
+        self.account = None
 
         self.allow_unverified_devices = True
         self.share_to_unverified_devices = False
