@@ -22,8 +22,9 @@ setuptools.setup(
     ],
     extras_require={
         "detect_mimetype": ["python-magic>=0.4.15,<0.5"],
-        "test": ["pytest"],
+        "test": ["pytest", "pytest-asyncio"],
     },
+    tests_require=["aiosqlite", "sqlalchemy"],
     python_requires="~=3.7",
 
     classifiers=[
