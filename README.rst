@@ -1,8 +1,7 @@
-
 mautrix-python
 ==============
 
-|PyPI| |Python versions| |License|
+|PyPI| |Python versions| |License| |Docs|
 
 A Python 3.8+ asyncio Matrix framework.
 
@@ -52,18 +51,20 @@ Components
 .. _python-appservice-framework: https://github.com/Cadair/python-appservice-framework/
 .. _Client API: https://matrix.org/docs/spec/client_server/r0.6.1.html
 
-.. _mautrix.api: https://mautrix.readthedocs.io/en/latest/api/mautrix.api.html
-.. _mautrix.client.api: https://mautrix.readthedocs.io/en/latest/api/mautrix.client.api.html
-.. _mautrix.appservice: https://mautrix.readthedocs.io/en/latest/api/mautrix.appservice.html
-.. _mautrix.bridge: https://mautrix.readthedocs.io/en/latest/api/mautrix.bridge.html
-.. _mautrix.client: https://mautrix.readthedocs.io/en/latest/api/mautrix.client.html
-.. _mautrix.crypto: https://mautrix.readthedocs.io/en/latest/api/mautrix.crypto.html
-.. _mautrix.util: https://mautrix.readthedocs.io/en/latest/api/mautrix.util/index.html
+.. _mautrix.api: https://docs.mau.fi/python/latest/api/mautrix.api.html
+.. _mautrix.client.api: https://docs.mau.fi/python/latest/api/mautrix.client.api.html
+.. _mautrix.appservice: https://docs.mau.fi/python/latest/api/mautrix.appservice/index.html
+.. _mautrix.bridge: https://docs.mau.fi/python/latest/api/mautrix.bridge/index.html
+.. _mautrix.client: https://docs.mau.fi/python/latest/api/mautrix.client.html
+.. _mautrix.crypto: https://docs.mau.fi/python/latest/api/mautrix.crypto.html
+.. _mautrix.util: https://docs.mau.fi/python/latest/api/mautrix.util/index.html
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/mautrix.svg
    :target: https://pypi.python.org/pypi/mautrix
-.. |ReadTheDocs| image:: https://img.shields.io/readthedocs/mautrix.svg
-   :target: https://mautrix.readthedocs.io
+   :alt: PyPI: mautrix
 .. |Python versions| image:: https://img.shields.io/pypi/pyversions/mautrix.svg
 .. |License| image:: https://img.shields.io/github/license/mautrix/python.svg
    :target: https://github.com/mautrix/python/blob/master/LICENSE
+   :alt: License: MPL-2.0
+.. |Docs| image:: https://img.shields.io/gitlab/pipeline-status/mautrix/python?branch=master&gitlab_url=https%3A%2F%2Fmau.dev&label=docs
+   :target: https://docs.mau.fi/python/latest/

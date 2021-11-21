@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -5,7 +6,7 @@ import mautrix
 mautrix.__optional_imports__ = True
 
 project = 'mautrix-python'
-copyright = '2021, Tulir Asokan'
+copyright = f'{datetime.today().year}, Tulir Asokan'
 author = 'Tulir Asokan'
 
 release = mautrix.__version__
