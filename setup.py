@@ -27,7 +27,7 @@ setuptools.setup(
         "test": ["pytest", "pytest-asyncio", *test_dependencies],
     },
     tests_require=test_dependencies,
-    python_requires="~=3.7",
+    python_requires="~=3.8",
 
     classifiers=[
         "Development Status :: 4 - Beta",
