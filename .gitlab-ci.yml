@@ -27,6 +27,7 @@ build docs:
   script:
   - cd docs
   - make html
+  - mkdir -p /srv/web/docs.mau.fi/python/latest/
   - rsync -rcthvl --delete docs/html/ /srv/web/docs.mau.fi/python/latest/
 
 build tag docs:
