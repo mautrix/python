@@ -319,6 +319,23 @@ class IntentAPI(StoreUpdatingAPI):
 
     async def ensure_joined(self, room_id: RoomID, ignore_cache: bool = False,
                             bot: Optional['IntentAPI'] = _bridgebot) -> bool:
+        """
+        Ensure the user controlled by this intent is joined to the given room.
+
+        If the user is not in the room and the room is invite-only or the user is banned, this will
+        first invite and/or unban the user using the bridge bot account.
+
+        Args:
+            room_id: The room to join.
+            ignore_cache: Should the Matrix state store be checked first?
+                If ``False`` and the store says the user is in the room, no requests will be made.
+            bot: An optional override account to use as the bridge bot. This is useful if you know
+                the bridge bot is not an admin in the room, but some other ghost user is.
+
+        Returns:
+            ``False`` if the cache said the user is already in the room,
+            ``True`` if the user was successfully added to the room just now.
+        """
         if not room_id:
             raise ValueError("Room ID not given")
         if not ignore_cache and await self.state_store.is_joined(room_id, self.mxid):
@@ -361,6 +378,13 @@ class IntentAPI(StoreUpdatingAPI):
         return self.api.request(Method.POST, Path.register, content, query_params=query_params)
 
     async def ensure_registered(self) -> None:
+        """
+        Ensure the user controlled by this intent has been registered on the homeserver.
+
+        This will always check the state store first, but the ``M_USER_IN_USE`` error will also be
+        silently ignored, so it's fine if the state store isn't accurate. However, if using double
+        puppeting, the state store should always return ``True`` for those users.
+        """
         if await self.state_store.is_registered(self.mxid):
             return
         try:
