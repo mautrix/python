@@ -5,6 +5,7 @@ sphinx-rtd-theme
 aiohttp
 attrs
 yarl
+
 # This is most of optional-requirements.txt, except some things like uvloop
 # that aren't used for anything that's in the docs
 python-magic

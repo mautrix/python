@@ -1,5 +1,7 @@
 build docs builder:
   stage: build
+  tags:
+  - amd64
   only:
     refs:
     - master
