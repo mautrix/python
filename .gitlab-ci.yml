@@ -28,7 +28,7 @@ build docs:
   - cd docs
   - make html
   - mkdir -p /srv/web/docs.mau.fi/python/latest/
-  - rsync -rcthvl --delete docs/html/ /srv/web/docs.mau.fi/python/latest/
+  - rsync -rcthvl --delete _build/html/ /srv/web/docs.mau.fi/python/latest/
 
 build tag docs:
   stage: deploy
@@ -41,4 +41,4 @@ build tag docs:
   - cd docs
   - make html
   - mkdir -p /srv/web/docs.mau.fi/python/$CI_COMMIT_TAG/
-  - rsync -rcthvl --delete docs/html/ /srv/web/docs.mau.fi/python/$CI_COMMIT_TAG/
+  - rsync -rcthvl --delete _build/html/ /srv/web/docs.mau.fi/python/$CI_COMMIT_TAG/
