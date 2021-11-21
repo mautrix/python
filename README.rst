@@ -52,13 +52,13 @@ Components
 .. _python-appservice-framework: https://github.com/Cadair/python-appservice-framework/
 .. _Client API: https://matrix.org/docs/spec/client_server/r0.6.1.html
 
-.. _mautrix.api: https://mautrix.readthedocs.io/en/latest/mautrix.api.html
-.. _mautrix.client.api: https://mautrix.readthedocs.io/en/latest/mautrix.client.api.html
-.. _mautrix.appservice: https://mautrix.readthedocs.io/en/latest/mautrix.appservice.html
-.. _mautrix.bridge: https://mautrix.readthedocs.io/en/latest/mautrix.bridge.html
-.. _mautrix.client: https://mautrix.readthedocs.io/en/latest/mautrix.client.html
-.. _mautrix.crypto: https://mautrix.readthedocs.io/en/latest/mautrix.crypto.html
-.. _mautrix.util: https://mautrix.readthedocs.io/en/latest/mautrix.util.html
+.. _mautrix.api: https://mautrix.readthedocs.io/en/latest/api/mautrix.api.html
+.. _mautrix.client.api: https://mautrix.readthedocs.io/en/latest/api/mautrix.client.api.html
+.. _mautrix.appservice: https://mautrix.readthedocs.io/en/latest/api/mautrix.appservice.html
+.. _mautrix.bridge: https://mautrix.readthedocs.io/en/latest/api/mautrix.bridge.html
+.. _mautrix.client: https://mautrix.readthedocs.io/en/latest/api/mautrix.client.html
+.. _mautrix.crypto: https://mautrix.readthedocs.io/en/latest/api/mautrix.crypto.html
+.. _mautrix.util: https://mautrix.readthedocs.io/en/latest/api/mautrix.util/index.html
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/mautrix.svg
    :target: https://pypi.python.org/pypi/mautrix
