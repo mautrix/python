@@ -17,7 +17,8 @@ build docs builder:
 build docs:
   stage: deploy
   image: dock.mau.dev/mautrix/python/doc-builder
-  tags: webdeploy
+  tags:
+  - webdeploy
   only:
   - master
   script:
@@ -28,7 +29,8 @@ build docs:
 build tag docs:
   stage: deploy
   image: dock.mau.dev/mautrix/python/doc-builder
-  tags: webdeploy
+  tags:
+  - webdeploy
   only:
   - tags
   script:
