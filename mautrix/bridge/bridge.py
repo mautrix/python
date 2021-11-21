@@ -3,6 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
 from typing import Optional, Type, Dict, Any
 from abc import ABC, abstractmethod
 import sys
@@ -11,17 +12,12 @@ from aiohttp import web
 
 from mautrix.types import RoomID, UserID
 from mautrix.appservice import AppService, ASStateStore
+from mautrix.util.program import Program
+from mautrix.util.bridge_state import BridgeState, BridgeStateEvent, GlobalBridgeState
 from mautrix.api import HTTPAPI
-from mautrix import __version__ as __mautrix_version__
+from mautrix import __version__ as __mautrix_version__, __optional_imports__
 
-from ..util.program import Program
-from ..util.bridge_state import BridgeState, BridgeStateEvent, GlobalBridgeState
-from .commands.manhole import ManholeState
-from .config import BaseBridgeConfig
-from .matrix import BaseMatrixHandler
-from .portal import BasePortal
-from .user import BaseUser
-from .puppet import BasePuppet
+from .. import bridge as br
 
 try:
     from .state_store.sqlalchemy import SQLBridgeStateStore
@@ -30,6 +26,8 @@ try:
     import sqlalchemy as sql
     from sqlalchemy.engine.base import Engine
 except ImportError:
+    if __optional_imports__:
+        raise
     Base = SQLBridgeStateStore = sql = Engine = None
 
 try:
@@ -43,20 +41,20 @@ class Bridge(Program, ABC):
     az: AppService
     state_store_class: Type[ASStateStore] = SQLBridgeStateStore
     state_store: ASStateStore
-    config_class: Type[BaseBridgeConfig]
-    config: BaseBridgeConfig
-    matrix_class: Type[BaseMatrixHandler]
-    matrix: BaseMatrixHandler
+    config_class: Type[br.BaseBridgeConfig]
+    config: br.BaseBridgeConfig
+    matrix_class: Type[br.BaseMatrixHandler]
+    matrix: br.BaseMatrixHandler
     repo_url: str
     markdown_version: str
     real_user_content_key: Optional[str] = None
-    manhole: Optional[ManholeState]
+    manhole: Optional[br.manhole.ManholeState]
 
     def __init__(self, module: str = None, name: str = None, description: str = None,
                  command: str = None, version: str = None,
                  real_user_content_key: Optional[str] = None,
-                 config_class: Type[BaseBridgeConfig] = None,
-                 matrix_class: Type[BaseMatrixHandler] = None,
+                 config_class: Type[br.BaseBridgeConfig] = None,
+                 matrix_class: Type[br.BaseMatrixHandler] = None,
                  state_store_class: Type[ASStateStore] = None) -> None:
         super().__init__(module, name, description, command, version, config_class)
         if real_user_content_key:
@@ -203,19 +201,19 @@ class Bridge(Program, ABC):
         return web.json_response(evt.serialize())
 
     @abstractmethod
-    async def get_user(self, user_id: UserID, create: bool = True) -> Optional['BaseUser']:
+    async def get_user(self, user_id: UserID, create: bool = True) -> Optional[br.BaseUser]:
         pass
 
     @abstractmethod
-    async def get_portal(self, room_id: RoomID) -> Optional['BasePortal']:
+    async def get_portal(self, room_id: RoomID) -> Optional[br.BasePortal]:
         pass
 
     @abstractmethod
-    async def get_puppet(self, user_id: UserID, create: bool = False) -> Optional['BasePuppet']:
+    async def get_puppet(self, user_id: UserID, create: bool = False) -> Optional[br.BasePuppet]:
         pass
 
     @abstractmethod
-    async def get_double_puppet(self, user_id: UserID) -> Optional['BasePuppet']:
+    async def get_double_puppet(self, user_id: UserID) -> Optional[br.BasePuppet]:
         pass
 
     @abstractmethod

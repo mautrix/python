@@ -3,12 +3,12 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Awaitable, List, Tuple, Union, Any, TYPE_CHECKING
+from __future__ import annotations
+from typing import Optional, Dict, Awaitable, List, Tuple, Union, Any
 from urllib.parse import quote as urllib_quote
-import asyncio
 
 from mautrix.api import Method, Path
-from mautrix.types import (StateEvent, EventType, StateEventContent, EventID, ContentURI,
+from mautrix.types import (EventType, StateEventContent, EventID, ContentURI,
                            EventContent, UserID, RoomID, PresenceState,
                            RoomAvatarStateEventContent, RoomNameStateEventContent,
                            RoomTopicStateEventContent, PowerLevelStateEventContent,
@@ -16,16 +16,16 @@ from mautrix.types import (StateEvent, EventType, StateEventContent, EventID, Co
 from mautrix.client import ClientAPI, StoreUpdatingAPI
 from mautrix.errors import MForbidden, MBadState, MatrixRequestError, IntentError, MNotFound
 from mautrix.util.logging import TraceLogger
+from mautrix import __optional_imports__
 
-from ..state_store import ASStateStore
+from .. import api as as_api, state_store as ss
 
 try:
     import magic
 except ImportError:
+    if __optional_imports__:
+        raise
     magic = None
-
-if TYPE_CHECKING:
-    from .appservice import AppServiceAPI
 
 
 def quote(*args, **kwargs):
@@ -64,13 +64,13 @@ class IntentAPI(StoreUpdatingAPI):
     functions for accessing the client-server API. It is designed for appservices and will
     automatically handle many things like missing invites using the appservice bot.
     """
-    api: 'AppServiceAPI'
-    state_store: ASStateStore
-    bot: 'IntentAPI'
+    api: as_api.AppServiceAPI
+    state_store: ss.ASStateStore
+    bot: IntentAPI
     log: TraceLogger
 
-    def __init__(self, mxid: UserID, api: 'AppServiceAPI', bot: 'IntentAPI' = None,
-                 state_store: ASStateStore = None):
+    def __init__(self, mxid: UserID, api: as_api.AppServiceAPI, bot: IntentAPI = None,
+                 state_store: ss.ASStateStore = None) -> None:
         super().__init__(mxid=mxid, api=api, state_store=state_store)
         self.bot = bot
         self.log = api.base_log.getChild("intent")
@@ -96,7 +96,8 @@ class IntentAPI(StoreUpdatingAPI):
 
             setattr(self, method.__name__, wrapper)
 
-    def user(self, user_id: UserID, token: Optional[str] = None, base_url: Optional[str] = None) -> 'IntentAPI':
+    def user(self, user_id: UserID, token: Optional[str] = None, base_url: Optional[str] = None
+             ) -> IntentAPI:
         """
         Get the intent API for a specific user.
         This is just a proxy to :meth:`AppServiceAPI.intent`.
@@ -318,7 +319,7 @@ class IntentAPI(StoreUpdatingAPI):
     # region Ensure functions
 
     async def ensure_joined(self, room_id: RoomID, ignore_cache: bool = False,
-                            bot: Optional['IntentAPI'] = _bridgebot) -> bool:
+                            bot: Optional[IntentAPI] = _bridgebot) -> bool:
         """
         Ensure the user controlled by this intent is joined to the given room.
 

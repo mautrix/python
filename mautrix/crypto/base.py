@@ -1,9 +1,10 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Callable, Awaitable, Dict, TYPE_CHECKING
+from __future__ import annotations
+from typing import Any, Callable, Awaitable, Dict, TypedDict
 import functools
 import asyncio
 import json
@@ -12,35 +13,27 @@ import olm
 
 from mautrix.types import (UserID, DeviceID, SigningKey, EncryptionKeyAlgorithm, SessionID,
                            RequestedKeyInfo, RoomID, IdentityKey)
-from mautrix.client import Client
 from mautrix.util.logging import TraceLogger
 
-from .types import DeviceIdentity
-
-if TYPE_CHECKING:
-    from .store import CryptoStore, StateStore
-    from .account import OlmAccount
-
-    from typing import TypedDict
+from .. import crypto, client as cli
 
 
-    class SignedObject(TypedDict):
-        signatures: Dict[UserID, Dict[str, str]]
-        unsigned: Any
+class SignedObject(TypedDict):
+    signatures: Dict[UserID, Dict[str, str]]
+    unsigned: Any
 
 
 class BaseOlmMachine:
-    client: Client
+    client: cli.Client
     log: TraceLogger
-    loop: asyncio.AbstractEventLoop
-    crypto_store: 'CryptoStore'
-    state_store: 'StateStore'
+    crypto_store: crypto.CryptoStore
+    state_store: crypto.StateStore
 
-    account: 'OlmAccount'
+    account: account.OlmAccount
 
     allow_unverified_devices: bool
     share_to_unverified_devices: bool
-    allow_key_share: Callable[[DeviceIdentity, RequestedKeyInfo], Awaitable[bool]]
+    allow_key_share: Callable[[crypto.DeviceIdentity, RequestedKeyInfo], Awaitable[bool]]
 
     # Futures that wait for responses to a key request
     _key_request_waiters: Dict[SessionID, asyncio.Future]
@@ -52,7 +45,8 @@ class BaseOlmMachine:
         try:
             fut = self._inbound_session_waiters[session_id]
         except KeyError:
-            fut = self._inbound_session_waiters[session_id] = self.loop.create_future()
+            fut = asyncio.get_running_loop().create_future()
+            self._inbound_session_waiters[session_id] = fut
         try:
             return await asyncio.wait_for(asyncio.shield(fut), timeout)
         except asyncio.TimeoutError:

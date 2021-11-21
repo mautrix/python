@@ -8,8 +8,7 @@ from abc import ABC
 import time
 
 from mautrix.client.state_store import StateStore as ClientStateStore
-
-from ...types import EventID, RoomID, UserID
+from mautrix.types import EventID, RoomID, UserID
 
 
 class ASStateStore(ClientStateStore, ABC):

@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Union, TYPE_CHECKING
+from __future__ import annotations
+from typing import Optional, Dict, Union, ClassVar, Mapping
 from urllib.parse import quote as urllib_quote, urljoin as urllib_join
 from json.decoder import JSONDecodeError
 from enum import Enum
@@ -14,15 +15,15 @@ import asyncio
 import json
 
 from yarl import URL
-from multidict import CIMultiDict
 from aiohttp import ClientSession, __version__ as aiohttp_version
 from aiohttp.client_exceptions import ContentTypeError, ClientError
 
 from mautrix.errors import make_request_error, MatrixConnectionError, MatrixRequestError
 from mautrix.util.logging import TraceLogger
-from mautrix import __version__ as mautrix_version
+from mautrix import __version__ as mautrix_version, __optional_imports__
 
-if TYPE_CHECKING:
+if __optional_imports__:
+    # Safe to import, but it's not actually needed, so don't force-import the whole types module.
     from mautrix.types import JSON
 
 
@@ -80,12 +81,12 @@ class PathBuilder:
     def __repr__(self):
         return self.path
 
-    def __getattr__(self, append: str) -> 'PathBuilder':
+    def __getattr__(self, append: str) -> PathBuilder:
         if append is None:
             return self
         return PathBuilder(f"{self.path}/{append}")
 
-    def raw(self, append: str) -> 'PathBuilder':
+    def raw(self, append: str) -> PathBuilder:
         """
         Directly append a string to the path.
 
@@ -96,29 +97,55 @@ class PathBuilder:
             return self
         return PathBuilder(self.path + append)
 
-    def __eq__(self, other: Union['PathBuilder', str]) -> bool:
+    def __eq__(self, other: Union[PathBuilder, str]) -> bool:
         return other.path == self.path if isinstance(other, PathBuilder) else other == self.path
 
     @staticmethod
     def _quote(string: str) -> str:
         return urllib_quote(string, safe="")
 
-    def __getitem__(self, append: Union[str, int]) -> 'PathBuilder':
+    def __getitem__(self, append: Union[str, int]) -> PathBuilder:
         if append is None:
             return self
         return PathBuilder(f"{self.path}/{self._quote(str(append))}")
 
 
+ClientPath = PathBuilder(APIPath.CLIENT)
+ClientPath.__doc__ = """
+A path builder with the standard client r0 prefix ( ``/_matrix/client/r0``, :attr:`APIPath.CLIENT`)
+"""
 Path = PathBuilder(APIPath.CLIENT)
-ClientPath = Path
+Path.__doc__ = """A shorter alias for :attr:`ClientPath`"""
 UnstableClientPath = PathBuilder(APIPath.CLIENT_UNSTABLE)
+UnstableClientPath.__doc__ = """
+A path builder for client endpoints that haven't reached the spec yet
+(``/_matrix/client/unstable``, :attr:`APIPath.CLIENT_UNSTABLE`)
+"""
 MediaPath = PathBuilder(APIPath.MEDIA)
+MediaPath.__doc__ = """
+A path builder for standard media r0 paths (``/_matrix/media/r0``, :attr:`APIPath.MEDIA`)
+
+Examples:
+    >>> from mautrix.api import MediaPath
+    >>> str(MediaPath.config)
+    "_matrix/media/r0/config"
+"""
 SynapseAdminPath = PathBuilder(APIPath.SYNAPSE_ADMIN)
+SynapseAdminPath.__doc__ = """
+A path builder for synapse-specific admin API paths
+(``/_synapse/admin/v1``, :attr:`APIPath.SYNAPSE_ADMIN`)
+
+Examples:
+    >>> from mautrix.api import SynapseAdminPath
+    >>> user_id = "@user:example.com"
+    >>> str(SynapseAdminPath.users[user_id]/login)
+    "_synapse/admin/v1/users/%40user%3Aexample.com/login"
+"""
 
 _req_id = 0
 
 
-def next_global_req_id() -> int:
+def _next_global_req_id() -> int:
     global _req_id
     _req_id += 1
     return _req_id
@@ -127,16 +154,29 @@ def next_global_req_id() -> int:
 class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
 
+    default_ua: ClassVar[str] = (f"mautrix-python/{mautrix_version} aiohttp/{aiohttp_version} "
+                                 f"Python/{platform.python_version()}")
+    """
+    The default value for the ``User-Agent`` header.
+
+    You should prepend your program name and version here before creating any HTTPAPI instances
+    in order to have proper user agents for all requests.
+    """
+    global_default_retry_count: ClassVar[int] = 0
+    """The default retry count to use if an instance-specific value is not passed."""
+
     base_url: URL
+    """The base URL of the homeserver's client-server API to use."""
     token: str
+    """The access token to use in requests."""
     log: TraceLogger
-    loop: asyncio.AbstractEventLoop
+    """The :class:`logging.Logger` instance to log requests with."""
     session: ClientSession
+    """The :class:`aiohttp.ClientSession` instance to make requests with."""
     txn_id: Optional[int]
-    default_ua: str = (f"mautrix-python/{mautrix_version} aiohttp/{aiohttp_version} "
-                       f"Python/{platform.python_version()}")
-    global_default_retry_count: int = 0
+    """A counter used for generating transaction IDs."""
     default_retry_count: int
+    """The default retry count to use if a custom value is not passed to :meth:`request`"""
 
     def __init__(self, base_url: Union[URL, str], token: str = "", *,
                  client_session: ClientSession = None, default_retry_count: int = None,
@@ -144,18 +184,17 @@ class HTTPAPI:
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         """
         Args:
-            base_url: The base URL of the homeserver client-server API to use.
+            base_url: The base URL of the homeserver's client-server API to use.
             token: The access token to use.
             client_session: The aiohttp ClientSession to use.
             txn_id: The outgoing transaction ID to start with.
-            log: The logging.Logger instance to log requests with.
+            log: The :class:`logging.Logger` instance to log requests with.
             default_retry_count: Default number of retries to do when encountering network errors.
         """
         self.base_url = URL(base_url)
         self.token = token
         self.log = log or logging.getLogger("mau.http")
-        self.loop = loop or asyncio.get_event_loop()
-        self.session = client_session or ClientSession(loop=self.loop,
+        self.session = client_session or ClientSession(loop=loop,
                                                        headers={"User-Agent": self.default_ua})
         if txn_id is not None:
             self.txn_id = txn_id
@@ -165,7 +204,7 @@ class HTTPAPI:
             self.default_retry_count = self.global_default_retry_count
 
     async def _send(self, method: Method, url: URL, content: Union[bytes, str],
-                    query_params: Dict[str, str], headers: Dict[str, str]) -> 'JSON':
+                    query_params: Dict[str, str], headers: Dict[str, str]) -> JSON:
         request = self.session.request(str(method), url, data=content,
                                        params=query_params, headers=headers)
         async with request as response:
@@ -211,8 +250,8 @@ class HTTPAPI:
     async def request(self, method: Method, path: Union[PathBuilder, str],
                       content: Optional[Union[dict, list, bytes, str]] = None,
                       headers: Optional[Dict[str, str]] = None,
-                      query_params: Optional[Union[Dict[str, str], CIMultiDict[str, str]]] = None,
-                      retry_count: Optional[int] = None) -> 'JSON':
+                      query_params: Optional[Mapping[str, str]] = None,
+                      retry_count: Optional[int] = None) -> JSON:
         """
         Make a raw Matrix API request.
 
@@ -220,12 +259,13 @@ class HTTPAPI:
             method: The HTTP method to use.
             path: The full API endpoint to call (including the _matrix/... prefix)
             content: The content to post as a dict/list (will be serialized as JSON)
-                or bytes/str (will be sent as-is).
-            headers: A dict of HTTP headers to send.
-                If the headers don't contain ``Content-Type``, it'll be set to ``application/json``.
-                The ``Authorization`` header is always overridden if :attr:`token` is set.
+                     or bytes/str (will be sent as-is).
+            headers: A dict of HTTP headers to send. If the headers don't contain ``Content-Type``,
+                     it'll be set to ``application/json``. The ``Authorization`` header is always
+                     overridden if :attr:`token` is set.
             query_params: A dict of query parameters to send.
             retry_count: Number of times to retry if the homeserver isn't reachable.
+                         Defaults to :attr:`default_retry_count`.
 
         Returns:
             The parsed response JSON.
@@ -248,7 +288,7 @@ class HTTPAPI:
         else:
             orig_content = content = None
         full_url = self.base_url.with_path(self._full_path(path), encoded=True)
-        req_id = next_global_req_id()
+        req_id = _next_global_req_id()
 
         if retry_count is None:
             retry_count = self.default_retry_count
@@ -280,17 +320,17 @@ class HTTPAPI:
 
     def get_download_url(self, mxc_uri: str, download_type: str = "download") -> URL:
         """
-        Get the full HTTP URL to download a mxc:// URI.
+        Get the full HTTP URL to download a ``mxc://`` URI.
 
         Args:
             mxc_uri: The MXC URI whose full URL to get.
-            download_type: The type of download ("download" or "thumbnail")
+            download_type: The type of download ("download" or "thumbnail").
 
         Returns:
             The full HTTP URL.
 
         Raises:
-            ValueError: If `mxc_uri` doesn't begin with mxc://
+            ValueError: If `mxc_uri` doesn't begin with ``mxc://``.
 
         Examples:
             >>> api = HTTPAPI(...)

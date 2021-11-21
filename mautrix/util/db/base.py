@@ -40,8 +40,9 @@ class BaseClass:
         cls.column_names = cls.c.keys()
 
     @classmethod
-    def copy(cls, bind: Optional[Engine] = None, rebase: Optional[declarative_base] = None) -> Type[T]:
-        copy = cast(Type[T], type(cls.__name__, (cls, rebase) if rebase else (cls, ), {}))
+    def copy(cls, bind: Optional[Engine] = None, rebase: Optional[declarative_base] = None) -> \
+    Type[T]:
+        copy = cast(Type[T], type(cls.__name__, (cls, rebase) if rebase else (cls,), {}))
         if bind is not None:
             copy.bind(db_engine=bind)
         return copy

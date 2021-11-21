@@ -1,9 +1,10 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, Callable, Union, Optional, Awaitable, Any, Type, Tuple, TYPE_CHECKING
+from __future__ import annotations
+from typing import Dict, List, Callable, Union, Optional, Awaitable, Any, Type, Tuple
 from abc import ABC, abstractmethod
 from enum import Enum, Flag, auto
 from contextlib import suppress
@@ -18,10 +19,8 @@ from mautrix.types.event.message import BaseMessageEventContentFuncs
 from mautrix.util.logging import TraceLogger
 
 from .state_store import SyncStore, MemorySyncStore
+from . import dispatcher
 
-if TYPE_CHECKING:
-    from .dispatcher import Dispatcher
-    from .client import Client
 
 EventHandler = Callable[[Event], Awaitable[None]]
 
@@ -67,7 +66,7 @@ class Syncer(ABC):
 
     global_event_handlers: List[Tuple[EventHandler, bool]]
     event_handlers: Dict[Union[EventType, InternalEventType], List[Tuple[EventHandler, bool]]]
-    dispatchers: Dict[Type['Dispatcher'], 'Dispatcher']
+    dispatchers: Dict[Type[dispatcher.Dispatcher], dispatcher.Dispatcher]
     syncing_task: Optional[asyncio.Future]
     ignore_initial_sync: bool
     ignore_first_sync: bool
@@ -102,8 +101,9 @@ class Syncer(ABC):
             is returned.
 
         Examples:
-            >>> client = Client(...)
-            >>> @client.on(EventType.ROOM_MESSAGE)
+            >>> from mautrix.client import Client
+            >>> cli = Client(...)
+            >>> @cli.on(EventType.ROOM_MESSAGE)
             >>> def handler(event: MessageEvent) -> None:
             ...     pass
         """
@@ -117,14 +117,14 @@ class Syncer(ABC):
             self.add_event_handler(EventType.ALL, var)
             return var
 
-    def add_dispatcher(self, dispatcher_type: Type['Dispatcher']) -> None:
+    def add_dispatcher(self, dispatcher_type: Type[dispatcher.Dispatcher]) -> None:
         if dispatcher_type in self.dispatchers:
             return
         self.log.debug(f"Enabling {dispatcher_type.__name__}")
         self.dispatchers[dispatcher_type] = dispatcher_type(self)
         self.dispatchers[dispatcher_type].register()
 
-    def remove_dispatcher(self, dispatcher_type: Type['Dispatcher']) -> None:
+    def remove_dispatcher(self, dispatcher_type: Type[dispatcher.Dispatcher]) -> None:
         if dispatcher_type not in self.dispatchers:
             return
         self.log.debug(f"Disabling {dispatcher_type.__name__}")

@@ -296,7 +296,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
         by the server in the sugar membership endpoints like /join and /invite, but are not set
         automatically when sending member events manually.
 
-        This default implementation only calls :prop:`fill_member_event_callback`.
+        This default implementation only calls :attr:`fill_member_event_callback`.
 
         Args:
             room_id: The room where the member event is going to be sent.

@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Union, Optional, Dict, TYPE_CHECKING
+from __future__ import annotations
+from typing import Tuple, Union, Optional, Dict
 import logging
 import asyncio
 import sys
@@ -18,21 +19,24 @@ from mautrix.client import Client, SyncStore
 from mautrix.crypto import (OlmMachine, CryptoStore, StateStore, PgCryptoStore,
                             DeviceIdentity, RejectKeyShare, TrustState)
 from mautrix.util.logging import TraceLogger
+from mautrix import __optional_imports__
 
 from .crypto_state_store import PgCryptoStateStore
+from .. import bridge as br
 
 try:
     from mautrix.client.state_store.sqlalchemy import UserProfile
 except ImportError:
+    if __optional_imports__:
+        raise
     UserProfile = None
 
 try:
     from mautrix.util.async_db import Database
 except ImportError:
+    if __optional_imports__:
+        raise
     Database = None
-
-if TYPE_CHECKING:
-    from mautrix.util.bridge_state import Bridge
 
 
 class EncryptionManager:
@@ -45,14 +49,14 @@ class EncryptionManager:
     crypto_db: Optional[Database]
     state_store: StateStore
 
-    bridge: 'Bridge'
+    bridge: br.Bridge
     az: AppService
     _id_prefix: str
     _id_suffix: str
 
     _share_session_events: Dict[RoomID, asyncio.Event]
 
-    def __init__(self, bridge: 'Bridge', homeserver_address: str, user_id_prefix: str,
+    def __init__(self, bridge: br.Bridge, homeserver_address: str, user_id_prefix: str,
                  user_id_suffix: str, db_url: str, key_sharing_config: Dict[str, bool] = None
                  ) -> None:
         self.loop = bridge.loop or asyncio.get_event_loop()

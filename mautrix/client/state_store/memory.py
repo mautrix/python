@@ -23,6 +23,11 @@ class MemoryStateStore(StateStore):
         self.encryption = {}
 
     def serialize(self) -> Dict[str, Any]:
+        """
+        Convert the data in the store into a JSON-friendly dict.
+
+        Returns: A dict that can be safely serialized with most object serialization methods.
+        """
         return {
             "members": {room_id: {user_id: member.serialize()
                                   for user_id, member in members.items()}
@@ -35,6 +40,12 @@ class MemoryStateStore(StateStore):
         }
 
     def deserialize(self, data: Dict[str, Any]) -> None:
+        """
+        Parse a previously serialized dict into this state store.
+
+        Args:
+            data: A dict returned by :meth:`serialize`.
+        """
         self.members = {room_id: {user_id: Member.deserialize(member)
                                   for user_id, member in members.items()}
                         for room_id, members in data["members"].items()}
