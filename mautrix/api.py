@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional, Dict, Union, ClassVar, Mapping
+from typing import ClassVar, Mapping
 from urllib.parse import quote as urllib_quote, urljoin as urllib_join
 from json.decoder import JSONDecodeError
 from enum import Enum
@@ -72,7 +72,7 @@ class PathBuilder:
         "_matrix/client/r0/rooms/%21foo%3Aexample.com/event/%24bar%3Aexample.com"
     """
 
-    def __init__(self, path: Union[str, APIPath] = "") -> None:
+    def __init__(self, path: str | APIPath = "") -> None:
         self.path: str = str(path)
 
     def __str__(self) -> str:
@@ -97,14 +97,14 @@ class PathBuilder:
             return self
         return PathBuilder(self.path + append)
 
-    def __eq__(self, other: Union[PathBuilder, str]) -> bool:
+    def __eq__(self, other: PathBuilder | str) -> bool:
         return other.path == self.path if isinstance(other, PathBuilder) else other == self.path
 
     @staticmethod
     def _quote(string: str) -> str:
         return urllib_quote(string, safe="")
 
-    def __getitem__(self, append: Union[str, int]) -> PathBuilder:
+    def __getitem__(self, append: str | int) -> PathBuilder:
         if append is None:
             return self
         return PathBuilder(f"{self.path}/{self._quote(str(append))}")
@@ -172,21 +172,21 @@ class HTTPAPI:
     log: TraceLogger
     """The :class:`logging.Logger` instance to log requests with."""
     session: ClientSession
-    """The :class:`aiohttp.ClientSession` instance to make requests with."""
-    txn_id: Optional[int]
+    """The aiohttp ClientSession instance to make requests with."""
+    txn_id: int | None
     """A counter used for generating transaction IDs."""
     default_retry_count: int
     """The default retry count to use if a custom value is not passed to :meth:`request`"""
 
-    def __init__(self, base_url: Union[URL, str], token: str = "", *,
+    def __init__(self, base_url: URL | str, token: str = "", *,
                  client_session: ClientSession = None, default_retry_count: int = None,
-                 txn_id: int = 0, log: Optional[TraceLogger] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+                 txn_id: int = 0, log: TraceLogger | None = None,
+                 loop: asyncio.AbstractEventLoop | None = None) -> None:
         """
         Args:
             base_url: The base URL of the homeserver's client-server API to use.
             token: The access token to use.
-            client_session: The aiohttp ClientSession to use.
+            client_session: The aiohttp client session to use.
             txn_id: The outgoing transaction ID to start with.
             log: The :class:`logging.Logger` instance to log requests with.
             default_retry_count: Default number of retries to do when encountering network errors.
@@ -203,8 +203,8 @@ class HTTPAPI:
         else:
             self.default_retry_count = self.global_default_retry_count
 
-    async def _send(self, method: Method, url: URL, content: Union[bytes, str],
-                    query_params: Dict[str, str], headers: Dict[str, str]) -> JSON:
+    async def _send(self, method: Method, url: URL, content: bytes | str,
+                    query_params: dict[str, str], headers: dict[str, str]) -> JSON:
         request = self.session.request(str(method), url, data=content,
                                        params=query_params, headers=headers)
         async with request as response:
@@ -221,8 +221,8 @@ class HTTPAPI:
                                          errcode=errcode, message=message)
             return await response.json()
 
-    def _log_request(self, method: Method, path: PathBuilder, content: Union[str, bytes],
-                     orig_content, query_params: Dict[str, str], req_id: int) -> None:
+    def _log_request(self, method: Method, path: PathBuilder, content: str | bytes,
+                     orig_content, query_params: dict[str, str], req_id: int) -> None:
         if not self.log:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
@@ -238,7 +238,7 @@ class HTTPAPI:
                          "user": as_user,
                      }})
 
-    def _full_path(self, path: Union[PathBuilder, str]) -> str:
+    def _full_path(self, path: PathBuilder | str) -> str:
         path = str(path)
         if path and path[0] == "/":
             path = path[1:]
@@ -247,11 +247,11 @@ class HTTPAPI:
             base_path += "/"
         return urllib_join(base_path, path)
 
-    async def request(self, method: Method, path: Union[PathBuilder, str],
-                      content: Optional[Union[dict, list, bytes, str]] = None,
-                      headers: Optional[Dict[str, str]] = None,
-                      query_params: Optional[Mapping[str, str]] = None,
-                      retry_count: Optional[int] = None) -> JSON:
+    async def request(self, method: Method, path: PathBuilder | str,
+                      content: dict | list | bytes | str | None = None,
+                      headers: dict[str, str] | None = None,
+                      query_params: Mapping[str, str] | None = None,
+                      retry_count: int | None = None) -> JSON:
         """
         Make a raw Matrix API request.
 
