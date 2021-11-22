@@ -1,9 +1,9 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 
 from mautrix.types import (UserID, RoomID, Membership, Member, PowerLevelStateEventContent,
                            RoomEncryptionStateEventContent)
@@ -62,20 +62,27 @@ class SQLStateStore(StateStore):
                              membership: Membership) -> None:
         await self.set_member(room_id, user_id, Member(membership=membership))
 
-    async def get_members(self, room_id: RoomID) -> Optional[List[UserID]]:
+    async def get_member_profiles(
+        self, room_id: RoomID,
+        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> Optional[Dict[UserID, Member]]:
         self._profile_cache[room_id] = {}
-        for profile in UserProfile.all_in_room(room_id):
+        for profile in UserProfile.all_in_room(room_id, memberships):
             self._profile_cache[room_id][profile.user_id] = profile
-        return [profile.user_id for profile in self._profile_cache[room_id].values()]
+        return {profile.user_id: profile.member() for profile
+                in self._profile_cache[room_id].values()}
 
-    async def get_members_filtered(self, room_id: RoomID, not_prefix: str, not_suffix: str,
-                                   not_id: str) -> Optional[List[UserID]]:
+    async def get_members_filtered(
+        self, room_id: RoomID,
+        not_prefix: str, not_suffix: str, not_id: str,
+        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> Optional[List[UserID]]:
         return [profile.user_id for profile
-                in UserProfile.all_in_room(room_id, not_suffix, not_prefix, not_id)]
+                in UserProfile.all_in_room(room_id, memberships, not_suffix, not_prefix, not_id)]
 
     async def set_members(self, room_id: RoomID, members: Dict[UserID, Member],
                           only_membership: Optional[Membership] = None) -> None:
-        UserProfile.bulk_replace(room_id, members)
+        UserProfile.bulk_replace(room_id, members, only_membership=only_membership)
         self._get_room_state(room_id, create=True).edit(has_full_member_list=True)
         try:
             del self._profile_cache[room_id]

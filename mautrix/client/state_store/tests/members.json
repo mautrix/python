@@ -1,0 +1,167 @@
+{
+	"!telegram-group:example.com": [
+		{
+			"content": {
+				"avatar_url": "mxc://maunium.net/tJCRmUyJDsgRNgqhOgoiHWbX",
+				"displayname": "Telegram bridge bot",
+				"membership": "join"
+			},
+			"origin_server_ts": 1637017135583,
+			"sender": "@telegrambot:example.com",
+			"state_key": "@telegrambot:example.com",
+			"type": "m.room.member",
+			"event_id": "$ToMVBrkfMXcaMt6lrNn_AACxGtWGk9acDQplsYMjdu8"
+		},
+		{
+			"content": {
+				"avatar_url": "mxc://example.com/321cba",
+				"displayname": "tulir (Telegram)",
+				"membership": "join"
+			},
+			"origin_server_ts": 1637017138997,
+			"sender": "@telegram_84359547:example.com",
+			"state_key": "@telegram_84359547:example.com",
+			"type": "m.room.member",
+			"unsigned": {
+				"replaces_state": "$tRU6IBdkgFoG9PD-PRjtKOFMPAQVMMFdU-ZfB09hm48",
+				"prev_content": {
+					"avatar_url": "mxc://example.com/321cba",
+					"displayname": "tulir (Telegram)",
+					"membership": "invite"
+				},
+				"prev_sender": "@telegrambot:example.com"
+			},
+			"event_id": "$CnpXeISvK8MkbzgryzlrMKKk134KLwuvdIDTLp8v1ME"
+		},
+		{
+			"content": {
+				"avatar_url": "mxc://example.com/o3sSOTEE6F7aSZELL8PfP3N7",
+				"displayname": "Tulir #4 (Telegram)",
+				"membership": "join"
+			},
+			"origin_server_ts": 1637017139441,
+			"sender": "@telegram_5647382910:example.com",
+			"state_key": "@telegram_5647382910:example.com",
+			"type": "m.room.member",
+			"unsigned": {
+				"replaces_state": "$_yUbIfhy46AVZ8Aj3bEoGUvzJ6xC38mbFIZ79JOrIhw",
+				"prev_content": {
+					"avatar_url": "mxc://example.com/o3sSOTEE6F7aSZELL8PfP3N7",
+					"displayname": "Tulir #4 (Telegram)",
+					"membership": "invite"
+				},
+				"prev_sender": "@telegrambot:example.com"
+			},
+			"event_id": "$n_dhyHuytT4lwJ1rzdkGeRIAaCQNtdM-6KhI5rQcVSw"
+		},
+		{
+			"content": {
+				"avatar_url": "mxc://example.com/123abc",
+				"displayname": "tulir",
+				"membership": "join"
+			},
+			"origin_server_ts": 1637017136989,
+			"sender": "@tulir:example.com",
+			"state_key": "@tulir:example.com",
+			"type": "m.room.member",
+			"unsigned": {
+				"replaces_state": "$jMwIGQPtxaRLfCfUm0XhYRgWK1WsVRnI-2shdpLpJqg",
+				"prev_content": {
+					"avatar_url": "mxc://example.com/123abc",
+					"displayname": "tulir",
+					"fi.mau.will_auto_accept": true,
+					"is_direct": false,
+					"membership": "invite"
+				},
+				"prev_sender": "@telegrambot:example.com"
+			},
+			"event_id": "$xv9FUkljVHVY2aHvQgtq9yPAo8YSD6IX80bs2eeLKQo"
+		},
+		{
+			"content": {
+				"avatar_url": "mxc://example.com/9yk1G8ZmSHbvP4JI2IFbfSAn",
+				"displayname": "Mautrix (Telegram)",
+				"membership": "join"
+			},
+			"origin_server_ts": 1637017140015,
+			"sender": "@telegram_374880943:example.com",
+			"state_key": "@telegram_374880943:example.com",
+			"type": "m.room.member",
+			"unsigned": {
+				"replaces_state": "$phLlRQ3dHd7rVOZmfMWVscQCnwAT3k-CAhh8aByHJOQ",
+				"prev_content": {
+					"avatar_url": "mxc://example.com/9yk1G8ZmSHbvP4JI2IFbfSAn",
+					"displayname": "Mautrix (Telegram)",
+					"membership": "invite"
+				},
+				"prev_sender": "@telegrambot:example.com"
+			},
+			"event_id": "$agGmH9w9I-KgBnOoUBXp6RmXxemGaYwN3PnwOgIvmEk"
+		},
+		{
+			"content": {
+				"avatar_url": "mxc://example.com/TTi6q0SABMNNNlC38014KMBV",
+				"displayname": "Mautrix / Testing (Telegram)",
+				"membership": "join"
+			},
+			"origin_server_ts": 1637017141173,
+			"sender": "@telegram_987654321:example.com",
+			"state_key": "@telegram_987654321:example.com",
+			"type": "m.room.member",
+			"unsigned": {
+				"replaces_state": "$VYToMy5ap8j2no4bL5neeYrDqAOPnt2JpY0yfdbnbWk",
+				"prev_content": {
+					"avatar_url": "mxc://example.com/TTi6q0SABMNNNlC38014KMBV",
+					"displayname": "Mautrix / Testing (Telegram)",
+					"membership": "invite"
+				},
+				"prev_sender": "@telegrambot:example.com"
+			},
+			"event_id": "$DZxbFRtQ8oKgw9hGiQRCpFLV-PF20uhS6DMDfFjOx38"
+		},
+		{
+			"content": {
+				"displayname": "Tulir #3 (Telegram)",
+				"membership": "join"
+			},
+			"origin_server_ts": 1637017138285,
+			"sender": "@telegram_123456789:example.com",
+			"state_key": "@telegram_123456789:example.com",
+			"type": "m.room.member",
+			"unsigned": {
+				"replaces_state": "$WLvGliXjUCuXxJV1wqbZd7suumC3HiOf-pVP94_JUAE",
+				"prev_content": {
+					"displayname": "Tulir #3 (Telegram)",
+					"membership": "invite"
+				},
+				"prev_sender": "@telegrambot:example.com"
+			},
+			"event_id": "$DW23zfhHKNBTYJNq40R7leaIZAPzf54eyWgxmeQ7WYc"
+		},
+		{
+			"content": {
+				"membership": "leave"
+			},
+			"origin_server_ts": 1637017153623,
+			"sender": "@telegram_476034259:example.com",
+			"state_key": "@telegram_476034259:example.com",
+			"type": "m.room.member",
+			"unsigned": {
+				"replaces_state": "$2yMikO4Th2GYcegL-AWLVMbH-5gBw7ru4pJIZG_XsHc"
+			},
+			"event_id": "$r8T_b9upDSscRZqulUOJSQeK80RnN7LKDRSvzXflxlQ"
+		},
+		{
+			"content": {
+				"membership": "ban",
+				"avatar_url": "mxc://maunium.net/456def",
+				"displayname": "WhatsApp bridge bot"
+			},
+			"origin_server_ts": 1637406936936,
+			"sender": "@tulir:example.com",
+			"state_key": "@whatsappbot:example.com",
+			"type": "m.room.member",
+			"event_id": "$9zhRDMhfvo37qFlRYZ45H0afcx9KSyGkn-gr72S6TsU"
+		}
+	]
+}

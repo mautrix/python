@@ -3,15 +3,17 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Callable, Awaitable, List, Dict, Optional, Union, TYPE_CHECKING
+from __future__ import annotations
+from typing import Callable, Awaitable, List, Dict, Optional, Union
 import functools
 import logging
 import inspect
 
-from ..logging import TraceLogger
+from mautrix import __optional_imports__
+from mautrix.util.logging import TraceLogger
+from .. import async_db
 
-if TYPE_CHECKING:
-    from .database import Database
+if __optional_imports__:
     from asyncpg import Connection
 
 Upgrade = Callable[['Connection', str], Awaitable[None]]
@@ -76,7 +78,7 @@ class UpgradeTable:
         await conn.execute(f"INSERT INTO {self.version_table_name} (version) VALUES ($1)",
                            version)
 
-    async def upgrade(self, db: 'Database') -> None:
+    async def upgrade(self, db: async_db.Database) -> None:
         await db.execute(f"""CREATE TABLE IF NOT EXISTS {self.version_table_name} (
             version INTEGER PRIMARY KEY
         )""")
@@ -135,8 +137,8 @@ def _find_upgrade_table(fn: Upgrade) -> UpgradeTable:
             return upgrade_tables[".".join(used_parts)]
         except KeyError as e:
             last_error = e
-    raise KeyError("Registering upgrades without an UpgradeTable requires you to register a parent "
-                   "module with register_upgrade_table_parent_module first.") from last_error
+    raise KeyError("Registering upgrades without an UpgradeTable requires you to register a parent"
+                   " module with register_upgrade_table_parent_module first.") from last_error
 
 
 def register_upgrade(index: int = -1, description: str = "") -> Callable[[Upgrade], Upgrade]:

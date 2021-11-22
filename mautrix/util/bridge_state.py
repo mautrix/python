@@ -10,6 +10,7 @@ import time
 from attr import dataclass
 import aiohttp
 
+from mautrix.api import HTTPAPI
 from mautrix.types import SerializableAttrs, SerializableEnum, UserID, field
 
 
@@ -100,7 +101,7 @@ class BridgeState(SerializableAttrs):
     async def send(self, url: str, token: str, log: logging.Logger, log_sent: bool = True) -> None:
         if not url:
             return
-        headers = {"Authorization": f"Bearer {token}"}
+        headers = {"Authorization": f"Bearer {token}", "User-Agent": HTTPAPI.default_ua}
         try:
             async with aiohttp.ClientSession() as sess, sess.post(url, json=self.serialize(),
                                                                   headers=headers) as resp:

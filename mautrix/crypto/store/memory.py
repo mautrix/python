@@ -47,6 +47,12 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
     async def get_next_batch(self) -> SyncToken:
         return self._sync_token
 
+    async def delete(self) -> None:
+        self._account = None
+        self._device_id = None
+        self._olm_sessions = {}
+        self._outbound_sessions = {}
+
     async def put_account(self, account: OlmAccount) -> None:
         self._account = account
 

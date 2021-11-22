@@ -1,12 +1,12 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, Optional, Union, NamedTuple
+from typing import Dict, List, Optional, Union, NamedTuple, Tuple
 
-from mautrix.types import (Member, MemberStateEventContent, Membership, PowerLevelStateEventContent,
-                           RoomEncryptionStateEventContent, RoomID, UserID)
+from mautrix.types import (Member, MemberStateEventContent, Membership, RoomID, UserID,
+                           PowerLevelStateEventContent, RoomEncryptionStateEventContent)
 from mautrix.util.async_db import Database
 
 from ..abstract import StateStore
@@ -52,26 +52,65 @@ class PgStateStore(StateStore):
              "ON CONFLICT (room_id, user_id) DO UPDATE SET membership=$3")
         await self.db.execute(q, room_id, user_id, membership.value)
 
-    async def get_members(self, room_id: RoomID) -> Optional[List[UserID]]:
-        res = await self.db.fetch("SELECT user_id FROM mx_user_profile "
-                                  "WHERE room_id=$1 AND (membership='join' OR membership='invite')",
-                                  room_id)
+    async def get_members(
+        self, room_id: RoomID,
+        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> Optional[List[UserID]]:
+        if self.db.scheme == "postgres":
+            q = "SELECT user_id FROM mx_user_profile WHERE room_id=$1 AND membership=ANY($2)"
+            res = await self.db.fetch(q, room_id, memberships)
+        else:
+            membership_placeholders = ("?," * len(memberships)).rstrip(",")
+            membership_values = (membership.value for membership in memberships)
+            q = ("SELECT user_id FROM mx_user_profile "
+                 f"WHERE room_id=? AND membership IN ({membership_placeholders})")
+            res = await self.db.fetch(q, room_id, *membership_values)
         return [profile["user_id"] for profile in res]
 
-    async def get_members_filtered(self, room_id: RoomID, not_prefix: str, not_suffix: str,
-                                   not_id: str) -> Optional[List[UserID]]:
-        res = await self.db.fetch("SELECT user_id FROM mx_user_profile "
-                                  "WHERE room_id=$1 AND (membership='join' OR membership='invite')"
-                                  "AND user_id != $2 AND user_id NOT LIKE $3",
-                                  room_id, not_id, f"{not_prefix}%{not_suffix}")
+    async def get_member_profiles(
+        self, room_id: RoomID,
+        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> Optional[Dict[UserID, Member]]:
+        if self.db.scheme == "postgres":
+            q = ("SELECT user_id, membership, displayname, avatar_url FROM mx_user_profile "
+                 "WHERE room_id=$1 AND membership=ANY($2)")
+            res = await self.db.fetch(q, room_id, memberships)
+        else:
+            membership_placeholders = ("?," * len(memberships)).rstrip(",")
+            membership_values = (membership.value for membership in memberships)
+            q = ("SELECT user_id, membership, displayname, avatar_url FROM mx_user_profile "
+                 f"WHERE room_id=? AND membership IN ({membership_placeholders})")
+            res = await self.db.fetch(q, room_id, *membership_values)
+        return {profile["user_id"]: Member.deserialize(profile) for profile in res}
+
+    async def get_members_filtered(
+        self, room_id: RoomID,
+        not_prefix: str, not_suffix: str, not_id: str,
+        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> Optional[List[UserID]]:
+        not_like = f"{not_prefix}%{not_suffix}"
+        if self.db.scheme == "postgres":
+            q = ("SELECT user_id FROM mx_user_profile "
+                 "WHERE room_id=$1 AND membership=ANY($2)"
+                 "AND user_id != $3 AND user_id NOT LIKE $4")
+            res = await self.db.fetch(q, room_id, memberships, not_id, not_like)
+        else:
+            membership_placeholders = ("?," * len(memberships)).rstrip(",")
+            membership_values = (membership.value for membership in memberships)
+            q = ("SELECT user_id FROM mx_user_profile "
+                 f"WHERE room_id=? AND membership IN ({membership_placeholders})"
+                 "AND user_id != ? AND user_id NOT LIKE ?")
+            res = await self.db.fetch(q, room_id, *membership_values, not_id, not_like)
         return [profile["user_id"] for profile in res]
 
     async def set_members(self, room_id: RoomID,
                           members: Dict[UserID, Union[Member, MemberStateEventContent]],
                           only_membership: Optional[Membership] = None) -> None:
         columns = ["room_id", "user_id", "membership", "displayname", "avatar_url"]
-        records = [(room_id, user_id, str(member.membership), member.displayname, member.avatar_url)
-                   for user_id, member in members.items()]
+        records = [
+            (room_id, user_id, str(member.membership), member.displayname, member.avatar_url)
+            for user_id, member in members.items()
+        ]
         async with self.db.acquire() as conn, conn.transaction():
             del_q = "DELETE FROM mx_user_profile WHERE room_id=$1"
             if only_membership is None:
@@ -80,21 +119,28 @@ class PgStateStore(StateStore):
                 del_q = f"{del_q} AND (membership=$2 OR user_id = ANY($3))"
                 await conn.execute(del_q, room_id, only_membership.value, list(members.keys()))
             else:
-                member_placeholders = ", ".join(f"${i+3}" for i in range(len(members)))
-                del_q = f"{del_q} AND (membership=$2 OR user_id IN ({member_placeholders}))"
+                member_placeholders = ("?," * len(members)).rstrip(",")
+                del_q = f"{del_q} AND (membership=? OR user_id IN ({member_placeholders}))"
                 await conn.execute(del_q, room_id, only_membership.value, *members.keys())
 
             if self.db.scheme == "postgres":
                 await conn.copy_records_to_table("mx_user_profile", records=records,
                                                  columns=columns)
             else:
-                await conn.executemany("INSERT INTO mx_user_profile (room_id, user_id, membership, "
-                                       "displayname, avatar_url) VALUES ($1, $2, $3, $4, $5)",
-                                       records)
+                q = ("INSERT INTO mx_user_profile (room_id, user_id, membership, "
+                     "displayname, avatar_url) VALUES ($1, $2, $3, $4, $5)")
+                await conn.executemany(q, records)
 
             if not only_membership or only_membership == Membership.JOIN:
                 await conn.execute("UPDATE mx_room_state SET has_full_member_list=true "
                                    "WHERE room_id=$1", room_id)
+
+    async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]:
+        q = ("SELECT mx_user_profile.room_id FROM mx_user_profile "
+             "LEFT JOIN mx_room_state ON mx_room_state.room_id=mx_user_profile.room_id "
+             "WHERE user_id=$1 AND mx_room_state.is_encrypted=true")
+        rows = await self.db.fetch(q, user_id)
+        return [row["room_id"] for row in rows]
 
     async def has_full_member_list(self, room_id: RoomID) -> bool:
         return bool(await self.db.fetchval("SELECT has_full_member_list FROM mx_room_state "
@@ -111,7 +157,8 @@ class PgStateStore(StateStore):
             return None
         return PowerLevelStateEventContent.parse_json(power_levels_json)
 
-    async def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent) -> None:
+    async def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent
+                               ) -> None:
         await self.db.execute("INSERT INTO mx_room_state (room_id, power_levels) VALUES ($1, $2) "
                               "ON CONFLICT (room_id) DO UPDATE SET power_levels=$2",
                               room_id, content.json())

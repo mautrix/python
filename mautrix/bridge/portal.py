@@ -1,9 +1,10 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Any, List, TYPE_CHECKING
+from __future__ import annotations
+from typing import Optional, Dict, Any, List
 from collections import defaultdict
 from abc import ABC, abstractmethod
 import asyncio
@@ -16,18 +17,15 @@ from mautrix.errors import MatrixError, MatrixRequestError, MNotFound
 from mautrix.util.logging import TraceLogger
 from mautrix.util.simple_lock import SimpleLock
 
-if TYPE_CHECKING:
-    from .user import BaseUser
-    from .matrix import BaseMatrixHandler
-    from .bridge import Bridge
+from .. import bridge as br
 
 
 class BasePortal(ABC):
     log: TraceLogger = logging.getLogger("mau.portal")
     _async_get_locks: Dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
     az: AppService
-    matrix: 'BaseMatrixHandler'
-    bridge: 'Bridge'
+    matrix: br.BaseMatrixHandler
+    bridge: br.Bridge
     loop: asyncio.AbstractEventLoop
     main_intent: IntentAPI
     mxid: Optional[RoomID]
@@ -41,7 +39,7 @@ class BasePortal(ABC):
         pass
 
     @abstractmethod
-    async def handle_matrix_message(self, sender: 'BaseUser', message: MessageEventContent,
+    async def handle_matrix_message(self, sender: br.BaseUser, message: MessageEventContent,
                                     event_id: EventID) -> None:
         pass
 

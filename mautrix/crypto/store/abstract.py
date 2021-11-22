@@ -71,6 +71,10 @@ class CryptoStore(ABC):
         """Flush the store. If all the methods persist data immediately, this can be a no-op."""
 
     @abstractmethod
+    async def delete(self) -> None:
+        """Delete the data in the store."""
+
+    @abstractmethod
     async def put_account(self, account: OlmAccount) -> None:
         """Insert or update the OlmAccount in the store."""
 

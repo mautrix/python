@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -173,3 +173,15 @@ class LoginResponse(SerializableAttrs):
     device_id: DeviceID
     access_token: str
     well_known: DiscoveryInformation = attr.ib(factory=DiscoveryInformation)
+
+
+@dataclass
+class WhoamiResponse(SerializableAttrs):
+    """
+    The response for a whoami request, as specified in the `GET /account/whoami endpoint`_
+
+    .. GET /account/whoami endpoint:
+        https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3accountwhoami
+    """
+    user_id: UserID
+    device_id: Optional[DeviceID] = None

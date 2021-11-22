@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,7 +12,7 @@ from mautrix.types import (UserID, DeviceID, IdentityKey, SigningKey,
                            EncryptionKeyAlgorithm, EncryptionAlgorithm)
 
 from .sessions import Session
-from .base import canonical_json
+from . import base
 
 
 class OlmAccount(olm.Account):
@@ -29,13 +29,13 @@ class OlmAccount(olm.Account):
     @property
     def signing_key(self) -> SigningKey:
         if self._signing_key is None:
-            self._signing_key = self.identity_keys["ed25519"]
+            self._signing_key = SigningKey(self.identity_keys["ed25519"])
         return self._signing_key
 
     @property
     def identity_key(self) -> IdentityKey:
         if self._identity_key is None:
-            self._identity_key = self.identity_keys["curve25519"]
+            self._identity_key = IdentityKey(self.identity_keys["curve25519"])
         return self._identity_key
 
     @property
@@ -76,7 +76,7 @@ class OlmAccount(olm.Account):
                 for algorithm, key in self.identity_keys.items()
             },
         }
-        signature = self.sign(canonical_json(device_keys))
+        signature = self.sign(base.canonical_json(device_keys))
         device_keys["signatures"] = {
             user_id: {f"{EncryptionKeyAlgorithm.ED25519}:{device_id}": signature}
         }
@@ -89,7 +89,7 @@ class OlmAccount(olm.Account):
             self.generate_one_time_keys(new_count)
         keys = {}
         for key_id, key in self.one_time_keys.get("curve25519", {}).items():
-            signature = self.sign(canonical_json({"key": key}))
+            signature = self.sign(base.canonical_json({"key": key}))
             keys[f"{EncryptionKeyAlgorithm.SIGNED_CURVE25519}:{key_id}"] = {
                 "key": key,
                 "signatures": {

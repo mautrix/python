@@ -50,7 +50,7 @@ def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str) -> bytes
     Returns:
         The plaintext bytes.
     Raises:
-        EncryptionError if the integrity check fails.
+        EncryptionError: if the integrity check fails.
 
 
     """

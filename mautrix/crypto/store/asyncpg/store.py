@@ -9,13 +9,21 @@ from datetime import timedelta
 
 from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
 from mautrix.client.state_store import SyncStore
+from mautrix.client.state_store.asyncpg import PgStateStore
 from mautrix.util.async_db import Database
 from mautrix.util.logging import TraceLogger
 
 from ... import (OlmAccount, Session, InboundGroupSession, OutboundGroupSession, TrustState,
                  DeviceIdentity)
-from ..abstract import CryptoStore
+from ..abstract import CryptoStore, StateStore
 from .upgrade import upgrade_table
+
+
+class PgCryptoStateStore(PgStateStore, StateStore):
+    """
+    This class ensures that the PgStateStore in the client module implements the StateStore
+    methods needed by the crypto module.
+    """
 
 
 class PgCryptoStore(CryptoStore, SyncStore):
@@ -37,9 +45,15 @@ class PgCryptoStore(CryptoStore, SyncStore):
         self.pickle_key = pickle_key
 
         self._sync_token = None
-        self._device_id = ""
+        self._device_id = DeviceID("")
         self._account = None
         self._olm_cache = defaultdict(lambda: {})
+
+    async def delete(self) -> None:
+        tables = ("crypto_account", "crypto_olm_session", "crypto_megolm_outbound_session")
+        async with self.db.acquire() as conn, conn.transaction():
+            for table in tables:
+                await conn.execute(f"DELETE FROM {table} WHERE account_id=$1", self.account_id)
 
     async def get_device_id(self) -> Optional[DeviceID]:
         device_id = await self.db.fetchval("SELECT device_id FROM crypto_account "

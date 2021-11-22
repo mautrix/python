@@ -1,9 +1,9 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Callable, Awaitable, Any, Union
+from typing import Union, Any, cast
 
 
 class _NoopPrometheusEntity:
@@ -33,11 +33,21 @@ try:
 
     is_installed = True
 except ImportError:
-    Counter = Gauge = Summary = Histogram = Info = Enum = _NoopPrometheusEntity
+    Counter = Gauge = Summary = Histogram = Info = Enum = cast(Any, _NoopPrometheusEntity)
+
     is_installed = False
 
 
-def async_time(metric):
+def async_time(metric: Union[Gauge, Summary, Histogram]):
+    """
+    Measure the time that each execution of the decorated async function takes.
+
+    This is equivalent to the ``time`` method-decorator in the metrics, but
+    supports async functions.
+
+    Args:
+        metric: The metric instance to store the measures in.
+    """
     if not hasattr(metric, "time") or not callable(metric.time):
         raise ValueError("async_time only supports metrics that support timing")
 
@@ -51,4 +61,5 @@ def async_time(metric):
     return decorator
 
 
-__all__ = ["Counter", "Gauge", "Summary", "Histogram", "Info", "Enum", "async_time", "is_installed"]
+__all__ = ["Counter", "Gauge", "Summary", "Histogram", "Info", "Enum", "async_time",
+           "is_installed"]

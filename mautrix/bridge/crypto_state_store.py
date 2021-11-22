@@ -8,9 +8,9 @@ from abc import ABC
 
 from mautrix.types import RoomID, UserID, RoomEncryptionStateEventContent
 from mautrix.crypto import StateStore
-
 from mautrix.bridge.portal import BasePortal
 from mautrix.util.async_db import Database
+from mautrix import __optional_imports__
 
 GetPortalFunc = Callable[[RoomID], Awaitable[BasePortal]]
 
@@ -42,6 +42,8 @@ try:
                 return None
             return state.encryption
 except ImportError:
+    if __optional_imports__:
+        raise
     UserProfile = None
     RoomState = None
     SQLCryptoStateStore = None

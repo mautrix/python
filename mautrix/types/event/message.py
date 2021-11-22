@@ -10,7 +10,7 @@ import re
 from attr import dataclass
 import attr
 
-from ..util import ExtensibleEnum, SerializableAttrs, Serializable, Obj, deserializer
+from ..util import ExtensibleEnum, SerializableAttrs, Serializable, Obj, deserializer, field
 from ..primitive import JSON, ContentURI, EventID
 from .base import BaseRoomEvent, BaseUnsigned
 
@@ -394,7 +394,7 @@ media_reply_fallback_body_map = {
 class MessageEvent(BaseRoomEvent, SerializableAttrs):
     """An m.room.message event"""
     content: MessageEventContent
-    unsigned: Optional[MessageUnsigned] = None
+    unsigned: Optional[MessageUnsigned] = field(factory=lambda: MessageUnsigned())
 
     @staticmethod
     @deserializer(MessageEventContent)

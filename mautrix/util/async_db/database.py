@@ -3,26 +3,26 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, List, Awaitable, Type, Dict, Union, Optional, TYPE_CHECKING
+from typing import Any, List, Awaitable, Type, Dict, Union, Optional, Protocol
 from abc import ABC, abstractmethod
 from urllib.parse import urlparse
 import logging
 import sys
 
+from mautrix import __optional_imports__
+
 from .upgrade import UpgradeTable, upgrade_tables
 
-if TYPE_CHECKING:
+if __optional_imports__:
     from asyncpg import Connection, Record
 
-    from typing import Protocol
 
+class AcquireResult(Protocol):
+    async def __aenter__(self) -> 'Connection': ...
 
-    class AcquireResult(Protocol):
-        async def __aenter__(self) -> Connection: ...
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None: ...
 
-        async def __aexit__(self, exc_type, exc_val, exc_tb) -> None: ...
-
-        def __await__(self) -> Awaitable[Connection]: ...
+    def __await__(self) -> Awaitable['Connection']: ...
 
 
 class Database(ABC):
@@ -80,7 +80,7 @@ class Database(ABC):
         pass
 
     @abstractmethod
-    def acquire(self) -> 'AcquireResult':
+    def acquire(self) -> AcquireResult:
         pass
 
     async def execute(self, query: str, *args: Any, timeout: Optional[float] = None) -> str:

@@ -3,33 +3,31 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import TYPE_CHECKING, IO, Any, Union, Optional
+from typing import IO, Any, Union, Optional, Protocol
 from abc import ABC, abstractmethod
 from pathlib import Path
 import pickle
 import json
 import time
 
-if TYPE_CHECKING:
-    from typing import Protocol
+
+class Filer(Protocol):
+    def dump(self, obj: Any, file: IO) -> None: ...
+
+    def load(self, file: IO) -> Any: ...
 
 
-    class Filer(Protocol):
-        def dump(self, obj: Any, file: IO) -> None: ...
-
-        def load(self, file: IO) -> Any: ...
-
-PathLike = Union[str, Path, IO]
+PathOrIO = Union[str, Path, IO]
 
 
 class FileStore(ABC):
-    path: PathLike
-    filer: 'Filer'
+    path: PathOrIO
+    filer: Filer
     binary: bool
     save_interval: float
     _last_save: float
 
-    def __init__(self, path: PathLike, filer: Optional['Filer'] = None, binary: bool = True,
+    def __init__(self, path: PathOrIO, filer: Optional[Filer] = None, binary: bool = True,
                  save_interval: float = 60.0) -> None:
         self.path = path
         self.filer = filer or (pickle if binary else json)

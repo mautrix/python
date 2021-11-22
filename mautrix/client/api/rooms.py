@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List, Union, Dict, Any, Callable, Awaitable
+from typing import Optional, List, Sequence, Union, Dict, Any, Callable, Awaitable
 import asyncio
 
 from multidict import CIMultiDict
@@ -18,7 +18,7 @@ from mautrix.types import (JSON, UserID, RoomID, RoomAlias, StateEvent, RoomDire
 from .events import EventMethods
 from .base import BaseClientAPI
 
-InitialState = List[Union[StateEvent, StrippedStateEvent, Dict[str, Any]]]
+InitialState = Sequence[Union[StateEvent, StrippedStateEvent, Dict[str, Any]]]
 
 
 class RoomMethods(EventMethods, BaseClientAPI):
@@ -296,7 +296,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
         by the server in the sugar membership endpoints like /join and /invite, but are not set
         automatically when sending member events manually.
 
-        This default implementation only calls :prop:`fill_member_event_callback`.
+        This default implementation only calls :attr:`fill_member_event_callback`.
 
         Args:
             room_id: The room where the member event is going to be sent.

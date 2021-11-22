@@ -1,16 +1,17 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict
+from __future__ import annotations
+from typing import Optional
 import logging
 import asyncio
 
-from mautrix.client import Client, InternalEventType
 from mautrix.types import (StateEvent, ToDeviceEvent, Membership, EventType, EncryptionAlgorithm,
-                           DeviceOTKCount, DeviceLists, SessionID)
+                           DeviceOTKCount, DeviceLists)
 from mautrix.util.logging import TraceLogger
+from mautrix import client as cli
 
 from .store import CryptoStore, StateStore
 from .types import DecryptedOlmEvent
@@ -31,25 +32,25 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
     Megolm group sessions is handled internally.
     """
 
-    client: Client
+    client: cli.Client
     log: TraceLogger
     crypto_store: CryptoStore
     state_store: StateStore
 
     _fetch_keys_lock: asyncio.Lock
 
-    account: OlmAccount
+    account: Optional[OlmAccount]
 
     allow_unverified_devices: bool
 
-    def __init__(self, client: Client, crypto_store: CryptoStore, state_store: StateStore,
+    def __init__(self, client: cli.Client, crypto_store: CryptoStore, state_store: StateStore,
                  log: Optional[TraceLogger] = None) -> None:
         super().__init__()
         self.client = client
-        self.loop = self.client.loop
         self.log = log or logging.getLogger("mau.crypto")
         self.crypto_store = crypto_store
         self.state_store = state_store
+        self.account = None
 
         self.allow_unverified_devices = True
         self.share_to_unverified_devices = False
@@ -59,9 +60,9 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         self._key_request_waiters = {}
         self._inbound_session_waiters = {}
 
-        self.client.add_event_handler(InternalEventType.DEVICE_OTK_COUNT, self.handle_otk_count,
-                                      wait_sync=True)
-        self.client.add_event_handler(InternalEventType.DEVICE_LISTS, self.handle_device_lists)
+        self.client.add_event_handler(cli.InternalEventType.DEVICE_OTK_COUNT,
+                                      self.handle_otk_count, wait_sync=True)
+        self.client.add_event_handler(cli.InternalEventType.DEVICE_LISTS, self.handle_device_lists)
         self.client.add_event_handler(EventType.TO_DEVICE_ENCRYPTED, self.handle_to_device_event)
         self.client.add_event_handler(EventType.ROOM_KEY_REQUEST, self.handle_room_key_request)
         # self.client.add_event_handler(EventType.ROOM_KEY_WITHHELD, self.handle_room_key_withheld)
