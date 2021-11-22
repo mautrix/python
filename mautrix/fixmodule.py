@@ -24,6 +24,11 @@ def _fix(obj: ModuleType) -> None:
                 continue
 
             item.__module__ = obj.__name__
+
+            if isinstance(item, NewType):
+                # By default autodoc makes a blank "Bases:" text,
+                # so adjust it to show the type as the "base"
+                item.__bases__ = (item.__supertype__,)
         # elif type(item).__module__ == "typing":
         #     print(obj.__name__, item_name, type(item))
 
