@@ -28,7 +28,7 @@ html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
 autodoc_typehints = "description"
-autodoc_member_order = "groupwise"
+autodoc_member_order = "bysource"
 autoclass_content = "class"
 autodoc_class_signature = "separated"
 
