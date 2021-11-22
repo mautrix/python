@@ -6,8 +6,7 @@
 from typing import Union, Optional
 
 from mautrix.api import Method, Path
-from mautrix.types import Obj, EventType, AccountDataEventContent, JSON, RoomID, Serializable
-from mautrix.types.event.account_data import account_data_event_content_map
+from mautrix.types import EventType, AccountDataEventContent, JSON, RoomID, Serializable
 
 from ..base import BaseClientAPI
 

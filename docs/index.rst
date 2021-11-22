@@ -11,6 +11,7 @@ Welcome to mautrix-python's documentation!
    api/mautrix.client.state_store/index
    api/mautrix.appservice/index
    api/mautrix.crypto.attachments
+   api/mautrix.types
    api/mautrix.util/index
 
 
