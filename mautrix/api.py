@@ -20,7 +20,7 @@ from aiohttp.client_exceptions import ContentTypeError, ClientError
 
 from mautrix.errors import make_request_error, MatrixConnectionError, MatrixRequestError
 from mautrix.util.logging import TraceLogger
-from mautrix.util.opt_prometheus import Counter, Histogram
+from mautrix.util.opt_prometheus import Counter
 from mautrix import __version__ as mautrix_version
 
 if TYPE_CHECKING:
@@ -30,8 +30,6 @@ API_CALLS = Counter("bridge_matrix_api_calls",
                     "The number of Matrix client API calls made", ("method",))
 API_CALLS_FAILED = Counter("bridge_matrix_api_calls_failed",
                            "The number of Matrix client API calls which failed", ("method",))
-MATRIX_REQUEST_SECONDS = Histogram("bridge_matrix_request_seconds",
-                                   "Time spent on Matrix client API calls", ("method","outcome",))
 
 class APIPath(Enum):
     """
@@ -263,18 +261,12 @@ class HTTPAPI:
         backoff = 4
         while True:
             self._log_request(method, path, content, orig_content, query_params, req_id)
+            API_CALLS.labels(method=metrics_method).inc()
             try:
-                start_time = time()
-                outcome = "success"
-                API_CALLS.labels(method=metrics_method).inc()
-                try:
-                    return await self._send(method, full_url, content, query_params, headers or {})
-                except Exception:
-                    API_CALLS_FAILED.labels(method=metrics_method).inc()
-                    outcome = "fail"
-                    raise
-                finally:
-                    MATRIX_REQUEST_SECONDS.labels(method=metrics_method, outcome=outcome).observe(time() - start_time)
+                return await self._send(method, full_url, content, query_params, headers or {})
+            except Exception:
+                API_CALLS_FAILED.labels(method=metrics_method).inc()
+                raise
             except MatrixRequestError as e:
                 if retry_count > 0 and e.http_status in (502, 503, 504):
                     self.log.warning(f"Request #{req_id} failed with HTTP {e.http_status}, "
