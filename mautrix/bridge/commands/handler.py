@@ -27,7 +27,7 @@ HelpCacheKey = NamedTuple('HelpCacheKey', is_management=bool, is_portal=bool,
 SECTION_GENERAL = HelpSection("General", 0, "")
 SECTION_AUTH = HelpSection("Authentication", 10, "")
 SECTION_ADMIN = HelpSection("Administration", 50, "")
-
+SECTION_CONNECTION = HelpSection("Connection management", 15, "")
 
 def ensure_trailing_newline(s: str) -> str:
     """Returns the passed string, but with a guaranteed trailing newline."""
