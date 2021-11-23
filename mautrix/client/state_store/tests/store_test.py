@@ -3,13 +3,19 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import asyncio
 from typing import AsyncIterator, AsyncContextManager, Callable, Dict, List
 from contextlib import asynccontextmanager
 import pathlib
+import random
+import string
 import json
+import time
+import os
 
 import pytest
 import sqlalchemy as sql
+import asyncpg
 
 from mautrix.types import RoomID, UserID, StateEvent, Member, Membership, EncryptionAlgorithm
 from mautrix.util.async_db import Database
@@ -20,7 +26,29 @@ from ..sqlalchemy import SQLStateStore, UserProfile, RoomState
 
 
 @asynccontextmanager
-async def async_store() -> AsyncIterator[PgStateStore]:
+async def async_postgres_store() -> AsyncIterator[PgStateStore]:
+    try:
+        pg_url = os.environ["MEOW_TEST_PG_URL"]
+    except KeyError:
+        pytest.skip("Skipped Postgres tests (MEOW_TEST_PG_URL not specified)")
+        return
+    conn: asyncpg.Connection = await asyncpg.connect(pg_url)
+    schema_name = "".join(random.choices(string.ascii_lowercase, k=8))
+    schema_name = f"test_schema_{schema_name}_{int(time.time())}"
+    await conn.execute(f"CREATE SCHEMA {schema_name}")
+    db = Database.create(pg_url, upgrade_table=PgStateStore.upgrade_table,
+                         db_args={"min_size": 1, "max_size": 3,
+                                  "server_settings": {"search_path": schema_name}})
+    store = PgStateStore(db)
+    await db.start()
+    yield store
+    await db.stop()
+    await conn.execute(f"DROP SCHEMA {schema_name} CASCADE")
+    await conn.close()
+
+
+@asynccontextmanager
+async def async_sqlite_store() -> AsyncIterator[PgStateStore]:
     db = Database.create("sqlite:///:memory:", upgrade_table=PgStateStore.upgrade_table,
                          db_args={"min_size": 1})
     store = PgStateStore(db)
@@ -45,7 +73,7 @@ async def memory_store() -> AsyncIterator[MemoryStateStore]:
     yield MemoryStateStore()
 
 
-@pytest.fixture(params=[async_store, alchemy_store, memory_store])
+@pytest.fixture(params=[async_postgres_store, async_sqlite_store, alchemy_store, memory_store])
 async def store(request) -> AsyncIterator[StateStore]:
     param: Callable[[], AsyncContextManager[StateStore]] = request.param
     async with param() as state_store:

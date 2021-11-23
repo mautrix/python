@@ -56,12 +56,12 @@ class PgStateStore(StateStore):
         self, room_id: RoomID,
         memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
     ) -> Optional[List[UserID]]:
+        membership_values = [membership.value for membership in memberships]
         if self.db.scheme == "postgres":
             q = "SELECT user_id FROM mx_user_profile WHERE room_id=$1 AND membership=ANY($2)"
-            res = await self.db.fetch(q, room_id, memberships)
+            res = await self.db.fetch(q, room_id, membership_values)
         else:
             membership_placeholders = ("?," * len(memberships)).rstrip(",")
-            membership_values = (membership.value for membership in memberships)
             q = ("SELECT user_id FROM mx_user_profile "
                  f"WHERE room_id=? AND membership IN ({membership_placeholders})")
             res = await self.db.fetch(q, room_id, *membership_values)
@@ -71,13 +71,13 @@ class PgStateStore(StateStore):
         self, room_id: RoomID,
         memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
     ) -> Optional[Dict[UserID, Member]]:
+        membership_values = [membership.value for membership in memberships]
         if self.db.scheme == "postgres":
             q = ("SELECT user_id, membership, displayname, avatar_url FROM mx_user_profile "
                  "WHERE room_id=$1 AND membership=ANY($2)")
-            res = await self.db.fetch(q, room_id, memberships)
+            res = await self.db.fetch(q, room_id, membership_values)
         else:
             membership_placeholders = ("?," * len(memberships)).rstrip(",")
-            membership_values = (membership.value for membership in memberships)
             q = ("SELECT user_id, membership, displayname, avatar_url FROM mx_user_profile "
                  f"WHERE room_id=? AND membership IN ({membership_placeholders})")
             res = await self.db.fetch(q, room_id, *membership_values)
@@ -89,14 +89,14 @@ class PgStateStore(StateStore):
         memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
     ) -> Optional[List[UserID]]:
         not_like = f"{not_prefix}%{not_suffix}"
+        membership_values = [membership.value for membership in memberships]
         if self.db.scheme == "postgres":
             q = ("SELECT user_id FROM mx_user_profile "
                  "WHERE room_id=$1 AND membership=ANY($2)"
                  "AND user_id != $3 AND user_id NOT LIKE $4")
-            res = await self.db.fetch(q, room_id, memberships, not_id, not_like)
+            res = await self.db.fetch(q, room_id, membership_values, not_id, not_like)
         else:
             membership_placeholders = ("?," * len(memberships)).rstrip(",")
-            membership_values = (membership.value for membership in memberships)
             q = ("SELECT user_id FROM mx_user_profile "
                  f"WHERE room_id=? AND membership IN ({membership_placeholders})"
                  "AND user_id != ? AND user_id NOT LIKE ?")
