@@ -29,6 +29,7 @@ from mautrix.util.message_send_checkpoint import (
 )
 
 from .. import bridge as br
+from . import commands as cmd
 
 try:
     from .e2ee import EncryptionManager
@@ -51,7 +52,7 @@ EVENT_TIME = Histogram("bridge_matrix_event", "Time spent processing Matrix even
 class BaseMatrixHandler:
     log: TraceLogger = logging.getLogger("mau.mx")
     az: AppService
-    commands: br.CommandProcessor
+    commands: cmd.CommandProcessor
     config: config.BaseBridgeConfig
     bridge: br.Bridge
     e2ee: Optional[EncryptionManager]
@@ -60,12 +61,12 @@ class BaseMatrixHandler:
     user_id_prefix: str
     user_id_suffix: str
 
-    def __init__(self, command_processor: Optional[br.CommandProcessor] = None,
+    def __init__(self, command_processor: Optional[cmd.CommandProcessor] = None,
                  bridge: Optional[br.Bridge] = None) -> None:
         self.az = bridge.az
         self.config = bridge.config
         self.bridge = bridge
-        self.commands = command_processor or br.CommandProcessor(bridge=bridge)
+        self.commands = command_processor or cmd.CommandProcessor(bridge=bridge)
         self.media_config = MediaRepoConfig(upload_size=50 * 1024 * 1024)
         self.az.matrix_event_handler(self.int_handle_event)
 
