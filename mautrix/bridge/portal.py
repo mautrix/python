@@ -49,23 +49,23 @@ class BasePortal(ABC):
         pass
 
     @abstractmethod
-    async def set_relay_user(self, user: Optional['BaseUser']) -> None:
+    async def set_relay_user(self, user: Optional[br.BaseUser]) -> None:
         pass
 
     @abstractmethod
-    async def get_relay_user(self) -> Optional['BaseUser']:
+    async def get_relay_user(self) -> Optional[br.BaseUser]:
         pass
 
     @abstractmethod
-    async def apply_msg_format(self, sender: 'BaseUser', content: MessageEventContent) -> None:
+    async def apply_msg_format(self, sender: br.BaseUser, content: MessageEventContent) -> None:
         pass
 
     @abstractmethod
-    async def get_relay_sender(self, sender: 'BaseUser', evt_identifier: str
-                                ) -> Tuple[Optional['BaseUser'], bool]:
+    async def get_relay_sender(self, sender: br.BaseUser, evt_identifier: str
+                                ) -> Tuple[Optional[br.BaseUser], bool]:
         pass
 
-    async def get_displayname(self, user: 'BaseUser') -> str:
+    async def get_displayname(self, user: br.BaseUser) -> str:
         return await self.main_intent.get_room_displayname(self.mxid, user.mxid) or user.mxid
 
     async def check_dm_encryption(self) -> Optional[bool]:
