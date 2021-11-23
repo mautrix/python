@@ -8,12 +8,15 @@ from typing import Optional, AsyncIterable, Union
 from mautrix.api import Method, MediaPath
 from mautrix.errors import MatrixResponseError
 from mautrix.types import ContentURI, MediaRepoConfig, SerializerError, MXOpenGraph
+from mautrix import __optional_imports__
 
 from ..base import BaseClientAPI
 
 try:
     import magic
 except ImportError:
+    if __optional_imports__:
+        raise
     magic = None  # type: ignore
 
 

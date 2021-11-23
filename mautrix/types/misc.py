@@ -65,15 +65,14 @@ class RoomAliasInfo(SerializableAttrs):
     """
     Room alias query result, as specified in the `alias resolve endpoint`_
 
-    Attributes:
-        room_id: The room ID for this room alias.
-        servers: A list of servers that are aware of this room alias.
-
     .. _alias resolve endpoint:
         https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-directory-room-roomalias
     """
     room_id: RoomID = None
+    """The room ID for this room alias."""
+
     servers: List[str] = None
+    """A list of servers that are aware of this room alias."""
 
 
 DirectoryPaginationToken = NewType("DirectoryPaginationToken", str)

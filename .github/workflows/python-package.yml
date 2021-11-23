@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
 
     steps:
     - uses: actions/checkout@v2
@@ -23,4 +23,20 @@ jobs:
         python -m pip install .[test]
     - name: Test with pytest
       run: |
+        export MEOW_TEST_PG_URL=postgres://meow:meow@localhost/meow
         pytest
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: meow
+          POSTGRES_PASSWORD: meow
+          POSTGRES_DB: meow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5

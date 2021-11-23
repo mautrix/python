@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Awaitable, Optional, List, Dict
+from typing import Union, Awaitable, Optional, List, Dict, Tuple
 from abc import ABC, abstractmethod
 
 from mautrix.types import (StateEvent, EventType, RoomID, UserID, PowerLevelStateEventContent,
@@ -36,11 +36,24 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    async def get_members(self, room_id: RoomID) -> Optional[List[UserID]]:
+    async def get_member_profiles(
+        self, room_id: RoomID,
+        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> Optional[Dict[UserID, Member]]:
         pass
 
-    async def get_members_filtered(self, room_id: RoomID, not_prefix: str, not_suffix: str,
-                                   not_id: str) -> Optional[List[UserID]]:
+    async def get_members(
+        self, room_id: RoomID,
+        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> Optional[List[UserID]]:
+        profiles = await self.get_member_profiles(room_id, memberships)
+        return list(profiles.keys()) if profiles else None
+
+    async def get_members_filtered(
+        self, room_id: RoomID,
+        not_prefix: str, not_suffix: str, not_id: str,
+        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> Optional[List[UserID]]:
         """
         A filtered version of get_members that only returns user IDs that aren't operated by a
         bridge. This should return the same as :meth:`get_members`, except users where the user ID
@@ -54,13 +67,14 @@ class StateStore(ABC):
             not_prefix: The user ID prefix to disallow.
             not_suffix: The user ID suffix to disallow.
             not_id: The user ID to disallow.
+            memberships: The membership states to include.
         """
-        members = await self.get_members(room_id)
+        members = await self.get_members(room_id, memberships=memberships)
         if members is None:
             return None
         return [user_id for user_id in members
-                if user_id != not_id and (not user_id.startswith(not_prefix)
-                                          and not user_id.endswith(not_suffix))]
+                if user_id != not_id and not (user_id.startswith(not_prefix)
+                                              and user_id.endswith(not_suffix))]
 
     @abstractmethod
     async def set_members(self, room_id: RoomID,

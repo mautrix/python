@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Awaitable, Union, Any, TYPE_CHECKING
+from __future__ import annotations
+from typing import Optional, Dict, Awaitable, Union, Any
 from datetime import datetime, timezone
 import asyncio
 
@@ -14,10 +15,7 @@ from mautrix.types import UserID
 from mautrix.api import HTTPAPI, Method, PathBuilder
 from mautrix.util.logging import TraceLogger
 
-from .intent import IntentAPI
-
-if TYPE_CHECKING:
-    from ..state_store import ASStateStore
+from .. import api as as_api, state_store as ss
 
 
 class AppServiceAPI(HTTPAPI):
@@ -30,19 +28,19 @@ class AppServiceAPI(HTTPAPI):
     identity: Optional[UserID]
     bot_mxid: UserID
 
-    state_store: 'ASStateStore'
+    state_store: ss.ASStateStore
     txn_id: int
-    children: Dict[str, 'ChildAppServiceAPI']
-    real_users: Dict[str, 'AppServiceAPI']
+    children: Dict[str, ChildAppServiceAPI]
+    real_users: Dict[str, AppServiceAPI]
 
     is_real_user: bool
     real_user_content_key: Optional[str]
 
-    _bot_intent: Optional[IntentAPI]
+    _bot_intent: Optional[as_api.IntentAPI]
 
     def __init__(self, base_url: Union[URL, str], bot_mxid: UserID = None, token: str = None,
                  identity: Optional[UserID] = None, log: TraceLogger = None,
-                 state_store: 'ASStateStore' = None, client_session: ClientSession = None,
+                 state_store: ss.ASStateStore = None, client_session: ClientSession = None,
                  child: bool = False, real_user: bool = False,
                  real_user_content_key: Optional[str] = None, default_retry_count: int = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
@@ -78,7 +76,7 @@ class AppServiceAPI(HTTPAPI):
                 self.children = {}
                 self.real_users = {}
 
-    def user(self, user: UserID) -> 'ChildAppServiceAPI':
+    def user(self, user: UserID) -> ChildAppServiceAPI:
         """
         Get the AppServiceAPI for an appservice-managed user.
 
@@ -98,8 +96,7 @@ class AppServiceAPI(HTTPAPI):
             self.children[user] = child
             return child
 
-    def real_user(self, mxid: UserID, token: str, base_url: Optional[URL] = None
-                  ) -> 'AppServiceAPI':
+    def real_user(self, mxid: UserID, token: str, base_url: Optional[URL] = None) -> AppServiceAPI:
         """
         Get the AppServiceAPI for a real (non-appservice-managed) Matrix user.
 
@@ -126,12 +123,12 @@ class AppServiceAPI(HTTPAPI):
             child = type(self)(base_url=base_url or self.base_url, token=token, identity=mxid,
                                log=self.base_log, state_store=self.state_store,
                                client_session=self.session, real_user=True,
-                               real_user_content_key=self.real_user_content_key, loop=self.loop,
+                               real_user_content_key=self.real_user_content_key,
                                default_retry_count=self.default_retry_count)
             self.real_users[mxid] = child
         return child
 
-    def bot_intent(self) -> 'IntentAPI':
+    def bot_intent(self) -> as_api.IntentAPI:
         """
         Get the intent API for the appservice bot.
 
@@ -139,11 +136,11 @@ class AppServiceAPI(HTTPAPI):
             The IntentAPI object for the appservice bot
         """
         if not self._bot_intent:
-            self._bot_intent = IntentAPI(self.bot_mxid, self, state_store=self.state_store)
+            self._bot_intent = as_api.IntentAPI(self.bot_mxid, self, state_store=self.state_store)
         return self._bot_intent
 
     def intent(self, user: UserID = None, token: Optional[str] = None,
-               base_url: Optional[str] = None) -> 'IntentAPI':
+               base_url: Optional[str] = None) -> as_api.IntentAPI:
         """
         Get the intent API of a child user.
 
@@ -162,9 +159,9 @@ class AppServiceAPI(HTTPAPI):
         if self.is_real_user:
             raise ValueError("Can't get child intent of real user")
         if token:
-            return IntentAPI(user, self.real_user(user, token, base_url), self.bot_intent(),
-                             self.state_store)
-        return IntentAPI(user, self.user(user), self.bot_intent(), self.state_store)
+            return as_api.IntentAPI(user, self.real_user(user, token, base_url), self.bot_intent(),
+                                    self.state_store)
+        return as_api.IntentAPI(user, self.user(user), self.bot_intent(), self.state_store)
 
     def request(self, method: Method, path: PathBuilder,
                 content: Optional[Union[Dict, bytes, str]] = None, timestamp: Optional[int] = None,
@@ -213,7 +210,7 @@ class ChildAppServiceAPI(AppServiceAPI):
             parent: The parent AppServiceAPI instance.
         """
         super().__init__(parent.base_url, parent.bot_mxid, parent.token, user, parent.base_log,
-                         parent.state_store, parent.session, child=True, loop=parent.loop,
+                         parent.state_store, parent.session, child=True,
                          real_user_content_key=parent.real_user_content_key,
                          default_retry_count=parent.default_retry_count)
         self.parent = parent

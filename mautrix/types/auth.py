@@ -69,12 +69,11 @@ class MatrixUserIdentifier(SerializableAttrs):
     """
     A client can identify a user using their Matrix ID. This can either be the fully qualified
     Matrix user ID, or just the localpart of the user ID.
-
-    Attributes:
-        user: The Matrix user ID or localpart
     """
 
     user: str
+    """The Matrix user ID or localpart"""
+
     type: UserIdentifierType = UserIdentifierType.MATRIX_USER
 
 
@@ -166,7 +165,7 @@ class LoginResponse(SerializableAttrs):
     """
     The response for a login request, as specified in the `POST /login endpoint`_
 
-    .. POST /login endpoint:
+    .. _POST /login endpoint:
         https://matrix.org/docs/spec/client_server/r0.6.1#post-matrix-client-r0-login
     """
     user_id: UserID
@@ -180,7 +179,7 @@ class WhoamiResponse(SerializableAttrs):
     """
     The response for a whoami request, as specified in the `GET /account/whoami endpoint`_
 
-    .. GET /account/whoami endpoint:
+    .. _GET /account/whoami endpoint:
         https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3accountwhoami
     """
     user_id: UserID

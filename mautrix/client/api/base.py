@@ -32,20 +32,23 @@ class BaseClientAPI:
     _mxid: UserID
     device_id: DeviceID
     api: HTTPAPI
-    loop: asyncio.AbstractEventLoop
     log: TraceLogger
 
-    def __init__(self, mxid: UserID = "", device_id: DeviceID = "", api: HTTPAPI = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None, *args, **kwargs) -> None:
+    def __init__(self, mxid: UserID = "", device_id: DeviceID = "", api: HTTPAPI = None, **kwargs
+                 ) -> None:
         """
-        Initialize a ClientAPI. You must either provide the
+        Initialize a ClientAPI. You must either provide the ``api`` parameter with an existing
+        :class:`mautrix.api.HTTPAPI` instance, or provide the ``base_url`` and other arguments for
+        creating it as kwargs.
 
         Args:
             mxid: The Matrix ID of the user. This is used for things like setting profile metadata.
-                Additionally, the homeserver domain is extracted from this string and used for
-                setting aliases and such. This can be changed later using `set_mxid`.
-            api: The :class:`HTTPAPI` instance to use. You can also pass the ``args`` and ``kwargs``
-                to create a HTTPAPI instance rather than creating the instance yourself.``
+                  Additionally, the homeserver domain is extracted from this string and used for
+                  setting aliases and such. This can be changed later using `set_mxid`.
+            device_id: The device ID corresponding to the access token used.
+            api: The :class:`mautrix.api.HTTPAPI` instance to use. You can also pass the ``kwargs``
+                 to create a HTTPAPI instance rather than creating the instance yourself.
+            kwargs: If ``api`` is not specified, then the arguments to pass when creating a HTTPAPI.
         """
         if mxid:
             self.mxid = mxid
@@ -55,10 +58,7 @@ class BaseClientAPI:
             self.domain = None
         self.fill_member_event_callback = None
         self.device_id = device_id
-        if loop:
-            kwargs["loop"] = loop
-        self.api = api or HTTPAPI(*args, **kwargs)
-        self.loop = self.api.loop
+        self.api = api or HTTPAPI(**kwargs)
         self.log = self.api.log
 
     @classmethod

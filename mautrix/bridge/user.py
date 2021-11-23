@@ -3,12 +3,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+from typing import Dict, Any, Optional, List
+from collections import defaultdict
+from abc import ABC, abstractmethod
 import asyncio
 import logging
 import time
-from typing import Dict, Any, Optional, List, TYPE_CHECKING
-from collections import defaultdict
-from abc import ABC, abstractmethod
 
 from mautrix.api import Method, UnstableClientPath
 from mautrix.appservice import AppService
@@ -25,11 +26,7 @@ from mautrix.util.message_send_checkpoint import (
 )
 from mautrix.util.opt_prometheus import Gauge
 
-from .portal import BasePortal
-from .puppet import BasePuppet
-
-if TYPE_CHECKING:
-    from .bridge import Bridge
+from .. import bridge as br
 
 AsmuxPath = UnstableClientPath["com.beeper.asmux"]
 
@@ -38,7 +35,7 @@ class BaseUser(ABC):
     log: TraceLogger = logging.getLogger("mau.user")
     _async_get_locks: Dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
     az: AppService
-    bridge: 'Bridge'
+    bridge: br.Bridge
     loop: asyncio.AbstractEventLoop
 
     is_whitelisted: bool
@@ -61,10 +58,10 @@ class BaseUser(ABC):
     async def is_logged_in(self) -> bool:
         raise NotImplementedError()
 
-    async def get_puppet(self) -> Optional['BasePuppet']:
+    async def get_puppet(self) -> Optional[br.BasePuppet]:
         raise NotImplementedError()
 
-    async def is_in_portal(self, portal: BasePortal) -> bool:
+    async def is_in_portal(self, portal: br.BasePortal) -> bool:
         try:
             member_event = await portal.main_intent.get_state_event(
                 portal.mxid, EventType.ROOM_MEMBER, self.mxid)

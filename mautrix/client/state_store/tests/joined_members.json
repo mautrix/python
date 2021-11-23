@@ -1,0 +1,32 @@
+{
+	"!telegram-group:example.com": {
+		"@telegrambot:example.com": {
+			"avatar_url": "mxc://maunium.net/tJCRmUyJDsgRNgqhOgoiHWbX",
+			"display_name": "Telegram bridge bot"
+		},
+		"@telegram_84359547:example.com": {
+			"avatar_url": "mxc://example.com/321cba",
+			"display_name": "tulir (Telegram)"
+		},
+		"@telegram_5647382910:example.com": {
+			"avatar_url": "mxc://example.com/o3sSOTEE6F7aSZELL8PfP3N7",
+			"display_name": "Tulir #4 (Telegram)"
+		},
+		"@tulir:example.com": {
+			"avatar_url": "mxc://example.com/123abc",
+			"display_name": "tulir"
+		},
+		"@telegram_374880943:example.com": {
+			"avatar_url": "mxc://example.com/9yk1G8ZmSHbvP4JI2IFbfSAn",
+			"display_name": "Mautrix (Telegram)"
+		},
+		"@telegram_987654321:example.com": {
+			"avatar_url": "mxc://example.com/TTi6q0SABMNNNlC38014KMBV",
+			"display_name": "Mautrix / Testing (Telegram)"
+		},
+		"@telegram_123456789:example.com": {
+			"avatar_url": null,
+			"display_name": "Tulir #3 (Telegram)"
+		}
+	}
+}

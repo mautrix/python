@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Tuple, Optional, Union, TYPE_CHECKING
+from __future__ import annotations
+from typing import Tuple, Optional, Union
 import logging
 import asyncio
 import time
@@ -15,6 +16,7 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
                            MediaRepoConfig, BaseRoomEvent, ReactionEvent, RedactionEvent)
 from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound
 from mautrix.appservice import AppService
+from mautrix import __optional_imports__
 from mautrix.util import markdown
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Histogram
@@ -26,23 +28,21 @@ from mautrix.util.message_send_checkpoint import (
     MessageSendCheckpointStep,
 )
 
-from .commands import CommandProcessor
-
-if TYPE_CHECKING:
-    from .config import BaseBridgeConfig
-    from .user import BaseUser
-    from .portal import BasePortal
-    from .puppet import BasePuppet
-    from .bridge import Bridge
+from .. import bridge as br
+from . import commands as cmd
 
 try:
     from .e2ee import EncryptionManager
 except ImportError:
+    if __optional_imports__:
+        raise
     EncryptionManager = None
 
 try:
     from mautrix.crypto.attachments import encrypt_attachment
 except ImportError:
+    if __optional_imports__:
+        raise
     encrypt_attachment = None
 
 EVENT_TIME = Histogram("bridge_matrix_event", "Time spent processing Matrix events",
@@ -52,21 +52,21 @@ EVENT_TIME = Histogram("bridge_matrix_event", "Time spent processing Matrix even
 class BaseMatrixHandler:
     log: TraceLogger = logging.getLogger("mau.mx")
     az: AppService
-    commands: CommandProcessor
-    config: 'BaseBridgeConfig'
-    bridge: 'Bridge'
+    commands: cmd.CommandProcessor
+    config: config.BaseBridgeConfig
+    bridge: br.Bridge
     e2ee: Optional[EncryptionManager]
     media_config: MediaRepoConfig
 
     user_id_prefix: str
     user_id_suffix: str
 
-    def __init__(self, command_processor: Optional[CommandProcessor] = None,
-                 bridge: Optional['Bridge'] = None) -> None:
+    def __init__(self, command_processor: Optional[cmd.CommandProcessor] = None,
+                 bridge: Optional[br.Bridge] = None) -> None:
         self.az = bridge.az
         self.config = bridge.config
         self.bridge = bridge
-        self.commands = command_processor or CommandProcessor(bridge=bridge)
+        self.commands = command_processor or cmd.CommandProcessor(bridge=bridge)
         self.media_config = MediaRepoConfig(upload_size=50 * 1024 * 1024)
         self.az.matrix_event_handler(self.int_handle_event)
 
@@ -148,15 +148,15 @@ class BaseMatrixHandler:
             await self.e2ee.start()
 
     @staticmethod
-    async def allow_message(user: 'BaseUser') -> bool:
+    async def allow_message(user: br.BaseUser) -> bool:
         return user.is_whitelisted
 
     @staticmethod
-    async def allow_command(user: 'BaseUser') -> bool:
+    async def allow_command(user: br.BaseUser) -> bool:
         return user.is_whitelisted
 
     @staticmethod
-    async def allow_bridging_message(user: 'BaseUser', portal: 'BasePortal') -> bool:
+    async def allow_bridging_message(user: br.BaseUser, portal: br.BasePortal) -> bool:
         return await user.is_logged_in()
 
     async def handle_leave(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
@@ -183,11 +183,11 @@ class BaseMatrixHandler:
                                         event_id: EventID) -> None:
         pass
 
-    async def handle_puppet_invite(self, room_id: RoomID, puppet: 'BasePuppet',
-                                   invited_by: 'BaseUser', event_id: EventID) -> None:
+    async def handle_puppet_invite(self, room_id: RoomID, puppet: br.BasePuppet,
+                                   invited_by: br.BaseUser, event_id: EventID) -> None:
         pass
 
-    async def handle_invite(self, room_id: RoomID, user_id: UserID, inviter: 'BaseUser',
+    async def handle_invite(self, room_id: RoomID, user_id: UserID, inviter: br.BaseUser,
                             event_id: EventID) -> None:
         pass
 
@@ -203,7 +203,7 @@ class BaseMatrixHandler:
         """
         Called by :meth:`int_handle_event` for message events other than m.room.message.
 
-        **N.B.** You may need to add the event class to :prop:`allowed_event_classes`
+        **N.B.** You may need to add the event class to :attr:`allowed_event_classes`
         or override :meth:`allow_matrix_event` for it to reach here.
         """
 
@@ -211,7 +211,7 @@ class BaseMatrixHandler:
         """
         Called by :meth:`int_handle_event` for state events other than m.room.membership.
 
-        **N.B.** You may need to add the event class to :prop:`allowed_event_classes`
+        **N.B.** You may need to add the event class to :attr:`allowed_event_classes`
         or override :meth:`allow_matrix_event` for it to reach here.
         """
 
@@ -230,7 +230,7 @@ class BaseMatrixHandler:
                  "<p>If you are the owner of this bridge, see the "
                  "<code>bridge.permissions</code> section in your config file.</p>")
 
-    async def accept_bot_invite(self, room_id: RoomID, inviter: 'BaseUser') -> None:
+    async def accept_bot_invite(self, room_id: RoomID, inviter: br.BaseUser) -> None:
         tries = 0
         while tries < 5:
             try:
@@ -254,7 +254,7 @@ class BaseMatrixHandler:
 
         await self.send_welcome_message(room_id, inviter)
 
-    async def send_welcome_message(self, room_id: RoomID, inviter: 'BaseUser') -> None:
+    async def send_welcome_message(self, room_id: RoomID, inviter: br.BaseUser) -> None:
         has_two_members, bridge_bot_in_room = await self._is_direct_chat(room_id)
         is_management = has_two_members and bridge_bot_in_room
 
@@ -416,7 +416,7 @@ class BaseMatrixHandler:
 
                 await self.handle_read_receipt(user, portal, event_id, data)
 
-    async def handle_read_receipt(self, user: 'BaseUser', portal: 'BasePortal', event_id: EventID,
+    async def handle_read_receipt(self, user: br.BaseUser, portal: br.BasePortal, event_id: EventID,
                                   data: SingleReceiptEventContent) -> None:
         pass
 

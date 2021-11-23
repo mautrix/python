@@ -1,18 +1,20 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, TYPE_CHECKING
+from __future__ import annotations
+from typing import Optional
 
+from mautrix import __optional_imports__
 from mautrix.types import EventType, Event, StateEvent
 
 from .state_store import SyncStore, StateStore
 from .syncer import Syncer
 from .encryption_manager import EncryptingAPI, DecryptionDispatcher
 
-if TYPE_CHECKING:
-    from mautrix.crypto import OlmMachine
+if __optional_imports__:
+    from .. import crypto as crypt
 
 
 class Client(EncryptingAPI, Syncer):
@@ -30,7 +32,16 @@ class Client(EncryptingAPI, Syncer):
         await self.state_store.update_state(evt)
 
     @EncryptingAPI.crypto.setter
-    def crypto(self, crypto: 'OlmMachine') -> None:
+    def crypto(self, crypto: Optional[crypt.OlmMachine]) -> None:
+        """
+        Set the olm machine and enable the automatic event decryptor.
+
+        Args:
+            crypto: The olm machine to use for crypto
+
+        Raises:
+            ValueError: if :attr:`state_store` is not set.
+        """
         if not self.state_store:
             raise ValueError("State store must be set to use encryption")
         self._crypto = crypto

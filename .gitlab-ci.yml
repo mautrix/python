@@ -1,0 +1,44 @@
+build docs builder:
+  stage: build
+  image: docker:stable
+  tags:
+  - amd64
+  only:
+    refs:
+    - master
+    changes:
+    - docs/Dockerfile
+    - docs/requirements.txt
+  before_script:
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+  - cd docs
+  - docker build --tag $CI_REGISTRY_IMAGE/doc-builder:latest .
+  - docker push $CI_REGISTRY_IMAGE/doc-builder:latest
+  - docker rmi $CI_REGISTRY_IMAGE/doc-builder:latest
+
+build docs:
+  stage: deploy
+  image: dock.mau.dev/mautrix/python/doc-builder
+  tags:
+  - webdeploy
+  only:
+  - master
+  script:
+  - cd docs
+  - make html
+  - mkdir -p /srv/web/docs.mau.fi/python/latest/
+  - rsync -rcthvl --delete _build/html/ /srv/web/docs.mau.fi/python/latest/
+
+build tag docs:
+  stage: deploy
+  image: dock.mau.dev/mautrix/python/doc-builder
+  tags:
+  - webdeploy
+  only:
+  - tags
+  script:
+  - cd docs
+  - make html
+  - mkdir -p /srv/web/docs.mau.fi/python/$CI_COMMIT_TAG/
+  - rsync -rcthvl --delete _build/html/ /srv/web/docs.mau.fi/python/$CI_COMMIT_TAG/

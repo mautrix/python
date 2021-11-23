@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, List, Awaitable, Iterator, TYPE_CHECKING
+from __future__ import annotations
+from typing import Optional, Dict, List, Awaitable, Iterator
 from abc import ABC, abstractmethod
 from itertools import chain
 import asyncio
@@ -23,8 +24,7 @@ from mautrix.errors import (IntentError, MatrixError, MatrixRequestError, Matrix
                             WellKnownError)
 from mautrix.api import Path
 
-if TYPE_CHECKING:
-    from .matrix import BaseMatrixHandler
+from .. import bridge as br
 
 
 class CustomPuppetError(MatrixError):
@@ -93,9 +93,9 @@ class CustomPuppetMixin(ABC):
     az: AppService
     loop: asyncio.AbstractEventLoop
     log: logging.Logger
-    mx: 'BaseMatrixHandler'
+    mx: br.BaseMatrixHandler
 
-    by_custom_mxid: Dict[UserID, 'CustomPuppetMixin'] = {}
+    by_custom_mxid: Dict[UserID, CustomPuppetMixin] = {}
 
     default_mxid: UserID
     default_mxid_intent: IntentAPI
