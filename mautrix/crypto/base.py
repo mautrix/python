@@ -4,10 +4,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Any, Callable, Awaitable, Dict, TypedDict
+from typing import Any, Callable, Awaitable, Dict
 import functools
 import asyncio
 import json
+import sys
 
 import olm
 
@@ -16,6 +17,11 @@ from mautrix.types import (UserID, DeviceID, SigningKey, EncryptionKeyAlgorithm,
 from mautrix.util.logging import TraceLogger
 
 from .. import crypto, client as cli
+
+if sys.version_info >= (3, 8):
+    from typing import TypedDict
+else:
+    from typing_extensions import TypedDict
 
 
 class SignedObject(TypedDict):

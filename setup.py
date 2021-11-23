@@ -25,9 +25,10 @@ setuptools.setup(
     extras_require={
         "detect_mimetype": ["python-magic>=0.4.15,<0.5"],
         "test": ["pytest", "pytest-asyncio", *test_dependencies],
+        ':python_version < "3.8"': ["typing_extensions"],
     },
     tests_require=test_dependencies,
-    python_requires="~=3.8",
+    python_requires="~=3.7",
 
     classifiers=[
         "Development Status :: 4 - Beta",

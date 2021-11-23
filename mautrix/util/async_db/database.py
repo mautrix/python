@@ -16,6 +16,11 @@ from .upgrade import UpgradeTable, upgrade_tables
 if __optional_imports__:
     from asyncpg import Connection, Record
 
+if sys.version_info >= (3, 8):
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol
+
 
 class AcquireResult(Protocol):
     async def __aenter__(self) -> 'Connection': ...
