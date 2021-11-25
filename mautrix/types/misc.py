@@ -9,7 +9,7 @@ from enum import Enum
 from attr import dataclass
 import attr
 
-from .primitive import RoomID, RoomAlias, SyncToken, ContentURI, UserID
+from .primitive import RoomID, RoomAlias, SyncToken, ContentURI, UserID, BatchID, EventID
 from .util import SerializableAttrs
 from .event import Event
 
@@ -111,3 +111,15 @@ PaginatedMessages = NamedTuple("PaginatedMessages", start=SyncToken, end=SyncTok
 class VersionsResponse(SerializableAttrs):
     versions: List[str]
     unstable_features: Dict[str, bool] = attr.ib(factory=lambda: {})
+
+
+@dataclass
+class BatchSendResponse(SerializableAttrs):
+    state_event_ids: List[EventID]
+    event_ids: List[EventID]
+
+    insertion_event_id: EventID
+    batch_event_id: EventID
+    base_insertion_event_id: EventID
+
+    next_batch_id: BatchID

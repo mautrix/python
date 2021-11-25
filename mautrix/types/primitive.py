@@ -22,6 +22,11 @@ FilterID.__doc__ = """
 A filter ID returned by ``POST /filter`` (:meth:`mautrix.client.ClientAPI.create_filter`)
 """
 
+BatchID = NewType("BatchID", str)
+BatchID.__doc__ = """
+A message batch ID returned by ``POST /batch_send`` (:meth:`mautrix.appservice.IntentAPI.batch_send`)
+"""
+
 ContentURI = NewType("ContentURI", str)
 ContentURI.__doc__ = """
 A Matrix `content URI`_, used by the content repository.

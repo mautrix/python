@@ -4,15 +4,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional, Dict, Awaitable, List, Tuple, Union, Any
+from typing import Optional, Dict, Awaitable, List, Tuple, Union, Any, Iterable
 from urllib.parse import quote as urllib_quote
 
-from mautrix.api import Method, Path
-from mautrix.types import (EventType, StateEventContent, EventID, ContentURI,
-                           EventContent, UserID, RoomID, PresenceState,
-                           RoomAvatarStateEventContent, RoomNameStateEventContent,
+from mautrix.api import Method, Path, UnstableClientPath
+from mautrix.types import (EventType, StateEventContent, EventID, ContentURI, MessageEvent, Member,
+                           EventContent, UserID, RoomID, PresenceState, StateEvent, BatchID,
+                           RoomAvatarStateEventContent, RoomNameStateEventContent, Membership,
                            RoomTopicStateEventContent, PowerLevelStateEventContent,
-                           RoomPinnedEventsStateEventContent, Membership, Member)
+                           RoomPinnedEventsStateEventContent, BatchSendResponse)
 from mautrix.client import ClientAPI, StoreUpdatingAPI
 from mautrix.errors import MForbidden, MBadState, MatrixRequestError, IntentError, MNotFound
 from mautrix.util.logging import TraceLogger
@@ -314,6 +314,40 @@ class IntentAPI(StoreUpdatingAPI):
         if self.state_store.get_read(room_id, self.mxid) != event_id:
             await self.set_fully_read_marker(room_id, fully_read=event_id, read_receipt=event_id)
             self.state_store.set_read(room_id, self.mxid, event_id)
+
+    async def batch_send(self, room_id: RoomID, prev_event_id: EventID, *,
+                         batch_id: Optional[BatchID] = None, events: Iterable[MessageEvent],
+                         state_events_at_start: Iterable[StateEvent] = None,
+                         ) -> BatchSendResponse:
+        """
+        Send a batch of historical events into a room. See `MSC2716`_ for more info.
+
+        .. _MSC2716: https://github.com/matrix-org/matrix-doc/pull/2716
+
+        .. versionadded:: v0.12.5
+
+        Args:
+            room_id: The room ID to send the events to.
+            prev_event_id: The anchor event. The batch will be inserted immediately after this event.
+            batch_id: The batch ID for sending a continuation of an earlier batch. If provided,
+                      the new batch will be inserted between the prev event and the previous batch.
+            events: The events to send.
+            state_events_at_start: The state events to send at the start of the batch.
+                                   These will be sent as outlier events, which means they won't be
+                                   a part of the actual room state.
+
+        Returns:
+            All the event IDs generated, plus a batch ID that can be passed back to this method.
+        """
+        path = UnstableClientPath["org.matrix.msc2716"].rooms[room_id].batch_send
+        query = {"prev_event_id": prev_event_id}
+        if batch_id:
+            query["batch_id"] = batch_id
+        resp = await self.api.request(Method.POST, path, query_params=query, content={
+            "events": [evt.serialize() for evt in events],
+            "state_events_at_start": [evt.serialize() for evt in state_events_at_start],
+        })
+        return BatchSendResponse.deserialize(resp)
 
     # endregion
     # region Ensure functions
