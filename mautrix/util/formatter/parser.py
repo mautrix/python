@@ -159,6 +159,10 @@ class MatrixParser(Generic[T]):
         return None
 
     @classmethod
+    def color_to_fstring(cls, node: HTMLNode, ctx: RecursionContext, color: str) -> T:
+        return cls.tag_aware_parse_node(node, ctx)
+
+    @classmethod
     def node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         custom = cls.custom_node_to_fstring(node, ctx)
         if custom:
@@ -181,6 +185,16 @@ class MatrixParser(Generic[T]):
             return cls.link_to_fstring(node, ctx)
         elif node.tag == "p":
             return cls.tag_aware_parse_node(node, ctx).append("\n")
+        elif node.tag in ("font", "span"):
+            try:
+                color = node.attrib["color"]
+            except KeyError:
+                try:
+                    color = node.attrib["data-mx-color"]
+                except KeyError:
+                    color = None
+            if color:
+                return cls.color_to_fstring(node, ctx, color)
         elif node.tag == "pre":
             lang = ""
             try:
