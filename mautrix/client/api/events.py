@@ -77,6 +77,10 @@ class EventMethods(BaseClientAPI):
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-event-eventid
         """
         content = await self.api.request(Method.GET, Path.rooms[room_id].event[event_id])
+        if "event_id" not in content:
+            content["event_id"] = event_id
+        if "room_id" not in content:
+            content["room_id"] = room_id
         try:
             return Event.deserialize(content)
         except SerializerError as e:
