@@ -70,6 +70,7 @@ CHECKPOINT_TYPES = {
     EventType.ROOM_REDACTION,
     EventType.ROOM_MESSAGE,
     EventType.ROOM_ENCRYPTED,
+    EventType.ROOM_MEMBER,
     EventType.STICKER,
     EventType.REACTION,
     EventType.CALL_INVITE,
