@@ -21,3 +21,4 @@ mautrix.util
    signed_token
    simple_lock
    simple_template
+   variation_selector
