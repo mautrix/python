@@ -529,7 +529,7 @@ class BaseMatrixHandler:
         if evt.type not in CHECKPOINT_TYPES:
             return
 
-        self.log.debug(f"Sending message send checkpoint for {evt.event_id} to API server.")
+        self.log.debug(f"Sending message send checkpoint for {evt.event_id} (step: {step})")
         status = MessageSendCheckpointStatus.SUCCESS
         if err:
             status = (
