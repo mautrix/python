@@ -14,6 +14,7 @@ from mautrix.types import RoomID, UserID
 from mautrix.appservice import AppService, ASStateStore
 from mautrix.util.program import Program
 from mautrix.util.bridge_state import BridgeState, BridgeStateEvent, GlobalBridgeState
+from mautrix.errors import MUnknownToken, MExclusive
 from mautrix.api import HTTPAPI
 from mautrix import __version__ as __mautrix_version__, __optional_imports__
 
@@ -159,7 +160,17 @@ class Bridge(Program, ABC):
     async def start(self) -> None:
         self.log.debug("Starting appservice...")
         await self.az.start(self.config["appservice.hostname"], self.config["appservice.port"])
-        await self.matrix.wait_for_connection()
+        try:
+            await self.matrix.wait_for_connection()
+        except MUnknownToken:
+            self.log.critical("The as_token was not accepted. Is the registration file installed "
+                              "in your homeserver correctly?")
+            sys.exit(16)
+        except MExclusive:
+            self.log.critical("The as_token was accepted, but the /register request was not. "
+                              "Are the homeserver domain and username template in the config "
+                              "correct, and do they match the values in the registration?")
+            sys.exit(16)
 
         await self.matrix.init_encryption()
         self.add_startup_actions(self.matrix.init_as_bot())

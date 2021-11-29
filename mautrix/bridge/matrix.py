@@ -14,7 +14,8 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
                            PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent,
                            EncryptedEvent, ReceiptType, SingleReceiptEventContent, StateUnsigned,
                            MediaRepoConfig, BaseRoomEvent, ReactionEvent, RedactionEvent)
-from mautrix.errors import IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound
+from mautrix.errors import (IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound,
+                            MUnknownToken, MExclusive)
 from mautrix.appservice import AppService
 from mautrix import __optional_imports__
 from mautrix.util import markdown
@@ -106,7 +107,10 @@ class BaseMatrixHandler:
             try:
                 await self.az.intent.whoami()
                 break
-            except MForbidden as e:
+            except (MUnknownToken, MExclusive):
+                # These are probably not going to resolve themselves by waiting
+                raise
+            except MForbidden:
                 if not tried_to_register:
                     self.log.debug("Whoami endpoint returned M_FORBIDDEN, "
                                    "trying to register bridge bot before retrying...")
