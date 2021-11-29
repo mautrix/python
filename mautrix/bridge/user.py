@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, NamedTuple
 from collections import defaultdict
 from abc import ABC, abstractmethod
 import asyncio
@@ -29,6 +29,7 @@ from mautrix.util.opt_prometheus import Gauge
 from .. import bridge as br
 
 AsmuxPath = UnstableClientPath["com.beeper.asmux"]
+WrappedTask = NamedTuple('WrappedTask', task=Optional[asyncio.Task])
 
 
 class BaseUser(ABC):
@@ -151,7 +152,7 @@ class BaseUser(ABC):
         event_type: EventType,
         message_type: Optional[MessageType] = None,
         error: Optional[Exception] = None,
-    ) -> Optional[asyncio.Task]:
+    ) -> WrappedTask:
         """
         Send a remote checkpoint for the given ``event_id``. This function spaws an
         :class:`asyncio.Task`` to send the checkpoint.
@@ -160,8 +161,8 @@ class BaseUser(ABC):
         checkpoint send.
         """
         if not self.bridge.config["homeserver.message_send_checkpoint_endpoint"]:
-            return None
-        return asyncio.create_task(
+            return WrappedTask(task=None)
+        task = asyncio.create_task(
             MessageSendCheckpoint(
                 event_id=event_id,
                 room_id=room_id,
@@ -178,3 +179,4 @@ class BaseUser(ABC):
                 self.az.as_token,
             )
         )
+        return WrappedTask(task=task)
