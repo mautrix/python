@@ -1,19 +1,17 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, NamedTuple, Optional, Union, TYPE_CHECKING
+from __future__ import annotations
+from typing import List, NamedTuple, Optional, Union
 
 from mautrix.appservice import IntentAPI
 from mautrix.errors import MatrixRequestError
 from mautrix.types import RoomID, UserID, EventID, EventType
 
 from .handler import command_handler, CommandEvent, SECTION_ADMIN
-from ..portal import BasePortal
-
-if TYPE_CHECKING:
-    from .. import Bridge
+from ... import bridge as br
 
 
 class ManagementRoom(NamedTuple):
@@ -25,11 +23,12 @@ class RoomSearchResults(NamedTuple):
     management_rooms: List[ManagementRoom]
     unidentified_rooms: List[RoomID]
     tombstoned_rooms: List[RoomID]
-    portals: List[BasePortal]
-    empty_portals: List[BasePortal]
+    portals: List[br.BasePortal]
+    empty_portals: List[br.BasePortal]
 
 
-async def _find_rooms(bridge: 'Bridge', intent: Optional[IntentAPI] = None) -> RoomSearchResults:
+async def _find_rooms(bridge: br.Bridge, intent: Optional[IntentAPI] = None
+                      ) -> RoomSearchResults:
     results = RoomSearchResults([], [], [], [], [])
     intent = intent or bridge.az.intent
     rooms = await intent.get_joined_rooms()
@@ -118,7 +117,7 @@ async def clean_rooms(evt: CommandEvent) -> EventID:
 
 async def set_rooms_to_clean(evt, results: RoomSearchResults) -> None:
     command = evt.args[0]
-    rooms_to_clean: List[Union[BasePortal, RoomID]] = []
+    rooms_to_clean: List[Union[br.BasePortal, RoomID]] = []
     if command == "clean-recommended":
         rooms_to_clean += results.empty_portals
         rooms_to_clean += results.unidentified_rooms
@@ -171,17 +170,17 @@ async def set_rooms_to_clean(evt, results: RoomSearchResults) -> None:
                     "`$cmdprefix+sp confirm-clean`.")
 
 
-async def execute_room_cleanup(evt, rooms_to_clean: List[Union[BasePortal, RoomID]]) -> None:
+async def execute_room_cleanup(evt, rooms_to_clean: List[Union[br.BasePortal, RoomID]]) -> None:
     if len(evt.args) > 0 and evt.args[0] == "confirm-clean":
         await evt.reply(f"Cleaning {len(rooms_to_clean)} rooms. "
                         "This might take a while.")
         cleaned = 0
         for room in rooms_to_clean:
-            if isinstance(room, BasePortal):
+            if isinstance(room, br.BasePortal):
                 await room.cleanup_and_delete()
                 cleaned += 1
             else:
-                await BasePortal.cleanup_room(evt.az.intent, room, "Room deleted")
+                await br.BasePortal.cleanup_room(evt.az.intent, room, "Room deleted")
                 cleaned += 1
         evt.sender.command_status = None
         await evt.reply(f"{cleaned} rooms cleaned up successfully.")

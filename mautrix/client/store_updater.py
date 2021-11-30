@@ -15,6 +15,11 @@ from .state_store import StateStore
 
 
 class StoreUpdatingAPI(ClientAPI):
+    """
+    StoreUpdatingAPI is a wrapper around the medium-level ClientAPI that optionally updates
+    a client state store with outgoing state events (after they're successfully sent).
+    """
+
     state_store: Optional[StateStore]
 
     def __init__(self, *args, state_store: Optional[StateStore] = None, **kwargs):
@@ -82,7 +87,7 @@ class StoreUpdatingAPI(ClientAPI):
         automatically when sending member events manually.
 
         This implementation in StoreUpdatingAPI will first try to call the default implementation
-        (which calls :prop:`fill_member_event_callback`). If that doesn't return anything, this
+        (which calls :attr:`fill_member_event_callback`). If that doesn't return anything, this
         will try to get the profile from the current member event, and then fall back to fetching
         the global profile from the server.
 

@@ -1,9 +1,10 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Awaitable, Callable, Dict, List, Any, Type, NamedTuple, Optional, TYPE_CHECKING
+from __future__ import annotations
+from typing import Awaitable, Callable, Dict, List, Any, Type, NamedTuple, Optional
 import time
 import asyncio
 import logging
@@ -14,15 +15,10 @@ from mautrix.util.logging import TraceLogger
 from mautrix.types import RoomID, EventID, MessageEventContent
 from mautrix.appservice import AppService, IntentAPI
 
-from ..user import BaseUser
-from ..portal import BasePortal
-from ..config import BaseBridgeConfig
+from ... import bridge as br
 
-if TYPE_CHECKING:
-    from ..bridge import Bridge
-
-command_handlers: Dict[str, 'CommandHandler'] = {}
-command_aliases: Dict[str, 'CommandHandler'] = {}
+command_handlers: Dict[str, CommandHandler] = {}
+command_aliases: Dict[str, CommandHandler] = {}
 
 HelpSection = NamedTuple('HelpSection', name=str, order=int, description=str)
 HelpCacheKey = NamedTuple('HelpCacheKey', is_management=bool, is_portal=bool,
@@ -57,26 +53,27 @@ class CommandEvent:
         has_bridge_bot: Whether or not the bridge bot is in the room.
     """
 
-    bridge: 'Bridge'
+    bridge: bridge.Bridge
     az: AppService
     log: TraceLogger
     loop: asyncio.AbstractEventLoop
-    config: BaseBridgeConfig
-    processor: 'CommandProcessor'
+    config: br.BaseBridgeConfig
+    processor: CommandProcessor
     command_prefix: str
     room_id: RoomID
     event_id: EventID
-    sender: 'BaseUser'
+    sender: u.BaseUser
     command: str
     args: List[str]
     content: MessageEventContent
-    portal: Optional[BasePortal]
+    portal: Optional[br.BasePortal]
     is_management: bool
     has_bridge_bot: bool
 
-    def __init__(self, processor: 'CommandProcessor', room_id: RoomID, event_id: EventID,
-                 sender: 'BaseUser', command: str, args: List[str], content: MessageEventContent,
-                 portal: Optional[BasePortal], is_management: bool, has_bridge_bot: bool) -> None:
+    def __init__(self, processor: CommandProcessor, room_id: RoomID, event_id: EventID,
+                 sender: br.BaseUser, command: str, args: List[str], content: MessageEventContent,
+                 portal: Optional[br.BasePortal], is_management: bool, has_bridge_bot: bool
+                 ) -> None:
         self.bridge = processor.bridge
         self.az = processor.az
         self.log = processor.log
@@ -333,13 +330,14 @@ class CommandProcessor:
 
     log: TraceLogger = logging.getLogger("mau.commands")
     az: AppService
-    config: BaseBridgeConfig
+    config: br.BaseBridgeConfig
     loop: asyncio.AbstractEventLoop
     event_class: Type[CommandEvent]
-    bridge: 'Bridge'
+    bridge: bridge.Bridge
     _ref_no: int
 
-    def __init__(self, bridge: 'Bridge', event_class: Type[CommandEvent] = CommandEvent) -> None:
+    def __init__(self, bridge: bridge.Bridge, event_class: Type[CommandEvent] = CommandEvent
+                 ) -> None:
         self.az = bridge.az
         self.config = bridge.config
         self.loop = bridge.loop or asyncio.get_event_loop()
@@ -362,9 +360,9 @@ class CommandProcessor:
                      ) -> Awaitable[Any]:
         return handler(evt)
 
-    async def handle(self, room_id: RoomID, event_id: EventID, sender: BaseUser,
+    async def handle(self, room_id: RoomID, event_id: EventID, sender: br.BaseUser,
                      command: str, args: List[str], content: MessageEventContent,
-                     portal: Optional[BasePortal], is_management: bool, has_bridge_bot: bool,
+                     portal: Optional[br.BasePortal], is_management: bool, has_bridge_bot: bool,
                      ) -> None:
         """Handles the raw commands issued by a user to the Matrix bot.
 

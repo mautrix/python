@@ -3,17 +3,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Any, List, TYPE_CHECKING
+from typing import Optional, Dict, Any
 import asyncio
 import logging
 
 import asyncpg
 
 from .upgrade import UpgradeTable
-from .database import Database
-
-if TYPE_CHECKING:
-    from .database import AcquireResult
+from .database import Database, AcquireResult
 
 
 class PostgresDatabase(Database):

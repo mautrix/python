@@ -8,11 +8,10 @@ from abc import ABC
 import time
 
 from mautrix.client.state_store import StateStore as ClientStateStore
+from mautrix.types import EventID, RoomID, UserID
 
-from ...types import EventID, RoomID, UserID
 
-
-class ASStateStore(ClientStateStore):
+class ASStateStore(ClientStateStore, ABC):
     _presence: Dict[UserID, str]
     _typing: Dict[Tuple[RoomID, UserID], int]
     _read: Dict[Tuple[RoomID, UserID], EventID]
@@ -26,11 +25,29 @@ class ASStateStore(ClientStateStore):
         self._read = {}
 
     async def is_registered(self, user_id: UserID) -> bool:
+        """
+        Check if a given user is registered.
+
+        This should always return ``True`` for double puppets, because they're always registered
+        beforehand and shouldn't be attempted to register by the bridge.
+
+        Args:
+            user_id: The user ID to check.
+
+        Returns:
+            ``True`` if the user is registered, ``False`` otherwise.
+        """
         if not user_id:
             raise ValueError("user_id is empty")
         return self._registered.get(user_id, False)
 
     async def registered(self, user_id: UserID) -> None:
+        """
+        Mark the given user ID as registered.
+
+        Args:
+            user_id: The user ID to mark as registered.
+        """
         if not user_id:
             raise ValueError("user_id is empty")
         self._registered[user_id] = True

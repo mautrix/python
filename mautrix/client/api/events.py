@@ -54,7 +54,7 @@ class EventMethods(BaseClientAPI):
             request["full_state"] = "true" if full_state else "false"
         if set_presence:
             request["set_presence"] = str(set_presence)
-        return self.api.request(Method.GET, Path.sync, query_params=request, retry_count=0)
+        return self.api.request(Method.GET, Path.sync, query_params=request, retry_count=0, metrics_method="sync")
 
     # endregion
     # region 8.3 Getting events for a room
@@ -76,7 +76,7 @@ class EventMethods(BaseClientAPI):
         .. _/event/{eventId} API reference:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-event-eventid
         """
-        content = await self.api.request(Method.GET, Path.rooms[room_id].event[event_id])
+        content = await self.api.request(Method.GET, Path.rooms[room_id].event[event_id], metrics_method="getEvent")
         try:
             return Event.deserialize(content)
         except SerializerError as e:
@@ -102,7 +102,8 @@ class EventMethods(BaseClientAPI):
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-state-eventtype-statekey
         """
         content = await self.api.request(Method.GET,
-                                         Path.rooms[room_id].state[event_type][state_key])
+                                         Path.rooms[room_id].state[event_type][state_key],
+                                         metrics_method="getStateEvent")
         try:
             return state_event_content_map[event_type].deserialize(content)
         except KeyError:
@@ -123,7 +124,7 @@ class EventMethods(BaseClientAPI):
         .. _/state API reference:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-state
         """
-        content = await self.api.request(Method.GET, Path.rooms[room_id].state)
+        content = await self.api.request(Method.GET, Path.rooms[room_id].state, metrics_method="getState")
         try:
             return [StateEvent.deserialize(event) for event in content]
         except SerializerError as e:
@@ -161,7 +162,7 @@ class EventMethods(BaseClientAPI):
         if not_membership:
             query["not_membership"] = not_membership.value
         content = await self.api.request(Method.GET, Path.rooms[room_id].members,
-                                         query_params=query)
+                                         query_params=query, metrics_method="getMembers")
         try:
             return [StateEvent.deserialize(event) for event in content["chunk"]]
         except KeyError:
@@ -188,7 +189,7 @@ class EventMethods(BaseClientAPI):
         .. _/members:
             https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-rooms-roomid-members
         """
-        content = await self.api.request(Method.GET, Path.rooms[room_id].joined_members)
+        content = await self.api.request(Method.GET, Path.rooms[room_id].joined_members, metrics_method="getJoinedMembers")
         try:
             return {user_id: Member(membership=Membership.JOIN,
                                     displayname=member.get("display_name", ""),
@@ -234,7 +235,7 @@ class EventMethods(BaseClientAPI):
             "filter_json": filter_json,
         }
         content = await self.api.request(Method.GET, Path.rooms[room_id].messages,
-                                         query_params=query_params)
+                                         query_params=query_params, metrics_method="getMessages")
         try:
             return PaginatedMessages(content["start"], content["end"],
                                      [Event.deserialize(event) for event in content["chunk"]])
@@ -276,7 +277,7 @@ class EventMethods(BaseClientAPI):
         """
         content = content.serialize() if isinstance(content, Serializable) else content
         resp = await self.api.request(Method.PUT, Path.rooms[room_id].state[event_type][state_key],
-                                      content, **kwargs)
+                                      content, **kwargs, metrics_method="sendStateEvent")
         try:
             return resp["event_id"]
         except KeyError:
@@ -311,7 +312,7 @@ class EventMethods(BaseClientAPI):
             raise ValueError("Event type not given")
         url = Path.rooms[room_id].send[event_type][txn_id or self.api.get_txn_id()]
         content = content.serialize() if isinstance(content, Serializable) else content
-        resp = await self.api.request(Method.PUT, url, content, **kwargs)
+        resp = await self.api.request(Method.PUT, url, content, **kwargs, metrics_method="sendMessageEvent")
         try:
             return resp["event_id"]
         except KeyError:
@@ -515,7 +516,7 @@ class EventMethods(BaseClientAPI):
             https://matrix.org/docs/spec/client_server/r0.5.0#put-matrix-client-r0-rooms-roomid-redact-eventid-txnid
         """
         url = Path.rooms[room_id].redact[event_id][self.api.get_txn_id()]
-        resp = await self.api.request(Method.PUT, url, content={"reason": reason}, **kwargs)
+        resp = await self.api.request(Method.PUT, url, content={"reason": reason}, **kwargs, metrics_method="redact")
         try:
             return resp["event_id"]
         except KeyError:

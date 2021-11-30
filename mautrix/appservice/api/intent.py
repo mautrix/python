@@ -3,29 +3,29 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Awaitable, List, Tuple, Union, Any, TYPE_CHECKING
+from __future__ import annotations
+from typing import Optional, Dict, Awaitable, List, Tuple, Union, Any, Iterable
 from urllib.parse import quote as urllib_quote
-import asyncio
 
-from mautrix.api import Method, Path
-from mautrix.types import (StateEvent, EventType, StateEventContent, EventID, ContentURI,
-                           EventContent, UserID, RoomID, PresenceState,
-                           RoomAvatarStateEventContent, RoomNameStateEventContent,
+from mautrix.api import Method, Path, UnstableClientPath
+from mautrix.types import (EventType, StateEventContent, EventID, ContentURI, MessageEvent, Member,
+                           EventContent, UserID, RoomID, PresenceState, StateEvent, BatchID,
+                           RoomAvatarStateEventContent, RoomNameStateEventContent, Membership,
                            RoomTopicStateEventContent, PowerLevelStateEventContent,
-                           RoomPinnedEventsStateEventContent, Membership, Member)
+                           RoomPinnedEventsStateEventContent, BatchSendResponse)
 from mautrix.client import ClientAPI, StoreUpdatingAPI
 from mautrix.errors import MForbidden, MBadState, MatrixRequestError, IntentError, MNotFound
 from mautrix.util.logging import TraceLogger
+from mautrix import __optional_imports__
 
-from ..state_store import ASStateStore
+from .. import api as as_api, state_store as ss
 
 try:
     import magic
 except ImportError:
+    if __optional_imports__:
+        raise
     magic = None
-
-if TYPE_CHECKING:
-    from .appservice import AppServiceAPI
 
 
 def quote(*args, **kwargs):
@@ -64,13 +64,13 @@ class IntentAPI(StoreUpdatingAPI):
     functions for accessing the client-server API. It is designed for appservices and will
     automatically handle many things like missing invites using the appservice bot.
     """
-    api: 'AppServiceAPI'
-    state_store: ASStateStore
-    bot: 'IntentAPI'
+    api: as_api.AppServiceAPI
+    state_store: ss.ASStateStore
+    bot: IntentAPI
     log: TraceLogger
 
-    def __init__(self, mxid: UserID, api: 'AppServiceAPI', bot: 'IntentAPI' = None,
-                 state_store: ASStateStore = None):
+    def __init__(self, mxid: UserID, api: as_api.AppServiceAPI, bot: IntentAPI = None,
+                 state_store: ss.ASStateStore = None) -> None:
         super().__init__(mxid=mxid, api=api, state_store=state_store)
         self.bot = bot
         self.log = api.base_log.getChild("intent")
@@ -96,7 +96,8 @@ class IntentAPI(StoreUpdatingAPI):
 
             setattr(self, method.__name__, wrapper)
 
-    def user(self, user_id: UserID, token: Optional[str] = None, base_url: Optional[str] = None) -> 'IntentAPI':
+    def user(self, user_id: UserID, token: Optional[str] = None, base_url: Optional[str] = None
+             ) -> IntentAPI:
         """
         Get the intent API for a specific user.
         This is just a proxy to :meth:`AppServiceAPI.intent`.
@@ -297,7 +298,8 @@ class IntentAPI(StoreUpdatingAPI):
         return [UserID(evt.state_key) for evt in member_events
                 if evt.content.membership in allowed_memberships]
 
-    async def leave_room(self, room_id: RoomID) -> None:
+    async def leave_room(self, room_id: RoomID,
+                         extra_content: Optional[Dict[str, Any]] = None) -> None:
         if not room_id:
             raise ValueError("Room ID not given")
         await self.ensure_registered()
@@ -308,21 +310,67 @@ class IntentAPI(StoreUpdatingAPI):
             if "not in room" not in e.message:
                 raise
 
-    async def get_state(self, room_id: RoomID) -> List[StateEvent]:
-        state = await super().get_state(room_id)
-        await asyncio.gather(*[self.state_store.update_state(evt) for evt in state])
-        return state
-
     async def mark_read(self, room_id: RoomID, event_id: EventID) -> None:
         if self.state_store.get_read(room_id, self.mxid) != event_id:
             await self.set_fully_read_marker(room_id, fully_read=event_id, read_receipt=event_id)
             self.state_store.set_read(room_id, self.mxid, event_id)
 
+    async def batch_send(self, room_id: RoomID, prev_event_id: EventID, *,
+                         batch_id: Optional[BatchID] = None, events: Iterable[MessageEvent],
+                         state_events_at_start: Iterable[StateEvent] = None,
+                         ) -> BatchSendResponse:
+        """
+        Send a batch of historical events into a room. See `MSC2716`_ for more info.
+
+        .. _MSC2716: https://github.com/matrix-org/matrix-doc/pull/2716
+
+        .. versionadded:: v0.12.5
+
+        Args:
+            room_id: The room ID to send the events to.
+            prev_event_id: The anchor event. The batch will be inserted immediately after this event.
+            batch_id: The batch ID for sending a continuation of an earlier batch. If provided,
+                      the new batch will be inserted between the prev event and the previous batch.
+            events: The events to send.
+            state_events_at_start: The state events to send at the start of the batch.
+                                   These will be sent as outlier events, which means they won't be
+                                   a part of the actual room state.
+
+        Returns:
+            All the event IDs generated, plus a batch ID that can be passed back to this method.
+        """
+        path = UnstableClientPath["org.matrix.msc2716"].rooms[room_id].batch_send
+        query = {"prev_event_id": prev_event_id}
+        if batch_id:
+            query["batch_id"] = batch_id
+        resp = await self.api.request(Method.POST, path, query_params=query, content={
+            "events": [evt.serialize() for evt in events],
+            "state_events_at_start": [evt.serialize() for evt in state_events_at_start],
+        })
+        return BatchSendResponse.deserialize(resp)
+
     # endregion
     # region Ensure functions
 
     async def ensure_joined(self, room_id: RoomID, ignore_cache: bool = False,
-                            bot: Optional['IntentAPI'] = _bridgebot) -> bool:
+                            bot: Optional[IntentAPI] = _bridgebot) -> bool:
+        """
+        Ensure the user controlled by this intent is joined to the given room.
+
+        If the user is not in the room and the room is invite-only or the user is banned, this will
+        first invite and/or unban the user using the bridge bot account.
+
+        Args:
+            room_id: The room to join.
+            ignore_cache: Should the Matrix state store be checked first?
+                If ``False`` and the store says the user is in the room, no requests will be made.
+            bot: An optional override account to use as the bridge bot. This is useful if you know
+                the bridge bot is not an admin in the room, but some other ghost user is.
+
+        Returns:
+            ``False`` if the cache said the user is already in the room,
+            ``True`` if the user was successfully added to the room just now.
+        """
         if not room_id:
             raise ValueError("Room ID not given")
         if not ignore_cache and await self.state_store.is_joined(room_id, self.mxid):
@@ -365,6 +413,13 @@ class IntentAPI(StoreUpdatingAPI):
         return self.api.request(Method.POST, Path.register, content, query_params=query_params)
 
     async def ensure_registered(self) -> None:
+        """
+        Ensure the user controlled by this intent has been registered on the homeserver.
+
+        This will always check the state store first, but the ``M_USER_IN_USE`` error will also be
+        silently ignored, so it's fine if the state store isn't accurate. However, if using double
+        puppeting, the state store should always return ``True`` for those users.
+        """
         if await self.state_store.is_registered(self.mxid):
             return
         try:

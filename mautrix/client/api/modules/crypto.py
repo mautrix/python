@@ -29,7 +29,7 @@ class CryptoMethods(BaseClientAPI):
         Args:
             event_type: The type of event to send.
             messages: The messages to send. A map from user ID, to a map from device ID to message
-                body. The device ID may also be *, meaning all known devices for the user.
+                body. The device ID may also be ``*``, meaning all known devices for the user.
         """
         if not event_type.is_to_device:
             raise ValueError("Event type must be a to-device event type")

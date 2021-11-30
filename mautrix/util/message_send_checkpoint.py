@@ -61,7 +61,8 @@ class MessageSendCheckpoint(SerializableAttrs):
                         f" for {self.event_id}: {text}"
                     )
                 else:
-                    log.info(f"Successfully sent message send checkpoints for {self.event_id}")
+                    log.info(f"Successfully sent message send checkpoints for {self.event_id} "
+                             f"(step: {self.step})")
         except Exception as e:
             log.warning(f"Failed to send message send checkpoints for {self.event_id}: {e}")
 
@@ -70,6 +71,7 @@ CHECKPOINT_TYPES = {
     EventType.ROOM_REDACTION,
     EventType.ROOM_MESSAGE,
     EventType.ROOM_ENCRYPTED,
+    EventType.ROOM_MEMBER,
     EventType.STICKER,
     EventType.REACTION,
     EventType.CALL_INVITE,

@@ -47,7 +47,7 @@ class KeyRequestingMachine(BaseOlmMachine):
                                              request_id=request_id,
                                              requesting_device_id=self.client.device_id)
 
-        fut = self.loop.create_future()
+        fut = asyncio.get_running_loop().create_future()
         self._key_request_waiters[session_id] = fut
         await self.client.send_to_device(EventType.ROOM_KEY_REQUEST,
                                          {user_id: {device_id: request

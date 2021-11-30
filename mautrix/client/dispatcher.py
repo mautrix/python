@@ -1,20 +1,21 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
 from typing import ClassVar
 from abc import ABC, abstractmethod
 
 from mautrix.types import EventType, StateEvent, Membership, Event
 
-from .syncer import InternalEventType, Syncer
+from . import syncer
 
 
 class Dispatcher(ABC):
-    client: Syncer
+    client: syncer.Syncer
 
-    def __init__(self, client: Syncer) -> None:
+    def __init__(self, client: syncer.Syncer) -> None:
         self.client = client
 
     @abstractmethod
@@ -46,25 +47,25 @@ class MembershipEventDispatcher(SimpleDispatcher):
 
         if evt.content.membership == Membership.JOIN:
             if evt.prev_content.membership != Membership.JOIN:
-                change_type = InternalEventType.JOIN
+                change_type = syncer.InternalEventType.JOIN
             else:
-                change_type = InternalEventType.PROFILE_CHANGE
+                change_type = syncer.InternalEventType.PROFILE_CHANGE
         elif evt.content.membership == Membership.INVITE:
-            change_type = InternalEventType.INVITE
+            change_type = syncer.InternalEventType.INVITE
         elif evt.content.membership == Membership.LEAVE:
             if evt.prev_content.membership == Membership.BAN:
-                change_type = InternalEventType.UNBAN
+                change_type = syncer.InternalEventType.UNBAN
             elif evt.prev_content.membership == Membership.INVITE:
                 if evt.state_key == evt.sender:
-                    change_type = InternalEventType.REJECT_INVITE
+                    change_type = syncer.InternalEventType.REJECT_INVITE
                 else:
-                    change_type = InternalEventType.DISINVITE
+                    change_type = syncer.InternalEventType.DISINVITE
             elif evt.state_key == evt.sender:
-                change_type = InternalEventType.LEAVE
+                change_type = syncer.InternalEventType.LEAVE
             else:
-                change_type = InternalEventType.KICK
+                change_type = syncer.InternalEventType.KICK
         elif evt.content.membership == Membership.BAN:
-            change_type = InternalEventType.BAN
+            change_type = syncer.InternalEventType.BAN
         else:
             return
 

@@ -9,13 +9,21 @@ from datetime import timedelta
 
 from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
 from mautrix.client.state_store import SyncStore
+from mautrix.client.state_store.asyncpg import PgStateStore
 from mautrix.util.async_db import Database
 from mautrix.util.logging import TraceLogger
 
 from ... import (OlmAccount, Session, InboundGroupSession, OutboundGroupSession, TrustState,
                  DeviceIdentity)
-from ..abstract import CryptoStore
+from ..abstract import CryptoStore, StateStore
 from .upgrade import upgrade_table
+
+
+class PgCryptoStateStore(PgStateStore, StateStore):
+    """
+    This class ensures that the PgStateStore in the client module implements the StateStore
+    methods needed by the crypto module.
+    """
 
 
 class PgCryptoStore(CryptoStore, SyncStore):

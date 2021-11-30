@@ -9,7 +9,7 @@ from enum import Enum
 from attr import dataclass
 import attr
 
-from .primitive import RoomID, RoomAlias, SyncToken, ContentURI, UserID
+from .primitive import RoomID, RoomAlias, SyncToken, ContentURI, UserID, BatchID, EventID
 from .util import SerializableAttrs
 from .event import Event
 
@@ -65,15 +65,14 @@ class RoomAliasInfo(SerializableAttrs):
     """
     Room alias query result, as specified in the `alias resolve endpoint`_
 
-    Attributes:
-        room_id: The room ID for this room alias.
-        servers: A list of servers that are aware of this room alias.
-
     .. _alias resolve endpoint:
         https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-directory-room-roomalias
     """
     room_id: RoomID = None
+    """The room ID for this room alias."""
+
     servers: List[str] = None
+    """A list of servers that are aware of this room alias."""
 
 
 DirectoryPaginationToken = NewType("DirectoryPaginationToken", str)
@@ -112,3 +111,15 @@ PaginatedMessages = NamedTuple("PaginatedMessages", start=SyncToken, end=SyncTok
 class VersionsResponse(SerializableAttrs):
     versions: List[str]
     unstable_features: Dict[str, bool] = attr.ib(factory=lambda: {})
+
+
+@dataclass
+class BatchSendResponse(SerializableAttrs):
+    state_event_ids: List[EventID]
+    event_ids: List[EventID]
+
+    insertion_event_id: EventID
+    batch_event_id: EventID
+    base_insertion_event_id: EventID
+
+    next_batch_id: BatchID
