@@ -60,7 +60,7 @@ class BasePortal(ABC):
 
     @abstractmethod
     async def get_relay_sender(self, sender: br.BaseUser, evt_identifier: str
-                                ) -> Tuple[Optional['br.BaseUser'], bool]:
+                               ) -> Tuple[Optional['br.BaseUser'], bool]:
         pass
 
     @abstractmethod
