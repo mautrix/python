@@ -20,12 +20,17 @@ from aiohttp.client_exceptions import ContentTypeError, ClientError
 
 from mautrix.errors import make_request_error, MatrixConnectionError, MatrixRequestError
 from mautrix.util.logging import TraceLogger
+from mautrix.util.opt_prometheus import Counter
 from mautrix import __version__ as mautrix_version, __optional_imports__
 
 if __optional_imports__:
     # Safe to import, but it's not actually needed, so don't force-import the whole types module.
     from mautrix.types import JSON
 
+API_CALLS = Counter("bridge_matrix_api_calls",
+                    "The number of Matrix client API calls made", ("method",))
+API_CALLS_FAILED = Counter("bridge_matrix_api_calls_failed",
+                           "The number of Matrix client API calls which failed", ("method",))
 
 class APIPath(Enum):
     """
@@ -251,7 +256,8 @@ class HTTPAPI:
                       content: dict | list | bytes | str | None = None,
                       headers: dict[str, str] | None = None,
                       query_params: Mapping[str, str] | None = None,
-                      retry_count: int | None = None) -> JSON:
+                      retry_count: int | None = None,
+                      metrics_method: str | None = "") -> JSON:
         """
         Make a raw Matrix API request.
 
@@ -295,8 +301,12 @@ class HTTPAPI:
         backoff = 4
         while True:
             self._log_request(method, path, content, orig_content, query_params, req_id)
+            API_CALLS.labels(method=metrics_method).inc()
             try:
                 return await self._send(method, full_url, content, query_params, headers or {})
+            except Exception:
+                API_CALLS_FAILED.labels(method=metrics_method).inc()
+                raise
             except MatrixRequestError as e:
                 if retry_count > 0 and e.http_status in (502, 503, 504):
                     self.log.warning(f"Request #{req_id} failed with HTTP {e.http_status}, "

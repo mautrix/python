@@ -1,5 +1,5 @@
 from .primitive import (UserID, EventID, RoomID, RoomAlias, FilterID, ContentURI, SyncToken,
-                        DeviceID, SessionID, SigningKey, IdentityKey, JSON)
+                        BatchID, DeviceID, SessionID, SigningKey, IdentityKey, JSON)
 from .filter import Filter, EventFilter, RoomFilter, StateFilter, RoomEventFilter
 from .event import (EventType, GenericEvent, BaseRoomEvent, BaseEvent, BaseUnsigned,
 
@@ -41,7 +41,7 @@ from .event import (EventType, GenericEvent, BaseRoomEvent, BaseEvent, BaseUnsig
                     Event, EventContent)
 from .misc import (RoomCreatePreset, RoomDirectoryVisibility, PaginationDirection, RoomAliasInfo,
                    RoomDirectoryResponse, DirectoryPaginationToken, PaginatedMessages,
-                   DeviceLists, DeviceOTKCount, VersionsResponse)
+                   DeviceLists, DeviceOTKCount, VersionsResponse, BatchSendResponse)
 from .users import User, Member, UserSearchResults
 from .auth import (LoginType, UserIdentifierType, MatrixUserIdentifier, ThirdPartyIdentifier,
                    PhoneIdentifier, UserIdentifier, LoginResponse, DiscoveryInformation,
