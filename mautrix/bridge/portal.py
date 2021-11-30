@@ -49,7 +49,6 @@ class BasePortal(ABC):
     async def has_relay(self) -> bool:
         pass
 
-
     @property
     @abstractmethod
     async def get_relay_user(self) -> Optional['br.BaseUser']:
