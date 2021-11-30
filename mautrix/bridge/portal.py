@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from collections import defaultdict
 from abc import ABC, abstractmethod
 import asyncio
@@ -33,6 +33,7 @@ class BasePortal(ABC):
     encrypted: bool
     is_direct: bool
     backfill_lock: SimpleLock
+    _relay_user: Optional['br.BaseUser']
 
     @abstractmethod
     async def save(self) -> None:
@@ -42,6 +43,32 @@ class BasePortal(ABC):
     async def handle_matrix_message(self, sender: br.BaseUser, message: MessageEventContent,
                                     event_id: EventID) -> None:
         pass
+
+    @property
+    @abstractmethod
+    async def has_relay(self) -> bool:
+        pass
+
+    @property
+    @abstractmethod
+    async def get_relay_user(self) -> Optional['br.BaseUser']:
+        pass
+
+    @abstractmethod
+    async def set_relay_user(self, user: Optional['br.BaseUser']) -> None:
+        pass
+
+    @abstractmethod
+    async def get_relay_sender(self, sender: br.BaseUser, evt_identifier: str
+                               ) -> Tuple[Optional['br.BaseUser'], bool]:
+        pass
+
+    @abstractmethod
+    async def apply_msg_format(self, sender: br.BaseUser, content: MessageEventContent) -> None:
+        pass
+
+    async def get_displayname(self, user: br.BaseUser) -> str:
+        return await self.main_intent.get_room_displayname(self.mxid, user.mxid) or user.mxid
 
     async def check_dm_encryption(self) -> Optional[bool]:
         try:
