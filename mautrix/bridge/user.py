@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, NamedTuple
+from typing import Dict, Any, Optional, List, NamedTuple, Union
 from collections import defaultdict
 from abc import ABC, abstractmethod
 import asyncio
@@ -151,7 +151,7 @@ class BaseUser(ABC):
         room_id: RoomID,
         event_type: EventType,
         message_type: Optional[MessageType] = None,
-        error: Optional[Exception] = None,
+        error: Optional[Union[str, Exception]] = None,
     ) -> WrappedTask:
         """
         Send a remote checkpoint for the given ``event_id``. This function spaws an
