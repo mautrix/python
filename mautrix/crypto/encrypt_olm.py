@@ -36,16 +36,21 @@ class OlmEncryptionMachine(BaseOlmMachine):
         return EncryptedOlmEventContent(ciphertext={recipient.identity_key: ciphertext},
                                         sender_key=self.account.identity_key)
 
-    async def _create_outbound_sessions(self, users: ClaimKeysList) -> None:
+    async def _create_outbound_sessions(self, users: ClaimKeysList,
+                                        _force_recreate_session: bool = False) -> None:
         async with self._claim_keys_lock:
-            return await self._create_outbound_sessions_locked(users)
+            return await self._create_outbound_sessions_locked(users, _force_recreate_session)
 
-    async def _create_outbound_sessions_locked(self, users: ClaimKeysList) -> None:
+    async def _create_outbound_sessions_locked(self, users: ClaimKeysList,
+                                               _force_recreate_session: bool = False) -> None:
         request: Dict[UserID, Dict[DeviceID, EncryptionKeyAlgorithm]] = {}
         for user_id, devices in users.items():
             request[user_id] = {}
             for device_id, identity in devices.items():
-                if not await self.crypto_store.has_session(identity.identity_key):
+                if (
+                    _force_recreate_session
+                    or not await self.crypto_store.has_session(identity.identity_key)
+                ):
                     request[user_id][device_id] = EncryptionKeyAlgorithm.SIGNED_CURVE25519
             if not request[user_id]:
                 del request[user_id]
@@ -63,10 +68,14 @@ class OlmEncryptionMachine(BaseOlmMachine):
                 else:
                     session = self.account.new_outbound_session(identity.identity_key, one_time_key)
                     await self.crypto_store.add_session(identity.identity_key, session)
+                    self.log.debug(f"Created new Olm session with {user_id}/{device_id} "
+                                   f"(OTK ID: {key_id})")
 
     async def send_encrypted_to_device(self, device: DeviceIdentity, event_type: EventType,
-                                       content: ToDeviceEventContent) -> None:
-        await self._create_outbound_sessions({device.user_id: {device.device_id: device}})
+                                       content: ToDeviceEventContent,
+                                       _force_recreate_session: bool = False) -> None:
+        await self._create_outbound_sessions({device.user_id: {device.device_id: device}},
+                                             _force_recreate_session=_force_recreate_session)
         session = await self.crypto_store.get_latest_session(device.identity_key)
         async with self._olm_lock:
             encrypted_content = await self._encrypt_olm_event(session, device, event_type, content)

@@ -46,6 +46,8 @@ class BaseOlmMachine:
     # Futures that wait for a session to be received (either normally or through a key request)
     _inbound_session_waiters: Dict[SessionID, asyncio.Future]
 
+    _prev_unwedge: Dict[IdentityKey, float]
+
     async def wait_for_session(self, room_id: RoomID, sender_key: IdentityKey,
                                session_id: SessionID, timeout: float = 3) -> bool:
         try:

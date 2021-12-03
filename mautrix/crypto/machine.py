@@ -16,14 +16,14 @@ from mautrix import client as cli
 from .store import CryptoStore, StateStore
 from .types import DecryptedOlmEvent
 from .account import OlmAccount
-from .decrypt_olm import OlmDecryptionMachine
+from .unwedge import OlmUnwedgingMachine
 from .encrypt_megolm import MegolmEncryptionMachine
 from .decrypt_megolm import MegolmDecryptionMachine
 from .key_share import KeySharingMachine
 from .key_request import KeyRequestingMachine
 
 
-class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryptionMachine,
+class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmUnwedgingMachine,
                  KeySharingMachine, KeyRequestingMachine):
     """
     OlmMachine is the main class for handling things related to Matrix end-to-end encryption with
@@ -59,6 +59,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         self._fetch_keys_lock = asyncio.Lock()
         self._key_request_waiters = {}
         self._inbound_session_waiters = {}
+        self._prev_unwedge = {}
 
         self.client.add_event_handler(cli.InternalEventType.DEVICE_OTK_COUNT,
                                       self.handle_otk_count, wait_sync=True)
@@ -112,7 +113,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         """
         if not await self.state_store.is_encrypted(evt.room_id):
             return
-        prev = evt.prev_content.membership or Membership.UNKNOWN
+        prev = evt.prev_content.membership
         cur = evt.content.membership
         ignored_changes = {
             Membership.INVITE: Membership.JOIN,

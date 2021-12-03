@@ -121,6 +121,13 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
     async def get_device(self, user_id: UserID, device_id: DeviceID) -> Optional[DeviceIdentity]:
         return self._devices.get(user_id, {}).get(device_id)
 
+    async def find_device_by_key(self, user_id: UserID, identity_key: IdentityKey
+                                 ) -> Optional[DeviceIdentity]:
+        for device in self._devices.get(user_id, {}).values():
+            if device.identity_key == identity_key:
+                return device
+        return None
+
     async def put_devices(self, user_id: UserID, devices: Dict[DeviceID, DeviceIdentity]) -> None:
         self._devices[user_id] = devices
 

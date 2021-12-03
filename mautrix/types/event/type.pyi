@@ -64,6 +64,7 @@ class EventType(Serializable):
     IGNORED_USER_LIST: 'EventType'
 
     TO_DEVICE_ENCRYPTED: 'EventType'
+    TO_DEVICE_DUMMY: 'EventType'
     ROOM_KEY: 'EventType'
     ROOM_KEY_WITHHELD: 'EventType'
     ORG_MATRIX_ROOM_KEY_WITHHELD: 'EventType'

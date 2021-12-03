@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import List, Dict, Optional
 
-from mautrix.types import UserID, SyncToken, DeviceID, DeviceKeys
+from mautrix.types import UserID, SyncToken, DeviceID, DeviceKeys, IdentityKey
 from mautrix.errors import DeviceValidationError
 
 from .base import BaseOlmMachine, verify_signature_json
@@ -75,6 +75,17 @@ class DeviceListMachine(BaseOlmMachine):
             return devices[user_id][device_id]
         except KeyError:
             return None
+
+    async def get_or_fetch_device_by_key(self, user_id: UserID, identity_key: IdentityKey
+                                         ) -> Optional[DeviceIdentity]:
+        device = await self.crypto_store.find_device_by_key(user_id, identity_key)
+        if device is not None:
+            return device
+        devices = await self._fetch_keys([user_id], include_untracked=True)
+        for device in devices.get(user_id, {}).values():
+            if device.identity_key == identity_key:
+                return device
+        return None
 
     async def on_devices_changed(self, user_id: UserID) -> None:
         shared_rooms = await self.state_store.find_shared_rooms(user_id)

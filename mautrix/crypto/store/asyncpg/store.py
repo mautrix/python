@@ -291,6 +291,17 @@ class PgCryptoStore(CryptoStore, SyncStore):
                               identity_key=row["identity_key"], signing_key=row["signing_key"],
                               trust=TrustState(row["trust"]), deleted=row["deleted"])
 
+    async def find_device_by_key(self, user_id: UserID, identity_key: IdentityKey
+                                 ) -> Optional[DeviceIdentity]:
+        row = await self.db.fetchrow("SELECT device_id, signing_key, trust, deleted, name "
+                                     "FROM crypto_device WHERE user_id=$1 AND identity_key=$2",
+                                     user_id, identity_key)
+        if row is None:
+            return None
+        return DeviceIdentity(user_id=user_id, device_id=row["device_id"], name=row["name"],
+                              identity_key=identity_key, signing_key=row["signing_key"],
+                              trust=TrustState(row["trust"]), deleted=row["deleted"])
+
     async def put_devices(self, user_id: UserID, devices: Dict[DeviceID, DeviceIdentity]) -> None:
         data = [
             (user_id, device_id, identity.identity_key, identity.signing_key,

@@ -303,6 +303,20 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
+    async def find_device_by_key(self, user_id: UserID, identity_key: IdentityKey
+                                 ) -> Optional[DeviceIdentity]:
+        """
+        Find a specific device identity based on the identity key.
+
+        Args:
+            user_id: The ID of the user whose device to get.
+            identity_key: The identity key of the device to get.
+
+        Returns:
+            The :class:`DeviceIdentity` object, or ``None`` if not found.
+        """
+
+    @abstractmethod
     async def put_devices(self, user_id: UserID, devices: Dict[DeviceID, DeviceIdentity]) -> None:
         """
         Replace the stored device list for a specific user.

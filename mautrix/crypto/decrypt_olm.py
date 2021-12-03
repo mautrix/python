@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
+import asyncio
 
 import olm
 
@@ -55,19 +56,19 @@ class OlmDecryptionMachine(BaseOlmMachine):
         except MatchingSessionDecryptionError:
             self.log.warning(f"Found matching session yet decryption failed for sender {sender}"
                              f" with key {sender_key}")
-            # TODO session unwedging
+            asyncio.create_task(self._unwedge_session(sender, sender_key))
             raise
 
         if not plaintext:
             if message.type != OlmMsgType.PREKEY:
-                # TODO session unwedging
+                asyncio.create_task(self._unwedge_session(sender, sender_key))
                 raise DecryptionError("Decryption failed for normal message")
 
             self.log.trace(f"Trying to create inbound session for {sender}/{sender_key}")
             try:
                 session = await self._create_inbound_session(sender_key, message.body)
             except olm.OlmSessionError as e:
-                # TODO session unwedging
+                asyncio.create_task(self._unwedge_session(sender, sender_key))
                 raise DecryptionError("Failed to create new session from prekey message") from e
             self.log.debug(f"Created inbound session {session.id} for {sender} "
                            f"(sender key: {sender_key})")
@@ -105,3 +106,6 @@ class OlmDecryptionMachine(BaseOlmMachine):
         await self.crypto_store.put_account(self.account)
         await self.crypto_store.add_session(sender_key, session)
         return session
+
+    async def _unwedge_session(self, sender: UserID, sender_key: IdentityKey) -> None:
+        pass
