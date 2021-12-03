@@ -491,19 +491,19 @@ class BaseMatrixHandler:
             try:
                 decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=0)
             except DecryptionError as e:
-                self.send_decrypted_checkpoint(evt, e, True)
+                self.send_decrypted_checkpoint(evt, e, True, retry_num=1)
                 self.log.warning(f"Failed to decrypt {evt.event_id}: {e}")
                 self.log.trace("%s decryption traceback:", evt.event_id, exc_info=True)
                 msg = f"\u26a0 Your message was not bridged: {e}"
             else:
-                self.send_decrypted_checkpoint(decrypted)
+                self.send_decrypted_checkpoint(decrypted, retry_num=1)
                 await self.az.intent.redact(evt.room_id, event_id)
                 await self.int_handle_event(decrypted, send_bridge_checkpoint=False)
                 return
         else:
             error_message = f"Didn't get {err.session_id}, giving up on {evt.event_id}"
             self.log.warning(error_message)
-            self.send_decrypted_checkpoint(evt, error_message, True)
+            self.send_decrypted_checkpoint(evt, error_message, True, retry_num=1)
             msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption"
                    " keys. If this error keeps happening, try restarting your client.")
         content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=msg)
@@ -526,6 +526,7 @@ class BaseMatrixHandler:
         step: MessageSendCheckpointStep,
         err: Optional[Union[Exception, str]] = None,
         permanent: bool = False,
+        retry_num: int = 0,
     ) -> None:
         endpoint = self.bridge.config["homeserver.message_send_checkpoint_endpoint"]
         if not endpoint:
@@ -551,6 +552,7 @@ class BaseMatrixHandler:
             event_type=evt.type,
             message_type=evt.content.msgtype if evt.type == EventType.ROOM_MESSAGE else None,
             info=str(err) if err else None,
+            retry_num=retry_num,
         )
         asyncio.create_task(checkpoint.send(self.log, endpoint, self.az.as_token))
 
@@ -558,8 +560,9 @@ class BaseMatrixHandler:
         self.send_message_send_checkpoint(evt, MessageSendCheckpointStep.BRIDGE)
 
     def send_decrypted_checkpoint(self, evt: Event, err: Optional[Union[Exception, str]] = None,
-                                  permanent: bool = False,) -> None:
-        self.send_message_send_checkpoint(evt, MessageSendCheckpointStep.DECRYPTED, err, permanent)
+                                  permanent: bool = False, retry_num: int = 0) -> None:
+        self.send_message_send_checkpoint(evt, MessageSendCheckpointStep.DECRYPTED, err, permanent,
+                                          retry_num)
 
     allowed_event_classes: Tuple[type, ...] = (
         MessageEvent, StateEvent, ReactionEvent, EncryptedEvent, RedactionEvent,
