@@ -24,17 +24,21 @@ class KeyRequestingMachine(BaseOlmMachine):
         Request keys for a Megolm group session from other devices.
 
         Once the keys are received, or if this task is cancelled (via the ``timeout`` parameter),
-        a cancel request event is sent to the remaining devices.
+        a cancel request event is sent to the remaining devices. If the ``timeout`` is set to zero
+        or less, this will return immediately, and the extra key requests will not be cancelled.
 
         Args:
             room_id: The room where the session is used.
             sender_key: The key of the user who created the session.
             session_id: The ID of the session.
             from_devices: A dict from user ID to list of device IDs whom to ask for the keys.
-            timeout: The maximum number of seconds to wait for the keys.
+            timeout: The maximum number of seconds to wait for the keys. If the timeout is
+                     ``None``, the wait time is not limited, but the task can still be cancelled.
+                     If it's zero or less, this returns immediately and will never cancel requests.
 
         Returns:
-            ``True`` if the keys were received and are now in the crypto store, ``False`` otherwise.
+            ``True`` if the keys were received and are now in the crypto store,
+            ``False`` otherwise (including if the method didn't wait at all).
         """
         request_id = str(uuid.uuid1())
         request = RoomKeyRequestEventContent(action=KeyRequestAction.REQUEST,
@@ -47,12 +51,19 @@ class KeyRequestingMachine(BaseOlmMachine):
                                              request_id=request_id,
                                              requesting_device_id=self.client.device_id)
 
-        fut = asyncio.get_running_loop().create_future()
-        self._key_request_waiters[session_id] = fut
+        wait = timeout is None or timeout > 0
+        fut: Optional[asyncio.Future] = None
+        if wait:
+            fut = asyncio.get_running_loop().create_future()
+            self._key_request_waiters[session_id] = fut
         await self.client.send_to_device(EventType.ROOM_KEY_REQUEST,
                                          {user_id: {device_id: request
                                                     for device_id in devices}
                                           for user_id, devices in from_devices.items()})
+        if not wait:
+            # Timeout is set and <=0, don't wait for keys
+            return False
+        assert fut is not None
         got_keys = False
         try:
             user_id, device_id = await asyncio.wait_for(fut, timeout=timeout)
@@ -99,5 +110,6 @@ class KeyRequestingMachine(BaseOlmMachine):
         try:
             task = self._key_request_waiters[key.session_id]
         except KeyError:
-            return
-        task.set_result((evt.sender, evt.sender_device))
+            pass
+        else:
+            task.set_result((evt.sender, evt.sender_device))

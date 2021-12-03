@@ -447,7 +447,7 @@ class BaseMatrixHandler:
             decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=5)
         except SessionNotFound as e:
             self.send_decrypted_checkpoint(evt, e, False)
-            await self._handle_encrypted_wait(evt, e, wait=10)
+            await self._handle_encrypted_wait(evt, e, wait=15)
         except DecryptionError as e:
             self.log.warning(f"Failed to decrypt {evt.event_id}: {e}")
             self.log.trace("%s decryption traceback:", evt.event_id, exc_info=True)
@@ -470,6 +470,10 @@ class BaseMatrixHandler:
         msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption "
                f"keys. The bridge will retry for {wait} seconds. If this error keeps happening, "
                "try restarting your client.")
+        asyncio.create_task(self.e2ee.crypto.request_room_key(
+            evt.room_id, evt.content.sender_key, evt.content.session_id,
+            from_devices={evt.sender: [evt.content.device_id]},
+        ))
         try:
             event_id = await self.az.intent.send_notice(evt.room_id, msg)
         except IntentError:

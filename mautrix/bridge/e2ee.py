@@ -161,16 +161,13 @@ class EncryptionManager:
             got_keys = await self.crypto.wait_for_session(evt.room_id, e.sender_key, e.session_id,
                                                           timeout=wait_session_timeout)
             if got_keys:
-                self.log.debug(f"Got session {e.session_id} after waiting, trying to decrypt {evt.event_id} again")
+                self.log.debug(f"Got session {e.session_id} after waiting, "
+                               f"trying to decrypt {evt.event_id} again")
                 decrypted = await self.crypto.decrypt_megolm_event(evt)
             else:
                 raise
         self.log.trace("Decrypted event %s: %s", evt.event_id, decrypted)
         return decrypted
-
-    async def check_server_support(self) -> bool:
-        flows = await self.client.get_login_flows()
-        return flows.supports_type(LoginType.APPSERVICE, LoginType.UNSTABLE_APPSERVICE)
 
     async def start(self) -> None:
         flows = await self.client.get_login_flows()
