@@ -2,7 +2,7 @@ from .handler import (HelpSection, HelpCacheKey, command_handler, CommandHandler
                       CommandHandlerFunc, CommandEvent, SECTION_GENERAL, SECTION_ADMIN,
                       SECTION_AUTH)
 from .meta import cancel, unknown_command, help_cmd
-from . import admin, crypto, clean_rooms, login_matrix, manhole
+from . import admin, crypto, clean_rooms, delete_portal, login_matrix, manhole
 
 __all__ = ["HelpSection", "HelpCacheKey", "command_handler", "CommandHandler", "CommandProcessor",
            "CommandHandlerFunc", "CommandEvent", "SECTION_GENERAL", "SECTION_ADMIN",
