@@ -12,7 +12,8 @@ from mautrix.types import (EventType, StateEventContent, EventID, ContentURI, Me
                            EventContent, UserID, RoomID, PresenceState, StateEvent, BatchID,
                            RoomAvatarStateEventContent, RoomNameStateEventContent, Membership,
                            RoomTopicStateEventContent, PowerLevelStateEventContent,
-                           RoomPinnedEventsStateEventContent, BatchSendResponse)
+                           RoomPinnedEventsStateEventContent, BatchSendResponse,
+                           JoinRule, JoinRulesStateEventContent)
 from mautrix.client import ClientAPI, StoreUpdatingAPI
 from mautrix.errors import MForbidden, MBadState, MatrixRequestError, IntentError, MNotFound
 from mautrix.util.logging import TraceLogger
@@ -237,12 +238,9 @@ class IntentAPI(StoreUpdatingAPI):
             events.remove(event_id)
             await self.set_pinned_messages(room_id, events)
 
-    async def set_join_rule(self, room_id: RoomID, join_rule: str, **kwargs):
-        if join_rule not in ("public", "knock", "invite", "private"):
-            raise ValueError(f"Invalid join rule \"{join_rule}\"")
-        await self.send_state_event(room_id, EventType.ROOM_JOIN_RULES, {
-            "join_rule": join_rule,
-        }, **kwargs)
+    async def set_join_rule(self, room_id: RoomID, join_rule: JoinRule, **kwargs):
+        await self.send_state_event(room_id, EventType.ROOM_JOIN_RULES,
+                                    JoinRulesStateEventContent(join_rule=join_rule), **kwargs)
 
     async def get_room_displayname(self, room_id: RoomID, user_id: UserID, ignore_cache=False
                                    ) -> str:

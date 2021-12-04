@@ -13,10 +13,11 @@ from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaM
                       EncryptedFile, JSONWebKey)
 from .reaction import ReactionEventContent, ReactionEvent
 from .state import (PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
-                    AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
+                    CanonicalAliasStateEventContent, StrippedStateEvent,
                     RoomNameStateEventContent, RoomTopicStateEventContent, StateEventContent,
                     RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
-                    RoomTombstoneStateEventContent, RoomEncryptionStateEventContent)
+                    RoomTombstoneStateEventContent, RoomEncryptionStateEventContent, JoinRule,
+                    JoinRulesStateEventContent)
 from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                            RoomTagAccountDataEventContent)
 from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, PresenceState,

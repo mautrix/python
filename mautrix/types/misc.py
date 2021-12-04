@@ -31,7 +31,7 @@ class RoomCreatePreset(Enum):
     Room creation preset, as specified in the `createRoom endpoint`_
 
     .. _createRoom endpoint:
-        https://matrix.org/docs/spec/client_server/r0.5.0#post-matrix-client-r0-createroom
+        https://spec.matrix.org/v1.1/client-server-api/#post_matrixclientv3createroom
     """
     PRIVATE = "private_chat"
     TRUSTED_PRIVATE = "trusted_private_chat"
@@ -43,19 +43,14 @@ class RoomDirectoryVisibility(Enum):
     Room directory visibility, as specified in the `createRoom endpoint`_
 
     .. _createRoom endpoint:
-        https://matrix.org/docs/spec/client_server/r0.5.0#post-matrix-client-r0-createroom
+        https://spec.matrix.org/v1.1/client-server-api/#post_matrixclientv3createroom
     """
     PRIVATE = "private"
     PUBLIC = "public"
 
 
 class PaginationDirection(Enum):
-    """
-    Pagination direction, as specified in the `pagination section`_.
-
-    .. _pagination section:
-        https://matrix.org/docs/spec/client_server/latest#pagination
-    """
+    """Pagination direction used in various endpoints that support pagination."""
     FORWARD = "f"
     BACKWARD = "b"
 
@@ -66,7 +61,7 @@ class RoomAliasInfo(SerializableAttrs):
     Room alias query result, as specified in the `alias resolve endpoint`_
 
     .. _alias resolve endpoint:
-        https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-client-r0-directory-room-roomalias
+        https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3directoryroomroomalias
     """
     room_id: RoomID = None
     """The room ID for this room alias."""

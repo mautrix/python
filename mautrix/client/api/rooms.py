@@ -3,6 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
 from typing import Optional, List, Sequence, Union, Dict, Any, Callable, Awaitable
 import asyncio
 
@@ -13,7 +14,7 @@ from mautrix.api import Method, Path
 from mautrix.types import (JSON, UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility,
                            RoomAliasInfo, RoomCreatePreset, DirectoryPaginationToken, Membership,
                            RoomDirectoryResponse, Serializable, StrippedStateEvent, EventType,
-                           MemberStateEventContent, EventID)
+                           MemberStateEventContent, EventID, PowerLevelStateEventContent)
 
 from .events import EventMethods
 from .base import BaseClientAPI
@@ -30,20 +31,27 @@ class RoomMethods(EventMethods, BaseClientAPI):
     See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#rooms>`__
     """
 
-    # region 9.1 Creation
-    # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#creation
+    # region 8.1 Creation
+    # API reference: https://spec.matrix.org/v1.1/client-server-api/#creation
 
-    async def create_room(self, alias_localpart: Optional[str] = None,
-                          visibility: RoomDirectoryVisibility = RoomDirectoryVisibility.PRIVATE,
-                          preset: RoomCreatePreset = RoomCreatePreset.PRIVATE,
-                          name: Optional[str] = None, topic: Optional[str] = None,
-                          is_direct: bool = False, invitees: Optional[List[UserID]] = None,
-                          initial_state: Optional[InitialState] = None,
-                          room_version: str = None, creation_content: JSON = None) -> RoomID:
+    async def create_room(
+        self,
+        alias_localpart: str | None = None,
+        visibility: RoomDirectoryVisibility = RoomDirectoryVisibility.PRIVATE,
+        preset: RoomCreatePreset = RoomCreatePreset.PRIVATE,
+        name: str | None = None,
+        topic: str | None = None,
+        is_direct: bool = False,
+        invitees: list[UserID] | None = None,
+        initial_state: InitialState | None = None,
+        room_version: str = None,
+        creation_content: JSON = None,
+        power_level_override: PowerLevelStateEventContent | dict[str, Any] | None = None
+    ) -> RoomID:
         """
         Create a new room with various configuration options.
 
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-client-r0-createroom>`__
+        See also: `API reference <https://spec.matrix.org/v1.1/client-server-api/#post_matrixclientv3createroom>`__
 
         Args:
             alias_localpart: The desired room alias **local part**. If this is included, a room
@@ -72,13 +80,16 @@ class RoomMethods(EventMethods, BaseClientAPI):
                 override the default state events set in the new room. The expected format of the
                 state events are an object with type, state_key and content keys set.
 
-                Takes precedence over events set by ``is_public``, but gets overriden by ``name`` and
-                ``topic keys``.
-            room_version: The room version to set for the room. IF not provided, the homeserver will
-                use its configured default.
-            creation_content: Extra keys, such as ``m.federate``, to be added to the `m.room.create`
-                event. The server will ignore ``creator`` and ``room_version``. Future versions of
-                the specification may allow the server to ignore other keys.
+                Takes precedence over events set by ``is_public``, but gets overriden by ``name``
+                and ``topic keys``.
+            room_version: The room version to set for the room. If not provided, the homeserver
+                will use its configured default.
+            creation_content: Extra keys, such as ``m.federate``, to be added to the
+                ``m.room.create`` event. The server will ignore ``creator`` and ``room_version``.
+                Future versions of the specification may allow the server to ignore other keys.
+            power_level_override: The power level content to override in the default power level
+                event. This object is applied on top of the generated ``m.room.power_levels`` event
+                content prior to it being sent to the room. Defaults to overriding nothing.
 
         Returns:
             The ID of the newly created room.
@@ -86,10 +97,10 @@ class RoomMethods(EventMethods, BaseClientAPI):
         Raises:
             MatrixResponseError: If the response does not contain a ``room_id`` field.
 
-        .. _Room Events: https://matrix.org/docs/spec/client_server/r0.4.0.html#room-events
-        .. _Direct Messaging: https://matrix.org/docs/spec/client_server/r0.4.0.html#direct-messaging
-        .. _m.room.create: https://matrix.org/docs/spec/client_server/r0.4.0.html#m-room-create
-        .. _m.room.member: https://matrix.org/docs/spec/client_server/r0.4.0.html#m-room-member
+        .. _Room Events: https://spec.matrix.org/v1.1/client-server-api/#room-events
+        .. _Direct Messaging: https://spec.matrix.org/v1.1/client-server-api/#direct-messaging
+        .. _m.room.create: https://spec.matrix.org/v1.1/client-server-api/#mroomcreate
+        .. _m.room.member: https://spec.matrix.org/v1.1/client-server-api/#mroommember
         """
         content = {
             "visibility": visibility.value,
@@ -105,13 +116,19 @@ class RoomMethods(EventMethods, BaseClientAPI):
         if topic:
             content["topic"] = topic
         if initial_state:
-            content["initial_state"] = [event.serialize()
-                                        if isinstance(event, Serializable) else event
-                                        for event in initial_state]
+            content["initial_state"] = [
+                event.serialize() if isinstance(event, Serializable) else event
+                for event in initial_state
+            ]
         if room_version:
             content["room_version"] = room_version
         if creation_content:
             content["creation_content"] = creation_content
+        if power_level_override:
+            content["power_level_content_override"] = (
+                power_level_override.serialize() if isinstance(power_level_override, Serializable)
+                else power_level_override
+            )
 
         resp = await self.api.request(Method.POST, Path.createRoom, content)
         try:

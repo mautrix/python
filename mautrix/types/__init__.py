@@ -13,10 +13,11 @@ from .event import (EventType, GenericEvent, BaseRoomEvent, BaseEvent, BaseUnsig
                     EncryptedFile, JSONWebKey,
 
                     PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
-                    AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
+                    CanonicalAliasStateEventContent, StrippedStateEvent,
                     RoomNameStateEventContent, RoomTopicStateEventContent, StateEventContent,
                     RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
-                    RoomTombstoneStateEventContent, RoomEncryptionStateEventContent,
+                    RoomTombstoneStateEventContent, RoomEncryptionStateEventContent, JoinRule,
+                    JoinRulesStateEventContent,
 
                     AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                     RoomTagAccountDataEventContent,
