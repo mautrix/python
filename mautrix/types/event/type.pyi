@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Any, Dict
+from typing import Optional, Any, ClassVar
 
 from mautrix.types import JSON, Serializable, SerializableEnum, ExtensibleEnum
 
@@ -21,10 +21,9 @@ class EventType(Serializable):
         EPHEMERAL = "ephemeral"
         TO_DEVICE = "to_device"
 
-    by_event_type: Dict[str, 'EventType']
+    _by_event_type: ClassVar[dict[str, EventType]]
 
     ROOM_CANONICAL_ALIAS: 'EventType'
-    ROOM_ALIASES: 'EventType'
     ROOM_CREATE: 'EventType'
     ROOM_JOIN_RULES: 'EventType'
     ROOM_MEMBER: 'EventType'
@@ -81,6 +80,8 @@ class EventType(Serializable):
 
     t: str
     t_class: Class
+
+    def __init__(self, t: str, t_class: Class) -> None: ...
 
     @classmethod
     def find(cls, t: str, t_class: Optional[Class] = None) -> 'EventType': ...
