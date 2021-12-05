@@ -21,7 +21,7 @@ async def login_matrix(evt: CommandEvent) -> None:
     except NotImplementedError:
         await evt.reply("This bridge has not implemented the login-matrix command.")
         return
-    _, homeserver = Client.parse_mxid(evt.sender.mxid)
+    _, homeserver = Client.parse_user_id(evt.sender.mxid)
     try:
         await puppet.switch_mxid(evt.args[0], evt.sender.mxid)
         await evt.reply("Successfully enabled double puppeting.")

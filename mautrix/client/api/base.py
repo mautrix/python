@@ -62,12 +62,6 @@ class BaseClientAPI:
         self.log = self.api.log
 
     @classmethod
-    def parse_mxid(cls, mxid: UserID) -> Tuple[str, str]:
-        warnings.warn("parse_mxid is deprecated, use parse_user_id instead",
-                      category=DeprecationWarning)
-        return cls.parse_user_id(mxid)
-
-    @classmethod
     def parse_user_id(cls, mxid: UserID) -> Tuple[str, str]:
         """
         Parse the localpart and server name from a Matrix user ID.
