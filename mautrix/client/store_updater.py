@@ -3,11 +3,12 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Optional, Dict, List
+from __future__ import annotations
+from typing import Any
 import asyncio
 
 from mautrix.types import (RoomID, UserID, EventID, EventType, StateEvent, StateEventContent,
-                           Member, MemberStateEventContent, SyncToken, Membership)
+                           Member, MemberStateEventContent, SyncToken, Membership, JSON, RoomAlias)
 from mautrix.errors import MNotFound
 
 from .api import ClientAPI
@@ -20,13 +21,80 @@ class StoreUpdatingAPI(ClientAPI):
     a client state store with outgoing state events (after they're successfully sent).
     """
 
-    state_store: Optional[StateStore]
+    state_store: StateStore | None
 
-    def __init__(self, *args, state_store: Optional[StateStore] = None, **kwargs):
+    def __init__(self, *args, state_store: StateStore | None = None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.state_store = state_store
 
-    async def get_state(self, room_id: RoomID) -> List[StateEvent]:
+    async def join_room_by_id(
+        self, room_id: RoomID,
+        third_party_signed: JSON = None,
+        extra_content: dict[str, Any] | None = None,
+    ) -> RoomID:
+        room_id = await super().join_room_by_id(
+            room_id, third_party_signed=third_party_signed, extra_content=extra_content
+        )
+        if room_id and not extra_content and self.state_store:
+            await self.state_store.set_membership(room_id, self.mxid, Membership.JOIN)
+        return room_id
+
+    async def join_room(
+        self,
+        room_id_or_alias: RoomID | RoomAlias,
+        servers: list[str] | None = None,
+        third_party_signed: JSON = None,
+        max_retries: int = 4,
+    ) -> RoomID:
+        room_id = await super().join_room(
+            room_id_or_alias, servers, third_party_signed, max_retries
+        )
+        if room_id and self.state_store:
+            await self.state_store.set_membership(room_id, self.mxid, Membership.JOIN)
+        return room_id
+
+    async def leave_room(
+        self, room_id: RoomID, extra_content: dict[str, Any] | None = None,
+    ) -> None:
+        await super().leave_room(room_id, extra_content)
+        if not extra_content and self.state_store:
+            await self.state_store.set_membership(room_id, self.mxid, Membership.LEAVE)
+
+    async def invite_user(
+        self, room_id: RoomID, user_id: UserID, extra_content: dict[str, Any] | None = None,
+    ) -> None:
+        await super().invite_user(room_id, user_id, extra_content=extra_content)
+        if not extra_content and self.state_store:
+            await self.state_store.set_membership(room_id, user_id, Membership.INVITE)
+
+    async def kick_user(
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        reason: str = "",
+        extra_content: dict[str, Any] | None = None,
+    ) -> None:
+        await super().kick_user(room_id, user_id, reason=reason, extra_content=extra_content)
+        if not extra_content and self.state_store:
+            await self.state_store.set_membership(room_id, user_id, Membership.LEAVE)
+
+    async def ban_user(
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        reason: str = "",
+        extra_content: dict[str, Any] | None = None,
+    ) -> None:
+        await super().ban_user(room_id, user_id, reason=reason, extra_content=extra_content)
+        if not extra_content and self.state_store:
+            await self.state_store.set_membership(room_id, user_id, Membership.BAN)
+
+    async def unban_user(self, room_id: RoomID, user_id: UserID) -> None:
+        await super().unban_user(room_id, user_id)
+        if self.state_store:
+            await self.state_store.set_membership(room_id, user_id, Membership.LEAVE)
+
+    async def get_state(self, room_id: RoomID) -> list[StateEvent]:
         state = await super().get_state(room_id)
         if self.state_store:
             update_members = self.state_store.set_members(room_id, {
@@ -38,9 +106,14 @@ class StoreUpdatingAPI(ClientAPI):
                                    if evt.type != EventType.ROOM_MEMBER])
         return state
 
-    async def send_state_event(self, room_id: RoomID, event_type: EventType,
-                               content: Union[StateEventContent, Dict],
-                               state_key: Optional[str] = "", **kwargs) -> EventID:
+    async def send_state_event(
+        self,
+        room_id: RoomID,
+        event_type: EventType,
+        content: StateEventContent | dict[str, Any],
+        state_key: str = "",
+        **kwargs,
+    ) -> EventID:
         event_id = await super().send_state_event(room_id, event_type, content, state_key,
                                                   **kwargs)
         if self.state_store:
@@ -50,8 +123,9 @@ class StoreUpdatingAPI(ClientAPI):
             await self.state_store.update_state(fake_event)
         return event_id
 
-    async def get_state_event(self, room_id: RoomID, event_type: EventType,
-                              state_key: Optional[str] = None) -> StateEventContent:
+    async def get_state_event(
+        self, room_id: RoomID, event_type: EventType, state_key: str = ""
+    ) -> StateEventContent:
         event = await super().get_state_event(room_id, event_type, state_key)
         if self.state_store:
             fake_event = StateEvent(type=event_type, room_id=room_id, event_id=EventID(""),
@@ -60,15 +134,19 @@ class StoreUpdatingAPI(ClientAPI):
             await self.state_store.update_state(fake_event)
         return event
 
-    async def get_joined_members(self, room_id: RoomID) -> Dict[UserID, Member]:
+    async def get_joined_members(self, room_id: RoomID) -> dict[UserID, Member]:
         members = await super().get_joined_members(room_id)
         if self.state_store:
             await self.state_store.set_members(room_id, members, only_membership=Membership.JOIN)
         return members
 
-    async def get_members(self, room_id: RoomID, at: Optional[SyncToken] = None,
-                          membership: Optional[Membership] = None,
-                          not_membership: Optional[Membership] = None) -> List[StateEvent]:
+    async def get_members(
+        self,
+        room_id: RoomID,
+        at: SyncToken | None = None,
+        membership: Membership | None = None,
+        not_membership: Membership | None = None,
+    ) -> list[StateEvent]:
         member_events = await super().get_members(room_id, at, membership, not_membership)
         if self.state_store and not_membership != Membership.JOIN:
             await self.state_store.set_members(room_id, {evt.state_key: evt.content
@@ -76,9 +154,9 @@ class StoreUpdatingAPI(ClientAPI):
                                                only_membership=membership)
         return member_events
 
-    async def fill_member_event(self, room_id: RoomID, user_id: UserID,
-                                content: MemberStateEventContent
-                                ) -> Optional[MemberStateEventContent]:
+    async def fill_member_event(
+        self, room_id: RoomID, user_id: UserID, content: MemberStateEventContent,
+    ) -> MemberStateEventContent | None:
         """
         Fill a membership event content that is going to be sent in :meth:`send_member_event`.
 
