@@ -251,7 +251,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             third_party_signed: A signature of an ``m.third_party_invite`` token to prove that this
                 user owns a third party identity which has been invited to the room.
             extra_content: Additional properties for the join event content.
-                If a non-empty dict is passed, the invite will be created using
+                If a non-empty dict is passed, the join event will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /join``.
 
         Returns:
@@ -395,7 +395,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             room_id: The ID of the room to which to invite the user.
             user_id: The fully qualified user ID of the invitee.
             extra_content: Additional properties for the invite event content.
-                If a non-empty dict is passed, the invite will be created using
+                If a non-empty dict is passed, the invite event will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /invite``.
         """
         if extra_content:
@@ -430,7 +430,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
         Args:
             room_id: The ID of the room to leave.
             extra_content: Additional properties for the leave event content.
-                If a non-empty dict is passed, the invite will be created using
+                If a non-empty dict is passed, the leave event will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /leave``.
         """
         if extra_content:
@@ -482,7 +482,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
             extra_content: Additional properties for the kick event content.
-                If a non-empty dict is passed, the invite will be created using
+                If a non-empty dict is passed, the kick event will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /kick``.
 
         .. _m.room.member: https://spec.matrix.org/v1.1/client-server-api/#mroommember
@@ -521,7 +521,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             reason: The reason the user has been kicked. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
             extra_content: Additional properties for the ban event content.
-                If a non-empty dict is passed, the invite will be created using
+                If a non-empty dict is passed, the ban will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /ban``.
 
         .. _m.room.member: https://spec.matrix.org/v1.1/client-server-api/#mroommember
