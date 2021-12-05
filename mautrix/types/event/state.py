@@ -173,7 +173,7 @@ class RoomPredecessor(SerializableAttrs):
 @dataclass
 class RoomCreateStateEventContent(SerializableAttrs):
     room_version: str = "1"
-    federate: bool = attr.ib(metadata={"json": "m.federate", "omitdefault": True}, default=True)
+    federate: bool = field(json="m.federate", omit_default=True, default=True)
     predecessor: Optional[RoomPredecessor] = None
     type: Optional[RoomType] = None
 

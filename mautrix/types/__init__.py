@@ -17,7 +17,8 @@ from .event import (EventType, GenericEvent, BaseRoomEvent, BaseEvent, BaseUnsig
                     RoomNameStateEventContent, RoomTopicStateEventContent, StateEventContent,
                     RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
                     RoomTombstoneStateEventContent, RoomEncryptionStateEventContent, JoinRule,
-                    JoinRulesStateEventContent,
+                    JoinRulesStateEventContent, RoomCreateStateEventContent, RoomPredecessor,
+                    SpaceChildStateEventContent, SpaceParentStateEventContent,
 
                     AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                     RoomTagAccountDataEventContent,

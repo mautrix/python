@@ -17,7 +17,8 @@ from .state import (PowerLevelStateEventContent, Membership, MemberStateEventCon
                     RoomNameStateEventContent, RoomTopicStateEventContent, StateEventContent,
                     RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
                     RoomTombstoneStateEventContent, RoomEncryptionStateEventContent, JoinRule,
-                    JoinRulesStateEventContent)
+                    JoinRulesStateEventContent, RoomCreateStateEventContent, RoomPredecessor,
+                    SpaceChildStateEventContent, SpaceParentStateEventContent)
 from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,
                            RoomTagAccountDataEventContent)
 from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, PresenceState,

@@ -30,7 +30,7 @@ class StoreUpdatingAPI(ClientAPI):
     async def join_room_by_id(
         self, room_id: RoomID,
         third_party_signed: JSON = None,
-        extra_content: dict[str, Any] | None = None,
+        extra_content: dict[str, JSON] | None = None,
     ) -> RoomID:
         room_id = await super().join_room_by_id(
             room_id, third_party_signed=third_party_signed, extra_content=extra_content
@@ -54,14 +54,14 @@ class StoreUpdatingAPI(ClientAPI):
         return room_id
 
     async def leave_room(
-        self, room_id: RoomID, extra_content: dict[str, Any] | None = None,
+        self, room_id: RoomID, extra_content: dict[str, JSON] | None = None,
     ) -> None:
         await super().leave_room(room_id, extra_content)
         if not extra_content and self.state_store:
             await self.state_store.set_membership(room_id, self.mxid, Membership.LEAVE)
 
     async def invite_user(
-        self, room_id: RoomID, user_id: UserID, extra_content: dict[str, Any] | None = None,
+        self, room_id: RoomID, user_id: UserID, extra_content: dict[str, JSON] | None = None,
     ) -> None:
         await super().invite_user(room_id, user_id, extra_content=extra_content)
         if not extra_content and self.state_store:
@@ -72,7 +72,7 @@ class StoreUpdatingAPI(ClientAPI):
         room_id: RoomID,
         user_id: UserID,
         reason: str = "",
-        extra_content: dict[str, Any] | None = None,
+        extra_content: dict[str, JSON] | None = None,
     ) -> None:
         await super().kick_user(room_id, user_id, reason=reason, extra_content=extra_content)
         if not extra_content and self.state_store:
@@ -83,7 +83,7 @@ class StoreUpdatingAPI(ClientAPI):
         room_id: RoomID,
         user_id: UserID,
         reason: str = "",
-        extra_content: dict[str, Any] | None = None,
+        extra_content: dict[str, JSON] | None = None,
     ) -> None:
         await super().ban_user(room_id, user_id, reason=reason, extra_content=extra_content)
         if not extra_content and self.state_store:
@@ -110,7 +110,7 @@ class StoreUpdatingAPI(ClientAPI):
         self,
         room_id: RoomID,
         event_type: EventType,
-        content: StateEventContent | dict[str, Any],
+        content: StateEventContent | dict[str, JSON],
         state_key: str = "",
         **kwargs,
     ) -> EventID:
