@@ -3,9 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
 from typing import Optional, Tuple
-import warnings
-import asyncio
 import json
 
 from yarl import URL
@@ -34,8 +33,9 @@ class BaseClientAPI:
     api: HTTPAPI
     log: TraceLogger
 
-    def __init__(self, mxid: UserID = "", device_id: DeviceID = "", api: HTTPAPI = None, **kwargs
-                 ) -> None:
+    def __init__(
+        self, mxid: UserID = "", device_id: DeviceID = "", api: HTTPAPI | None = None, **kwargs
+    ) -> None:
         """
         Initialize a ClientAPI. You must either provide the ``api`` parameter with an existing
         :class:`mautrix.api.HTTPAPI` instance, or provide the ``base_url`` and other arguments for

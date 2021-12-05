@@ -274,7 +274,7 @@ class StateEvent(BaseRoomEvent, SerializableAttrs):
     @classmethod
     def deserialize(cls, data: JSON) -> 'StateEvent':
         try:
-            event_type = EventType.find(data.get("type"))
+            event_type = EventType.find(data.get("type"), t_class=EventType.Class.STATE)
             data.get("content", {})["__mautrix_event_type"] = event_type
             if "prev_content" in data and "prev_content" not in data.get("unsigned", {}):
                 data.setdefault("unsigned", {})["prev_content"] = data["prev_content"]
