@@ -4,11 +4,12 @@ from .sessions import InboundGroupSession, OutboundGroupSession, Session
 from .types import DecryptedOlmEvent, DeviceIdentity, TrustState
 
 # These have to be last
-from .store import (
+from .store import (  # isort: skip
     CryptoStore,
-    StateStore,
-    PgCryptoStore,
     MemoryCryptoStore,
     PgCryptoStateStore,
-)  # isort: skip
+    PgCryptoStore,
+    StateStore,
+)
+
 from .machine import OlmMachine  # isort: skip

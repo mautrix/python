@@ -5,7 +5,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import AsyncIterable, Literal
+from typing import AsyncIterable
+import sys
 
 from mautrix import __optional_imports__
 from mautrix.api import MediaPath, Method
@@ -13,6 +14,11 @@ from mautrix.errors import MatrixResponseError
 from mautrix.types import ContentURI, MediaRepoConfig, MXOpenGraph, SerializerError
 
 from ..base import BaseClientAPI
+
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 try:
     import magic
