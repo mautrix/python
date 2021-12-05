@@ -1,14 +1,16 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, AsyncIterable, Union
+from __future__ import annotations
 
-from mautrix.api import Method, MediaPath
-from mautrix.errors import MatrixResponseError
-from mautrix.types import ContentURI, MediaRepoConfig, SerializerError, MXOpenGraph
+from typing import AsyncIterable, Literal
+
 from mautrix import __optional_imports__
+from mautrix.api import MediaPath, Method
+from mautrix.errors import MatrixResponseError
+from mautrix.types import ContentURI, MediaRepoConfig, MXOpenGraph, SerializerError
 
 from ..base import BaseClientAPI
 
@@ -28,9 +30,13 @@ class MediaRepositoryMethods(BaseClientAPI):
 
     See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#id112>`__"""
 
-    async def upload_media(self, data: Union[bytes, AsyncIterable[bytes]],
-                           mime_type: Optional[str] = None, filename: Optional[str] = None,
-                           size: Optional[int] = None) -> ContentURI:
+    async def upload_media(
+        self,
+        data: bytes | AsyncIterable[bytes],
+        mime_type: str | None = None,
+        filename: str | None = None,
+        size: int | None = None,
+    ) -> ContentURI:
         """
         Upload a file to the content repository.
 
@@ -58,8 +64,9 @@ class MediaRepositoryMethods(BaseClientAPI):
         query = {}
         if filename:
             query["filename"] = filename
-        resp = await self.api.request(Method.POST, MediaPath.upload, content=data,
-                                      headers=headers, query_params=query)
+        resp = await self.api.request(
+            Method.POST, MediaPath.upload, content=data, headers=headers, query_params=query
+        )
         try:
             return resp["content_uri"]
         except KeyError:
@@ -81,9 +88,14 @@ class MediaRepositoryMethods(BaseClientAPI):
         async with self.api.session.get(url) as response:
             return await response.read()
 
-    async def download_thumbnail(self, url: ContentURI,
-                                 width: Optional[int] = None, height: Optional[int] = None,
-                                 resize_method: Optional[str] = None, allow_remote: bool = True):
+    async def download_thumbnail(
+        self,
+        url: ContentURI,
+        width: int | None = None,
+        height: int | None = None,
+        resize_method: Literal["crop", "scale"] = None,
+        allow_remote: bool = True,
+    ):
         """
         Download a thumbnail for a file in the content repository.
 
@@ -110,13 +122,13 @@ class MediaRepositoryMethods(BaseClientAPI):
         if height is not None:
             query_params["height"] = height
         if resize_method is not None:
-            query_params["resize_method"] = resize_method
+            query_params["method"] = resize_method
         if allow_remote is not None:
             query_params["allow_remote"] = allow_remote
         async with self.api.session.get(url, params=query_params) as response:
             return await response.read()
 
-    async def get_url_preview(self, url: str, timestamp: Optional[int] = None) -> MXOpenGraph:
+    async def get_url_preview(self, url: str, timestamp: int | None = None) -> MXOpenGraph:
         """
         Get information about a URL for a client.
 
@@ -130,8 +142,9 @@ class MediaRepositoryMethods(BaseClientAPI):
         query_params = {"url": url}
         if timestamp is not None:
             query_params["ts"] = timestamp
-        content = await self.api.request(Method.GET, MediaPath.preview_url,
-                                         query_params=query_params)
+        content = await self.api.request(
+            Method.GET, MediaPath.preview_url, query_params=query_params
+        )
         try:
             return MXOpenGraph.deserialize(content)
         except SerializerError as e:

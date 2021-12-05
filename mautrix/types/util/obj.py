@@ -1,19 +1,22 @@
 # From https://github.com/Lonami/dumbot/blob/master/dumbot.py
 # Modified to add Serializable base
-from typing import Dict, List
+from __future__ import annotations
 
 from ..primitive import JSON
-from .serializable import Serializable, AbstractSerializable
+from .serializable import AbstractSerializable, Serializable
 
 
 class Obj(AbstractSerializable):
     """"""
+
     def __init__(self, **kwargs):
-        self.__dict__ = {k: Obj(**v) if isinstance(v, dict) else (
-            Lst(v) if isinstance(v, list) else v) for k, v in kwargs.items()}
+        self.__dict__ = {
+            k: Obj(**v) if isinstance(v, dict) else (Lst(v) if isinstance(v, list) else v)
+            for k, v in kwargs.items()
+        }
 
     def __getattr__(self, name):
-        name = name.rstrip('_')
+        name = name.rstrip("_")
         obj = self.__dict__.get(name)
         if obj is None:
             obj = Obj()
@@ -54,27 +57,33 @@ class Obj(AbstractSerializable):
         else:
             return obj
 
-    def serialize(self) -> Dict[str, JSON]:
-        return {k: v.serialize() if isinstance(v, Serializable) else v
-                for k, v in self.__dict__.items()}
+    def serialize(self) -> dict[str, JSON]:
+        return {
+            k: v.serialize() if isinstance(v, Serializable) else v
+            for k, v in self.__dict__.items()
+        }
 
     @classmethod
-    def deserialize(cls, data: Dict[str, JSON]) -> 'Obj':
+    def deserialize(cls, data: dict[str, JSON]) -> Obj:
         return cls(**data)
 
 
 class Lst(list, AbstractSerializable):
     def __init__(self, iterable=()):
-        list.__init__(self, (Obj(**x) if isinstance(x, dict)
-                             else (Lst(x) if isinstance(x, list)
-                                   else x) for x in iterable))
+        list.__init__(
+            self,
+            (
+                Obj(**x) if isinstance(x, dict) else (Lst(x) if isinstance(x, list) else x)
+                for x in iterable
+            ),
+        )
 
     def __repr__(self):
         return super().__repr__()
 
-    def serialize(self) -> List[JSON]:
+    def serialize(self) -> list[JSON]:
         return [v.serialize() if isinstance(v, Serializable) else v for v in self]
 
     @classmethod
-    def deserialize(cls, data: List[JSON]) -> 'Lst':
+    def deserialize(cls, data: list[JSON]) -> Lst:
         return cls(data)

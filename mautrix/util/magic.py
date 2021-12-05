@@ -12,12 +12,8 @@ try:
     _from_buffer = functools.partial(magic.from_buffer, mime=True)
     _from_filename = functools.partial(magic.from_file, mime=True)
 except AttributeError:
-    def _from_buffer(data: bytes) -> str:
-        return magic.detect_from_content(data).mime_type
-
-
-    def _from_filename(file: str) -> str:
-        return magic.detect_from_filename(file).mime_type
+    _from_buffer = lambda data: magic.detect_from_content(data).mime_type
+    _from_filename = lambda file: magic.detect_from_filename(file).mime_type
 
 
 def mimetype(data: Union[bytes, str]) -> str:

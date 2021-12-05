@@ -1,23 +1,27 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Callable, Union, Awaitable
+from __future__ import annotations
 
-from mautrix.types import UserID
+from typing import Awaitable, Callable
+
 from mautrix.appservice.state_store.asyncpg import PgASStateStore
+from mautrix.types import UserID
 from mautrix.util.async_db import Database
 
 from ..puppet import BasePuppet
 
-GetPuppetFunc = Union[Callable[[UserID], Awaitable[BasePuppet]],
-                      Callable[[UserID, bool], Awaitable[BasePuppet]]]
+GetPuppetFunc = (
+    Callable[[UserID], Awaitable[BasePuppet]] | Callable[[UserID, bool], Awaitable[BasePuppet]]
+)
 
 
 class PgBridgeStateStore(PgASStateStore):
-    def __init__(self, db: Database, get_puppet: 'GetPuppetFunc',
-                 get_double_puppet: 'GetPuppetFunc') -> None:
+    def __init__(
+        self, db: Database, get_puppet: GetPuppetFunc, get_double_puppet: GetPuppetFunc
+    ) -> None:
         super().__init__(db)
         self.get_puppet = get_puppet
         self.get_double_puppet = get_double_puppet

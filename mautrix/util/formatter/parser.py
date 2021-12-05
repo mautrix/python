@@ -1,15 +1,17 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Tuple, Pattern, Type, Optional, TypeVar, Generic, Callable
+from __future__ import annotations
+
+from typing import Callable, Generic, Pattern, Type, TypeVar
 import re
 
-from ...types import UserID, RoomAlias
-from .formatted_string import FormattedString, EntityType
-from .markdown_string import MarkdownString
+from ...types import RoomAlias, UserID
+from .formatted_string import EntityType, FormattedString
 from .html_reader import HTMLNode, read_html
+from .markdown_string import MarkdownString
 
 
 class RecursionContext:
@@ -27,24 +29,37 @@ class RecursionContext:
             raise TypeError("'RecursionContext' object is immutable")
         super(RecursionContext, self).__setattr__(key, value)
 
-    def enter_list(self) -> 'RecursionContext':
+    def enter_list(self) -> RecursionContext:
         return RecursionContext(strip_linebreaks=self.strip_linebreaks, ul_depth=self.ul_depth + 1)
 
-    def enter_code_block(self) -> 'RecursionContext':
+    def enter_code_block(self) -> RecursionContext:
         return RecursionContext(strip_linebreaks=False, ul_depth=self.ul_depth)
 
 
-T = TypeVar('T', bound=FormattedString)
+T = TypeVar("T", bound=FormattedString)
 
 
 class MatrixParser(Generic[T]):
     mention_regex: Pattern = re.compile("https://matrix.to/#/(@.+:.+)")
     room_regex: Pattern = re.compile("https://matrix.to/#/(#.+:.+)")
-    block_tags: Tuple[str, ...] = ("p", "pre", "blockquote",
-                                   "ol", "ul", "li",
-                                   "h1", "h2", "h3", "h4", "h5", "h6",
-                                   "div", "hr", "table")
-    list_bullets: Tuple[str, ...] = ("●", "○", "■", "‣")
+    block_tags: tuple[str, ...] = (
+        "p",
+        "pre",
+        "blockquote",
+        "ol",
+        "ul",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "div",
+        "hr",
+        "table",
+    )
+    list_bullets: tuple[str, ...] = ("●", "○", "■", "‣")
     e: Type[EntityType] = EntityType
     fs: Type[T] = MarkdownString
     read_html: Callable[[str], HTMLNode] = read_html
@@ -58,7 +73,7 @@ class MatrixParser(Generic[T]):
     @classmethod
     def list_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
         ordered: bool = node.tag == "ol"
-        tagged_children: List[Tuple[T, str]] = cls.node_to_tagged_fstrings(node, ctx)
+        tagged_children: list[tuple[T, str]] = cls.node_to_tagged_fstrings(node, ctx)
         counter: int = 1
         indent_length: int = 0
         if ordered:
@@ -70,7 +85,7 @@ class MatrixParser(Generic[T]):
             longest_index = counter - 1 + len(tagged_children)
             indent_length = len(str(longest_index))
         indent: str = (indent_length + 4) * " "
-        children: List[T] = []
+        children: list[T] = []
         for child, tag in tagged_children:
             if tag != "li":
                 continue
@@ -121,7 +136,7 @@ class MatrixParser(Generic[T]):
             return msg
 
         if href.startswith("mailto:"):
-            return cls.fs(href[len("mailto:"):]).format(cls.e.EMAIL)
+            return cls.fs(href[len("mailto:") :]).format(cls.e.EMAIL)
 
         mention = cls.mention_regex.match(href)
         if mention:
@@ -143,19 +158,19 @@ class MatrixParser(Generic[T]):
         return cls.url_to_fstring(msg, href)
 
     @classmethod
-    def url_to_fstring(cls, msg: T, url: str) -> Optional[T]:
+    def url_to_fstring(cls, msg: T, url: str) -> T | None:
         return msg.format(cls.e.URL, url=url)
 
     @classmethod
-    def user_pill_to_fstring(cls, msg: T, user_id: UserID) -> Optional[T]:
+    def user_pill_to_fstring(cls, msg: T, user_id: UserID) -> T | None:
         return msg.format(cls.e.USER_MENTION, user_id=user_id)
 
     @classmethod
-    def room_pill_to_fstring(cls, msg: T, room_alias: RoomAlias) -> Optional[T]:
+    def room_pill_to_fstring(cls, msg: T, room_alias: RoomAlias) -> T | None:
         return msg.format(cls.e.ROOM_MENTION, room_alias=room_alias)
 
     @classmethod
-    def custom_node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> Optional[T]:
+    def custom_node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T | None:
         return None
 
     @classmethod
@@ -200,11 +215,12 @@ class MatrixParser(Generic[T]):
             try:
                 if node[0].tag == "code":
                     node = node[0]
-                    lang = node.attrib["class"][len("language-"):]
+                    lang = node.attrib["class"][len("language-") :]
             except (IndexError, KeyError):
                 pass
-            return cls.parse_node(node, ctx.enter_code_block()).format(cls.e.PREFORMATTED,
-                                                                       language=lang)
+            return cls.parse_node(node, ctx.enter_code_block()).format(
+                cls.e.PREFORMATTED, language=lang
+            )
         elif node.tag == "code":
             return cls.parse_node(node, ctx.enter_code_block()).format(cls.e.INLINE_CODE)
         return cls.tag_aware_parse_node(node, ctx)
@@ -216,7 +232,7 @@ class MatrixParser(Generic[T]):
         return cls.fs(text)
 
     @classmethod
-    def node_to_tagged_fstrings(cls, node: HTMLNode, ctx: RecursionContext) -> List[Tuple[T, str]]:
+    def node_to_tagged_fstrings(cls, node: HTMLNode, ctx: RecursionContext) -> list[tuple[T, str]]:
         output = []
 
         if node.text:
@@ -228,7 +244,7 @@ class MatrixParser(Generic[T]):
         return output
 
     @classmethod
-    def node_to_fstrings(cls, node: HTMLNode, ctx: RecursionContext) -> List[T]:
+    def node_to_fstrings(cls, node: HTMLNode, ctx: RecursionContext) -> list[T]:
         return [msg for (msg, tag) in cls.node_to_tagged_fstrings(node, ctx)]
 
     @classmethod

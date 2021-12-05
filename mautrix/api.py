@@ -4,39 +4,51 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import ClassVar, Mapping
-from urllib.parse import quote as urllib_quote, urljoin as urllib_join
-from json.decoder import JSONDecodeError
+
+from typing import ClassVar, Literal, Mapping
 from enum import Enum
+from json.decoder import JSONDecodeError
 from time import time
-import platform
-import logging
+from urllib.parse import quote as urllib_quote
+from urllib.parse import urljoin as urllib_join
 import asyncio
 import json
+import logging
+import platform
 
+from aiohttp import ClientSession
+from aiohttp import __version__ as aiohttp_version
+from aiohttp.client_exceptions import ClientError, ContentTypeError
 from yarl import URL
-from aiohttp import ClientSession, __version__ as aiohttp_version
-from aiohttp.client_exceptions import ContentTypeError, ClientError
 
-from mautrix.errors import make_request_error, MatrixConnectionError, MatrixRequestError
+from mautrix import __optional_imports__
+from mautrix import __version__ as mautrix_version
+from mautrix.errors import MatrixConnectionError, MatrixRequestError, make_request_error
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Counter
-from mautrix import __version__ as mautrix_version, __optional_imports__
 
 if __optional_imports__:
     # Safe to import, but it's not actually needed, so don't force-import the whole types module.
     from mautrix.types import JSON
 
-API_CALLS = Counter("bridge_matrix_api_calls",
-                    "The number of Matrix client API calls made", ("method",))
-API_CALLS_FAILED = Counter("bridge_matrix_api_calls_failed",
-                           "The number of Matrix client API calls which failed", ("method",))
+API_CALLS = Counter(
+    name="bridge_matrix_api_calls",
+    documentation="The number of Matrix client API calls made",
+    labelnames=("method",),
+)
+API_CALLS_FAILED = Counter(
+    name="bridge_matrix_api_calls_failed",
+    documentation="The number of Matrix client API calls which failed",
+    labelnames=("method",),
+)
+
 
 class APIPath(Enum):
     """
     The known Matrix API path prefixes.
     These don't start with a slash so they can be used nicely with yarl.
     """
+
     CLIENT = "_matrix/client/r0"
     CLIENT_UNSTABLE = "_matrix/client/unstable"
     MEDIA = "_matrix/media/r0"
@@ -159,8 +171,10 @@ def _next_global_req_id() -> int:
 class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
 
-    default_ua: ClassVar[str] = (f"mautrix-python/{mautrix_version} aiohttp/{aiohttp_version} "
-                                 f"Python/{platform.python_version()}")
+    default_ua: ClassVar[str] = (
+        f"mautrix-python/{mautrix_version} aiohttp/{aiohttp_version} "
+        f"Python/{platform.python_version()}"
+    )
     """
     The default value for the ``User-Agent`` header.
 
@@ -183,10 +197,17 @@ class HTTPAPI:
     default_retry_count: int
     """The default retry count to use if a custom value is not passed to :meth:`request`"""
 
-    def __init__(self, base_url: URL | str, token: str = "", *,
-                 client_session: ClientSession = None, default_retry_count: int = None,
-                 txn_id: int = 0, log: TraceLogger | None = None,
-                 loop: asyncio.AbstractEventLoop | None = None) -> None:
+    def __init__(
+        self,
+        base_url: URL | str,
+        token: str = "",
+        *,
+        client_session: ClientSession = None,
+        default_retry_count: int = None,
+        txn_id: int = 0,
+        log: TraceLogger | None = None,
+        loop: asyncio.AbstractEventLoop | None = None,
+    ) -> None:
         """
         Args:
             base_url: The base URL of the homeserver's client-server API to use.
@@ -199,8 +220,9 @@ class HTTPAPI:
         self.base_url = URL(base_url)
         self.token = token
         self.log = log or logging.getLogger("mau.http")
-        self.session = client_session or ClientSession(loop=loop,
-                                                       headers={"User-Agent": self.default_ua})
+        self.session = client_session or ClientSession(
+            loop=loop, headers={"User-Agent": self.default_ua}
+        )
         if txn_id is not None:
             self.txn_id = txn_id
         if default_retry_count is not None:
@@ -208,10 +230,17 @@ class HTTPAPI:
         else:
             self.default_retry_count = self.global_default_retry_count
 
-    async def _send(self, method: Method, url: URL, content: bytes | str,
-                    query_params: dict[str, str], headers: dict[str, str]) -> JSON:
-        request = self.session.request(str(method), url, data=content,
-                                       params=query_params, headers=headers)
+    async def _send(
+        self,
+        method: Method,
+        url: URL,
+        content: bytes | str,
+        query_params: dict[str, str],
+        headers: dict[str, str],
+    ) -> JSON:
+        request = self.session.request(
+            str(method), url, data=content, params=query_params, headers=headers
+        )
         async with request as response:
             if response.status < 200 or response.status >= 300:
                 errcode = message = None
@@ -221,27 +250,43 @@ class HTTPAPI:
                     message = response_data["error"]
                 except (JSONDecodeError, ContentTypeError, KeyError):
                     pass
-                raise make_request_error(http_status=response.status,
-                                         text=await response.text(),
-                                         errcode=errcode, message=message)
+                raise make_request_error(
+                    http_status=response.status,
+                    text=await response.text(),
+                    errcode=errcode,
+                    message=message,
+                )
             return await response.json()
 
-    def _log_request(self, method: Method, path: PathBuilder, content: str | bytes,
-                     orig_content, query_params: dict[str, str], req_id: int) -> None:
+    def _log_request(
+        self,
+        method: Method,
+        path: PathBuilder,
+        content: str | bytes,
+        orig_content,
+        query_params: dict[str, str],
+        req_id: int,
+    ) -> None:
         if not self.log:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = query_params.get("user_id", None)
         level = 1 if path == Path.sync else 5
-        self.log.log(level, f"{method}#{req_id} /{path} {log_content}".strip(" "),
-                     extra={"matrix_http_request": {
-                         "req_id": req_id,
-                         "method": str(method),
-                         "path": str(path),
-                         "content": (orig_content if isinstance(orig_content, (dict, list))
-                                     else log_content),
-                         "user": as_user,
-                     }})
+        self.log.log(
+            level,
+            f"{method}#{req_id} /{path} {log_content}".strip(" "),
+            extra={
+                "matrix_http_request": {
+                    "req_id": req_id,
+                    "method": str(method),
+                    "path": str(path),
+                    "content": (
+                        orig_content if isinstance(orig_content, (dict, list)) else log_content
+                    ),
+                    "user": as_user,
+                }
+            },
+        )
 
     def _full_path(self, path: PathBuilder | str) -> str:
         path = str(path)
@@ -252,12 +297,16 @@ class HTTPAPI:
             base_path += "/"
         return urllib_join(base_path, path)
 
-    async def request(self, method: Method, path: PathBuilder | str,
-                      content: dict | list | bytes | str | None = None,
-                      headers: dict[str, str] | None = None,
-                      query_params: Mapping[str, str] | None = None,
-                      retry_count: int | None = None,
-                      metrics_method: str | None = "") -> JSON:
+    async def request(
+        self,
+        method: Method,
+        path: PathBuilder | str,
+        content: dict | list | bytes | str | None = None,
+        headers: dict[str, str] | None = None,
+        query_params: Mapping[str, str] | None = None,
+        retry_count: int | None = None,
+        metrics_method: str = "",
+    ) -> JSON:
         """
         Make a raw Matrix API request.
 
@@ -272,6 +321,7 @@ class HTTPAPI:
             query_params: A dict of query parameters to send.
             retry_count: Number of times to retry if the homeserver isn't reachable.
                          Defaults to :attr:`default_retry_count`.
+            metrics_method: Name of the method to include in Prometheus timing metrics.
 
         Returns:
             The parsed response JSON.
@@ -304,21 +354,26 @@ class HTTPAPI:
             API_CALLS.labels(method=metrics_method).inc()
             try:
                 return await self._send(method, full_url, content, query_params, headers or {})
-            except Exception:
-                API_CALLS_FAILED.labels(method=metrics_method).inc()
-                raise
             except MatrixRequestError as e:
+                API_CALLS_FAILED.labels(method=metrics_method).inc()
                 if retry_count > 0 and e.http_status in (502, 503, 504):
-                    self.log.warning(f"Request #{req_id} failed with HTTP {e.http_status}, "
-                                     f"retrying in {backoff} seconds")
+                    self.log.warning(
+                        f"Request #{req_id} failed with HTTP {e.http_status}, "
+                        f"retrying in {backoff} seconds"
+                    )
                 else:
                     raise
             except ClientError as e:
+                API_CALLS_FAILED.labels(method=metrics_method).inc()
                 if retry_count > 0:
-                    self.log.warning(f"Request #{req_id} failed with {e}, "
-                                     f"retrying in {backoff} seconds")
+                    self.log.warning(
+                        f"Request #{req_id} failed with {e}, retrying in {backoff} seconds"
+                    )
                 else:
                     raise MatrixConnectionError(str(e)) from e
+            except Exception:
+                API_CALLS_FAILED.labels(method=metrics_method).inc()
+                raise
             await asyncio.sleep(backoff)
             backoff *= 2
             retry_count -= 1
@@ -328,7 +383,9 @@ class HTTPAPI:
         self.txn_id += 1
         return f"mautrix-python_R{self.txn_id}@T{int(time() * 1000)}"
 
-    def get_download_url(self, mxc_uri: str, download_type: str = "download") -> URL:
+    def get_download_url(
+        self, mxc_uri: str, download_type: Literal["download", "thumbnail"] = "download"
+    ) -> URL:
         """
         Get the full HTTP URL to download a ``mxc://`` URI.
 

@@ -4,23 +4,37 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional, List, Sequence, Union, Dict, Any, Callable, Awaitable
+
+from typing import Any, Awaitable, Callable, Iterable
 import asyncio
 
 from multidict import CIMultiDict
 
-from mautrix.errors import MatrixResponseError, MatrixRequestError, MRoomInUse, MNotFound
 from mautrix.api import Method, Path
-from mautrix.types import (JSON, UserID, RoomID, RoomAlias, StateEvent, RoomDirectoryVisibility,
-                           RoomAliasInfo, RoomCreatePreset, DirectoryPaginationToken, Membership,
-                           RoomDirectoryResponse, Serializable, StrippedStateEvent, EventType,
-                           MemberStateEventContent, EventID, PowerLevelStateEventContent,
-                           RoomCreateStateEventContent)
+from mautrix.errors import MatrixRequestError, MatrixResponseError, MNotFound, MRoomInUse
+from mautrix.types import (
+    JSON,
+    DirectoryPaginationToken,
+    EventID,
+    EventType,
+    Membership,
+    MemberStateEventContent,
+    PowerLevelStateEventContent,
+    RoomAlias,
+    RoomAliasInfo,
+    RoomCreatePreset,
+    RoomCreateStateEventContent,
+    RoomDirectoryResponse,
+    RoomDirectoryVisibility,
+    RoomID,
+    Serializable,
+    StateEvent,
+    StrippedStateEvent,
+    UserID,
+)
 
-from .events import EventMethods
 from .base import BaseClientAPI
-
-InitialState = Sequence[Union[StateEvent, StrippedStateEvent, Dict[str, Any]]]
+from .events import EventMethods
 
 
 class RoomMethods(EventMethods, BaseClientAPI):
@@ -44,10 +58,10 @@ class RoomMethods(EventMethods, BaseClientAPI):
         topic: str | None = None,
         is_direct: bool = False,
         invitees: list[UserID] | None = None,
-        initial_state: InitialState | None = None,
+        initial_state: Iterable[StateEvent | StrippedStateEvent | dict[str, JSON]] | None = None,
         room_version: str = None,
         creation_content: RoomCreateStateEventContent | dict[str, JSON] | None = None,
-        power_level_override: PowerLevelStateEventContent | dict[str, JSON] | None = None
+        power_level_override: PowerLevelStateEventContent | dict[str, JSON] | None = None,
     ) -> RoomID:
         """
         Create a new room with various configuration options.
@@ -125,14 +139,16 @@ class RoomMethods(EventMethods, BaseClientAPI):
             content["room_version"] = room_version
         if creation_content:
             content["creation_content"] = (
-                creation_content.serialize() if isinstance(creation_content, Serializable)
+                creation_content.serialize()
+                if isinstance(creation_content, Serializable)
                 else creation_content
             )
             # Remove keys that the server will ignore anyway
             content["creation_content"].pop("room_version", None)
         if power_level_override:
             content["power_level_content_override"] = (
-                power_level_override.serialize() if isinstance(power_level_override, Serializable)
+                power_level_override.serialize()
+                if isinstance(power_level_override, Serializable)
                 else power_level_override
             )
 
@@ -224,7 +240,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
     # region 8.4 Room membership
     # API reference: https://spec.matrix.org/v1.1/client-server-api/#room-membership
 
-    async def get_joined_rooms(self) -> List[RoomID]:
+    async def get_joined_rooms(self) -> list[RoomID]:
         """Get the list of rooms the user is in."""
         content = await self.api.request(Method.GET, Path.joined_rooms)
         try:
@@ -258,12 +274,15 @@ class RoomMethods(EventMethods, BaseClientAPI):
             The ID of the room the user joined.
         """
         if extra_content:
-            await self.send_member_event(room_id, self.mxid, Membership.JOIN,
-                                         extra_content=extra_content)
+            await self.send_member_event(
+                room_id, self.mxid, Membership.JOIN, extra_content=extra_content
+            )
             return room_id
-        content = await self.api.request(Method.POST, Path.rooms[room_id].join, {
-            "third_party_signed": third_party_signed,
-        } if third_party_signed is not None else None)
+        content = await self.api.request(
+            Method.POST,
+            Path.rooms[room_id].join,
+            {"third_party_signed": third_party_signed} if third_party_signed is not None else None,
+        )
         try:
             return content["room_id"]
         except KeyError:
@@ -274,7 +293,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
         room_id_or_alias: RoomID | RoomAlias,
         servers: list[str] | None = None,
         third_party_signed: JSON = None,
-        max_retries: int = 4.
+        max_retries: int = 4,
     ) -> RoomID:
         """
         Start participating in a room, i.e. join it by its ID or alias, with an optional list of
@@ -297,23 +316,28 @@ class RoomMethods(EventMethods, BaseClientAPI):
         """
         max_retries = max(0, max_retries)
         tries = 0
-        content = {
-            "third_party_signed": third_party_signed
-        } if third_party_signed is not None else None
+        content = (
+            {"third_party_signed": third_party_signed} if third_party_signed is not None else None
+        )
         query_params = CIMultiDict()
-        for server_name in (servers or []):
+        for server_name in servers or []:
             query_params.add("server_name", server_name)
         while tries <= max_retries:
             try:
-                content = await self.api.request(Method.POST, Path.join[room_id_or_alias],
-                                                 content=content, query_params=query_params)
+                content = await self.api.request(
+                    Method.POST,
+                    Path.join[room_id_or_alias],
+                    content=content,
+                    query_params=query_params,
+                )
                 break
             except MatrixRequestError:
                 tries += 1
                 if tries <= max_retries:
                     wait = tries * 10
                     self.log.exception(
-                        f"Failed to join room {room_id_or_alias}, retrying in {wait} seconds...")
+                        f"Failed to join room {room_id_or_alias}, retrying in {wait} seconds..."
+                    )
                     await asyncio.sleep(wait)
                 else:
                     raise
@@ -322,12 +346,13 @@ class RoomMethods(EventMethods, BaseClientAPI):
         except KeyError:
             raise MatrixResponseError("`room_id` not in response.")
 
-    fill_member_event_callback: Optional[Callable[[RoomID, UserID, MemberStateEventContent],
-                                                  Awaitable[Optional[MemberStateEventContent]]]]
+    fill_member_event_callback: Callable[
+        [RoomID, UserID, MemberStateEventContent], Awaitable[MemberStateEventContent | None]
+    ] | None
 
     async def fill_member_event(
-        self, room_id: RoomID, user_id: UserID, content: MemberStateEventContent,
-    ) -> Optional[MemberStateEventContent]:
+        self, room_id: RoomID, user_id: UserID, content: MemberStateEventContent
+    ) -> MemberStateEventContent | None:
         """
         Fill a membership event content that is going to be sent in :meth:`send_member_event`.
 
@@ -372,11 +397,12 @@ class RoomMethods(EventMethods, BaseClientAPI):
         for key, value in extra_content.items():
             content[key] = value
         content = await self.fill_member_event(room_id, user_id, content) or content
-        return await self.send_state_event(room_id, EventType.ROOM_MEMBER,
-                                           content=content, state_key=user_id)
+        return await self.send_state_event(
+            room_id, EventType.ROOM_MEMBER, content=content, state_key=user_id
+        )
 
     async def invite_user(
-        self, room_id: RoomID, user_id: UserID, extra_content: dict[str, JSON] | None = None,
+        self, room_id: RoomID, user_id: UserID, extra_content: dict[str, JSON] | None = None
     ) -> None:
         """
         Invite a user to participate in a particular room. They do not start participating in the
@@ -399,18 +425,23 @@ class RoomMethods(EventMethods, BaseClientAPI):
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /invite``.
         """
         if extra_content:
-            await self.send_member_event(room_id, user_id, Membership.INVITE,
-                                         extra_content=extra_content)
+            await self.send_member_event(
+                room_id, user_id, Membership.INVITE, extra_content=extra_content
+            )
             return
-        await self.api.request(Method.POST, Path.rooms[room_id].invite,
-                               content={"user_id": user_id})
+        await self.api.request(
+            Method.POST, Path.rooms[room_id].invite, content={"user_id": user_id}
+        )
 
     # endregion
     # region 8.4.2 Leaving rooms
     # API reference: https://spec.matrix.org/v1.1/client-server-api/#leaving-rooms
 
     async def leave_room(
-        self, room_id: RoomID, extra_content: dict[str, JSON] | None = None,
+        self,
+        room_id: RoomID,
+        extra_content: dict[str, JSON] | None = None,
+        raise_not_in_room: bool = False,
     ) -> None:
         """
         Stop participating in a particular room, i.e. leave the room.
@@ -432,12 +463,18 @@ class RoomMethods(EventMethods, BaseClientAPI):
             extra_content: Additional properties for the leave event content.
                 If a non-empty dict is passed, the leave event will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /leave``.
+            raise_not_in_room: Should errors about the user not being in the room be raised?
         """
-        if extra_content:
-            await self.send_member_event(room_id, self.mxid, Membership.LEAVE,
-                                         extra_content=extra_content)
-            return
-        await self.api.request(Method.POST, Path.rooms[room_id].leave)
+        try:
+            if extra_content:
+                await self.send_member_event(
+                    room_id, self.mxid, Membership.LEAVE, extra_content=extra_content
+                )
+            else:
+                await self.api.request(Method.POST, Path.rooms[room_id].leave)
+        except MatrixRequestError as e:
+            if "not in room" not in e.message or raise_not_in_room:
+                raise
 
     async def forget_room(self, room_id: RoomID) -> None:
         """
@@ -490,13 +527,13 @@ class RoomMethods(EventMethods, BaseClientAPI):
         if extra_content:
             if reason and "reason" not in extra_content:
                 extra_content["reason"] = reason
-            await self.send_member_event(room_id, user_id, Membership.LEAVE,
-                                         extra_content=extra_content)
+            await self.send_member_event(
+                room_id, user_id, Membership.LEAVE, extra_content=extra_content
+            )
             return
-        await self.api.request(Method.POST, Path.rooms[room_id].kick, {
-            "user_id": user_id,
-            "reason": reason or None,
-        })
+        await self.api.request(
+            Method.POST, Path.rooms[room_id].kick, {"user_id": user_id, "reason": reason}
+        )
 
     # endregion
     # region 8.4.2.1 Banning users in a room
@@ -505,7 +542,8 @@ class RoomMethods(EventMethods, BaseClientAPI):
     async def ban_user(
         self,
         room_id: RoomID,
-        user_id: UserID, reason: str = "",
+        user_id: UserID,
+        reason: str = "",
         extra_content: dict[str, JSON] | None = None,
     ) -> None:
         """
@@ -529,13 +567,13 @@ class RoomMethods(EventMethods, BaseClientAPI):
         if extra_content:
             if reason and "reason" not in extra_content:
                 extra_content["reason"] = reason
-            await self.send_member_event(room_id, user_id, Membership.BAN,
-                                         extra_content=extra_content)
+            await self.send_member_event(
+                room_id, user_id, Membership.BAN, extra_content=extra_content
+            )
             return
-        await self.api.request(Method.POST, Path.rooms[room_id].ban, {
-            "user_id": user_id,
-            "reason": reason or None,
-        })
+        await self.api.request(
+            Method.POST, Path.rooms[room_id].ban, {"user_id": user_id, "reason": reason}
+        )
 
     async def unban_user(self, room_id: RoomID, user_id: UserID) -> None:
         """
@@ -549,9 +587,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             room_id: The ID of the room from which the user should be unbanned.
             user_id: The fully qualified user ID of the user being banned.
         """
-        await self.api.request(Method.POST, Path.rooms[room_id].unban, {
-            "user_id": user_id,
-        })
+        await self.api.request(Method.POST, Path.rooms[room_id].unban, {"user_id": user_id})
 
     # endregion
 
@@ -578,10 +614,11 @@ class RoomMethods(EventMethods, BaseClientAPI):
             raise MatrixResponseError("`visibility` not in response.")
         except ValueError:
             raise MatrixResponseError(
-                f"Invalid value for `visibility` in response: {resp['visibility']}")
+                f"Invalid value for `visibility` in response: {resp['visibility']}"
+            )
 
     async def set_room_directory_visibility(
-        self, room_id: RoomID, visibility: RoomDirectoryVisibility,
+        self, room_id: RoomID, visibility: RoomDirectoryVisibility
     ) -> None:
         """
         Set the visibility of the room in the server's public room directory.
@@ -595,9 +632,13 @@ class RoomMethods(EventMethods, BaseClientAPI):
 
         .. _API reference: https://spec.matrix.org/v1.1/client-server-api/#put_matrixclientv3directorylistroomroomid
         """
-        await self.api.request(Method.PUT, Path.directory.list.room[room_id], {
-            "visibility": visibility.value,
-        })
+        await self.api.request(
+            Method.PUT,
+            Path.directory.list.room[room_id],
+            {
+                "visibility": visibility.value,
+            },
+        )
 
     async def get_room_directory(
         self,
@@ -630,26 +671,31 @@ class RoomMethods(EventMethods, BaseClientAPI):
             The relevant pagination tokens, an estimate of the total number of public rooms and the
             paginated chunk of public rooms.
         """
-        method = Method.GET if (search_query is None
-                                and include_all_networks is None
-                                and third_party_instance_id is None) else Method.POST
+        method = (
+            Method.GET
+            if (
+                search_query is None
+                and include_all_networks is None
+                and third_party_instance_id is None
+            )
+            else Method.POST
+        )
         content = {}
         if limit is not None:
             content["limit"] = limit
         if since is not None:
             content["since"] = since
         if search_query is not None:
-            content["filter"] = {
-                "generic_search_term": search_query
-            }
+            content["filter"] = {"generic_search_term": search_query}
         if include_all_networks is not None:
             content["include_all_networks"] = include_all_networks
         if third_party_instance_id is not None:
             content["third_party_instance_id"] = third_party_instance_id
         query_params = {"server": server} if server is not None else None
 
-        content = await self.api.request(method, Path.publicRooms, content,
-                                         query_params=query_params)
+        content = await self.api.request(
+            method, Path.publicRooms, content, query_params=query_params
+        )
 
         return RoomDirectoryResponse.deserialize(content)
 

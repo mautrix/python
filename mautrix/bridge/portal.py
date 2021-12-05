@@ -4,16 +4,18 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional, Dict, Any, List
-from collections import defaultdict
+
+from typing import Any
 from abc import ABC, abstractmethod
+from collections import defaultdict
 import asyncio
 import logging
 
 from mautrix.appservice import AppService, IntentAPI
-from mautrix.types import (RoomID, EventID, MessageEventContent, EventType, EncryptionAlgorithm,
-                           RoomEncryptionStateEventContent as Encryption, UserID)
 from mautrix.errors import MatrixError, MatrixRequestError, MNotFound
+from mautrix.types import EncryptionAlgorithm, EventID, EventType, MessageEventContent
+from mautrix.types import RoomEncryptionStateEventContent as Encryption
+from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
 from mautrix.util.simple_lock import SimpleLock
 
@@ -22,14 +24,14 @@ from .. import bridge as br
 
 class BasePortal(ABC):
     log: TraceLogger = logging.getLogger("mau.portal")
-    _async_get_locks: Dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
+    _async_get_locks: dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
     az: AppService
     matrix: br.BaseMatrixHandler
     bridge: br.Bridge
     loop: asyncio.AbstractEventLoop
     main_intent: IntentAPI
-    mxid: Optional[RoomID]
-    name: Optional[str]
+    mxid: RoomID | None
+    name: str | None
     encrypted: bool
     is_direct: bool
     backfill_lock: SimpleLock
@@ -39,11 +41,12 @@ class BasePortal(ABC):
         pass
 
     @abstractmethod
-    async def handle_matrix_message(self, sender: br.BaseUser, message: MessageEventContent,
-                                    event_id: EventID) -> None:
+    async def handle_matrix_message(
+        self, sender: br.BaseUser, message: MessageEventContent, event_id: EventID
+    ) -> None:
         pass
 
-    async def check_dm_encryption(self) -> Optional[bool]:
+    async def check_dm_encryption(self) -> bool | None:
         try:
             evt = await self.main_intent.get_state_event(self.mxid, EventType.ROOM_ENCRYPTION)
             self.log.debug("Found existing encryption event in direct portal: %s", evt)
@@ -51,8 +54,11 @@ class BasePortal(ABC):
                 self.encrypted = True
         except MNotFound:
             pass
-        if self.is_direct and self.matrix.e2ee and (self.bridge.config["bridge.encryption.default"]
-                                                    or self.encrypted):
+        if (
+            self.is_direct
+            and self.matrix.e2ee
+            and (self.bridge.config["bridge.encryption.default"] or self.encrypted)
+        ):
             return await self.enable_dm_encryption()
         return None
 
@@ -62,8 +68,9 @@ class BasePortal(ABC):
             await self.main_intent.invite_user(self.mxid, self.az.bot_mxid)
             await self.az.intent.join_room_by_id(self.mxid)
             if not self.encrypted:
-                await self.main_intent.send_state_event(self.mxid, EventType.ROOM_ENCRYPTION,
-                                                        Encryption(EncryptionAlgorithm.MEGOLM_V1))
+                await self.main_intent.send_state_event(
+                    self.mxid, EventType.ROOM_ENCRYPTION, Encryption(EncryptionAlgorithm.MEGOLM_V1)
+                )
         except Exception:
             self.log.warning(f"Failed to enable end-to-bridge encryption", exc_info=True)
             return False
@@ -71,8 +78,13 @@ class BasePortal(ABC):
         self.encrypted = True
         return True
 
-    async def _send_message(self, intent: IntentAPI, content: MessageEventContent,
-                            event_type: EventType = EventType.ROOM_MESSAGE, **kwargs) -> EventID:
+    async def _send_message(
+        self,
+        intent: IntentAPI,
+        content: MessageEventContent,
+        event_type: EventType = EventType.ROOM_MESSAGE,
+        **kwargs,
+    ) -> EventID:
         if self.encrypted and self.matrix.e2ee:
             if intent.api.is_real_user:
                 content[intent.api.real_user_content_key] = True
@@ -86,7 +98,7 @@ class BasePortal(ABC):
 
     @property
     @abstractmethod
-    def bridge_info(self) -> Dict[str, Any]:
+    def bridge_info(self) -> dict[str, Any]:
         pass
 
     # region Matrix room cleanup
@@ -96,8 +108,13 @@ class BasePortal(ABC):
         pass
 
     @classmethod
-    async def cleanup_room(cls, intent: IntentAPI, room_id: RoomID, message: str = "Cleaning room",
-                           puppets_only: bool = False) -> None:
+    async def cleanup_room(
+        cls,
+        intent: IntentAPI,
+        room_id: RoomID,
+        message: str = "Cleaning room",
+        puppets_only: bool = False,
+    ) -> None:
         try:
             members = await intent.get_room_members(room_id)
         except MatrixError:
@@ -127,7 +144,7 @@ class BasePortal(ABC):
     async def cleanup_and_delete(self) -> None:
         await self.cleanup_portal("Portal deleted")
 
-    async def get_authenticated_matrix_users(self) -> List[UserID]:
+    async def get_authenticated_matrix_users(self) -> list[UserID]:
         """
         Get the list of Matrix user IDs who can be bridged. This is used to determine if the portal
         is empty (and should be cleaned up) or not. Bridges should override this to check that the
@@ -137,8 +154,10 @@ class BasePortal(ABC):
             members = await self.main_intent.get_room_members(self.mxid)
         except MatrixRequestError:
             return []
-        return [member for member in members
-                if (not self.bridge.is_bridge_ghost(member)
-                    and member != self.az.bot_mxid)]
+        return [
+            member
+            for member in members
+            if (not self.bridge.is_bridge_ghost(member) and member != self.az.bot_mxid)
+        ]
 
     # endregion

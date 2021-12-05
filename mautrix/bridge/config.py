@@ -3,19 +3,26 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Optional, List, Any
+from __future__ import annotations
+
+from typing import Any
 from abc import ABC
+import re
 import secrets
 import time
-import re
 
-from mautrix.util.config import (BaseFileConfig, ConfigUpdateHelper, BaseValidatableConfig,
-                                 ForbiddenDefault, yaml)
+from mautrix.util.config import (
+    BaseFileConfig,
+    BaseValidatableConfig,
+    ConfigUpdateHelper,
+    ForbiddenDefault,
+    yaml,
+)
 
 
 class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
     registration_path: str
-    _registration: Optional[Dict]
+    _registration: dict | None
     _check_tokens: bool
 
     def __init__(self, path: str, registration_path: str, base_path: str) -> None:
@@ -35,18 +42,26 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         return secrets.token_urlsafe(48)
 
     @property
-    def forbidden_defaults(self) -> List[ForbiddenDefault]:
+    def forbidden_defaults(self) -> list[ForbiddenDefault]:
         return [
             ForbiddenDefault("homeserver.address", "https://example.com"),
             ForbiddenDefault("homeserver.domain", "example.com"),
-        ] + ([
-            ForbiddenDefault("appservice.as_token",
-                             "This value is generated when generating the registration",
-                             "Did you forget to generate the registration?"),
-            ForbiddenDefault("appservice.hs_token",
-                             "This value is generated when generating the registration",
-                             "Did you forget to generate the registration?"),
-        ] if self._check_tokens else [])
+        ] + (
+            [
+                ForbiddenDefault(
+                    "appservice.as_token",
+                    "This value is generated when generating the registration",
+                    "Did you forget to generate the registration?",
+                ),
+                ForbiddenDefault(
+                    "appservice.hs_token",
+                    "This value is generated when generating the registration",
+                    "Did you forget to generate the registration?",
+                ),
+            ]
+            if self._check_tokens
+            else []
+        )
 
     def do_update(self, helper: ConfigUpdateHelper) -> None:
         copy = helper.copy
@@ -93,7 +108,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("logging")
 
     @property
-    def namespaces(self) -> Dict[str, List[Dict[str, Any]]]:
+    def namespaces(self) -> dict[str, list[dict[str, Any]]]:
         """
         Generate the user ID and room alias namespace config for the registration as specified in
         https://matrix.org/docs/spec/application_service/r0.1.0.html#application-services
@@ -101,21 +116,33 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         homeserver = self["homeserver.domain"]
         regex_ph = f"regexplaceholder{int(time.time())}"
         username_format = self["bridge.username_template"].format(userid=regex_ph)
-        alias_format = (self["bridge.alias_template"].format(groupname=regex_ph)
-                        if "bridge.alias_template" in self else None)
-        group_id = ({"group_id": self["appservice.community_id"]}
-                    if self["appservice.community_id"] else {})
+        alias_format = (
+            self["bridge.alias_template"].format(groupname=regex_ph)
+            if "bridge.alias_template" in self
+            else None
+        )
+        group_id = (
+            {"group_id": self["appservice.community_id"]}
+            if self["appservice.community_id"]
+            else {}
+        )
 
         return {
-            "users": [{
-                "exclusive": True,
-                "regex": re.escape(f"@{username_format}:{homeserver}").replace(regex_ph, ".*"),
-                **group_id,
-            }],
-            "aliases": [{
-                "exclusive": True,
-                "regex": re.escape(f"#{alias_format}:{homeserver}").replace(regex_ph, ".*"),
-            }] if alias_format else []
+            "users": [
+                {
+                    "exclusive": True,
+                    "regex": re.escape(f"@{username_format}:{homeserver}").replace(regex_ph, ".*"),
+                    **group_id,
+                }
+            ],
+            "aliases": [
+                {
+                    "exclusive": True,
+                    "regex": re.escape(f"#{alias_format}:{homeserver}").replace(regex_ph, ".*"),
+                }
+            ]
+            if alias_format
+            else [],
         }
 
     def generate_registration(self) -> None:
@@ -125,10 +152,12 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         namespaces = self.namespaces
         bot_username = self["appservice.bot_username"]
         homeserver_domain = self["homeserver.domain"]
-        namespaces.setdefault("users", []).append({
-            "exclusive": True,
-            "regex": re.escape(f"@{bot_username}:{homeserver_domain}"),
-        })
+        namespaces.setdefault("users", []).append(
+            {
+                "exclusive": True,
+                "regex": re.escape(f"@{bot_username}:{homeserver_domain}"),
+            }
+        )
 
         self._registration = {
             "id": self["appservice.id"],
@@ -137,7 +166,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
             "namespaces": namespaces,
             "url": self["appservice.address"],
             "sender_localpart": self._new_token(),
-            "rate_limited": False
+            "rate_limited": False,
         }
 
         if self["appservice.ephemeral_events"]:

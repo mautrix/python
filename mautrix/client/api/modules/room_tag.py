@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from __future__ import annotations
 
 from mautrix.api import Method, Path
 from mautrix.types import RoomID, RoomTagAccountDataEventContent, RoomTagInfo, Serializable
@@ -34,7 +34,7 @@ class RoomTaggingMethods(BaseClientAPI):
         resp = await self.api.request(Method.GET, Path.user[self.mxid].rooms[room_id].tags)
         return RoomTagAccountDataEventContent.deserialize(resp)
 
-    async def get_room_tag(self, room_id: RoomID, tag: str) -> Optional[RoomTagInfo]:
+    async def get_room_tag(self, room_id: RoomID, tag: str) -> RoomTagInfo | None:
         """
         Get the info of a specific tag for a room.
 
@@ -51,7 +51,9 @@ class RoomTaggingMethods(BaseClientAPI):
         except KeyError:
             return None
 
-    async def set_room_tag(self, room_id: RoomID, tag: str, info: Optional[RoomTagInfo] = None) -> None:
+    async def set_room_tag(
+        self, room_id: RoomID, tag: str, info: RoomTagInfo | None = None
+    ) -> None:
         """
         Add or update a tag for a specific room.
 
@@ -62,9 +64,11 @@ class RoomTaggingMethods(BaseClientAPI):
             tag: The tag to add.
             info: Optionally, information like ordering within the tag.
         """
-        await self.api.request(Method.PUT, Path.user[self.mxid].rooms[room_id].tags[tag],
-                               content=(info.serialize() if isinstance(info, Serializable)
-                                        else (info or {})))
+        await self.api.request(
+            Method.PUT,
+            Path.user[self.mxid].rooms[room_id].tags[tag],
+            content=(info.serialize() if isinstance(info, Serializable) else (info or {})),
+        )
 
     async def remove_room_tag(self, room_id: RoomID, tag: str) -> None:
         """

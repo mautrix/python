@@ -1,21 +1,24 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Callable, Union, Awaitable
+from __future__ import annotations
 
-from mautrix.types import UserID
+from typing import Awaitable, Callable, Union
+
 from mautrix.appservice.state_store.sqlalchemy import SQLASStateStore
+from mautrix.types import UserID
 
 from ..puppet import BasePuppet
 
-GetPuppetFunc = Union[Callable[[UserID], Awaitable[BasePuppet]],
-                      Callable[[UserID, bool], Awaitable[BasePuppet]]]
+GetPuppetFunc = Union[
+    Callable[[UserID], Awaitable[BasePuppet]], Callable[[UserID, bool], Awaitable[BasePuppet]]
+]
 
 
 class SQLBridgeStateStore(SQLASStateStore):
-    def __init__(self, get_puppet: 'GetPuppetFunc', get_double_puppet: 'GetPuppetFunc') -> None:
+    def __init__(self, get_puppet: GetPuppetFunc, get_double_puppet: GetPuppetFunc) -> None:
         super().__init__()
         self.get_puppet = get_puppet
         self.get_double_puppet = get_double_puppet

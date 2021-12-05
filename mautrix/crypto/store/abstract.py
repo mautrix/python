@@ -1,27 +1,37 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, List
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
-from mautrix.types import (IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID,
-                           RoomEncryptionStateEventContent)
+from mautrix.types import (
+    DeviceID,
+    EventID,
+    IdentityKey,
+    RoomEncryptionStateEventContent,
+    RoomID,
+    SessionID,
+    UserID,
+)
 
-from .. import OlmAccount, Session, InboundGroupSession, OutboundGroupSession, DeviceIdentity
+from .. import DeviceIdentity, InboundGroupSession, OlmAccount, OutboundGroupSession, Session
 
 
 class StateStore(ABC):
     @abstractmethod
-    async def is_encrypted(self, room_id: RoomID) -> bool: ...
+    async def is_encrypted(self, room_id: RoomID) -> bool:
+        pass
 
     @abstractmethod
-    async def get_encryption_info(self, room_id: RoomID
-                                  ) -> Optional[RoomEncryptionStateEventContent]: ...
+    async def get_encryption_info(self, room_id: RoomID) -> RoomEncryptionStateEventContent | None:
+        pass
 
     @abstractmethod
-    async def find_shared_rooms(self, user_id: UserID) -> List[RoomID]: ...
+    async def find_shared_rooms(self, user_id: UserID) -> list[RoomID]:
+        pass
 
 
 class CryptoStore(ABC):
@@ -147,8 +157,13 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def put_group_session(self, room_id: RoomID, sender_key: IdentityKey,
-                                session_id: SessionID, session: InboundGroupSession) -> None:
+    async def put_group_session(
+        self,
+        room_id: RoomID,
+        sender_key: IdentityKey,
+        session_id: SessionID,
+        session: InboundGroupSession,
+    ) -> None:
         """
         Insert an inbound Megolm session into the store.
 
@@ -160,8 +175,9 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def get_group_session(self, room_id: RoomID, sender_key: IdentityKey,
-                                session_id: SessionID) -> Optional[InboundGroupSession]:
+    async def get_group_session(
+        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
+    ) -> Optional[InboundGroupSession]:
         """
         Get an inbound Megolm group session that was previously inserted with
         :meth:`put_group_session`.
@@ -176,8 +192,9 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def has_group_session(self, room_id: RoomID, sender_key: IdentityKey,
-                                session_id: SessionID) -> bool:
+    async def has_group_session(
+        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
+    ) -> bool:
         """
         Check whether or not a specific inbound Megolm session is in the store. This is used before
         importing forwarded keys.
@@ -250,8 +267,14 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def validate_message_index(self, sender_key: IdentityKey, session_id: SessionID,
-                                     event_id: EventID, index: int, timestamp: int) -> bool:
+    async def validate_message_index(
+        self,
+        sender_key: IdentityKey,
+        session_id: SessionID,
+        event_id: EventID,
+        index: int,
+        timestamp: int,
+    ) -> bool:
         """
         Validate that a specific message isn't a replay attack.
 
@@ -303,8 +326,9 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def find_device_by_key(self, user_id: UserID, identity_key: IdentityKey
-                                 ) -> Optional[DeviceIdentity]:
+    async def find_device_by_key(
+        self, user_id: UserID, identity_key: IdentityKey
+    ) -> Optional[DeviceIdentity]:
         """
         Find a specific device identity based on the identity key.
 

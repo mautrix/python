@@ -1,16 +1,25 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import cast, Optional, List, Set, Tuple
+from typing import List, Optional, Set, Tuple, cast
 from datetime import datetime, timedelta
 
 import olm
 
-from mautrix.types import (UserID, DeviceID, IdentityKey, SigningKey, RoomID, OlmMsgType,
-                           RoomKeyEventContent, EncryptionAlgorithm, OlmCiphertext)
 from mautrix.errors import EncryptionError
+from mautrix.types import (
+    DeviceID,
+    EncryptionAlgorithm,
+    IdentityKey,
+    OlmCiphertext,
+    OlmMsgType,
+    RoomID,
+    RoomKeyEventContent,
+    SigningKey,
+    UserID,
+)
 
 
 class Session(olm.Session):
@@ -30,8 +39,13 @@ class Session(olm.Session):
         return False
 
     @classmethod
-    def from_pickle(cls, pickle: bytes, passphrase: str, creation_time: datetime,
-                    use_time: Optional[datetime] = None) -> 'Session':
+    def from_pickle(
+        cls,
+        pickle: bytes,
+        passphrase: str,
+        creation_time: datetime,
+        use_time: Optional[datetime] = None,
+    ) -> "Session":
         session = super().from_pickle(pickle, passphrase=passphrase)
         session.creation_time = creation_time
         session.use_time = use_time or creation_time
@@ -42,16 +56,23 @@ class Session(olm.Session):
 
     def decrypt(self, ciphertext: OlmCiphertext) -> str:
         self.use_time = datetime.now()
-        return super().decrypt(olm.OlmPreKeyMessage(ciphertext.body)
-                               if ciphertext.type == OlmMsgType.PREKEY
-                               else olm.OlmMessage(ciphertext.body))
+        return super().decrypt(
+            olm.OlmPreKeyMessage(ciphertext.body)
+            if ciphertext.type == OlmMsgType.PREKEY
+            else olm.OlmMessage(ciphertext.body)
+        )
 
     def encrypt(self, plaintext: str) -> OlmCiphertext:
         self.use_time = datetime.now()
         result = super().encrypt(plaintext)
-        return OlmCiphertext(type=(OlmMsgType.PREKEY if isinstance(result, olm.OlmPreKeyMessage)
-                                   else OlmMsgType.MESSAGE),
-                             body=result.ciphertext)
+        return OlmCiphertext(
+            type=(
+                OlmMsgType.PREKEY
+                if isinstance(result, olm.OlmPreKeyMessage)
+                else OlmMsgType.MESSAGE
+            ),
+            body=result.ciphertext,
+        )
 
 
 class InboundGroupSession(olm.InboundGroupSession):
@@ -60,8 +81,14 @@ class InboundGroupSession(olm.InboundGroupSession):
     sender_key: IdentityKey
     forwarding_chain: List[str]
 
-    def __init__(self, session_key: str, signing_key: SigningKey, sender_key: IdentityKey,
-                 room_id: RoomID, forwarding_chain: Optional[List[str]] = None) -> None:
+    def __init__(
+        self,
+        session_key: str,
+        signing_key: SigningKey,
+        sender_key: IdentityKey,
+        room_id: RoomID,
+        forwarding_chain: Optional[List[str]] = None,
+    ) -> None:
         self.signing_key = signing_key
         self.sender_key = sender_key
         self.room_id = room_id
@@ -72,9 +99,15 @@ class InboundGroupSession(olm.InboundGroupSession):
         return super().__new__(cls)
 
     @classmethod
-    def from_pickle(cls, pickle: bytes, passphrase: str, signing_key: SigningKey,
-                    sender_key: IdentityKey, room_id: RoomID,
-                    forwarding_chain: Optional[List[str]] = None) -> 'InboundGroupSession':
+    def from_pickle(
+        cls,
+        pickle: bytes,
+        passphrase: str,
+        signing_key: SigningKey,
+        sender_key: IdentityKey,
+        room_id: RoomID,
+        forwarding_chain: Optional[List[str]] = None,
+    ) -> "InboundGroupSession":
         session = super().from_pickle(pickle, passphrase)
         session.signing_key = signing_key
         session.sender_key = sender_key
@@ -83,9 +116,14 @@ class InboundGroupSession(olm.InboundGroupSession):
         return session
 
     @classmethod
-    def import_session(cls, session_key: str, signing_key: SigningKey, sender_key: IdentityKey,
-                       room_id: RoomID, forwarding_chain: Optional[List[str]] = None
-                       ) -> 'InboundGroupSession':
+    def import_session(
+        cls,
+        session_key: str,
+        signing_key: SigningKey,
+        sender_key: IdentityKey,
+        room_id: RoomID,
+        forwarding_chain: Optional[List[str]] = None,
+    ) -> "InboundGroupSession":
         session = super().import_session(session_key)
         session.signing_key = signing_key
         session.sender_key = sender_key
@@ -129,8 +167,10 @@ class OutboundGroupSession(olm.OutboundGroupSession):
 
     @property
     def expired(self):
-        return (self.message_count >= self.max_messages
-                or datetime.now() - self.creation_time >= self.max_age)
+        return (
+            self.message_count >= self.max_messages
+            or datetime.now() - self.creation_time >= self.max_age
+        )
 
     def encrypt(self, plaintext):
         if not self.shared:
@@ -144,9 +184,18 @@ class OutboundGroupSession(olm.OutboundGroupSession):
         return super().encrypt(plaintext)
 
     @classmethod
-    def from_pickle(cls, pickle: bytes, passphrase: str, max_age: timedelta, max_messages: int,
-                    creation_time: datetime, use_time: datetime, message_count: int,
-                    room_id: RoomID, shared: bool) -> 'OutboundGroupSession':
+    def from_pickle(
+        cls,
+        pickle: bytes,
+        passphrase: str,
+        max_age: timedelta,
+        max_messages: int,
+        creation_time: datetime,
+        use_time: datetime,
+        message_count: int,
+        room_id: RoomID,
+        shared: bool,
+    ) -> "OutboundGroupSession":
         session = cast(OutboundGroupSession, super().from_pickle(pickle, passphrase))
         session.max_age = max_age
         session.max_messages = max_messages
@@ -161,5 +210,9 @@ class OutboundGroupSession(olm.OutboundGroupSession):
 
     @property
     def share_content(self) -> RoomKeyEventContent:
-        return RoomKeyEventContent(algorithm=EncryptionAlgorithm.MEGOLM_V1, room_id=self.room_id,
-                                   session_id=self.id, session_key=self.session_key)
+        return RoomKeyEventContent(
+            algorithm=EncryptionAlgorithm.MEGOLM_V1,
+            room_id=self.room_id,
+            session_id=self.id,
+            session_key=self.session_key,
+        )

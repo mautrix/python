@@ -4,25 +4,43 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional, Dict, List, Awaitable, Iterator
+
+from typing import Awaitable, Iterator
 from abc import ABC, abstractmethod
 from itertools import chain
 import asyncio
-import logging
 import hashlib
 import hmac
 import json
+import logging
 
-from yarl import URL
 from aiohttp import ClientConnectionError
+from yarl import URL
 
-from mautrix.types import (UserID, FilterID, Filter, RoomEventFilter, RoomFilter, EventFilter,
-                           EventType, SyncToken, RoomID, Event, PresenceState, StateFilter,
-                           LoginType)
-from mautrix.appservice import AppService, IntentAPI
-from mautrix.errors import (IntentError, MatrixError, MatrixRequestError, MatrixInvalidToken,
-                            WellKnownError)
 from mautrix.api import Path
+from mautrix.appservice import AppService, IntentAPI
+from mautrix.errors import (
+    IntentError,
+    MatrixError,
+    MatrixInvalidToken,
+    MatrixRequestError,
+    WellKnownError,
+)
+from mautrix.types import (
+    Event,
+    EventFilter,
+    EventType,
+    Filter,
+    FilterID,
+    LoginType,
+    PresenceState,
+    RoomEventFilter,
+    RoomFilter,
+    RoomID,
+    StateFilter,
+    SyncToken,
+    UserID,
+)
 
 from .. import bridge as br
 
@@ -48,8 +66,9 @@ class HomeserverURLNotFound(CustomPuppetError):
 
 class OnlyLoginTrustedDomain(CustomPuppetError):
     def __init__(self):
-        super().__init__("This bridge doesn't allow double-puppeting "
-                         "with accounts on untrusted servers.")
+        super().__init__(
+            "This bridge doesn't allow double-puppeting with accounts on untrusted servers."
+        )
 
 
 class AutologinError(CustomPuppetError):
@@ -85,28 +104,28 @@ class CustomPuppetMixin(ABC):
 
     sync_with_custom_puppets: bool = True
     allow_discover_url: bool = False
-    homeserver_url_map: Dict[str, URL] = {}
+    homeserver_url_map: dict[str, URL] = {}
     only_handle_own_synced_events: bool = True
-    login_shared_secret_map: Dict[str, bytes] = {}
-    login_device_name: Optional[str] = None
+    login_shared_secret_map: dict[str, bytes] = {}
+    login_device_name: str | None = None
 
     az: AppService
     loop: asyncio.AbstractEventLoop
     log: logging.Logger
     mx: br.BaseMatrixHandler
 
-    by_custom_mxid: Dict[UserID, CustomPuppetMixin] = {}
+    by_custom_mxid: dict[UserID, CustomPuppetMixin] = {}
 
     default_mxid: UserID
     default_mxid_intent: IntentAPI
-    custom_mxid: Optional[UserID]
-    access_token: Optional[str]
-    base_url: Optional[URL]
-    next_batch: Optional[SyncToken]
+    custom_mxid: UserID | None
+    access_token: str | None
+    base_url: URL | None
+    next_batch: SyncToken | None
 
     intent: IntentAPI
 
-    _sync_task: Optional[asyncio.Future] = None
+    _sync_task: asyncio.Task | None = None
 
     @abstractmethod
     async def save(self) -> None:
@@ -119,18 +138,22 @@ class CustomPuppetMixin(ABC):
 
     @property
     def is_real_user(self) -> bool:
-        """Whether or not this puppet uses a real Matrix user instead of an appservice-owned ID."""
+        """Whether this puppet uses a real Matrix user instead of an appservice-owned ID."""
         return bool(self.custom_mxid and self.access_token)
 
     def _fresh_intent(self) -> IntentAPI:
-        return (self.az.intent.user(self.custom_mxid, self.access_token, self.base_url)
-                if self.is_real_user else self.default_mxid_intent)
+        return (
+            self.az.intent.user(self.custom_mxid, self.access_token, self.base_url)
+            if self.is_real_user
+            else self.default_mxid_intent
+        )
 
     @classmethod
     def can_auto_login(cls, mxid: UserID) -> bool:
         _, server = cls.az.intent.parse_user_id(mxid)
-        return server in cls.login_shared_secret_map and (server in cls.homeserver_url_map
-                                                          or server == cls.az.domain)
+        return server in cls.login_shared_secret_map and (
+            server in cls.homeserver_url_map or server == cls.az.domain
+        )
 
     @classmethod
     async def _login_with_shared_secret(cls, mxid: UserID) -> str:
@@ -148,16 +171,22 @@ class CustomPuppetMixin(ABC):
                 raise AutologinError(f"No homeserver URL configured for {server}")
         password = hmac.new(secret, mxid.encode("utf-8"), hashlib.sha512).hexdigest()
         url = base_url / str(Path.login)
-        resp = await cls.az.http_session.post(url, data=json.dumps({
-            "type": str(LoginType.PASSWORD),
-            "initial_device_display_name": cls.login_device_name,
-            "device_id": cls.login_device_name,
-            "identifier": {
-                "type": "m.id.user",
-                "user": mxid,
-            },
-            "password": password
-        }), headers={"Content-Type": "application/json"})
+        resp = await cls.az.http_session.post(
+            url,
+            data=json.dumps(
+                {
+                    "type": str(LoginType.PASSWORD),
+                    "initial_device_display_name": cls.login_device_name,
+                    "device_id": cls.login_device_name,
+                    "identifier": {
+                        "type": "m.id.user",
+                        "user": mxid,
+                    },
+                    "password": password,
+                }
+            ),
+            headers={"Content-Type": "application/json"},
+        )
         data = await resp.json()
         try:
             return data["access_token"]
@@ -165,8 +194,9 @@ class CustomPuppetMixin(ABC):
             error_msg = data.get("error", data.get("errcode", f"HTTP {resp.status}"))
             raise AutologinError(f"Didn't get an access token: {error_msg}") from None
 
-    async def switch_mxid(self, access_token: Optional[str], mxid: Optional[UserID],
-                          start_sync_task: bool = True) -> None:
+    async def switch_mxid(
+        self, access_token: str | None, mxid: UserID | None, start_sync_task: bool = True
+    ) -> None:
         """
         Switch to a real Matrix user or away from one.
 
@@ -289,25 +319,29 @@ class CustomPuppetMixin(ABC):
 
     def _create_sync_filter(self) -> Awaitable[FilterID]:
         all_events = EventType.find("*")
-        return self.intent.create_filter(Filter(
-            account_data=EventFilter(types=[all_events]),
-            presence=EventFilter(
-                types=[EventType.PRESENCE],
-                senders=[self.custom_mxid] if self.only_handle_own_synced_events else None,
-            ),
-            room=RoomFilter(
-                include_leave=False,
-                state=StateFilter(not_types=[all_events]),
-                timeline=RoomEventFilter(not_types=[all_events]),
-                account_data=RoomEventFilter(not_types=[all_events]),
-                ephemeral=RoomEventFilter(types=[
-                    EventType.TYPING,
-                    EventType.RECEIPT,
-                ]),
-            ),
-        ))
+        return self.intent.create_filter(
+            Filter(
+                account_data=EventFilter(types=[all_events]),
+                presence=EventFilter(
+                    types=[EventType.PRESENCE],
+                    senders=[self.custom_mxid] if self.only_handle_own_synced_events else None,
+                ),
+                room=RoomFilter(
+                    include_leave=False,
+                    state=StateFilter(not_types=[all_events]),
+                    timeline=RoomEventFilter(not_types=[all_events]),
+                    account_data=RoomEventFilter(not_types=[all_events]),
+                    ephemeral=RoomEventFilter(
+                        types=[
+                            EventType.TYPING,
+                            EventType.RECEIPT,
+                        ]
+                    ),
+                ),
+            )
+        )
 
-    def _filter_events(self, room_id: RoomID, events: List[Dict]) -> Iterator[Event]:
+    def _filter_events(self, room_id: RoomID, events: list[dict]) -> Iterator[Event]:
         for event in events:
             event["room_id"] = room_id
             if self.only_handle_own_synced_events:
@@ -327,7 +361,7 @@ class CustomPuppetMixin(ABC):
                         continue
             yield event
 
-    def _handle_sync(self, sync_resp: Dict) -> None:
+    def _handle_sync(self, sync_resp: dict) -> None:
         # Get events from rooms -> join -> [room_id] -> ephemeral -> events (array)
         ephemeral_events = (
             event
@@ -362,8 +396,9 @@ class CustomPuppetMixin(ABC):
         while access_token_at_start == self.access_token:
             try:
                 cur_batch = self.next_batch
-                sync_resp = await self.intent.sync(filter_id=filter_id, since=cur_batch,
-                                                   set_presence=PresenceState.OFFLINE)
+                sync_resp = await self.intent.sync(
+                    filter_id=filter_id, since=cur_batch, set_presence=PresenceState.OFFLINE
+                )
                 try:
                     self.next_batch = sync_resp.get("next_batch", None)
                 except Exception:
@@ -385,7 +420,8 @@ class CustomPuppetMixin(ABC):
             except (MatrixError, ClientConnectionError, asyncio.TimeoutError) as e:
                 errors += 1
                 wait = min(errors, 11) ** 2
-                self.log.warning(f"Syncer for {custom_mxid} errored: {e}. "
-                                 f"Waiting for {wait} seconds...")
+                self.log.warning(
+                    f"Syncer for {custom_mxid} errored: {e}. Waiting for {wait} seconds..."
+                )
                 await asyncio.sleep(wait)
         self.log.debug(f"Syncer for custom puppet {custom_mxid} stopped.")

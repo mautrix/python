@@ -1,7 +1,7 @@
 mautrix-python
 ==============
 
-|PyPI| |Python versions| |License| |Docs|
+|PyPI| |Python versions| |License| |Docs| |Code style| |Imports|
 
 A Python 3.8+ asyncio Matrix framework.
 
@@ -68,3 +68,7 @@ Components
    :alt: License: MPL-2.0
 .. |Docs| image:: https://img.shields.io/gitlab/pipeline-status/mautrix/python?branch=master&gitlab_url=https%3A%2F%2Fmau.dev&label=docs
    :target: https://docs.mau.fi/python/latest/
+.. |Code style| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/psf/black
+.. |Imports| image:: https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336
+   :target: https://pycqa.github.io/isort/

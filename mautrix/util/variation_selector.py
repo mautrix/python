@@ -6,6 +6,9 @@
 import re
 
 # Generated with curl https://cdn.jsdelivr.net/npm/emojibase-data@7.0.0/en/data.json | jq -c '[.[] | select(.emoji | endswith("\ufe0f")) | select(.emoji | length == 2) | .hexcode]'
+
+# fmt: off
+# don't split this into 342 lines please
 EMOJIS_WITH_VARIATION_HEX = [
     "263A", "1F610", "2639", "2620", "1F47D", "2763", "2764", "1F573", "1F4A3", "1F5E8", "1F5EF",
     "1F590", "270C", "1F448", "1F449", "1F446", "1F447", "261D", "1F44D", "1F44E", "270D", "1F442",
@@ -40,10 +43,14 @@ EMOJIS_WITH_VARIATION_HEX = [
     "1F17E", "1F17F", "1F202", "1F237", "1F22F", "1F21A", "3297", "3299", "26AB", "26AA", "2B1B",
     "2B1C", "25FC", "25FB", "25FE", "25FD", "25AA", "25AB", "1F3F3",
 ]
+# fmt: on
 
-EMOJIS_WITH_VARIATION = ((rf"\u{emoji}" if len(emoji) == 4 else rf"\U{emoji:>08}"
-                          ).encode("ascii").decode("unicode-escape")
-                         for emoji in EMOJIS_WITH_VARIATION_HEX)
+EMOJIS_WITH_VARIATION = (
+    (rf"\u{emoji}" if len(emoji) == 4 else rf"\U{emoji:>08}")
+    .encode("ascii")
+    .decode("unicode-escape")
+    for emoji in EMOJIS_WITH_VARIATION_HEX
+)
 
 VARIATION_SELECTOR_16 = "\ufe0f"
 
@@ -51,10 +58,9 @@ KEYCAP = "\u20e3"
 KEYCAP_REGEX = re.compile(fr"([0-9*#])\u20e3")
 KEYCAP_REGEX_REPLACEMENT = fr"\1{VARIATION_SELECTOR_16}{KEYCAP}"
 
-ADD_VARIATION_TRANSLATION = str.maketrans({
-    ord(emoji): f"{emoji}{VARIATION_SELECTOR_16}"
-    for emoji in EMOJIS_WITH_VARIATION
-})
+ADD_VARIATION_TRANSLATION = str.maketrans(
+    {ord(emoji): f"{emoji}{VARIATION_SELECTOR_16}" for emoji in EMOJIS_WITH_VARIATION}
+)
 
 
 def add(val: str) -> str:

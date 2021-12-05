@@ -1,16 +1,16 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Dict, NewType, Union
+from typing import Dict, List, NewType, Union
 
 from attr import dataclass
 
+from ..primitive import JSON, EventID, RoomID, UserID
 from ..util import SerializableAttrs, SerializableEnum, deserializer
-from ..primitive import UserID, RoomID, EventID, JSON
-from .type import EventType
 from .base import BaseEvent, GenericEvent
+from .type import EventType
 
 
 @dataclass

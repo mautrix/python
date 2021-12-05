@@ -4,18 +4,18 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Dict, Any, Optional, List, NamedTuple, Union
-from collections import defaultdict
+
+from typing import Any, NamedTuple
 from abc import ABC, abstractmethod
+from collections import defaultdict
 import asyncio
 import logging
 import time
 
 from mautrix.api import Method, UnstableClientPath
 from mautrix.appservice import AppService
-from mautrix.types import UserID, RoomID, EventType, Membership
 from mautrix.errors import MNotFound
-from mautrix.types import MessageType, EventID
+from mautrix.types import EventID, EventType, Membership, MessageType, RoomID, UserID
 from mautrix.util.bridge_state import BridgeState, BridgeStateEvent
 from mautrix.util.logging import TraceLogger
 from mautrix.util.message_send_checkpoint import (
@@ -29,12 +29,15 @@ from mautrix.util.opt_prometheus import Gauge
 from .. import bridge as br
 
 AsmuxPath = UnstableClientPath["com.beeper.asmux"]
-WrappedTask = NamedTuple('WrappedTask', task=Optional[asyncio.Task])
+
+
+class WrappedTask(NamedTuple):
+    task: asyncio.Task | None
 
 
 class BaseUser(ABC):
     log: TraceLogger = logging.getLogger("mau.user")
-    _async_get_locks: Dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
+    _async_get_locks: dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
     az: AppService
     bridge: br.Bridge
     loop: asyncio.AbstractEventLoop
@@ -44,9 +47,9 @@ class BaseUser(ABC):
     mxid: UserID
 
     dm_update_lock: asyncio.Lock
-    command_status: Optional[Dict[str, Any]]
-    _metric_value: Dict[Gauge, bool]
-    _prev_bridge_status: Optional[BridgeState]
+    command_status: dict[str, Any] | None
+    _metric_value: dict[Gauge, bool]
+    _prev_bridge_status: BridgeState | None
 
     def __init__(self) -> None:
         self.dm_update_lock = asyncio.Lock()
@@ -59,21 +62,22 @@ class BaseUser(ABC):
     async def is_logged_in(self) -> bool:
         raise NotImplementedError()
 
-    async def get_puppet(self) -> Optional[br.BasePuppet]:
+    async def get_puppet(self) -> br.BasePuppet | None:
         raise NotImplementedError()
 
     async def is_in_portal(self, portal: br.BasePortal) -> bool:
         try:
             member_event = await portal.main_intent.get_state_event(
-                portal.mxid, EventType.ROOM_MEMBER, self.mxid)
+                portal.mxid, EventType.ROOM_MEMBER, self.mxid
+            )
         except MNotFound:
             return False
         return member_event and member_event.membership in (Membership.JOIN, Membership.INVITE)
 
-    async def get_direct_chats(self) -> Dict[UserID, List[RoomID]]:
+    async def get_direct_chats(self) -> dict[UserID, list[RoomID]]:
         raise NotImplementedError()
 
-    async def update_direct_chats(self, dms: Optional[Dict[UserID, List[RoomID]]] = None) -> None:
+    async def update_direct_chats(self, dms: dict[UserID, list[RoomID]] | None = None) -> None:
         """
         Update the m.direct account data of the user.
 
@@ -93,8 +97,12 @@ class BaseUser(ABC):
         dms = dms or await self.get_direct_chats()
         if self.bridge.config.get("homeserver.asmux", False):
             # This uses a secret endpoint for atomically updating the DM list
-            await puppet.intent.api.request(Method.PUT if replace else Method.PATCH, AsmuxPath.dms,
-                                            content=dms, headers={"X-Asmux-Auth": self.az.as_token})
+            await puppet.intent.api.request(
+                Method.PUT if replace else Method.PATCH,
+                AsmuxPath.dms,
+                content=dms,
+                headers={"X-Asmux-Auth": self.az.as_token},
+            )
         else:
             async with self.dm_update_lock:
                 try:
@@ -103,8 +111,11 @@ class BaseUser(ABC):
                     current_dms = {}
                 if replace:
                     # Filter away all existing DM statuses with bridge users
-                    filtered_dms = {user: rooms for user, rooms in current_dms.items()
-                                    if not self.bridge.is_bridge_ghost(user)}
+                    filtered_dms = {
+                        user: rooms
+                        for user, rooms in current_dms.items()
+                        if not self.bridge.is_bridge_ghost(user)
+                    }
                 else:
                     filtered_dms = current_dms
                 # Add DM statuses for all rooms in our database
@@ -124,12 +135,17 @@ class BaseUser(ABC):
         state.user_id = self.mxid
         state.fill()
 
-    async def get_bridge_states(self) -> List[BridgeState]:
+    async def get_bridge_states(self) -> list[BridgeState]:
         raise NotImplementedError()
 
-    async def push_bridge_state(self, state_event: BridgeStateEvent, error: Optional[str] = None,
-                                message: Optional[str] = None, ttl: Optional[int] = None,
-                                remote_id: Optional[str] = None) -> None:
+    async def push_bridge_state(
+        self,
+        state_event: BridgeStateEvent,
+        error: str | None = None,
+        message: str | None = None,
+        ttl: int | None = None,
+        remote_id: str | None = None,
+    ) -> None:
         state = BridgeState(
             state_event=state_event,
             error=error,
@@ -141,8 +157,9 @@ class BaseUser(ABC):
         if state.should_deduplicate(self._prev_bridge_status):
             return
         self._prev_bridge_status = state
-        await state.send(self.bridge.config["homeserver.status_endpoint"],
-                         self.az.as_token, self.log)
+        await state.send(
+            self.bridge.config["homeserver.status_endpoint"], self.az.as_token, self.log
+        )
 
     def send_remote_checkpoint(
         self,
@@ -150,8 +167,8 @@ class BaseUser(ABC):
         event_id: EventID,
         room_id: RoomID,
         event_type: EventType,
-        message_type: Optional[MessageType] = None,
-        error: Optional[Union[str, Exception]] = None,
+        message_type: MessageType | None = None,
+        error: str | Exception | None = None,
     ) -> WrappedTask:
         """
         Send a remote checkpoint for the given ``event_id``. This function spaws an

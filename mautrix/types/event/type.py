@@ -7,7 +7,7 @@ from typing import Any, Optional
 import json
 
 from ..primitive import JSON
-from ..util import SerializableEnum, ExtensibleEnum, Serializable
+from ..util import ExtensibleEnum, Serializable, SerializableEnum
 
 
 class RoomType(ExtensibleEnum):
@@ -76,7 +76,7 @@ class EventType(Serializable):
         return cls.find(raw)
 
     @classmethod
-    def find(cls, t: str, t_class: Optional[Class] = None) -> 'EventType':
+    def find(cls, t: str, t_class: Optional[Class] = None) -> "EventType":
         """
         Create a new ``EventType`` instance with the given type and class.
 
@@ -108,7 +108,7 @@ class EventType(Serializable):
         return json.dumps(self.serialize())
 
     @classmethod
-    def parse_json(cls, data: str) -> 'EventType':
+    def parse_json(cls, data: str) -> "EventType":
         return cls.deserialize(json.loads(data))
 
     def __setattr__(self, *args, **kwargs) -> None:
@@ -131,7 +131,7 @@ class EventType(Serializable):
             return False
         return self.t == other.t and self.t_class == other.t_class
 
-    def with_class(self, t_class: Optional[Class]) -> 'EventType':
+    def with_class(self, t_class: Optional[Class]) -> "EventType":
         """Return a copy of this ``EventType`` with the given class. If the given class is the
         same as what this instance has, or if the given class is ``None``, this returns ``self``
         instead of making a copy."""
@@ -179,7 +179,6 @@ _standard_types = {
         "m.room.pinned_events": "ROOM_PINNED_EVENTS",
         "m.room.tombstone": "ROOM_TOMBSTONE",
         "m.room.encryption": "ROOM_ENCRYPTION",
-
         "m.space.child": "SPACE_CHILD",
         "m.space.parent": "SPACE_PARENT",
     },
@@ -189,7 +188,6 @@ _standard_types = {
         "m.room.encrypted": "ROOM_ENCRYPTED",
         "m.sticker": "STICKER",
         "m.reaction": "REACTION",
-
         "m.call.invite": "CALL_INVITE",
         "m.call.candidates": "CALL_CANDIDATES",
         "m.call.select_answer": "CALL_SELECT_ANSWER",

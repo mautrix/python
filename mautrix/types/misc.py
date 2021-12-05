@@ -1,17 +1,17 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, NewType, NamedTuple, Dict
+from typing import Dict, List, NamedTuple, NewType
 from enum import Enum
 
 from attr import dataclass
 import attr
 
-from .primitive import RoomID, RoomAlias, SyncToken, ContentURI, UserID, BatchID, EventID
-from .util import SerializableAttrs
 from .event import Event
+from .primitive import BatchID, ContentURI, EventID, RoomAlias, RoomID, SyncToken, UserID
+from .util import SerializableAttrs
 
 
 @dataclass
@@ -33,6 +33,7 @@ class RoomCreatePreset(Enum):
     .. _createRoom endpoint:
         https://spec.matrix.org/v1.1/client-server-api/#post_matrixclientv3createroom
     """
+
     PRIVATE = "private_chat"
     TRUSTED_PRIVATE = "trusted_private_chat"
     PUBLIC = "public_chat"
@@ -45,12 +46,14 @@ class RoomDirectoryVisibility(Enum):
     .. _createRoom endpoint:
         https://spec.matrix.org/v1.1/client-server-api/#post_matrixclientv3createroom
     """
+
     PRIVATE = "private"
     PUBLIC = "public"
 
 
 class PaginationDirection(Enum):
     """Pagination direction used in various endpoints that support pagination."""
+
     FORWARD = "f"
     BACKWARD = "b"
 
@@ -63,6 +66,7 @@ class RoomAliasInfo(SerializableAttrs):
     .. _alias resolve endpoint:
         https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3directoryroomroomalias
     """
+
     room_id: RoomID = None
     """The room ID for this room alias."""
 
@@ -98,8 +102,9 @@ class RoomDirectoryResponse(SerializableAttrs):
     total_room_count_estimate: int = None
 
 
-PaginatedMessages = NamedTuple("PaginatedMessages", start=SyncToken, end=SyncToken,
-                               events=List[Event])
+PaginatedMessages = NamedTuple(
+    "PaginatedMessages", start=SyncToken, end=SyncToken, events=List[Event]
+)
 
 
 @dataclass

@@ -4,25 +4,27 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Awaitable, Callable, Dict, List, Any, Type, NamedTuple, Optional
-import time
+
+from typing import Any, Awaitable, Callable, NamedTuple, Type
 import asyncio
 import logging
+import time
 import traceback
 
+from mautrix.appservice import AppService, IntentAPI
+from mautrix.types import EventID, MessageEventContent, RoomID
 from mautrix.util import markdown
 from mautrix.util.logging import TraceLogger
-from mautrix.types import RoomID, EventID, MessageEventContent
-from mautrix.appservice import AppService, IntentAPI
 
 from ... import bridge as br
 
-command_handlers: Dict[str, CommandHandler] = {}
-command_aliases: Dict[str, CommandHandler] = {}
+command_handlers: dict[str, CommandHandler] = {}
+command_aliases: dict[str, CommandHandler] = {}
 
-HelpSection = NamedTuple('HelpSection', name=str, order=int, description=str)
-HelpCacheKey = NamedTuple('HelpCacheKey', is_management=bool, is_portal=bool,
-                          is_admin=bool, is_logged_in=bool)
+HelpSection = NamedTuple("HelpSection", name=str, order=int, description=str)
+HelpCacheKey = NamedTuple(
+    "HelpCacheKey", is_management=bool, is_portal=bool, is_admin=bool, is_logged_in=bool
+)
 
 SECTION_GENERAL = HelpSection("General", 0, "")
 SECTION_AUTH = HelpSection("Authentication", 10, "")
@@ -62,18 +64,27 @@ class CommandEvent:
     command_prefix: str
     room_id: RoomID
     event_id: EventID
-    sender: u.BaseUser
+    sender: br.BaseUser
     command: str
-    args: List[str]
+    args: list[str]
     content: MessageEventContent
-    portal: Optional[br.BasePortal]
+    portal: br.BasePortal | None
     is_management: bool
     has_bridge_bot: bool
 
-    def __init__(self, processor: CommandProcessor, room_id: RoomID, event_id: EventID,
-                 sender: br.BaseUser, command: str, args: List[str], content: MessageEventContent,
-                 portal: Optional[br.BasePortal], is_management: bool, has_bridge_bot: bool
-                 ) -> None:
+    def __init__(
+        self,
+        processor: CommandProcessor,
+        room_id: RoomID,
+        event_id: EventID,
+        sender: br.BaseUser,
+        command: str,
+        args: list[str],
+        content: MessageEventContent,
+        portal: br.BasePortal | None,
+        is_management: bool,
+        has_bridge_bot: bool,
+    ) -> None:
         self.bridge = processor.bridge
         self.az = processor.az
         self.log = processor.log
@@ -110,9 +121,12 @@ class CommandEvent:
         When you override this property or otherwise extend CommandEvent, remember to pass the
         extended CommandEvent class when initializing your CommandProcessor.
         """
-        return HelpCacheKey(is_management=self.is_management, is_portal=self.portal is not None,
-                            is_admin=self.sender.is_admin,
-                            is_logged_in=await self.sender.is_logged_in())
+        return HelpCacheKey(
+            is_management=self.is_management,
+            is_portal=self.portal is not None,
+            is_admin=self.sender.is_admin,
+            is_logged_in=await self.sender.is_logged_in(),
+        )
 
     @property
     def print_error_traceback(self) -> bool:
@@ -127,11 +141,11 @@ class CommandEvent:
 
     @property
     def main_intent(self) -> IntentAPI:
-        return (self.portal.main_intent if self.portal
-                else self.az.intent)
+        return self.portal.main_intent if self.portal else self.az.intent
 
-    def reply(self, message: str, allow_html: bool = False, render_markdown: bool = True
-              ) -> Awaitable[EventID]:
+    def reply(
+        self, message: str, allow_html: bool = False, render_markdown: bool = True
+    ) -> Awaitable[EventID]:
         """Write a reply to the room in which the command was issued.
 
         Replaces occurences of "$cmdprefix" in the message with the command
@@ -151,8 +165,9 @@ class CommandEvent:
             Handler for the message sending function.
         """
         message = self._replace_command_prefix(message)
-        html = self._render_message(message, allow_html=allow_html,
-                                    render_markdown=render_markdown)
+        html = self._render_message(
+            message, allow_html=allow_html, render_markdown=render_markdown
+        )
         if self.has_bridge_bot:
             return self.az.intent.send_notice(self.room_id, message, html=html)
         else:
@@ -165,12 +180,13 @@ class CommandEvent:
 
     def _replace_command_prefix(self, message: str) -> str:
         """Returns the string with the proper command prefix entered."""
-        message = message.replace("$cmdprefix+sp ",
-                                  "" if self.is_management else f"{self.command_prefix} ")
+        message = message.replace(
+            "$cmdprefix+sp ", "" if self.is_management else f"{self.command_prefix} "
+        )
         return message.replace("$cmdprefix", self.command_prefix)
 
     @staticmethod
-    def _render_message(message: str, allow_html: bool, render_markdown: bool) -> Optional[str]:
+    def _render_message(message: str, allow_html: bool, render_markdown: bool) -> str | None:
         """Renders the message as HTML.
 
         Args:
@@ -206,6 +222,7 @@ class CommandHandler:
         name: The name of this command.
         help_section: Section of the help in which this command will appear.
     """
+
     name: str
 
     management_only: bool
@@ -217,11 +234,19 @@ class CommandHandler:
     _help_args: str
     help_section: HelpSection
 
-    def __init__(self, handler: CommandHandlerFunc, management_only: bool, name: str,
-                 help_text: str, help_args: str, help_section: HelpSection,
-                 needs_auth: bool, needs_admin: bool,
-                 is_enabled_for: IsEnabledForFunc = lambda _: True,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        handler: CommandHandlerFunc,
+        management_only: bool,
+        name: str,
+        help_text: str,
+        help_args: str,
+        help_section: HelpSection,
+        needs_auth: bool,
+        needs_admin: bool,
+        is_enabled_for: IsEnabledForFunc = lambda _: True,
+        **kwargs,
+    ) -> None:
         """
         Args:
             handler: The function handling the execution of this command.
@@ -246,7 +271,7 @@ class CommandHandler:
         self.help_section = help_section
         self.is_enabled_for = is_enabled_for
 
-    async def get_permission_error(self, evt: CommandEvent) -> Optional[str]:
+    async def get_permission_error(self, evt: CommandEvent) -> str | None:
         """Returns the reason why the command could not be issued.
 
         Args:
@@ -256,8 +281,10 @@ class CommandHandler:
             A string describing the error or None if there was no error.
         """
         if self.management_only and not evt.is_management:
-            return (f"`{evt.command}` is a restricted command: "
-                    "you may only run it in management rooms.")
+            return (
+                f"`{evt.command}` is a restricted command: "
+                "you may only run it in management rooms."
+            )
         elif self.needs_admin and not evt.sender.is_admin:
             return "This command requires administrator privileges."
         elif self.needs_auth and not await evt.sender.is_logged_in():
@@ -274,9 +301,11 @@ class CommandHandler:
             True if a user with the given state is allowed to issue the
             command.
         """
-        return ((not self.management_only or key.is_management) and
-                (not self.needs_admin or key.is_admin) and
-                (not self.needs_auth or key.is_logged_in))
+        return (
+            (not self.management_only or key.is_management)
+            and (not self.needs_admin or key.is_admin)
+            and (not self.needs_auth or key.is_logged_in)
+        )
 
     async def __call__(self, evt: CommandEvent) -> Any:
         """Executes the command if evt was issued with proper rights.
@@ -303,19 +332,35 @@ class CommandHandler:
         return f"**{self.name}** {self._help_args} - {self._help_text}"
 
 
-def command_handler(_func: Optional[CommandHandlerFunc] = None, *, management_only: bool = False,
-                    name: Optional[str] = None, help_text: str = "", help_args: str = "",
-                    help_section: HelpSection = None, aliases: Optional[List[str]] = None,
-                    _handler_class: Type[CommandHandler] = CommandHandler,
-                    needs_auth: bool = True, needs_admin: bool = False,
-                    **kwargs) -> Callable[[CommandHandlerFunc], CommandHandler]:
+def command_handler(
+    _func: CommandHandlerFunc | None = None,
+    *,
+    management_only: bool = False,
+    name: str | None = None,
+    help_text: str = "",
+    help_args: str = "",
+    help_section: HelpSection = None,
+    aliases: list[str] | None = None,
+    _handler_class: Type[CommandHandler] = CommandHandler,
+    needs_auth: bool = True,
+    needs_admin: bool = False,
+    **kwargs,
+) -> Callable[[CommandHandlerFunc], CommandHandler]:
     """Decorator to create CommandHandlers"""
 
     def decorator(func: CommandHandlerFunc) -> CommandHandler:
         actual_name = name or func.__name__.replace("_", "-")
-        handler = _handler_class(func, management_only=management_only, name=actual_name,
-                                 help_text=help_text, help_args=help_args, help_section=help_section,
-                                 needs_auth=needs_auth, needs_admin=needs_admin, **kwargs)
+        handler = _handler_class(
+            func,
+            management_only=management_only,
+            name=actual_name,
+            help_text=help_text,
+            help_args=help_args,
+            help_section=help_section,
+            needs_auth=needs_auth,
+            needs_admin=needs_admin,
+            **kwargs,
+        )
         command_handlers[handler.name] = handler
         if aliases:
             for alias in aliases:
@@ -336,8 +381,9 @@ class CommandProcessor:
     bridge: bridge.Bridge
     _ref_no: int
 
-    def __init__(self, bridge: bridge.Bridge, event_class: Type[CommandEvent] = CommandEvent
-                 ) -> None:
+    def __init__(
+        self, bridge: bridge.Bridge, event_class: Type[CommandEvent] = CommandEvent
+    ) -> None:
         self.az = bridge.az
         self.config = bridge.config
         self.loop = bridge.loop or asyncio.get_event_loop()
@@ -356,14 +402,23 @@ class CommandProcessor:
         return self._ref_no
 
     @staticmethod
-    def _run_handler(handler: Callable[[CommandEvent], Awaitable[Any]], evt: CommandEvent
-                     ) -> Awaitable[Any]:
+    def _run_handler(
+        handler: Callable[[CommandEvent], Awaitable[Any]], evt: CommandEvent
+    ) -> Awaitable[Any]:
         return handler(evt)
 
-    async def handle(self, room_id: RoomID, event_id: EventID, sender: br.BaseUser,
-                     command: str, args: List[str], content: MessageEventContent,
-                     portal: Optional[br.BasePortal], is_management: bool, has_bridge_bot: bool,
-                     ) -> None:
+    async def handle(
+        self,
+        room_id: RoomID,
+        event_id: EventID,
+        sender: br.BaseUser,
+        command: str,
+        args: list[str],
+        content: MessageEventContent,
+        portal: br.BasePortal | None,
+        is_management: bool,
+        has_bridge_bot: bool,
+    ) -> None:
         """Handles the raw commands issued by a user to the Matrix bot.
 
         If the command is not known, it might be a followup command and is
@@ -388,9 +443,18 @@ class CommandProcessor:
         if not command_handlers or "unknown-command" not in command_handlers:
             raise ValueError("command_handlers are not properly initialized.")
 
-        evt = self.event_class(processor=self, room_id=room_id, event_id=event_id, sender=sender,
-                               command=command, args=args, content=content, portal=portal,
-                               is_management=is_management, has_bridge_bot=has_bridge_bot)
+        evt = self.event_class(
+            processor=self,
+            room_id=room_id,
+            event_id=event_id,
+            sender=sender,
+            command=command,
+            args=args,
+            content=content,
+            portal=portal,
+            is_management=is_management,
+            has_bridge_bot=has_bridge_bot,
+        )
         orig_command = command
         command = command.lower()
 
@@ -407,15 +471,21 @@ class CommandProcessor:
             await self._run_handler(handler, evt)
         except Exception:
             ref_no = self.ref_no
-            self.log.exception("Unhandled error while handling command "
-                               f"{evt.command} {' '.join(args)} from {sender.mxid} (ref: {ref_no})")
+            self.log.exception(
+                "Unhandled error while handling command "
+                f"{evt.command} {' '.join(args)} from {sender.mxid} (ref: {ref_no})"
+            )
             if evt.print_error_traceback:
-                await evt.reply("Unhandled error while handling command:\n\n"
-                                "```traceback\n"
-                                f"{traceback.format_exc()}"
-                                "```")
+                await evt.reply(
+                    "Unhandled error while handling command:\n\n"
+                    "```traceback\n"
+                    f"{traceback.format_exc()}"
+                    "```"
+                )
             else:
-                await evt.reply("Unhandled error while handling command. "
-                                f"Check logs for more details (ref: {ref_no}).")
+                await evt.reply(
+                    "Unhandled error while handling command. "
+                    f"Check logs for more details (ref: {ref_no})."
+                )
             raise
         return None

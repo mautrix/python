@@ -4,23 +4,49 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Tuple, Optional, Union
-import logging
+
 import asyncio
+import logging
 import time
 
-from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
-                           MessageEventContent, StateEvent, Membership, MemberStateEventContent,
-                           PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent,
-                           EncryptedEvent, ReceiptType, SingleReceiptEventContent, StateUnsigned,
-                           MediaRepoConfig, BaseRoomEvent, ReactionEvent, RedactionEvent)
-from mautrix.errors import (IntentError, MatrixError, MForbidden, DecryptionError, SessionNotFound,
-                            MUnknownToken, MExclusive)
-from mautrix.appservice import AppService
 from mautrix import __optional_imports__
+from mautrix.appservice import AppService
+from mautrix.errors import (
+    DecryptionError,
+    IntentError,
+    MatrixError,
+    MExclusive,
+    MForbidden,
+    MUnknownToken,
+    SessionNotFound,
+)
+from mautrix.types import (
+    BaseRoomEvent,
+    EncryptedEvent,
+    Event,
+    EventID,
+    EventType,
+    MediaRepoConfig,
+    Membership,
+    MemberStateEventContent,
+    MessageEvent,
+    MessageEventContent,
+    MessageType,
+    PresenceEvent,
+    ReactionEvent,
+    ReceiptEvent,
+    ReceiptType,
+    RedactionEvent,
+    RoomID,
+    SingleReceiptEventContent,
+    StateEvent,
+    StateUnsigned,
+    TextMessageEventContent,
+    TypingEvent,
+    UserID,
+)
 from mautrix.util import markdown
 from mautrix.util.logging import TraceLogger
-from mautrix.util.opt_prometheus import Histogram
 from mautrix.util.message_send_checkpoint import (
     CHECKPOINT_TYPES,
     MessageSendCheckpoint,
@@ -28,6 +54,7 @@ from mautrix.util.message_send_checkpoint import (
     MessageSendCheckpointStatus,
     MessageSendCheckpointStep,
 )
+from mautrix.util.opt_prometheus import Histogram
 
 from .. import bridge as br
 from . import commands as cmd
@@ -46,8 +73,9 @@ except ImportError:
         raise
     encrypt_attachment = None
 
-EVENT_TIME = Histogram("bridge_matrix_event", "Time spent processing Matrix events",
-                       ["event_type"])
+EVENT_TIME = Histogram(
+    "bridge_matrix_event", "Time spent processing Matrix events", ["event_type"]
+)
 
 
 class BaseMatrixHandler:
@@ -56,14 +84,17 @@ class BaseMatrixHandler:
     commands: cmd.CommandProcessor
     config: config.BaseBridgeConfig
     bridge: br.Bridge
-    e2ee: Optional[EncryptionManager]
+    e2ee: EncryptionManager | None
     media_config: MediaRepoConfig
 
     user_id_prefix: str
     user_id_suffix: str
 
-    def __init__(self, command_processor: Optional[cmd.CommandProcessor] = None,
-                 bridge: Optional[br.Bridge] = None) -> None:
+    def __init__(
+        self,
+        command_processor: cmd.CommandProcessor | None = None,
+        bridge: br.Bridge | None = None,
+    ) -> None:
         self.az = bridge.az
         self.config = bridge.config
         self.bridge = bridge
@@ -77,14 +108,18 @@ class BaseMatrixHandler:
                 self.log.error("Encryption enabled in config, but dependencies not installed.")
                 return
             if not encrypt_attachment:
-                self.log.warning("Encryption enabled in config, but media encryption dependencies "
-                                 "not installed.")
+                self.log.warning(
+                    "Encryption enabled in config, but media encryption dependencies "
+                    "not installed."
+                )
             self.e2ee = EncryptionManager(
                 bridge=bridge,
-                user_id_prefix=self.user_id_prefix, user_id_suffix=self.user_id_suffix,
+                user_id_prefix=self.user_id_prefix,
+                user_id_suffix=self.user_id_suffix,
                 homeserver_address=self.config["homeserver.address"],
                 db_url=self.config["appservice.database"],
-                key_sharing_config=self.config["bridge.encryption.key_sharing"])
+                key_sharing_config=self.config["bridge.encryption.key_sharing"],
+            )
 
         self.management_room_text = self.config.get(
             "bridge.management_room_text",
@@ -112,8 +147,10 @@ class BaseMatrixHandler:
                 raise
             except MForbidden:
                 if not tried_to_register:
-                    self.log.debug("Whoami endpoint returned M_FORBIDDEN, "
-                                   "trying to register bridge bot before retrying...")
+                    self.log.debug(
+                        "Whoami endpoint returned M_FORBIDDEN, "
+                        "trying to register bridge bot before retrying..."
+                    )
                     await self.az.intent.ensure_registered()
                     tried_to_register = True
                 else:
@@ -136,7 +173,8 @@ class BaseMatrixHandler:
         if displayname:
             try:
                 await self.az.intent.set_displayname(
-                    displayname if displayname != "remove" else "")
+                    displayname if displayname != "remove" else ""
+                )
             except Exception:
                 self.log.exception("Failed to set bot displayname")
 
@@ -166,41 +204,57 @@ class BaseMatrixHandler:
     async def handle_leave(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
         pass
 
-    async def handle_kick(self, room_id: RoomID, user_id: UserID, kicked_by: UserID, reason: str,
-                          event_id: EventID) -> None:
+    async def handle_kick(
+        self, room_id: RoomID, user_id: UserID, kicked_by: UserID, reason: str, event_id: EventID
+    ) -> None:
         pass
 
-    async def handle_ban(self, room_id: RoomID, user_id: UserID, banned_by: UserID, reason: str,
-                         event_id: EventID) -> None:
+    async def handle_ban(
+        self, room_id: RoomID, user_id: UserID, banned_by: UserID, reason: str, event_id: EventID
+    ) -> None:
         pass
 
-    async def handle_unban(self, room_id: RoomID, user_id: UserID, unbanned_by: UserID,
-                           reason: str, event_id: EventID) -> None:
+    async def handle_unban(
+        self, room_id: RoomID, user_id: UserID, unbanned_by: UserID, reason: str, event_id: EventID
+    ) -> None:
         pass
 
     async def handle_join(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
         pass
 
-    async def handle_member_info_change(self, room_id: RoomID, user_id: UserID,
-                                        content: MemberStateEventContent,
-                                        prev_content: MemberStateEventContent,
-                                        event_id: EventID) -> None:
+    async def handle_member_info_change(
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        content: MemberStateEventContent,
+        prev_content: MemberStateEventContent,
+        event_id: EventID,
+    ) -> None:
         pass
 
-    async def handle_puppet_invite(self, room_id: RoomID, puppet: br.BasePuppet,
-                                   invited_by: br.BaseUser, event_id: EventID) -> None:
+    async def handle_puppet_invite(
+        self, room_id: RoomID, puppet: br.BasePuppet, invited_by: br.BaseUser, event_id: EventID
+    ) -> None:
         pass
 
-    async def handle_invite(self, room_id: RoomID, user_id: UserID, inviter: br.BaseUser,
-                            event_id: EventID) -> None:
+    async def handle_invite(
+        self, room_id: RoomID, user_id: UserID, inviter: br.BaseUser, event_id: EventID
+    ) -> None:
         pass
 
-    async def handle_reject(self, room_id: RoomID, user_id: UserID, reason: str, event_id: EventID
-                            ) -> None:
+    async def handle_reject(
+        self, room_id: RoomID, user_id: UserID, reason: str, event_id: EventID
+    ) -> None:
         pass
 
-    async def handle_disinvite(self, room_id: RoomID, user_id: UserID, disinvited_by: UserID,
-                               reason: str, event_id: EventID) -> None:
+    async def handle_disinvite(
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        disinvited_by: UserID,
+        reason: str,
+        event_id: EventID,
+    ) -> None:
         pass
 
     async def handle_event(self, evt: Event) -> None:
@@ -219,20 +273,26 @@ class BaseMatrixHandler:
         or override :meth:`allow_matrix_event` for it to reach here.
         """
 
-    async def handle_ephemeral_event(self, evt: Union[ReceiptEvent, PresenceEvent, TypingEvent]
-                                     ) -> None:
+    async def handle_ephemeral_event(
+        self, evt: ReceiptEvent | PresenceEvent | TypingEvent
+    ) -> None:
         if evt.type == EventType.RECEIPT:
             await self.handle_receipt(evt)
 
     async def send_permission_error(self, room_id: RoomID) -> None:
         await self.az.intent.send_notice(
             room_id,
-            text="You are not whitelisted to use this bridge.\n\n"
-                 "If you are the owner of this bridge, see the bridge.permissions "
-                 "section in your config file.",
-            html="<p>You are not whitelisted to use this bridge.</p>"
-                 "<p>If you are the owner of this bridge, see the "
-                 "<code>bridge.permissions</code> section in your config file.</p>")
+            text=(
+                "You are not whitelisted to use this bridge.\n\n"
+                "If you are the owner of this bridge, see the bridge.permissions "
+                "section in your config file."
+            ),
+            html=(
+                "<p>You are not whitelisted to use this bridge.</p>"
+                "<p>If you are the owner of this bridge, see the "
+                "<code>bridge.permissions</code> section in your config file.</p>"
+            ),
+        )
 
     async def accept_bot_invite(self, room_id: RoomID, inviter: br.BaseUser) -> None:
         tries = 0
@@ -244,8 +304,10 @@ class BaseMatrixHandler:
                 tries += 1
                 wait_for_seconds = (tries + 1) * 10
                 if tries < 5:
-                    self.log.exception(f"Failed to join room {room_id} with bridge bot, "
-                                       f"retrying in {wait_for_seconds} seconds...")
+                    self.log.exception(
+                        f"Failed to join room {room_id} with bridge bot, "
+                        f"retrying in {wait_for_seconds} seconds..."
+                    )
                     await asyncio.sleep(wait_for_seconds)
                 else:
                     self.log.exception(f"Failed to join room {room_id}, giving up.")
@@ -285,8 +347,9 @@ class BaseMatrixHandler:
             combined_html = "".join(map(markdown.render, welcome_messages))
             await self.az.intent.send_notice(room_id, text=combined, html=combined_html)
 
-    async def int_handle_invite(self, room_id: RoomID, user_id: UserID, invited_by: UserID,
-                                event_id: EventID) -> None:
+    async def int_handle_invite(
+        self, room_id: RoomID, user_id: UserID, invited_by: UserID, event_id: EventID
+    ) -> None:
         self.log.debug(f"{invited_by} invited {user_id} to {room_id}")
         inviter = await self.bridge.get_user(invited_by)
         if inviter is None:
@@ -305,16 +368,17 @@ class BaseMatrixHandler:
 
         await self.handle_invite(room_id, user_id, inviter, event_id)
 
-    def is_command(self, message: MessageEventContent) -> Tuple[bool, str]:
+    def is_command(self, message: MessageEventContent) -> tuple[bool, str]:
         text = message.body
         prefix = self.config["bridge.command_prefix"]
         is_command = text.startswith(prefix)
         if is_command:
-            text = text[len(prefix) + 1:].lstrip()
+            text = text[len(prefix) + 1 :].lstrip()
         return is_command, text
 
-    async def handle_message(self, room_id: RoomID, user_id: UserID, message: MessageEventContent,
-                             event_id: EventID) -> None:
+    async def handle_message(
+        self, room_id: RoomID, user_id: UserID, message: MessageEventContent, event_id: EventID
+    ) -> None:
         async def bail(error_text: str, step=MessageSendCheckpointStep.REMOTE) -> None:
             self.log.debug(error_text)
             await MessageSendCheckpoint(
@@ -326,7 +390,7 @@ class BaseMatrixHandler:
                 reported_by=MessageSendCheckpointReportedBy.BRIDGE,
                 event_type=EventType.ROOM_MESSAGE,
                 message_type=message.msgtype,
-                info=error_text
+                info=error_text,
             ).send(
                 self.log,
                 self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
@@ -335,8 +399,10 @@ class BaseMatrixHandler:
 
         sender = await self.bridge.get_user(user_id)
         if not sender or not await self.allow_message(sender):
-            await bail(f"Ignoring message {event_id} from {user_id} to {room_id}:"
-                       " user is not whitelisted.")
+            await bail(
+                f"Ignoring message {event_id} from {user_id} to {room_id}:"
+                " user is not whitelisted."
+            )
             return
         self.log.debug(f"Received Matrix event {event_id} from {sender.mxid} in {room_id}")
         self.log.trace("Event %s content: %s", event_id, message)
@@ -350,8 +416,10 @@ class BaseMatrixHandler:
             if await self.allow_bridging_message(sender, portal):
                 await portal.handle_matrix_message(sender, message, event_id)
             else:
-                await bail(f"Ignoring event {event_id} from {sender.mxid}:"
-                           " not allowed to send to portal")
+                await bail(
+                    f"Ignoring event {event_id} from {sender.mxid}:"
+                    " not allowed to send to portal"
+                )
             return
 
         if message.msgtype != MessageType.TEXT:
@@ -377,8 +445,17 @@ class BaseMatrixHandler:
                 args = []
 
             try:
-                await self.commands.handle(room_id, event_id, sender, command, args, message,
-                                           portal, is_management, bridge_bot_in_room)
+                await self.commands.handle(
+                    room_id,
+                    event_id,
+                    sender,
+                    command,
+                    args,
+                    message,
+                    portal,
+                    is_management,
+                    bridge_bot_in_room,
+                )
             except Exception as e:
                 await bail(repr(e), step=MessageSendCheckpointStep.COMMAND)
             else:
@@ -397,10 +474,12 @@ class BaseMatrixHandler:
                     self.az.as_token,
                 )
         else:
-            await bail(f"Ignoring event {event_id} from {sender.mxid}:"
-                       " not a command and not a portal room")
+            await bail(
+                f"Ignoring event {event_id} from {sender.mxid}:"
+                " not a command and not a portal room"
+            )
 
-    async def _is_direct_chat(self, room_id: RoomID) -> Tuple[bool, bool]:
+    async def _is_direct_chat(self, room_id: RoomID) -> tuple[bool, bool]:
         try:
             members = await self.az.intent.get_room_members(room_id)
             return len(members) == 2, self.az.bot_mxid in members
@@ -420,8 +499,13 @@ class BaseMatrixHandler:
 
                 await self.handle_read_receipt(user, portal, event_id, data)
 
-    async def handle_read_receipt(self, user: br.BaseUser, portal: br.BasePortal, event_id: EventID,
-                                  data: SingleReceiptEventContent) -> None:
+    async def handle_read_receipt(
+        self,
+        user: br.BaseUser,
+        portal: br.BasePortal,
+        event_id: EventID,
+        data: SingleReceiptEventContent,
+    ) -> None:
         pass
 
     async def try_handle_sync_event(self, evt: Event) -> None:
@@ -433,10 +517,12 @@ class BaseMatrixHandler:
         except Exception:
             self.log.exception("Error handling manually received Matrix event")
 
-    async def send_encryption_error_notice(self, evt: EncryptedEvent,
-                                           error: DecryptionError) -> None:
-        await self.az.intent.send_notice(evt.room_id,
-                                         f"\u26a0 Your message was not bridged: {error}")
+    async def send_encryption_error_notice(
+        self, evt: EncryptedEvent, error: DecryptionError
+    ) -> None:
+        await self.az.intent.send_notice(
+            evt.room_id, f"\u26a0 Your message was not bridged: {error}"
+        )
 
     async def handle_encrypted(self, evt: EncryptedEvent) -> None:
         if not self.e2ee:
@@ -458,36 +544,54 @@ class BaseMatrixHandler:
             await self.int_handle_event(decrypted, send_bridge_checkpoint=False)
 
     async def handle_encrypted_unsupported(self, evt: EncryptedEvent) -> None:
-        self.log.debug("Got encrypted message %s from %s, but encryption is not enabled",
-                       evt.event_id, evt.sender)
-        await self.az.intent.send_notice(evt.room_id, "🔒️ This bridge has not been configured "
-                                                      "to support encryption")
+        self.log.debug(
+            "Got encrypted message %s from %s, but encryption is not enabled",
+            evt.event_id,
+            evt.sender,
+        )
+        await self.az.intent.send_notice(
+            evt.room_id, "🔒️ This bridge has not been configured to support encryption"
+        )
 
-    async def _handle_encrypted_wait(self, evt: EncryptedEvent, err: SessionNotFound, wait: int
-                                     ) -> None:
-        self.log.debug(f"Couldn't find session {err.session_id} trying to decrypt {evt.event_id},"
-                       " waiting even longer")
-        msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption "
-               f"keys. The bridge will retry for {wait} seconds. If this error keeps happening, "
-               "try restarting your client.")
-        asyncio.create_task(self.e2ee.crypto.request_room_key(
-            evt.room_id, evt.content.sender_key, evt.content.session_id,
-            from_devices={evt.sender: [evt.content.device_id]},
-        ))
+    async def _handle_encrypted_wait(
+        self, evt: EncryptedEvent, err: SessionNotFound, wait: int
+    ) -> None:
+        self.log.debug(
+            f"Couldn't find session {err.session_id} trying to decrypt {evt.event_id},"
+            " waiting even longer"
+        )
+        msg = (
+            "\u26a0 Your message was not bridged: the bridge hasn't received the decryption "
+            f"keys. The bridge will retry for {wait} seconds. If this error keeps happening, "
+            "try restarting your client."
+        )
+        asyncio.create_task(
+            self.e2ee.crypto.request_room_key(
+                evt.room_id,
+                evt.content.sender_key,
+                evt.content.session_id,
+                from_devices={evt.sender: [evt.content.device_id]},
+            )
+        )
         try:
             event_id = await self.az.intent.send_notice(evt.room_id, msg)
         except IntentError:
             self.log.debug("IntentError while sending encryption error", exc_info=True)
-            self.log.error("Got IntentError while trying to send encryption error message. "
-                           "This likely means the bridge bot is not in the room, which can "
-                           "happen if you force-enable e2ee on the homeserver without enabling "
-                           "it by default on the bridge (bridge -> encryption -> default).")
+            self.log.error(
+                "Got IntentError while trying to send encryption error message. "
+                "This likely means the bridge bot is not in the room, which can "
+                "happen if you force-enable e2ee on the homeserver without enabling "
+                "it by default on the bridge (bridge -> encryption -> default)."
+            )
             return
-        got_keys = await self.e2ee.crypto.wait_for_session(evt.room_id, err.sender_key,
-                                                           err.session_id, timeout=wait)
+        got_keys = await self.e2ee.crypto.wait_for_session(
+            evt.room_id, err.sender_key, err.session_id, timeout=wait
+        )
         if got_keys:
-            self.log.debug(f"Got session {err.session_id} after waiting more, "
-                           f"trying to decrypt {evt.event_id} again")
+            self.log.debug(
+                f"Got session {err.session_id} after waiting more, "
+                f"trying to decrypt {evt.event_id} again"
+            )
             try:
                 decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=0)
             except DecryptionError as e:
@@ -504,8 +608,10 @@ class BaseMatrixHandler:
             error_message = f"Didn't get {err.session_id}, giving up on {evt.event_id}"
             self.log.warning(error_message)
             self.send_decrypted_checkpoint(evt, error_message, True, retry_num=1)
-            msg = ("\u26a0 Your message was not bridged: the bridge hasn't received the decryption"
-                   " keys. If this error keeps happening, try restarting your client.")
+            msg = (
+                "\u26a0 Your message was not bridged: the bridge hasn't received the decryption"
+                " keys. If this error keeps happening, try restarting your client."
+            )
         content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=msg)
         content.set_edit(event_id)
         await self.az.intent.send_message(evt.room_id, content)
@@ -524,7 +630,7 @@ class BaseMatrixHandler:
         self,
         evt: Event,
         step: MessageSendCheckpointStep,
-        err: Optional[Union[Exception, str]] = None,
+        err: Exception | str | None = None,
         permanent: bool = False,
         retry_num: int = 0,
     ) -> None:
@@ -538,7 +644,8 @@ class BaseMatrixHandler:
         status = MessageSendCheckpointStatus.SUCCESS
         if err:
             status = (
-                MessageSendCheckpointStatus.PERM_FAILURE if permanent
+                MessageSendCheckpointStatus.PERM_FAILURE
+                if permanent
                 else MessageSendCheckpointStatus.WILL_RETRY
             )
 
@@ -559,14 +666,26 @@ class BaseMatrixHandler:
     def send_bridge_checkpoint(self, evt: Event) -> None:
         self.send_message_send_checkpoint(evt, MessageSendCheckpointStep.BRIDGE)
 
-    def send_decrypted_checkpoint(self, evt: Event, err: Optional[Union[Exception, str]] = None,
-                                  permanent: bool = False, retry_num: int = 0) -> None:
-        self.send_message_send_checkpoint(evt, MessageSendCheckpointStep.DECRYPTED, err, permanent,
-                                          retry_num)
+    def send_decrypted_checkpoint(
+        self,
+        evt: Event,
+        err: Exception | str | None = None,
+        permanent: bool = False,
+        retry_num: int = 0,
+    ) -> None:
+        self.send_message_send_checkpoint(
+            evt, MessageSendCheckpointStep.DECRYPTED, err, permanent, retry_num
+        )
 
-    allowed_event_classes: Tuple[type, ...] = (
-        MessageEvent, StateEvent, ReactionEvent, EncryptedEvent, RedactionEvent,
-        ReceiptEvent, TypingEvent, PresenceEvent,
+    allowed_event_classes: tuple[type, ...] = (
+        MessageEvent,
+        StateEvent,
+        ReactionEvent,
+        EncryptedEvent,
+        RedactionEvent,
+        ReceiptEvent,
+        TypingEvent,
+        PresenceEvent,
     )
 
     async def allow_matrix_event(self, evt: Event) -> bool:
@@ -605,33 +724,56 @@ class BaseMatrixHandler:
             prev_content = unsigned.prev_content or MemberStateEventContent()
             prev_membership = prev_content.membership if prev_content else Membership.JOIN
             if evt.content.membership == Membership.INVITE:
-                await self.int_handle_invite(evt.room_id, UserID(evt.state_key), evt.sender,
-                                             evt.event_id)
+                await self.int_handle_invite(
+                    evt.room_id, UserID(evt.state_key), evt.sender, evt.event_id
+                )
             elif evt.content.membership == Membership.LEAVE:
                 if prev_membership == Membership.BAN:
-                    await self.handle_unban(evt.room_id, UserID(evt.state_key), evt.sender,
-                                            evt.content.reason, evt.event_id)
+                    await self.handle_unban(
+                        evt.room_id,
+                        UserID(evt.state_key),
+                        evt.sender,
+                        evt.content.reason,
+                        evt.event_id,
+                    )
                 elif prev_membership == Membership.INVITE:
                     if evt.sender == evt.state_key:
-                        await self.handle_reject(evt.room_id, UserID(evt.state_key),
-                                                 evt.content.reason, evt.event_id)
+                        await self.handle_reject(
+                            evt.room_id, UserID(evt.state_key), evt.content.reason, evt.event_id
+                        )
                     else:
-                        await self.handle_disinvite(evt.room_id, UserID(evt.state_key), evt.sender,
-                                                    evt.content.reason, evt.event_id)
+                        await self.handle_disinvite(
+                            evt.room_id,
+                            UserID(evt.state_key),
+                            evt.sender,
+                            evt.content.reason,
+                            evt.event_id,
+                        )
                 elif evt.sender == evt.state_key:
                     await self.handle_leave(evt.room_id, UserID(evt.state_key), evt.event_id)
                 else:
-                    await self.handle_kick(evt.room_id, UserID(evt.state_key), evt.sender,
-                                           evt.content.reason, evt.event_id)
+                    await self.handle_kick(
+                        evt.room_id,
+                        UserID(evt.state_key),
+                        evt.sender,
+                        evt.content.reason,
+                        evt.event_id,
+                    )
             elif evt.content.membership == Membership.BAN:
-                await self.handle_ban(evt.room_id, UserID(evt.state_key), evt.sender,
-                                      evt.content.reason, evt.event_id)
+                await self.handle_ban(
+                    evt.room_id,
+                    UserID(evt.state_key),
+                    evt.sender,
+                    evt.content.reason,
+                    evt.event_id,
+                )
             elif evt.content.membership == Membership.JOIN:
                 if prev_membership != Membership.JOIN:
                     await self.handle_join(evt.room_id, UserID(evt.state_key), evt.event_id)
                 else:
-                    await self.handle_member_info_change(evt.room_id, UserID(evt.state_key),
-                                                         evt.content, prev_content, evt.event_id)
+                    await self.handle_member_info_change(
+                        evt.room_id, UserID(evt.state_key), evt.content, prev_content, evt.event_id
+                    )
         elif evt.type in (EventType.ROOM_MESSAGE, EventType.STICKER):
             evt: MessageEvent
             if evt.type != EventType.ROOM_MESSAGE:
@@ -644,8 +786,9 @@ class BaseMatrixHandler:
         else:
             if evt.type.is_state and isinstance(evt, StateEvent):
                 await self.handle_state_event(evt)
-            elif evt.type.is_ephemeral and isinstance(evt, (PresenceEvent, TypingEvent,
-                                                            ReceiptEvent)):
+            elif evt.type.is_ephemeral and isinstance(
+                evt, (PresenceEvent, TypingEvent, ReceiptEvent)
+            ):
                 await self.handle_ephemeral_event(evt)
             else:
                 await self.handle_event(evt)

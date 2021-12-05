@@ -4,19 +4,29 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Any, Callable, Awaitable, Dict
-import functools
+
+from typing import Any, Awaitable, Callable, Dict
 import asyncio
+import functools
 import json
 import sys
 
 import olm
 
-from mautrix.types import (UserID, DeviceID, SigningKey, EncryptionKeyAlgorithm, SessionID,
-                           RequestedKeyInfo, RoomID, IdentityKey)
+from mautrix.types import (
+    DeviceID,
+    EncryptionKeyAlgorithm,
+    IdentityKey,
+    RequestedKeyInfo,
+    RoomID,
+    SessionID,
+    SigningKey,
+    UserID,
+)
 from mautrix.util.logging import TraceLogger
 
-from .. import crypto, client as cli
+from .. import client as cli
+from .. import crypto
 
 if sys.version_info >= (3, 8):
     from typing import TypedDict
@@ -48,8 +58,9 @@ class BaseOlmMachine:
 
     _prev_unwedge: Dict[IdentityKey, float]
 
-    async def wait_for_session(self, room_id: RoomID, sender_key: IdentityKey,
-                               session_id: SessionID, timeout: float = 3) -> bool:
+    async def wait_for_session(
+        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID, timeout: float = 3
+    ) -> bool:
         try:
             fut = self._inbound_session_waiters[session_id]
         except KeyError:
@@ -67,12 +78,14 @@ class BaseOlmMachine:
             return
 
 
-canonical_json = functools.partial(json.dumps, ensure_ascii=False, separators=(",", ":"),
-                                   sort_keys=True)
+canonical_json = functools.partial(
+    json.dumps, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+)
 
 
-def verify_signature_json(data: 'SignedObject', user_id: UserID, device_id: DeviceID,
-                          key: SigningKey) -> bool:
+def verify_signature_json(
+    data: "SignedObject", user_id: UserID, device_id: DeviceID, key: SigningKey
+) -> bool:
     data_copy = {**data}
     data_copy.pop("unsigned", None)
     signatures = data_copy.pop("signatures")

@@ -1,12 +1,12 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Optional
+from __future__ import annotations
 
 from mautrix.api import Method, Path
-from mautrix.types import EventType, AccountDataEventContent, JSON, RoomID, Serializable
+from mautrix.types import JSON, AccountDataEventContent, EventType, RoomID, Serializable
 
 from ..base import BaseClientAPI
 
@@ -18,8 +18,7 @@ class AccountDataMethods(BaseClientAPI):
 
     See also: `API reference <https://matrix.org/docs/spec/client_server/r0.6.1#id125>`__"""
 
-    async def get_account_data(self, type: Union[EventType, str], room_id: Optional[RoomID] = None
-                               ) -> JSON:
+    async def get_account_data(self, type: EventType | str, room_id: RoomID | None = None) -> JSON:
         """
         Get a specific account data event from the homeserver.
 
@@ -39,8 +38,12 @@ class AccountDataMethods(BaseClientAPI):
             base_path = base_path.rooms[room_id]
         return await self.api.request(Method.GET, base_path.account_data[type])
 
-    async def set_account_data(self, type: Union[EventType, str], data: AccountDataEventContent,
-                               room_id: Optional[RoomID] = None) -> None:
+    async def set_account_data(
+        self,
+        type: EventType | str,
+        data: AccountDataEventContent | dict[str, JSON],
+        room_id: RoomID | None = None,
+    ) -> None:
         """
         Store account data on the homeserver.
 
@@ -56,5 +59,8 @@ class AccountDataMethods(BaseClientAPI):
         base_path = Path.user[self.mxid]
         if room_id:
             base_path = base_path.rooms[room_id]
-        await self.api.request(Method.PUT, base_path.account_data[type],
-                               data.serialize() if isinstance(data, Serializable) else data)
+        await self.api.request(
+            Method.PUT,
+            base_path.account_data[type],
+            data.serialize() if isinstance(data, Serializable) else data,
+        )

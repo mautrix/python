@@ -1,21 +1,26 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional, Tuple
+
 import json
 
+from aiohttp import ClientError, ClientSession, ContentTypeError
 from yarl import URL
-from aiohttp import ClientSession, ContentTypeError, ClientError
 
 from mautrix.api import HTTPAPI, Method
-from mautrix.types import UserID, DeviceID, VersionsResponse, SerializerError
+from mautrix.errors import (
+    WellKnownInvalidVersionsResponse,
+    WellKnownMissingHomeserver,
+    WellKnownNotJSON,
+    WellKnownNotURL,
+    WellKnownUnexpectedStatus,
+    WellKnownUnsupportedScheme,
+)
+from mautrix.types import DeviceID, SerializerError, UserID, VersionsResponse
 from mautrix.util.logging import TraceLogger
-from mautrix.errors import (WellKnownNotURL, WellKnownNotJSON, WellKnownMissingHomeserver,
-                            WellKnownUnexpectedStatus, WellKnownUnsupportedScheme,
-                            WellKnownInvalidVersionsResponse)
 
 
 class BaseClientAPI:
@@ -62,7 +67,7 @@ class BaseClientAPI:
         self.log = self.api.log
 
     @classmethod
-    def parse_user_id(cls, mxid: UserID) -> Tuple[str, str]:
+    def parse_user_id(cls, mxid: UserID) -> tuple[str, str]:
         """
         Parse the localpart and server name from a Matrix user ID.
 
@@ -85,7 +90,7 @@ class BaseClientAPI:
             raise ValueError("User ID must contain domain separator") from e
         if sep == len(mxid) - 1:
             raise ValueError("User ID must contain domain")
-        return mxid[1:sep], mxid[sep + 1:]
+        return mxid[1:sep], mxid[sep + 1 :]
 
     @property
     def mxid(self) -> UserID:
@@ -102,7 +107,7 @@ class BaseClientAPI:
         return VersionsResponse.deserialize(resp)
 
     @classmethod
-    async def discover(cls, domain: str, session: Optional[ClientSession] = None) -> Optional[URL]:
+    async def discover(cls, domain: str, session: ClientSession | None = None) -> URL | None:
         """
         Follow the server discovery spec to find the actual URL when given a Matrix server name.
 
@@ -124,7 +129,7 @@ class BaseClientAPI:
             return await cls._discover(domain, session)
 
     @classmethod
-    async def _discover(cls, domain: str, session: ClientSession) -> Optional[URL]:
+    async def _discover(cls, domain: str, session: ClientSession) -> URL | None:
         well_known = URL.build(scheme="https", host=domain, path="/.well-known/matrix/client")
         async with session.get(well_known) as resp:
             if resp.status == 404:

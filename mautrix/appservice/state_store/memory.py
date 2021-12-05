@@ -1,9 +1,9 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional, Tuple
 from abc import ABC
 import time
 
@@ -70,8 +70,9 @@ class ASStateStore(ClientStateStore, ABC):
         except KeyError:
             return None
 
-    def set_typing(self, room_id: RoomID, user_id: UserID, is_typing: bool,
-                   timeout: int = 0) -> None:
+    def set_typing(
+        self, room_id: RoomID, user_id: UserID, is_typing: bool, timeout: int = 0
+    ) -> None:
         if is_typing:
             ts = int(round(time.time() * 1000))
             self._typing[(room_id, user_id)] = ts + timeout

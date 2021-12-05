@@ -3,25 +3,28 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List, Dict, Union
+from typing import Dict, List, Optional, Union
+
 from attr import dataclass
 import attr
 
-from ..primitive import JSON, UserID, EventID, ContentURI, RoomID, RoomAlias
-from ..util import SerializableEnum, SerializableAttrs, Obj, deserializer, field
+from ..primitive import JSON, ContentURI, EventID, RoomAlias, RoomID, UserID
+from ..util import Obj, SerializableAttrs, SerializableEnum, deserializer, field
 from .base import BaseRoomEvent, BaseUnsigned
-from .type import EventType, RoomType
 from .encrypted import EncryptionAlgorithm
+from .type import EventType, RoomType
 
 
 @dataclass
 class PowerLevelStateEventContent(SerializableAttrs):
     """The content of a power level event."""
+
     users: Dict[UserID, int] = attr.ib(default=attr.Factory(dict), metadata={"omitempty": False})
     users_default: int = 0
 
-    events: Dict[EventType, int] = attr.ib(default=attr.Factory(dict),
-                                           metadata={"omitempty": False})
+    events: Dict[EventType, int] = attr.ib(
+        default=attr.Factory(dict), metadata={"omitempty": False}
+    )
     events_default: int = 0
 
     state_default: int = 50
@@ -47,8 +50,11 @@ class PowerLevelStateEventContent(SerializableAttrs):
         return False
 
     def get_event_level(self, event_type: EventType) -> int:
-        return int(self.events.get(event_type, (self.state_default if event_type.is_state
-                                                else self.events_default)))
+        return int(
+            self.events.get(
+                event_type, (self.state_default if event_type.is_state else self.events_default)
+            )
+        )
 
     def set_event_level(self, event_type: EventType, level: int) -> None:
         if level == self.state_default if event_type.is_state else self.events_default:
@@ -70,6 +76,7 @@ class Membership(SerializableEnum):
 
     .. _8.4 Room membership: https://spec.matrix.org/v1.1/client-server-api/#room-membership
     """
+
     JOIN = "join"
     LEAVE = "leave"
     INVITE = "invite"
@@ -82,6 +89,7 @@ class MemberStateEventContent(SerializableAttrs):
     """The content of a membership event. `Spec link`_
 
     .. _Spec link: https://spec.matrix.org/v1.1/client-server-api/#mroommember"""
+
     membership: Membership = Membership.LEAVE
     avatar_url: ContentURI = None
     displayname: str = None
@@ -103,6 +111,7 @@ class CanonicalAliasStateEventContent(SerializableAttrs):
 
     .. _m.room.canonical_alias in the spec: https://spec.matrix.org/v1.1/client-server-api/#mroomcanonical_alias
     """
+
     canonical_alias: RoomAlias = attr.ib(default=None, metadata={"json": "alias"})
     alt_aliases: List[RoomAlias] = attr.ib(factory=lambda: [])
 
@@ -191,18 +200,28 @@ class SpaceParentStateEventContent(SerializableAttrs):
     canonical: bool = False
 
 
-StateEventContent = Union[PowerLevelStateEventContent, MemberStateEventContent,
-                          CanonicalAliasStateEventContent,
-                          RoomNameStateEventContent, RoomAvatarStateEventContent,
-                          RoomTopicStateEventContent, RoomPinnedEventsStateEventContent,
-                          RoomTombstoneStateEventContent, RoomEncryptionStateEventContent,
-                          RoomCreateStateEventContent, SpaceChildStateEventContent,
-                          SpaceParentStateEventContent, JoinRulesStateEventContent, Obj]
+StateEventContent = Union[
+    PowerLevelStateEventContent,
+    MemberStateEventContent,
+    CanonicalAliasStateEventContent,
+    RoomNameStateEventContent,
+    RoomAvatarStateEventContent,
+    RoomTopicStateEventContent,
+    RoomPinnedEventsStateEventContent,
+    RoomTombstoneStateEventContent,
+    RoomEncryptionStateEventContent,
+    RoomCreateStateEventContent,
+    SpaceChildStateEventContent,
+    SpaceParentStateEventContent,
+    JoinRulesStateEventContent,
+    Obj,
+]
 
 
 @dataclass
 class StrippedStateUnsigned(BaseUnsigned, SerializableAttrs):
     """Unsigned information sent with state events."""
+
     prev_content: StateEventContent = None
     prev_sender: UserID = None
     replaces_state: EventID = None
@@ -211,6 +230,7 @@ class StrippedStateUnsigned(BaseUnsigned, SerializableAttrs):
 @dataclass
 class StrippedStateEvent(SerializableAttrs):
     """Stripped state events included with some invite events."""
+
     content: StateEventContent = None
     room_id: RoomID = None
     sender: UserID = None
@@ -226,7 +246,7 @@ class StrippedStateEvent(SerializableAttrs):
         return state_event_content_map.get(self.type, Obj)()
 
     @classmethod
-    def deserialize(cls, data: JSON) -> 'StrippedStateEvent':
+    def deserialize(cls, data: JSON) -> "StrippedStateEvent":
         try:
             event_type = EventType.find(data.get("type", None))
             data.get("content", {})["__mautrix_event_type"] = event_type
@@ -261,6 +281,7 @@ state_event_content_map = {
 @dataclass
 class StateEvent(BaseRoomEvent, SerializableAttrs):
     """A room state event."""
+
     state_key: str
     content: StateEventContent
     unsigned: Optional[StateUnsigned] = field(factory=lambda: StateUnsigned())
@@ -272,7 +293,7 @@ class StateEvent(BaseRoomEvent, SerializableAttrs):
         return state_event_content_map.get(self.type, Obj)()
 
     @classmethod
-    def deserialize(cls, data: JSON) -> 'StateEvent':
+    def deserialize(cls, data: JSON) -> "StateEvent":
         try:
             event_type = EventType.find(data.get("type"), t_class=EventType.Class.STATE)
             data.get("content", {})["__mautrix_event_type"] = event_type

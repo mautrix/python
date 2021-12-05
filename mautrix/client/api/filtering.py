@@ -1,10 +1,10 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from mautrix.errors import MatrixResponseError
 from mautrix.api import Method, Path
+from mautrix.errors import MatrixResponseError
 from mautrix.types import Filter, FilterID, Serializable
 
 from .base import BaseClientAPI
@@ -47,9 +47,13 @@ class FilteringMethods(BaseClientAPI):
         Returns:
             A filter ID that can be used in future requests to refer to the uploaded filter.
         """
-        resp = await self.api.request(Method.POST, Path.user[self.mxid].filter,
-                                      filter_params.serialize()
-                                      if isinstance(filter_params, Serializable) else filter_params)
+        resp = await self.api.request(
+            Method.POST,
+            Path.user[self.mxid].filter,
+            filter_params.serialize()
+            if isinstance(filter_params, Serializable)
+            else filter_params,
+        )
         try:
             return resp["filter_id"]
         except KeyError:
