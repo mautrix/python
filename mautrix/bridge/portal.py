@@ -35,7 +35,7 @@ class BasePortal(ABC):
     encrypted: bool
     is_direct: bool
     backfill_lock: SimpleLock
-    _relay_user: Optional['br.BaseUser']
+    _relay_user: Optional["br.BaseUser"]
 
     @abstractmethod
     async def save(self) -> None:
@@ -54,16 +54,17 @@ class BasePortal(ABC):
 
     @property
     @abstractmethod
-    async def get_relay_user(self) -> Optional['br.BaseUser']:
+    async def get_relay_user(self) -> Optional["br.BaseUser"]:
         pass
 
     @abstractmethod
-    async def set_relay_user(self, user: Optional['br.BaseUser']) -> None:
+    async def set_relay_user(self, user: Optional["br.BaseUser"]) -> None:
         pass
 
     @abstractmethod
-    async def get_relay_sender(self, sender: br.BaseUser, evt_identifier: str
-                               ) -> Tuple[Optional['br.BaseUser'], bool]:
+    async def get_relay_sender(
+        self, sender: br.BaseUser, evt_identifier: str
+    ) -> Tuple[Optional["br.BaseUser"], bool]:
         pass
 
     @abstractmethod
