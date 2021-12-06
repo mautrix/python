@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from mautrix.types import EventID
 
-from .handler import command_handler, CommandEvent, SECTION_CONNECTION
+from .handler import SECTION_CONNECTION, CommandEvent, command_handler
 
 
 @command_handler(
