@@ -4,17 +4,23 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Set, Optional, Dict
-import logging
+
 import asyncio
+import logging
 
-from mautrix.types import (RoomID, EventID, EventType, EventContent, EncryptedMegolmEventContent,
-                           EncryptedEvent)
-from mautrix.errors import MNotFound, EncryptionError, DecryptionError
-from mautrix.util.logging import TraceLogger
 from mautrix import __optional_imports__
+from mautrix.errors import DecryptionError, EncryptionError, MNotFound
+from mautrix.types import (
+    EncryptedEvent,
+    EncryptedMegolmEventContent,
+    EventContent,
+    EventID,
+    EventType,
+    RoomID,
+)
+from mautrix.util.logging import TraceLogger
 
-from . import store_updater, dispatcher, client
+from . import client, dispatcher, store_updater
 
 if __optional_imports__:
     from .. import crypto as crypt
@@ -26,12 +32,13 @@ class EncryptingAPI(store_updater.StoreUpdatingAPI):
 
     For automatic decryption, see :class:`DecryptionDispatcher`.
     """
-    _crypto: Optional[crypt.OlmMachine]
-    encryption_blacklist: Set[EventType] = {EventType.REACTION}
+
+    _crypto: crypt.OlmMachine | None
+    encryption_blacklist: set[EventType] = {EventType.REACTION}
     """A set of event types which shouldn't be encrypted even in encrypted rooms."""
     crypto_log: TraceLogger = logging.getLogger("mau.client.crypto")
     """The logger to use for crypto-related things."""
-    _share_session_events: Dict[RoomID, asyncio.Event]
+    _share_session_events: dict[RoomID, asyncio.Event]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -39,7 +46,7 @@ class EncryptingAPI(store_updater.StoreUpdatingAPI):
         self._share_session_events = {}
 
     @property
-    def crypto(self) -> Optional[crypt.OlmMachine]:
+    def crypto(self) -> crypt.OlmMachine | None:
         """The :class:`crypto.OlmMachine` to use for e2ee stuff."""
         return self._crypto
 
@@ -61,8 +68,9 @@ class EncryptingAPI(store_updater.StoreUpdatingAPI):
         """``True`` if both the olm machine and state store are set properly."""
         return bool(self.crypto) and bool(self.state_store)
 
-    async def encrypt(self, room_id: RoomID, event_type: EventType, content: EventContent
-                      ) -> EncryptedMegolmEventContent:
+    async def encrypt(
+        self, room_id: RoomID, event_type: EventType, content: EventContent
+    ) -> EncryptedMegolmEventContent:
         """
         Encrypt a message for the given room. Automatically creates and shares a group session
         if necessary.
@@ -80,7 +88,9 @@ class EncryptingAPI(store_updater.StoreUpdatingAPI):
         except EncryptionError:
             self.crypto_log.debug("Got EncryptionError, sharing group session and trying again")
             await self.share_group_session(room_id)
-            self.crypto_log.trace(f"Shared group session, now trying to encrypt in {room_id} again")
+            self.crypto_log.trace(
+                f"Shared group session, now trying to encrypt in {room_id} again"
+            )
             return await self.crypto.encrypt_megolm_event(room_id, event_type, content)
 
     async def _share_session_lock(self, room_id: RoomID) -> bool:
@@ -105,8 +115,9 @@ class EncryptingAPI(store_updater.StoreUpdatingAPI):
             return
         try:
             if not await self.state_store.has_full_member_list(room_id):
-                self.crypto_log.trace(f"Don't have full member list for {room_id},"
-                                      " fetching from server")
+                self.crypto_log.trace(
+                    f"Don't have full member list for {room_id}, fetching from server"
+                )
                 members = list((await self.get_joined_members(room_id)).keys())
             else:
                 self.crypto_log.trace(f"Fetching member list for {room_id} from state store")
@@ -115,9 +126,14 @@ class EncryptingAPI(store_updater.StoreUpdatingAPI):
         finally:
             self._share_session_events.pop(room_id).set()
 
-    async def send_message_event(self, room_id: RoomID, event_type: EventType,
-                                 content: EventContent, disable_encryption: bool = False,
-                                 **kwargs) -> EventID:
+    async def send_message_event(
+        self,
+        room_id: RoomID,
+        event_type: EventType,
+        content: EventContent,
+        disable_encryption: bool = False,
+        **kwargs,
+    ) -> EventID:
         """
         A wrapper around :meth:`ClientAPI.send_message_event` that encrypts messages if the target
         room is encrypted.
@@ -154,6 +170,7 @@ class DecryptionDispatcher(dispatcher.SimpleDispatcher):
     The easiest way to use this is with :class:`client.Client`, which automatically registers
     this dispatcher when :attr:`EncryptingAPI.crypto` is set.
     """
+
     event_type = EventType.ROOM_ENCRYPTED
     client: client.Client
 

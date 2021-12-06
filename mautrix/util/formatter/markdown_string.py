@@ -1,11 +1,13 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 from typing import List, Sequence, Union
 
-from .formatted_string import FormattedString, EntityType
+from .formatted_string import EntityType, FormattedString
 
 
 class MarkdownString(FormattedString):
@@ -17,15 +19,15 @@ class MarkdownString(FormattedString):
     def __str__(self) -> str:
         return self.text
 
-    def append(self, *args: Union[str, 'FormattedString']) -> 'MarkdownString':
+    def append(self, *args: Union[str, FormattedString]) -> MarkdownString:
         self.text += "".join(str(arg) for arg in args)
         return self
 
-    def prepend(self, *args: Union[str, 'FormattedString']) -> 'MarkdownString':
+    def prepend(self, *args: Union[str, FormattedString]) -> MarkdownString:
         self.text = "".join(str(arg) for arg in args + (self.text,))
         return self
 
-    def format(self, entity_type: EntityType, **kwargs) -> 'MarkdownString':
+    def format(self, entity_type: EntityType, **kwargs) -> MarkdownString:
         if entity_type == EntityType.BOLD:
             self.text = f"**{self.text}**"
         elif entity_type == EntityType.ITALIC:
@@ -35,7 +37,7 @@ class MarkdownString(FormattedString):
         elif entity_type == EntityType.UNDERLINE:
             self.text = self.text
         elif entity_type == EntityType.URL:
-            if kwargs['url'] != self.text:
+            if kwargs["url"] != self.text:
                 self.text = f"[{self.text}]({kwargs['url']})"
         elif entity_type == EntityType.EMAIL:
             self.text = self.text
@@ -53,14 +55,15 @@ class MarkdownString(FormattedString):
 
         return self
 
-    def trim(self) -> 'MarkdownString':
+    def trim(self) -> MarkdownString:
         self.text = self.text.strip()
         return self
 
-    def split(self, separator, max_items: int = -1) -> List['MarkdownString']:
+    def split(self, separator, max_items: int = -1) -> List[MarkdownString]:
         return [MarkdownString(text) for text in self.text.split(separator, max_items)]
 
     @classmethod
-    def join(cls, items: Sequence[Union[str, 'FormattedString']],
-             separator: str = " ") -> 'MarkdownString':
+    def join(
+        cls, items: Sequence[Union[str, FormattedString]], separator: str = " "
+    ) -> MarkdownString:
         return cls(separator.join(str(item) for item in items))

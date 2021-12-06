@@ -1,7 +1,7 @@
 from .api import ClientAPI
-from .state_store import StateStore, MemoryStateStore, FileStateStore, SyncStore, MemorySyncStore
-from .syncer import Syncer, EventHandler, InternalEventType, SyncStream
-from .dispatcher import MembershipEventDispatcher, Dispatcher, SimpleDispatcher
-from .store_updater import StoreUpdatingAPI
 from .client import Client
-from .encryption_manager import EncryptingAPI, DecryptionDispatcher
+from .dispatcher import Dispatcher, MembershipEventDispatcher, SimpleDispatcher
+from .encryption_manager import DecryptionDispatcher, EncryptingAPI
+from .state_store import FileStateStore, MemoryStateStore, MemorySyncStore, StateStore, SyncStore
+from .store_updater import StoreUpdatingAPI
+from .syncer import EventHandler, InternalEventType, Syncer, SyncStream

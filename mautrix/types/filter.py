@@ -1,14 +1,15 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import List
+
 from attr import dataclass
 
-from .util import SerializableAttrs, SerializableEnum
 from .event import EventType
 from .primitive import RoomID, UserID
+from .util import SerializableAttrs, SerializableEnum
 
 
 class EventFormat(SerializableEnum):
@@ -18,6 +19,7 @@ class EventFormat(SerializableEnum):
     .. _create filter endpoint:
         https://matrix.org/docs/spec/client_server/r0.5.0#post-matrix-client-r0-user-userid-filter
     """
+
     CLIENT = "client"
     FEDERATION = "federation"
 
@@ -30,6 +32,7 @@ class EventFilter(SerializableAttrs):
     .. _create filter endpoint:
         https://matrix.org/docs/spec/client_server/r0.5.0#post-matrix-client-r0-user-userid-filter
     """
+
     limit: int = None
     """The maximum number of events to return."""
 
@@ -94,6 +97,7 @@ class StateFilter(RoomEventFilter, SerializableAttrs):
     .. _create filter endpoint:
         https://matrix.org/docs/spec/client_server/r0.5.0#post-matrix-client-r0-user-userid-filter
     """
+
     pass
 
 
@@ -105,6 +109,7 @@ class RoomFilter(SerializableAttrs):
     .. _create filter endpoint:
         https://matrix.org/docs/spec/client_server/r0.5.0#post-matrix-client-r0-user-userid-filter
     """
+
     not_rooms: List[RoomID] = None
     """A list of room IDs to exclude. If this list is absent then no rooms are excluded.
     A matching room will be excluded even if it is listed in the ``'rooms'`` filter.
@@ -141,6 +146,7 @@ class Filter(SerializableAttrs):
     .. _create filter endpoint:
         https://matrix.org/docs/spec/client_server/r0.5.0#post-matrix-client-r0-user-userid-filter
     """
+
     event_fields: List[str] = None
     """List of event fields to include. If this list is absent then all fields are included.
     The entries may include ``.`` charaters to indicate sub-fields. So ``['content.body']`` will

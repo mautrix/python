@@ -1,15 +1,18 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Type
+from __future__ import annotations
+
+from typing import Type
 import json
 
-from sqlalchemy import Column, Text, Boolean, types
+from sqlalchemy import Boolean, Column, Text, types
 
-from mautrix.types import (RoomID, PowerLevelStateEventContent as PowerLevels,
-                           RoomEncryptionStateEventContent as EncryptionInfo, Serializable)
+from mautrix.types import PowerLevelStateEventContent as PowerLevels
+from mautrix.types import RoomEncryptionStateEventContent as EncryptionInfo
+from mautrix.types import RoomID, Serializable
 from mautrix.util.db import Base
 
 
@@ -24,12 +27,12 @@ class SerializableType(types.TypeDecorator):
     def python_type(self) -> Type[Serializable]:
         return self._python_type
 
-    def process_bind_param(self, value: Serializable, dialect) -> Optional[str]:
+    def process_bind_param(self, value: Serializable, dialect) -> str | None:
         if value is not None:
             return json.dumps(value.serialize())
         return None
 
-    def process_result_value(self, value: str, dialect) -> Optional[Serializable]:
+    def process_result_value(self, value: str, dialect) -> Serializable | None:
         if value is not None:
             return self.python_type.deserialize(json.loads(value))
         return None
@@ -56,5 +59,5 @@ class RoomState(Base):
         return self.is_encrypted is not None
 
     @classmethod
-    def get(cls, room_id: RoomID) -> Optional['RoomState']:
+    def get(cls, room_id: RoomID) -> RoomState | None:
         return cls._select_one_or_none(cls.c.room_id == room_id)

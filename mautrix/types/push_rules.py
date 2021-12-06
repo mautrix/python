@@ -3,13 +3,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, List, Dict, Union, Optional
+from typing import List, Optional, Union
 
 from attr import dataclass
 import attr
 
-from .primitive import RoomID, UserID, JSON
-from .util import SerializableAttrs, ExtensibleEnum, deserializer
+from .primitive import JSON, RoomID, UserID
+from .util import ExtensibleEnum, SerializableAttrs, deserializer
 
 PushRuleID = Union[RoomID, UserID, str]
 
@@ -69,8 +69,9 @@ class PushCondition(SerializableAttrs):
     kind: PushConditionKind
     key: Optional[str] = None
     pattern: Optional[str] = None
-    operator: PushOperator = attr.ib(default=PushOperator.EQUALS, metadata={"json": "is",
-                                                                            "omitdefault": True})
+    operator: PushOperator = attr.ib(
+        default=PushOperator.EQUALS, metadata={"json": "is", "omitdefault": True}
+    )
 
 
 @dataclass

@@ -4,28 +4,30 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional, Type, Dict, Any
+
+from typing import Any, Dict, Optional, Type
 from abc import ABC, abstractmethod
 import sys
 
 from aiohttp import web
 
-from mautrix.types import RoomID, UserID
-from mautrix.appservice import AppService, ASStateStore
-from mautrix.util.program import Program
-from mautrix.util.bridge_state import BridgeState, BridgeStateEvent, GlobalBridgeState
-from mautrix.errors import MUnknownToken, MExclusive
+from mautrix import __optional_imports__
+from mautrix import __version__ as __mautrix_version__
 from mautrix.api import HTTPAPI
-from mautrix import __version__ as __mautrix_version__, __optional_imports__
+from mautrix.appservice import AppService, ASStateStore
+from mautrix.errors import MExclusive, MUnknownToken
+from mautrix.types import RoomID, UserID
+from mautrix.util.bridge_state import BridgeState, BridgeStateEvent, GlobalBridgeState
+from mautrix.util.program import Program
 
 from .. import bridge as br
 
 try:
-    from .state_store.sqlalchemy import SQLBridgeStateStore
-    from ..util.db import Base
-
-    import sqlalchemy as sql
     from sqlalchemy.engine.base import Engine
+    import sqlalchemy as sql
+
+    from ..util.db import Base
+    from .state_store.sqlalchemy import SQLBridgeStateStore
 except ImportError:
     if __optional_imports__:
         raise
@@ -38,7 +40,7 @@ except ImportError:
 
 
 class Bridge(Program, ABC):
-    db: 'Engine'
+    db: Engine
     az: AppService
     state_store_class: Type[ASStateStore] = SQLBridgeStateStore
     state_store: ASStateStore
@@ -51,12 +53,18 @@ class Bridge(Program, ABC):
     real_user_content_key: Optional[str] = None
     manhole: Optional[br.manhole.ManholeState]
 
-    def __init__(self, module: str = None, name: str = None, description: str = None,
-                 command: str = None, version: str = None,
-                 real_user_content_key: Optional[str] = None,
-                 config_class: Type[br.BaseBridgeConfig] = None,
-                 matrix_class: Type[br.BaseMatrixHandler] = None,
-                 state_store_class: Type[ASStateStore] = None) -> None:
+    def __init__(
+        self,
+        module: str = None,
+        name: str = None,
+        description: str = None,
+        command: str = None,
+        version: str = None,
+        real_user_content_key: Optional[str] = None,
+        config_class: Type[br.BaseBridgeConfig] = None,
+        matrix_class: Type[br.BaseMatrixHandler] = None,
+        state_store_class: Type[ASStateStore] = None,
+    ) -> None:
         super().__init__(module, name, description, command, version, config_class)
         if real_user_content_key:
             self.real_user_content_key = real_user_content_key
@@ -68,12 +76,21 @@ class Bridge(Program, ABC):
 
     def prepare_arg_parser(self) -> None:
         super().prepare_arg_parser()
-        self.parser.add_argument("-g", "--generate-registration", action="store_true",
-                                 help="generate registration and quit")
-        self.parser.add_argument("-r", "--registration", type=str, default="registration.yaml",
-                                 metavar="<path>",
-                                 help="the path to save the generated registration to (not needed "
-                                      "for running the bridge)")
+        self.parser.add_argument(
+            "-g",
+            "--generate-registration",
+            action="store_true",
+            help="generate registration and quit",
+        )
+        self.parser.add_argument(
+            "-r",
+            "--registration",
+            type=str,
+            default="registration.yaml",
+            metavar="<path>",
+            help="the path to save the generated registration to (not needed "
+            "for running the bridge)",
+        )
 
     def preinit(self) -> None:
         super().preinit()
@@ -88,8 +105,9 @@ class Bridge(Program, ABC):
         self.prepare_bridge()
 
     def prepare_config(self) -> None:
-        self.config = self.config_class(self.args.config, self.args.registration,
-                                        self.args.base_config)
+        self.config = self.config_class(
+            self.args.config, self.args.registration, self.args.base_config
+        )
         if self.args.generate_registration:
             self.config._check_tokens = False
         self.load_and_update_config()
@@ -113,45 +131,39 @@ class Bridge(Program, ABC):
         default_http_retry_count = self.config.get("homeserver.http_retry_count", None)
         if self.name not in HTTPAPI.default_ua:
             HTTPAPI.default_ua = f"{self.name}/{self.version} {HTTPAPI.default_ua}"
-        self.az = AppService(server=self.config["homeserver.address"],
-                             domain=self.config["homeserver.domain"],
-                             verify_ssl=self.config["homeserver.verify_ssl"],
-                             connection_limit=self.config["homeserver.connection_limit"],
-
-                             id=self.config["appservice.id"],
-                             as_token=self.config["appservice.as_token"],
-                             hs_token=self.config["appservice.hs_token"],
-
-                             tls_cert=self.config.get("appservice.tls_cert", None),
-                             tls_key=self.config.get("appservice.tls_key", None),
-
-                             bot_localpart=self.config["appservice.bot_username"],
-                             ephemeral_events=self.config["appservice.ephemeral_events"],
-
-                             default_ua=HTTPAPI.default_ua,
-                             default_http_retry_count=default_http_retry_count,
-
-                             log="mau.as",
-                             loop=self.loop,
-
-                             state_store=self.state_store,
-
-                             real_user_content_key=self.real_user_content_key,
-
-                             aiohttp_params={
-                                 "client_max_size": self.config["appservice.max_body_size"] * mb
-                             })
+        self.az = AppService(
+            server=self.config["homeserver.address"],
+            domain=self.config["homeserver.domain"],
+            verify_ssl=self.config["homeserver.verify_ssl"],
+            connection_limit=self.config["homeserver.connection_limit"],
+            id=self.config["appservice.id"],
+            as_token=self.config["appservice.as_token"],
+            hs_token=self.config["appservice.hs_token"],
+            tls_cert=self.config.get("appservice.tls_cert", None),
+            tls_key=self.config.get("appservice.tls_key", None),
+            bot_localpart=self.config["appservice.bot_username"],
+            ephemeral_events=self.config["appservice.ephemeral_events"],
+            default_ua=HTTPAPI.default_ua,
+            default_http_retry_count=default_http_retry_count,
+            log="mau.as",
+            loop=self.loop,
+            state_store=self.state_store,
+            real_user_content_key=self.real_user_content_key,
+            aiohttp_params={"client_max_size": self.config["appservice.max_body_size"] * mb},
+        )
         self.az.app.router.add_post("/_matrix/app/com.beeper.bridge_state", self.get_bridge_state)
 
     def prepare_db(self) -> None:
         if not sql:
             raise RuntimeError("SQLAlchemy is not installed")
-        self.db = sql.create_engine(self.config["appservice.database"],
-                                    **self.config["appservice.database_opts"])
+        self.db = sql.create_engine(
+            self.config["appservice.database"], **self.config["appservice.database_opts"]
+        )
         Base.metadata.bind = self.db
         if not self.db.has_table("alembic_version"):
-            self.log.critical("alembic_version table not found. "
-                              "Did you forget to `alembic upgrade head`?")
+            self.log.critical(
+                "alembic_version table not found. Did you forget to `alembic upgrade head`?"
+            )
             sys.exit(10)
 
     def prepare_bridge(self) -> None:
@@ -163,13 +175,17 @@ class Bridge(Program, ABC):
         try:
             await self.matrix.wait_for_connection()
         except MUnknownToken:
-            self.log.critical("The as_token was not accepted. Is the registration file installed "
-                              "in your homeserver correctly?")
+            self.log.critical(
+                "The as_token was not accepted. Is the registration file installed "
+                "in your homeserver correctly?"
+            )
             sys.exit(16)
         except MExclusive:
-            self.log.critical("The as_token was accepted, but the /register request was not. "
-                              "Are the homeserver domain and username template in the config "
-                              "correct, and do they match the values in the registration?")
+            self.log.critical(
+                "The as_token was accepted, but the /register request was not. "
+                "Are the homeserver domain and username template in the config "
+                "correct, and do they match the values in the registration?"
+            )
             sys.exit(16)
 
         await self.matrix.init_encryption()
@@ -207,8 +223,9 @@ class Bridge(Program, ABC):
         for state in states:
             await user.fill_bridge_state(state)
         global_state = BridgeState(state_event=BridgeStateEvent.RUNNING).fill()
-        evt = GlobalBridgeState(remote_states={state.remote_id: state for state in states},
-                                bridge_state=global_state)
+        evt = GlobalBridgeState(
+            remote_states={state.remote_id: state for state in states}, bridge_state=global_state
+        )
         return web.json_response(evt.serialize())
 
     @abstractmethod
@@ -257,6 +274,8 @@ class Bridge(Program, ABC):
         return f"{self.name} {self.version} with mautrix-python {__mautrix_version__}"
 
     def manhole_banner(self, user_id: UserID) -> str:
-        return (f"{self.manhole_banner_python_version}\n"
-                f"{self.manhole_banner_program_version}\n\n"
-                f"Manhole opened by {user_id}\n")
+        return (
+            f"{self.manhole_banner_python_version}\n"
+            f"{self.manhole_banner_program_version}\n\n"
+            f"Manhole opened by {user_id}\n"
+        )

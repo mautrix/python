@@ -1,20 +1,24 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List, Any
+from __future__ import annotations
+
+from typing import Any
 from abc import ABC, abstractmethod
 
-import attr
 from attr import dataclass
+import attr
 
 from .base import BaseConfig
 
 
 class ConfigValueError(ValueError):
     def __init__(self, key: str, message: str) -> None:
-        super().__init__(f"{key} not configured. {message}" if message else f"{key} not configured")
+        super().__init__(
+            f"{key} not configured. {message}" if message else f"{key} not configured"
+        )
 
 
 class ForbiddenKey(str):
@@ -25,10 +29,10 @@ class ForbiddenKey(str):
 class ForbiddenDefault:
     key: str
     value: Any
-    error: Optional[str] = None
-    condition: Optional[str] = attr.ib(default=None, kw_only=True)
+    error: str | None = None
+    condition: str | None = attr.ib(default=None, kw_only=True)
 
-    def check(self, config: 'BaseConfig') -> bool:
+    def check(self, config: BaseConfig) -> bool:
         if self.condition and not config[self.condition]:
             return False
         elif isinstance(self.value, ForbiddenKey):
@@ -44,7 +48,7 @@ class ForbiddenDefault:
 class BaseValidatableConfig(BaseConfig, ABC):
     @property
     @abstractmethod
-    def forbidden_defaults(self) -> List[ForbiddenDefault]:
+    def forbidden_defaults(self) -> list[ForbiddenDefault]:
         pass
 
     def check_default_values(self) -> None:

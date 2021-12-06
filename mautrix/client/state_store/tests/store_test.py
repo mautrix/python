@@ -3,25 +3,26 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import AsyncIterator, AsyncContextManager, Callable, Dict, List
+from typing import AsyncContextManager, AsyncIterator, Callable, Dict, List
 from contextlib import asynccontextmanager
+import json
+import os
 import pathlib
 import random
 import string
-import json
 import time
-import os
 
+import asyncpg
 import pytest
 import sqlalchemy as sql
-import asyncpg
 
-from mautrix.types import RoomID, UserID, StateEvent, Member, Membership, EncryptionAlgorithm
+from mautrix.types import EncryptionAlgorithm, Member, Membership, RoomID, StateEvent, UserID
 from mautrix.util.async_db import Database
 from mautrix.util.db import Base
-from .. import StateStore, MemoryStateStore
+
+from .. import MemoryStateStore, StateStore
 from ..asyncpg import PgStateStore
-from ..sqlalchemy import SQLStateStore, UserProfile, RoomState
+from ..sqlalchemy import RoomState, SQLStateStore, UserProfile
 
 
 @asynccontextmanager
@@ -35,9 +36,11 @@ async def async_postgres_store() -> AsyncIterator[PgStateStore]:
     schema_name = "".join(random.choices(string.ascii_lowercase, k=8))
     schema_name = f"test_schema_{schema_name}_{int(time.time())}"
     await conn.execute(f"CREATE SCHEMA {schema_name}")
-    db = Database.create(pg_url, upgrade_table=PgStateStore.upgrade_table,
-                         db_args={"min_size": 1, "max_size": 3,
-                                  "server_settings": {"search_path": schema_name}})
+    db = Database.create(
+        pg_url,
+        upgrade_table=PgStateStore.upgrade_table,
+        db_args={"min_size": 1, "max_size": 3, "server_settings": {"search_path": schema_name}},
+    )
     store = PgStateStore(db)
     await db.start()
     yield store
@@ -48,8 +51,9 @@ async def async_postgres_store() -> AsyncIterator[PgStateStore]:
 
 @asynccontextmanager
 async def async_sqlite_store() -> AsyncIterator[PgStateStore]:
-    db = Database.create("sqlite:///:memory:", upgrade_table=PgStateStore.upgrade_table,
-                         db_args={"min_size": 1})
+    db = Database.create(
+        "sqlite:///:memory:", upgrade_table=PgStateStore.upgrade_table, db_args={"min_size": 1}
+    )
     store = PgStateStore(db)
     await db.start()
     yield store
@@ -83,8 +87,10 @@ def read_state_file(request, file) -> Dict[RoomID, List[StateEvent]]:
     path = pathlib.Path(request.node.fspath).with_name(file)
     with path.open() as fp:
         content = json.load(fp)
-    return {room_id: [StateEvent.deserialize({**evt, "room_id": room_id}) for evt in events]
-            for room_id, events in content.items()}
+    return {
+        room_id: [StateEvent.deserialize({**evt, "room_id": room_id}) for evt in events]
+        for room_id, events in content.items()
+    }
 
 
 async def store_room_state(request, store: StateStore) -> None:
@@ -105,10 +111,14 @@ async def get_joined_members(request, store: StateStore) -> None:
     with path.open() as fp:
         content = json.load(fp)
     for room_id, members in content.items():
-        parsed_members = {user_id: Member(membership=Membership.JOIN,
-                                          displayname=member.get("display_name", ""),
-                                          avatar_url=member.get("avatar_url", ""))
-                          for user_id, member in members.items()}
+        parsed_members = {
+            user_id: Member(
+                membership=Membership.JOIN,
+                displayname=member.get("display_name", ""),
+                avatar_url=member.get("avatar_url", ""),
+            )
+            for user_id, member in members.items()
+        }
         await store.set_members(room_id, parsed_members, only_membership=Membership.JOIN)
 
 
@@ -140,15 +150,22 @@ async def test_updates(request, store: StateStore) -> None:
     await store_room_state(request, store)
     room_id = RoomID("!telegram-group:example.com")
     initial_members = {"@tulir:example.com", "@telegram_84359547:example.com"}
-    joined_members = initial_members | {"@telegrambot:example.com",
-                                        "@telegram_5647382910:example.com",
-                                        "@telegram_374880943:example.com",
-                                        "@telegram_987654321:example.com",
-                                        "@telegram_123456789:example.com"}
+    joined_members = initial_members | {
+        "@telegrambot:example.com",
+        "@telegram_5647382910:example.com",
+        "@telegram_374880943:example.com",
+        "@telegram_987654321:example.com",
+        "@telegram_123456789:example.com",
+    }
     left_members = {"@telegram_476034259:example.com", "@whatsappbot:example.com"}
     full_members = joined_members | left_members
-    any_membership = (Membership.JOIN, Membership.INVITE, Membership.LEAVE, Membership.BAN,
-                      Membership.KNOCK)
+    any_membership = (
+        Membership.JOIN,
+        Membership.INVITE,
+        Membership.LEAVE,
+        Membership.BAN,
+        Membership.KNOCK,
+    )
     leave_memberships = (Membership.BAN, Membership.LEAVE)
     assert set(await store.get_members(room_id)) == initial_members
     await get_all_members(request, store)
@@ -158,7 +175,15 @@ async def test_updates(request, store: StateStore) -> None:
     assert set(await store.get_members(room_id)) == joined_members
     assert set(await store.get_members(room_id, memberships=any_membership)) == full_members
     assert set(await store.get_members(room_id, memberships=leave_memberships)) == left_members
-    assert set(await store.get_members_filtered(
-        room_id, memberships=leave_memberships,
-        not_id="", not_prefix="@telegram_", not_suffix=":example.com",
-    )) == {"@whatsappbot:example.com"}
+    assert (
+        set(
+            await store.get_members_filtered(
+                room_id,
+                memberships=leave_memberships,
+                not_id="",
+                not_prefix="@telegram_",
+                not_suffix=":example.com",
+            )
+        )
+        == {"@whatsappbot:example.com"}
+    )

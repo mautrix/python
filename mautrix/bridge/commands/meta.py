@@ -1,18 +1,25 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List
+from __future__ import annotations
 
 from mautrix.types import EventID
 
-from .handler import (HelpSection, HelpCacheKey, command_handler, CommandEvent, command_handlers,
-                      SECTION_GENERAL)
+from .handler import (
+    SECTION_GENERAL,
+    CommandEvent,
+    HelpCacheKey,
+    HelpSection,
+    command_handler,
+    command_handlers,
+)
 
 
-@command_handler(needs_auth=False, help_section=SECTION_GENERAL,
-                 help_text="Cancel an ongoing action.")
+@command_handler(
+    needs_auth=False, help_section=SECTION_GENERAL, help_text="Cancel an ongoing action."
+)
 async def cancel(evt: CommandEvent) -> EventID:
     if evt.sender.command_status:
         action = evt.sender.command_status["action"]
@@ -22,14 +29,17 @@ async def cancel(evt: CommandEvent) -> EventID:
         return await evt.reply("No ongoing command.")
 
 
-@command_handler(needs_auth=False, help_section=SECTION_GENERAL,
-                 help_text="Get the bridge version.")
+@command_handler(
+    needs_auth=False, help_section=SECTION_GENERAL, help_text="Get the bridge version."
+)
 async def version(evt: CommandEvent) -> None:
     if not evt.processor.bridge:
         await evt.reply("Bridge version unknown")
     else:
-        await evt.reply(f"[{evt.processor.bridge.name}]({evt.processor.bridge.repo_url}) "
-                        f"{evt.processor.bridge.markdown_version or evt.processor.bridge.version}")
+        await evt.reply(
+            f"[{evt.processor.bridge.name}]({evt.processor.bridge.repo_url}) "
+            f"{evt.processor.bridge.markdown_version or evt.processor.bridge.version}"
+        )
 
 
 @command_handler(needs_auth=False)
@@ -37,15 +47,19 @@ async def unknown_command(evt: CommandEvent) -> EventID:
     return await evt.reply("Unknown command. Try `$cmdprefix+sp help` for help.")
 
 
-help_cache: Dict[HelpCacheKey, str] = {}
+help_cache: dict[HelpCacheKey, str] = {}
 
 
 async def _get_help_text(evt: CommandEvent) -> str:
     cache_key = await evt.get_help_key()
     if cache_key not in help_cache:
-        help_sections: Dict[HelpSection, List[str]] = {}
+        help_sections: dict[HelpSection, list[str]] = {}
         for handler in command_handlers.values():
-            if handler.has_help and handler.has_permission(cache_key) and handler.is_enabled_for(evt):
+            if (
+                handler.has_help
+                and handler.has_permission(cache_key)
+                and handler.is_enabled_for(evt)
+            ):
                 help_sections.setdefault(handler.help_section, [])
                 help_sections[handler.help_section].append(handler.help + "  ")
         help_sorted = sorted(help_sections.items(), key=lambda item: item[0].order)
@@ -58,12 +72,18 @@ def _get_management_status(evt: CommandEvent) -> str:
     if evt.is_management:
         return "This is a management room: prefixing commands with `$cmdprefix` is not required."
     elif evt.is_portal:
-        return ("**This is a portal room**: you must always prefix commands with `$cmdprefix`.\n"
-                "Management commands will not be bridged.")
+        return (
+            "**This is a portal room**: you must always prefix commands with `$cmdprefix`.\n"
+            "Management commands will not be bridged."
+        )
     return "**This is not a management room**: you must prefix commands with `$cmdprefix`."
 
 
-@command_handler(name="help", needs_auth=False, help_section=SECTION_GENERAL,
-                 help_text="Show this help message.")
+@command_handler(
+    name="help",
+    needs_auth=False,
+    help_section=SECTION_GENERAL,
+    help_text="Show this help message.",
+)
 async def help_cmd(evt: CommandEvent) -> EventID:
     return await evt.reply(_get_management_status(evt) + "\n" + await _get_help_text(evt))

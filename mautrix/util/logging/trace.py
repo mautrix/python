@@ -1,8 +1,10 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 from typing import Type, cast
 import logging
 
@@ -22,7 +24,7 @@ class TraceLogger(OldLogger):
     def silly(self, msg, *args, **kwargs) -> None:
         self.log(SILLY, msg, *args, **kwargs)
 
-    def getChild(self, suffix: str) -> 'TraceLogger':
+    def getChild(self, suffix: str) -> TraceLogger:
         return cast(TraceLogger, super().getChild(suffix))
 
 

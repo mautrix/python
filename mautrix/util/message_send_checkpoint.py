@@ -1,12 +1,12 @@
-import logging
 from typing import Optional
-from attr import dataclass
+import logging
 
-import aiohttp
 from aiohttp.client import ClientTimeout
+from attr import dataclass
+import aiohttp
 
 from mautrix.api import HTTPAPI
-from mautrix.types import EventType, MessageType, SerializableEnum, SerializableAttrs
+from mautrix.types import EventType, MessageType, SerializableAttrs, SerializableEnum
 
 
 class MessageSendCheckpointStep(SerializableEnum):
@@ -57,12 +57,14 @@ class MessageSendCheckpoint(SerializableAttrs):
                     text = await resp.text()
                     text = text.replace("\n", "\\n")
                     log.warning(
-                        f"Unexpected status code {resp.status} sending message send checkpoints"
-                        f" for {self.event_id}: {text}"
+                        f"Unexpected status code {resp.status} sending message send checkpoints "
+                        f"for {self.event_id}: {text}"
                     )
                 else:
-                    log.info(f"Successfully sent message send checkpoints for {self.event_id} "
-                             f"(step: {self.step})")
+                    log.info(
+                        f"Successfully sent message send checkpoints for {self.event_id} "
+                        f"(step: {self.step})"
+                    )
         except Exception as e:
             log.warning(f"Failed to send message send checkpoints for {self.event_id}: {e}")
 

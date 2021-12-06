@@ -1,9 +1,9 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, Tuple
+from __future__ import annotations
 
 from html.parser import HTMLParser
 
@@ -12,13 +12,15 @@ class HTMLNode(list):
     tag: str
     text: str
     tail: str
-    attrib: Dict[str, str]
+    attrib: dict[str, str]
 
     def __repr__(self) -> str:
-        return (f"HTMLNode(tag='{self.tag}', attrs={self.attrib}, text='{self.text}', "
-                f"tail='{self.tail}', children={list(self)})")
+        return (
+            f"HTMLNode(tag='{self.tag}', attrs={self.attrib}, text='{self.text}', "
+            f"tail='{self.tail}', children={list(self)})"
+        )
 
-    def __init__(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
+    def __init__(self, tag: str, attrs: list[tuple[str, str]]) -> None:
         super().__init__()
         self.tag = tag
         self.text = ""
@@ -28,16 +30,31 @@ class HTMLNode(list):
 
 class NodeifyingParser(HTMLParser):
     # From https://www.w3.org/TR/html5/syntax.html#writing-html-documents-elements
-    void_tags = ("area", "base", "br", "col", "command", "embed", "hr", "img", "input", "link",
-                 "meta", "param", "source", "track", "wbr")
+    void_tags = (
+        "area",
+        "base",
+        "br",
+        "col",
+        "command",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    )
 
-    stack: List[HTMLNode]
+    stack: list[HTMLNode]
 
     def __init__(self) -> None:
         super().__init__()
         self.stack = [HTMLNode("html", [])]
 
-    def handle_starttag(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str]]) -> None:
         node = HTMLNode(tag, attrs)
         self.stack[-1].append(node)
         if tag not in self.void_tags:

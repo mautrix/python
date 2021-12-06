@@ -3,12 +3,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Optional, List, NewType, Iterable
+from typing import List, NewType, Optional, Union
+
 from attr import dataclass
 import attr
 
-from .primitive import UserID, DeviceID, JSON
-from .util import SerializableAttrs, ExtensibleEnum, deserializer, Obj
+from .primitive import JSON, DeviceID, UserID
+from .util import ExtensibleEnum, Obj, SerializableAttrs, deserializer
 
 
 class LoginType(ExtensibleEnum):
@@ -18,13 +19,14 @@ class LoginType(ExtensibleEnum):
     .. _POST /login endpoint:
         https://matrix.org/docs/spec/client_server/r0.6.1#post-matrix-client-r0-login
     """
-    PASSWORD: 'LoginType' = "m.login.password"
-    TOKEN: 'LoginType' = "m.login.token"
-    SSO: 'LoginType' = "m.login.sso"
-    APPSERVICE: 'LoginType' = "m.login.application_service"
 
-    UNSTABLE_JWT: 'LoginType' = "org.matrix.login.jwt"
-    UNSTABLE_APPSERVICE: 'LoginType' = "uk.half-shot.msc2778.login.application_service"
+    PASSWORD: "LoginType" = "m.login.password"
+    TOKEN: "LoginType" = "m.login.token"
+    SSO: "LoginType" = "m.login.sso"
+    APPSERVICE: "LoginType" = "m.login.application_service"
+
+    UNSTABLE_JWT: "LoginType" = "org.matrix.login.jwt"
+    UNSTABLE_APPSERVICE: "LoginType" = "uk.half-shot.msc2778.login.application_service"
 
 
 @dataclass
@@ -35,6 +37,7 @@ class LoginFlow(SerializableAttrs):
     .. _GET /login endpoint:
         https://matrix.org/docs/spec/client_server/r0.6.1#get-matrix-client-r0-login
     """
+
     type: LoginType
 
 
@@ -59,9 +62,10 @@ class UserIdentifierType(ExtensibleEnum):
     .. _Identifier types:
         https://matrix.org/docs/spec/client_server/latest#identifier-types
     """
-    MATRIX_USER: 'UserIdentifierType' = "m.id.user"
-    THIRD_PARTY: 'UserIdentifierType' = "m.id.thirdparty"
-    PHONE: 'UserIdentifierType' = "m.id.phone"
+
+    MATRIX_USER: "UserIdentifierType" = "m.id.user"
+    THIRD_PARTY: "UserIdentifierType" = "m.id.thirdparty"
+    PHONE: "UserIdentifierType" = "m.id.phone"
 
 
 @dataclass
@@ -89,6 +93,7 @@ class ThirdPartyIdentifier(SerializableAttrs):
     .. _3PID Types:
         https://matrix.org/docs/spec/appendices.html#pid-types
     """
+
     medium: str
     address: str
     type: UserIdentifierType = UserIdentifierType.THIRD_PARTY
@@ -106,13 +111,15 @@ class PhoneIdentifier(SerializableAttrs):
     .. _/account/3pid:
         https://matrix.org/docs/spec/client_server/latest#post-matrix-client-r0-account-3pid
     """
+
     country: str
     phone: str
     type: UserIdentifierType = UserIdentifierType.PHONE
 
 
-UserIdentifier = NewType('UserIdentifier',
-                         Union[MatrixUserIdentifier, ThirdPartyIdentifier, PhoneIdentifier])
+UserIdentifier = NewType(
+    "UserIdentifier", Union[MatrixUserIdentifier, ThirdPartyIdentifier, PhoneIdentifier]
+)
 
 
 @deserializer(UserIdentifier)
@@ -152,12 +159,15 @@ class DiscoveryIntegrations(SerializableAttrs):
 
 @dataclass
 class DiscoveryInformation(SerializableAttrs):
-    homeserver: Optional[DiscoveryServer] = attr.ib(metadata={"json": "m.homeserver"},
-                                                    factory=DiscoveryServer)
-    identity_server: Optional[DiscoveryServer] = attr.ib(metadata={"json": "m.identity_server"},
-                                                         factory=DiscoveryServer)
-    integrations: Optional[DiscoveryServer] = attr.ib(metadata={"json": "m.integrations"},
-                                                      factory=DiscoveryIntegrations)
+    homeserver: Optional[DiscoveryServer] = attr.ib(
+        metadata={"json": "m.homeserver"}, factory=DiscoveryServer
+    )
+    identity_server: Optional[DiscoveryServer] = attr.ib(
+        metadata={"json": "m.identity_server"}, factory=DiscoveryServer
+    )
+    integrations: Optional[DiscoveryServer] = attr.ib(
+        metadata={"json": "m.integrations"}, factory=DiscoveryIntegrations
+    )
 
 
 @dataclass
@@ -168,6 +178,7 @@ class LoginResponse(SerializableAttrs):
     .. _POST /login endpoint:
         https://matrix.org/docs/spec/client_server/r0.6.1#post-matrix-client-r0-login
     """
+
     user_id: UserID
     device_id: DeviceID
     access_token: str
@@ -182,5 +193,6 @@ class WhoamiResponse(SerializableAttrs):
     .. _GET /account/whoami endpoint:
         https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3accountwhoami
     """
+
     user_id: UserID
     device_id: Optional[DeviceID] = None

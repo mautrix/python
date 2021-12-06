@@ -4,19 +4,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
-from typing import Optional, Callable, Awaitable, Union, Set, Dict
-from aiohttp import web
-import aiohttp
+from __future__ import annotations
+
+from typing import Awaitable, Callable, Optional
 import asyncio
 import logging
 
-from mautrix.types import JSON, UserID, RoomAlias
+from aiohttp import web
+import aiohttp
+
+from mautrix.types import JSON, RoomAlias, UserID
 from mautrix.util.logging import TraceLogger
 
-from .api import AppServiceAPI, IntentAPI
-from .state_store import ASStateStore, FileASStateStore
-from .as_handler import AppServiceServerMixin
 from ..api import HTTPAPI
+from .api import AppServiceAPI, IntentAPI
+from .as_handler import AppServiceServerMixin
+from .state_store import ASStateStore, FileASStateStore
 
 try:
     import ssl
@@ -43,7 +46,7 @@ class AppService(AppServiceServerMixin):
     real_user_content_key: str
     state_store: ASStateStore
 
-    transactions: Set[str]
+    transactions: set[str]
 
     query_user: Callable[[UserID], JSON]
     query_alias: Callable[[RoomAlias], JSON]
@@ -55,16 +58,29 @@ class AppService(AppServiceServerMixin):
     app: web.Application
     runner: web.AppRunner
 
-    def __init__(self, server: str, domain: str, as_token: str, hs_token: str, bot_localpart: str,
-                 id: str, loop: Optional[asyncio.AbstractEventLoop] = None,
-                 log: Optional[Union[logging.Logger, str]] = None, verify_ssl: bool = True,
-                 tls_cert: Optional[str] = None, tls_key: Optional[str] = None,
-                 query_user: QueryFunc = None, query_alias: QueryFunc = None,
-                 real_user_content_key: Optional[str] = "net.maunium.appservice.puppet",
-                 state_store: ASStateStore = None, aiohttp_params: Dict = None,
-                 ephemeral_events: bool = False, default_ua: str = HTTPAPI.default_ua,
-                 default_http_retry_count: int = 0, connection_limit: Optional[int] = None
-                 ) -> None:
+    def __init__(
+        self,
+        server: str,
+        domain: str,
+        as_token: str,
+        hs_token: str,
+        bot_localpart: str,
+        id: str,
+        loop: asyncio.AbstractEventLoop | None = None,
+        log: logging.Logger | str | None = None,
+        verify_ssl: bool = True,
+        tls_cert: str | None = None,
+        tls_key: str | None = None,
+        query_user: QueryFunc = None,
+        query_alias: QueryFunc = None,
+        real_user_content_key: str | None = "net.maunium.appservice.puppet",
+        state_store: ASStateStore = None,
+        aiohttp_params: dict = None,
+        ephemeral_events: bool = False,
+        default_ua: str = HTTPAPI.default_ua,
+        default_http_retry_count: int = 0,
+        connection_limit: int | None = None,
+    ) -> None:
         super().__init__(ephemeral_events=ephemeral_events)
         self.server = server
         self.domain = domain
@@ -91,8 +107,11 @@ class AppService(AppServiceServerMixin):
         self._intent = None
 
         self.loop = loop or asyncio.get_event_loop()
-        self.log = (logging.getLogger(log) if isinstance(log, str)
-                    else log or logging.getLogger("mau.appservice"))
+        self.log = (
+            logging.getLogger(log)
+            if isinstance(log, str)
+            else log or logging.getLogger("mau.appservice")
+        )
 
         self.query_user = query_user or self.query_user
         self.query_alias = query_alias or self.query_alias
@@ -114,7 +133,7 @@ class AppService(AppServiceServerMixin):
             return self._http_session
 
     @property
-    def intent(self) -> 'IntentAPI':
+    def intent(self) -> IntentAPI:
         if self._intent is None:
             raise AttributeError("the intent attribute can only be used after starting")
         else:
@@ -134,13 +153,19 @@ class AppService(AppServiceServerMixin):
         else:
             connector = aiohttp.TCPConnector(limit=self.connection_limit)
         default_headers = {"User-Agent": self.default_ua}
-        self._http_session = aiohttp.ClientSession(loop=self.loop, connector=connector,
-                                                   headers=default_headers)
-        self._intent = AppServiceAPI(base_url=self.server, bot_mxid=self.bot_mxid, log=self.log,
-                                     token=self.as_token, state_store=self.state_store,
-                                     real_user_content_key=self.real_user_content_key,
-                                     client_session=self._http_session,
-                                     default_retry_count=self.default_http_retry_count).bot_intent()
+        self._http_session = aiohttp.ClientSession(
+            loop=self.loop, connector=connector, headers=default_headers
+        )
+        self._intent = AppServiceAPI(
+            base_url=self.server,
+            bot_mxid=self.bot_mxid,
+            log=self.log,
+            token=self.as_token,
+            state_store=self.state_store,
+            real_user_content_key=self.real_user_content_key,
+            client_session=self._http_session,
+            default_retry_count=self.default_http_retry_count,
+        ).bot_intent()
         ssl_ctx = None
         if self.tls_cert and self.tls_key:
             ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)

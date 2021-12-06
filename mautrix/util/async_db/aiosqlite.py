@@ -3,7 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Any, List
+from __future__ import annotations
+
+from typing import Any
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 import asyncio
@@ -12,15 +14,16 @@ import sqlite3
 
 import aiosqlite
 
-from .upgrade import UpgradeTable
 from .database import Database
+from .upgrade import UpgradeTable
 
 
 class TxnConnection(aiosqlite.Connection):
     def __init__(self, path: str, **kwargs) -> None:
         def connector() -> sqlite3.Connection:
-            return sqlite3.connect(path, detect_types=sqlite3.PARSE_DECLTYPES,
-                                   isolation_level=None, **kwargs)
+            return sqlite3.connect(
+                path, detect_types=sqlite3.PARSE_DECLTYPES, isolation_level=None, **kwargs
+            )
 
         super().__init__(connector, iter_chunk_size=64)
 
@@ -35,21 +38,22 @@ class TxnConnection(aiosqlite.Connection):
         else:
             await self.commit()
 
-    async def execute(self, query: str, *args: Any, timeout: Optional[float] = None) -> None:
+    async def execute(self, query: str, *args: Any, timeout: float | None = None) -> None:
         await super().execute(query, args)
 
-    async def fetch(self, query: str, *args: Any, timeout: Optional[float] = None
-                    ) -> List[sqlite3.Row]:
+    async def fetch(
+        self, query: str, *args: Any, timeout: float | None = None
+    ) -> list[sqlite3.Row]:
         async with super().execute(query, args) as cursor:
             return list(await cursor.fetchall())
 
-    async def fetchrow(self, query: str, *args: Any, timeout: Optional[float] = None
-                       ) -> sqlite3.Row:
+    async def fetchrow(self, query: str, *args: Any, timeout: float | None = None) -> sqlite3.Row:
         async with super().execute(query, args) as cursor:
             return await cursor.fetchone()
 
-    async def fetchval(self, query: str, *args: Any, column: int = 0,
-                       timeout: Optional[float] = None) -> Any:
+    async def fetchval(
+        self, query: str, *args: Any, column: int = 0, timeout: float | None = None
+    ) -> Any:
         row = await self.fetchrow(query, *args)
         if row is None:
             return None
@@ -58,13 +62,17 @@ class TxnConnection(aiosqlite.Connection):
 
 class SQLiteDatabase(Database):
     scheme = "sqlite"
-    _pool: 'asyncio.Queue[TxnConnection]'
+    _pool: asyncio.Queue[TxnConnection]
     _stopped: bool
     _conns: int
 
-    def __init__(self, url: str, upgrade_table: UpgradeTable,
-                 db_args: Optional[Dict[str, Any]] = None,
-                 log: Optional[logging.Logger] = None) -> None:
+    def __init__(
+        self,
+        url: str,
+        upgrade_table: UpgradeTable,
+        db_args: dict[str, Any] | None = None,
+        log: logging.Logger | None = None,
+    ) -> None:
         super().__init__(url, db_args=db_args, upgrade_table=upgrade_table, log=log)
         self._path = urlparse(url).path
         if self._path.startswith("/"):

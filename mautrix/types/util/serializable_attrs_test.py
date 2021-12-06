@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List
+from typing import List, Optional
 
 from attr import dataclass
 import pytest
@@ -164,20 +164,20 @@ def test_flatten():
     example_com_preview = {
         "og:title": "Example Domain",
         "og:description": "Example Domain\n\nThis domain is for use in illustrative examples in "
-                          "documents. You may use this domain in literature without prior "
-                          "coordination or asking for permission.\n\nMore information..."
+        "documents. You may use this domain in literature without prior "
+        "coordination or asking for permission.\n\nMore information...",
     }
     google_com_preview = {
         "og:title": "Google",
         "og:image": "mxc://maunium.net/2021-06-20_jkscuJXkHjvzNaUJ",
         "og:description": "Search\n\nImages\n\nMaps\n\nPlay\n\nYouTube\n\nNews\n\nGmail\n\n"
-                          "Drive\n\nMore\n\n\u00bb\n\nWeb History\n\n|\n\nSettings\n\n|\n\n"
-                          "Sign in\n\nAdvanced search\n\nGoogle offered in:\n\nDeutsch\n\n"
-                          "AdvertisingPrograms\n\nBusiness Solutions",
+        "Drive\n\nMore\n\n\u00bb\n\nWeb History\n\n|\n\nSettings\n\n|\n\n"
+        "Sign in\n\nAdvanced search\n\nGoogle offered in:\n\nDeutsch\n\n"
+        "AdvertisingPrograms\n\nBusiness Solutions",
         "og:image:width": 128,
         "og:image:height": 128,
         "og:image:type": "image/png",
-        "matrix:image:size": 3428
+        "matrix:image:size": 3428,
     }
 
     example_com_deserialized = MXOpenGraph.deserialize(example_com_preview)

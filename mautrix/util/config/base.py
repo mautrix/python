@@ -1,9 +1,10 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 from ruamel.yaml.comments import CommentedMap
@@ -22,12 +23,16 @@ class ConfigUpdateHelper:
         self.base = base
         self.source = config
 
-    def copy(self, from_path: str, to_path: Optional[str] = None) -> None:
+    def copy(self, from_path: str, to_path: str | None = None) -> None:
         if from_path in self.source:
             self.base[to_path or from_path] = self.source[from_path]
 
-    def copy_dict(self, from_path: str, to_path: Optional[str] = None,
-                  override_existing_map: Optional[bool] = True) -> None:
+    def copy_dict(
+        self,
+        from_path: str,
+        to_path: str | None = None,
+        override_existing_map: bool = True,
+    ) -> None:
         if from_path in self.source:
             to_path = to_path or from_path
             if override_existing_map or to_path not in self.base:
@@ -47,7 +52,7 @@ class BaseConfig(ABC, RecursiveDict[CommentedMap]):
         pass
 
     @abstractmethod
-    def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
+    def load_base(self) -> RecursiveDict[CommentedMap] | None:
         pass
 
     def load_and_update(self) -> None:

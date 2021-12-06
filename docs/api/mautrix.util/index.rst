@@ -6,7 +6,6 @@ mautrix.util
 
    async_db
    bridge_state
-   color_log
    config
    db
    file_store

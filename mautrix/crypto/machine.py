@@ -4,27 +4,40 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
+
 from typing import Optional
-import logging
 import asyncio
+import logging
 
-from mautrix.types import (StateEvent, ToDeviceEvent, Membership, EventType, EncryptionAlgorithm,
-                           DeviceOTKCount, DeviceLists)
-from mautrix.util.logging import TraceLogger
 from mautrix import client as cli
+from mautrix.types import (
+    DeviceLists,
+    DeviceOTKCount,
+    EncryptionAlgorithm,
+    EventType,
+    Membership,
+    StateEvent,
+    ToDeviceEvent,
+)
+from mautrix.util.logging import TraceLogger
 
+from .account import OlmAccount
+from .decrypt_megolm import MegolmDecryptionMachine
+from .encrypt_megolm import MegolmEncryptionMachine
+from .key_request import KeyRequestingMachine
+from .key_share import KeySharingMachine
 from .store import CryptoStore, StateStore
 from .types import DecryptedOlmEvent
-from .account import OlmAccount
-from .decrypt_olm import OlmDecryptionMachine
-from .encrypt_megolm import MegolmEncryptionMachine
-from .decrypt_megolm import MegolmDecryptionMachine
-from .key_share import KeySharingMachine
-from .key_request import KeyRequestingMachine
+from .unwedge import OlmUnwedgingMachine
 
 
-class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryptionMachine,
-                 KeySharingMachine, KeyRequestingMachine):
+class OlmMachine(
+    MegolmEncryptionMachine,
+    MegolmDecryptionMachine,
+    OlmUnwedgingMachine,
+    KeySharingMachine,
+    KeyRequestingMachine,
+):
     """
     OlmMachine is the main class for handling things related to Matrix end-to-end encryption with
     Olm and Megolm. Users primarily need :meth:`encrypt_megolm_event`, :meth:`share_group_session`,
@@ -43,8 +56,13 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
 
     allow_unverified_devices: bool
 
-    def __init__(self, client: cli.Client, crypto_store: CryptoStore, state_store: StateStore,
-                 log: Optional[TraceLogger] = None) -> None:
+    def __init__(
+        self,
+        client: cli.Client,
+        crypto_store: CryptoStore,
+        state_store: StateStore,
+        log: Optional[TraceLogger] = None,
+    ) -> None:
         super().__init__()
         self.client = client
         self.log = log or logging.getLogger("mau.crypto")
@@ -59,9 +77,11 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         self._fetch_keys_lock = asyncio.Lock()
         self._key_request_waiters = {}
         self._inbound_session_waiters = {}
+        self._prev_unwedge = {}
 
-        self.client.add_event_handler(cli.InternalEventType.DEVICE_OTK_COUNT,
-                                      self.handle_otk_count, wait_sync=True)
+        self.client.add_event_handler(
+            cli.InternalEventType.DEVICE_OTK_COUNT, self.handle_otk_count, wait_sync=True
+        )
         self.client.add_event_handler(cli.InternalEventType.DEVICE_LISTS, self.handle_device_lists)
         self.client.add_event_handler(EventType.TO_DEVICE_ENCRYPTED, self.handle_to_device_event)
         self.client.add_event_handler(EventType.ROOM_KEY_REQUEST, self.handle_room_key_request)
@@ -86,8 +106,10 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         do syncing in some manual way.
         """
         if otk_count.signed_curve25519 < self.account.max_one_time_keys // 2:
-            self.log.debug(f"Sync response said we have {otk_count.signed_curve25519} signed"
-                           " curve25519 keys left, sharing new ones...")
+            self.log.debug(
+                f"Sync response said we have {otk_count.signed_curve25519} signed"
+                " curve25519 keys left, sharing new ones..."
+            )
             await self.share_keys(otk_count.signed_curve25519)
 
     async def handle_device_lists(self, device_lists: DeviceLists) -> None:
@@ -112,7 +134,7 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         """
         if not await self.state_store.is_encrypted(evt.room_id):
             return
-        prev = evt.prev_content.membership or Membership.UNKNOWN
+        prev = evt.prev_content.membership
         cur = evt.content.membership
         ignored_changes = {
             Membership.INVITE: Membership.JOIN,
@@ -121,8 +143,10 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         }
         if prev == cur or ignored_changes.get(prev) == cur:
             return
-        self.log.debug(f"Got membership state event in {evt.room_id} changing {evt.state_key} from "
-                       f"{prev} to {cur}, invalidating group session")
+        self.log.debug(
+            f"Got membership state event in {evt.room_id} changing {evt.state_key} from "
+            f"{prev} to {cur}, invalidating group session"
+        )
         await self.crypto_store.remove_outbound_group_session(evt.room_id)
 
     async def handle_to_device_event(self, evt: ToDeviceEvent) -> None:
@@ -133,8 +157,9 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         passed to the OlmMachine is syncing. You shouldn't need to call this yourself unless you
         do syncing in some manual way.
         """
-        self.log.trace(f"Handling encrypted to-device event from {evt.content.sender_key}"
-                       f" ({evt.sender})")
+        self.log.trace(
+            f"Handling encrypted to-device event from {evt.content.sender_key} ({evt.sender})"
+        )
         decrypted_evt = await self._decrypt_olm_event(evt)
         if decrypted_evt.type == EventType.ROOM_KEY:
             await self._receive_room_key(decrypted_evt)
@@ -146,8 +171,13 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         #      for the case where evt.Keys.Ed25519 is none?
         if evt.content.algorithm != EncryptionAlgorithm.MEGOLM_V1 or not evt.keys.ed25519:
             return
-        await self._create_group_session(evt.sender_key, evt.keys.ed25519, evt.content.room_id,
-                                         evt.content.session_id, evt.content.session_key)
+        await self._create_group_session(
+            evt.sender_key,
+            evt.keys.ed25519,
+            evt.content.room_id,
+            evt.content.session_id,
+            evt.content.session_key,
+        )
 
     async def share_keys(self, current_otk_count: int) -> None:
         """
@@ -157,10 +187,14 @@ class OlmMachine(MegolmEncryptionMachine, MegolmDecryptionMachine, OlmDecryption
         Args:
             current_otk_count: The current number of signed curve25519 keys present on the server.
         """
-        device_keys = (self.account.get_device_keys(self.client.mxid, self.client.device_id)
-                       if not self.account.shared else None)
-        one_time_keys = self.account.get_one_time_keys(self.client.mxid, self.client.device_id,
-                                                       current_otk_count)
+        device_keys = (
+            self.account.get_device_keys(self.client.mxid, self.client.device_id)
+            if not self.account.shared
+            else None
+        )
+        one_time_keys = self.account.get_one_time_keys(
+            self.client.mxid, self.client.device_id, current_otk_count
+        )
         if not device_keys and not one_time_keys:
             self.log.warning("No one-time keys nor device keys got when trying to share keys")
             return

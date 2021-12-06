@@ -1,14 +1,15 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Any, Dict, List, Optional
+
 from attr import dataclass
 
-from .primitive import UserID, DeviceID, IdentityKey, SigningKey
-from .util import SerializableAttrs
 from .event.encrypted import EncryptionAlgorithm, EncryptionKeyAlgorithm
+from .primitive import DeviceID, IdentityKey, SigningKey, UserID
+from .util import SerializableAttrs
 
 
 @dataclass
@@ -30,16 +31,16 @@ class DeviceKeys(SerializableAttrs):
             self.unsigned = UnsignedDeviceInfo()
 
     @property
-    def ed25519(self) -> SigningKey:
+    def ed25519(self) -> Optional[SigningKey]:
         try:
-            return self.keys[f"{EncryptionKeyAlgorithm.ED25519}:{self.device_id}"]
+            return SigningKey(self.keys[f"{EncryptionKeyAlgorithm.ED25519}:{self.device_id}"])
         except KeyError:
             return None
 
     @property
-    def curve25519(self) -> IdentityKey:
+    def curve25519(self) -> Optional[IdentityKey]:
         try:
-            return self.keys[f"{EncryptionKeyAlgorithm.CURVE25519}:{self.device_id}"]
+            return IdentityKey(self.keys[f"{EncryptionKeyAlgorithm.CURVE25519}:{self.device_id}"])
         except KeyError:
             return None
 

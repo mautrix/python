@@ -1,14 +1,16 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Type
+from __future__ import annotations
+
+from typing import Type
 import logging
 
-from mautrix.types import RoomID, UserID
-from mautrix.appservice import IntentAPI
 from mautrix.api import Method, Path, PathBuilder
+from mautrix.appservice import IntentAPI
+from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
 
 from .puppet import BasePuppet
@@ -22,7 +24,7 @@ class NotificationDisabler:
 
     user_id: UserID
     room_id: RoomID
-    intent: Optional[IntentAPI]
+    intent: IntentAPI | None
     enabled: bool
 
     def __init__(self, room_id: RoomID, user: BaseUser) -> None:
@@ -32,18 +34,21 @@ class NotificationDisabler:
 
     @property
     def _path(self) -> PathBuilder:
-        return Path.pushrules["global"].override[("net.maunium.silence_while_backfilling"
-                                                  f":{self.room_id}")]
+        return Path.pushrules["global"].override[
+            f"net.maunium.silence_while_backfilling:{self.room_id}"
+        ]
 
     @property
     def _rule(self) -> dict:
         return {
             "actions": ["dont_notify"],
-            "conditions": [{
-                "kind": "event_match",
-                "key": "room_id",
-                "pattern": self.room_id,
-            }]
+            "conditions": [
+                {
+                    "kind": "event_match",
+                    "key": "room_id",
+                    "pattern": self.room_id,
+                }
+            ],
         }
 
     async def __aenter__(self) -> None:
@@ -56,8 +61,11 @@ class NotificationDisabler:
             self.log.debug(f"Disabling notifications in {self.room_id} for {self.intent.mxid}")
             await self.intent.api.request(Method.PUT, self._path, content=self._rule)
         except Exception:
-            self.log.warning(f"Failed to disable notifications in {self.room_id} "
-                             f"for {self.intent.mxid} while backfilling", exc_info=True)
+            self.log.warning(
+                f"Failed to disable notifications in {self.room_id} "
+                f"for {self.intent.mxid} while backfilling",
+                exc_info=True,
+            )
             raise
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -67,5 +75,8 @@ class NotificationDisabler:
             self.log.debug(f"Re-enabling notifications in {self.room_id} for {self.intent.mxid}")
             await self.intent.api.request(Method.DELETE, self._path)
         except Exception:
-            self.log.warning(f"Failed to re-enable notifications in {self.room_id} "
-                             f"for {self.intent.mxid} after backfilling", exc_info=True)
+            self.log.warning(
+                f"Failed to re-enable notifications in {self.room_id} "
+                f"for {self.intent.mxid} after backfilling",
+                exc_info=True,
+            )

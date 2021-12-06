@@ -1,13 +1,20 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from __future__ import annotations
 
-from mautrix.errors import MatrixResponseError
 from mautrix.api import Method, Path
-from mautrix.types import RoomID, UserID, EventID, PresenceEventContent, PresenceState, SerializerError
+from mautrix.errors import MatrixResponseError
+from mautrix.types import (
+    EventID,
+    PresenceEventContent,
+    PresenceState,
+    RoomID,
+    SerializerError,
+    UserID,
+)
 
 from ..base import BaseClientAPI
 
@@ -53,8 +60,12 @@ class MiscModuleMethods(BaseClientAPI):
     # endregion
     # region 13.5 Receipts
 
-    async def send_receipt(self, room_id: RoomID, event_id: EventID, receipt_type: str = "m.read",
-                           ) -> None:
+    async def send_receipt(
+        self,
+        room_id: RoomID,
+        event_id: EventID,
+        receipt_type: str = "m.read",
+    ) -> None:
         """
         Update the marker for the given receipt type to the event ID specified.
 
@@ -70,8 +81,9 @@ class MiscModuleMethods(BaseClientAPI):
     # endregion
     # region 13.6 Fully read markers
 
-    async def set_fully_read_marker(self, room_id: RoomID, fully_read: EventID,
-                                    read_receipt: Optional[EventID] = None) -> None:
+    async def set_fully_read_marker(
+        self, room_id: RoomID, fully_read: EventID, read_receipt: EventID | None = None
+    ) -> None:
         """
         Set the position of the read marker for the given room, and optionally send a new read
         receipt.
@@ -95,8 +107,9 @@ class MiscModuleMethods(BaseClientAPI):
     # endregion
     # region 13.7 Presence
 
-    async def set_presence(self, presence: PresenceState = PresenceState.ONLINE,
-                           status: Optional[str] = None) -> None:
+    async def set_presence(
+        self, presence: PresenceState = PresenceState.ONLINE, status: str | None = None
+    ) -> None:
         """
         Set the current user's presence state. When setting the status, the activity time is updated
         to reflect that activity; the client does not need to specify

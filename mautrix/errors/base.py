@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7,6 +7,7 @@
 
 class MatrixError(Exception):
     """A generic Matrix error. Specific errors will subclass this."""
+
     pass
 
 
@@ -23,4 +24,5 @@ class MatrixResponseError(MatrixError):
 
 class IntentError(MatrixError):
     """An intent execution failure, most likely caused by a `MatrixRequestError`."""
+
     pass

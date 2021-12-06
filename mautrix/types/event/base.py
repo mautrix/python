@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,7 +8,7 @@ from typing import Optional
 from attr import dataclass
 import attr
 
-from ..primitive import RoomID, UserID, EventID
+from ..primitive import EventID, RoomID, UserID
 from ..util import Obj, SerializableAttrs
 from .type import EventType
 
@@ -16,12 +16,14 @@ from .type import EventType
 @dataclass
 class BaseUnsigned:
     """Base unsigned information."""
+
     age: int = None
 
 
 @dataclass
 class BaseEvent:
     """Base event class. The only things an event **must** have are content and event type."""
+
     content: Obj
     type: EventType
 
@@ -30,6 +32,7 @@ class BaseEvent:
 class BaseRoomEvent(BaseEvent):
     """Base room event class. Room events must have a room ID, event ID, sender and timestamp in
     addition to the content and type in the base event."""
+
     room_id: RoomID
     event_id: EventID
     sender: UserID
@@ -42,6 +45,7 @@ class GenericEvent(BaseEvent, SerializableAttrs):
     An event class that contains all possible top-level event keys and uses generic Obj's for object
     keys (content and unsigned)
     """
+
     content: Obj
     type: EventType
     room_id: Optional[RoomID] = None

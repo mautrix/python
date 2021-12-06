@@ -1,11 +1,11 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
-import logging
 import asyncio
+import logging
 
 
 class SimpleLock:
@@ -13,7 +13,9 @@ class SimpleLock:
     log: Optional[logging.Logger]
     message: Optional[str]
 
-    def __init__(self, message: Optional[str] = None, log: Optional[logging.Logger] = None) -> None:
+    def __init__(
+        self, message: Optional[str] = None, log: Optional[logging.Logger] = None
+    ) -> None:
         self._event = asyncio.Event()
         self._event.set()
         self.log = log

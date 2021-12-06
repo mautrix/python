@@ -1,25 +1,25 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Optional, List
+from typing import List, Optional, Union
 
 from attr import dataclass
 import attr
 
-from ..util import SerializableAttrs, Obj, deserializer, ExtensibleEnum
-from ..primitive import JSON, UserID, RoomID, SessionID, IdentityKey, SigningKey, DeviceID
-from .encrypted import EncryptionAlgorithm, EncryptedOlmEventContent
-from .base import EventType, BaseEvent
+from ..primitive import JSON, DeviceID, IdentityKey, RoomID, SessionID, SigningKey, UserID
+from ..util import ExtensibleEnum, Obj, SerializableAttrs, deserializer
+from .base import BaseEvent, EventType
+from .encrypted import EncryptedOlmEventContent, EncryptionAlgorithm
 
 
 class RoomKeyWithheldCode(ExtensibleEnum):
-    BLACKLISTED: 'RoomKeyWithheldCode' = "m.blacklisted"
-    UNVERIFIED: 'RoomKeyWithheldCode' = "m.unverified"
-    UNAUTHORIZED: 'RoomKeyWithheldCode' = "m.unauthorized"
-    UNAVAILABLE: 'RoomKeyWithheldCode' = "m.unavailable"
-    NO_OLM_SESSION: 'RoomKeyWithheldCode' = "m.no_olm"
+    BLACKLISTED: "RoomKeyWithheldCode" = "m.blacklisted"
+    UNVERIFIED: "RoomKeyWithheldCode" = "m.unverified"
+    UNAUTHORIZED: "RoomKeyWithheldCode" = "m.unauthorized"
+    UNAVAILABLE: "RoomKeyWithheldCode" = "m.unavailable"
+    NO_OLM_SESSION: "RoomKeyWithheldCode" = "m.no_olm"
 
 
 @dataclass
@@ -41,8 +41,8 @@ class RoomKeyEventContent(SerializableAttrs):
 
 
 class KeyRequestAction(ExtensibleEnum):
-    REQUEST: 'KeyRequestAction' = "request"
-    CANCEL: 'KeyRequestAction' = "request_cancellation"
+    REQUEST: "KeyRequestAction" = "request"
+    CANCEL: "KeyRequestAction" = "request_cancellation"
 
 
 @dataclass
@@ -62,16 +62,20 @@ class RoomKeyRequestEventContent(SerializableAttrs):
 
 
 @dataclass
-class ForwardedRoomKeyEventContent(RoomKeyEventContent,
-                                   SerializableAttrs):
+class ForwardedRoomKeyEventContent(RoomKeyEventContent, SerializableAttrs):
     sender_key: IdentityKey
     signing_key: SigningKey = attr.ib(metadata={"json": "sender_claimed_ed25519_key"})
     forwarding_key_chain: List[str] = attr.ib(metadata={"json": "forwarding_curve25519_key_chain"})
 
 
-ToDeviceEventContent = Union[Obj, EncryptedOlmEventContent, RoomKeyWithheldEventContent,
-                             RoomKeyEventContent, RoomKeyRequestEventContent,
-                             ForwardedRoomKeyEventContent]
+ToDeviceEventContent = Union[
+    Obj,
+    EncryptedOlmEventContent,
+    RoomKeyWithheldEventContent,
+    RoomKeyEventContent,
+    RoomKeyRequestEventContent,
+    ForwardedRoomKeyEventContent,
+]
 to_device_event_content_map = {
     EventType.TO_DEVICE_ENCRYPTED: EncryptedOlmEventContent,
     EventType.ROOM_KEY_WITHHELD: RoomKeyWithheldEventContent,
@@ -90,7 +94,7 @@ class ToDeviceEvent(BaseEvent, SerializableAttrs):
     content: ToDeviceEventContent
 
     @classmethod
-    def deserialize(cls, data: JSON) -> 'ToDeviceEvent':
+    def deserialize(cls, data: JSON) -> "ToDeviceEvent":
         try:
             evt_type = EventType.find(data.get("type"), t_class=EventType.Class.TO_DEVICE)
             data.setdefault("content", {})["__mautrix_event_type"] = evt_type
