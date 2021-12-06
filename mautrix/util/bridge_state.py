@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, ClassVar
+from typing import ClassVar, Dict, Optional
 import logging
 import time
 
@@ -49,8 +49,12 @@ class BridgeStateEvent(SerializableEnum):
 
 
 ok_ish_states = (
-    BridgeStateEvent.STARTING, BridgeStateEvent.UNCONFIGURED, BridgeStateEvent.RUNNING,
-    BridgeStateEvent.CONNECTING, BridgeStateEvent.CONNECTED, BridgeStateEvent.BACKFILLING,
+    BridgeStateEvent.STARTING,
+    BridgeStateEvent.UNCONFIGURED,
+    BridgeStateEvent.RUNNING,
+    BridgeStateEvent.CONNECTING,
+    BridgeStateEvent.CONNECTED,
+    BridgeStateEvent.BACKFILLING,
 )
 
 
@@ -71,13 +75,15 @@ class BridgeState(SerializableAttrs):
     error: Optional[str] = None
     message: Optional[str] = None
 
-    def fill(self) -> 'BridgeState':
+    def fill(self) -> "BridgeState":
         self.timestamp = self.timestamp or int(time.time())
         self.source = self.source or self.default_source
         if not self.ttl:
-            self.ttl = (self.default_ok_ttl
-                        if self.state_event in ok_ish_states
-                        else self.default_error_ttl)
+            self.ttl = (
+                self.default_ok_ttl
+                if self.state_event in ok_ish_states
+                else self.default_error_ttl
+            )
         if self.error:
             try:
                 msg = self.human_readable_errors[self.error]
@@ -87,7 +93,7 @@ class BridgeState(SerializableAttrs):
                 self.message = msg.format(message=self.message) if self.message else msg
         return self
 
-    def should_deduplicate(self, prev_state: Optional['BridgeState']) -> bool:
+    def should_deduplicate(self, prev_state: Optional["BridgeState"]) -> bool:
         if (
             not prev_state
             or prev_state.state_event != self.state_event
@@ -103,13 +109,16 @@ class BridgeState(SerializableAttrs):
             return
         headers = {"Authorization": f"Bearer {token}", "User-Agent": HTTPAPI.default_ua}
         try:
-            async with aiohttp.ClientSession() as sess, sess.post(url, json=self.serialize(),
-                                                                  headers=headers) as resp:
+            async with aiohttp.ClientSession() as sess, sess.post(
+                url, json=self.serialize(), headers=headers
+            ) as resp:
                 if not 200 <= resp.status < 300:
                     text = await resp.text()
                     text = text.replace("\n", "\\n")
-                    log.warning(f"Unexpected status code {resp.status} "
-                                f"sending bridge state update: {text}")
+                    log.warning(
+                        f"Unexpected status code {resp.status} "
+                        f"sending bridge state update: {text}"
+                    )
                 elif log_sent:
                     log.debug(f"Sent new bridge state {self}")
         except Exception as e:

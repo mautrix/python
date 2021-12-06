@@ -1,14 +1,25 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Dict, Any, Optional, Union, Iterable
+from __future__ import annotations
 
-from mautrix.errors import MatrixResponseError
+from typing import Any
+
 from mautrix.api import Method, Path
-from mautrix.types import (UserID, DeviceID, EncryptionKeyAlgorithm, ClaimKeysResponse, SyncToken,
-                           QueryKeysResponse, EventType, ToDeviceEventContent, Serializable)
+from mautrix.errors import MatrixResponseError
+from mautrix.types import (
+    ClaimKeysResponse,
+    DeviceID,
+    EncryptionKeyAlgorithm,
+    EventType,
+    QueryKeysResponse,
+    Serializable,
+    SyncToken,
+    ToDeviceEventContent,
+    UserID,
+)
 
 from ..base import BaseClientAPI
 
@@ -19,8 +30,9 @@ class CryptoMethods(BaseClientAPI):
     and `13.11 End-to-End Encryption of the spec <https://matrix.org/docs/spec/client_server/r0.6.1#id76>`__.
     """
 
-    async def send_to_device(self, event_type: EventType,
-                             messages: Dict[UserID, Dict[DeviceID, ToDeviceEventContent]]) -> None:
+    async def send_to_device(
+        self, event_type: EventType, messages: dict[UserID, dict[DeviceID, ToDeviceEventContent]]
+    ) -> None:
         """
         Send to-device events to a set of client devices.
 
@@ -33,17 +45,29 @@ class CryptoMethods(BaseClientAPI):
         """
         if not event_type.is_to_device:
             raise ValueError("Event type must be a to-device event type")
-        await self.api.request(Method.PUT, Path.sendToDevice[event_type][self.api.get_txn_id()], {
-            "messages": {
-                user_id: {device_id: (content.serialize() if isinstance(content, Serializable)
-                                      else content)
-                          for device_id, content in devices.items()}
-                for user_id, devices in messages.items()
+        await self.api.request(
+            Method.PUT,
+            Path.sendToDevice[event_type][self.api.get_txn_id()],
+            {
+                "messages": {
+                    user_id: {
+                        device_id: (
+                            content.serialize() if isinstance(content, Serializable) else content
+                        )
+                        for device_id, content in devices.items()
+                    }
+                    for user_id, devices in messages.items()
+                },
             },
-        })
+        )
 
-    async def send_to_one_device(self, event_type: EventType, user_id: UserID, device_id: DeviceID,
-                                 message: ToDeviceEventContent) -> None:
+    async def send_to_one_device(
+        self,
+        event_type: EventType,
+        user_id: UserID,
+        device_id: DeviceID,
+        message: ToDeviceEventContent,
+    ) -> None:
         """
         Send a to-device event to a single device.
 
@@ -55,9 +79,11 @@ class CryptoMethods(BaseClientAPI):
         """
         return await self.send_to_device(event_type, {user_id: {device_id: message}})
 
-    async def upload_keys(self, one_time_keys: Optional[Dict[str, Any]] = None,
-                          device_keys: Optional[Dict[str, Any]] = None,
-                          ) -> Dict[EncryptionKeyAlgorithm, int]:
+    async def upload_keys(
+        self,
+        one_time_keys: dict[str, Any] | None = None,
+        device_keys: dict[str, Any] | None = None,
+    ) -> dict[EncryptionKeyAlgorithm, int]:
         """
         Publishes end-to-end encryption keys for the device.
 
@@ -81,15 +107,21 @@ class CryptoMethods(BaseClientAPI):
             data["one_time_keys"] = one_time_keys
         resp = await self.api.request(Method.POST, Path.keys.upload, data)
         try:
-            return {EncryptionKeyAlgorithm.deserialize(alg): count
-                    for alg, count in resp["one_time_key_counts"].items()}
+            return {
+                EncryptionKeyAlgorithm.deserialize(alg): count
+                for alg, count in resp["one_time_key_counts"].items()
+            }
         except KeyError as e:
             raise MatrixResponseError("`one_time_key_counts` not in response.") from e
         except AttributeError as e:
             raise MatrixResponseError("Invalid `one_time_key_counts` field in response.") from e
 
-    async def query_keys(self, device_keys: Union[Iterable[UserID], Dict[UserID, List[DeviceID]]],
-                         token: SyncToken = "", timeout: int = 10000) -> QueryKeysResponse:
+    async def query_keys(
+        self,
+        device_keys: list[UserID] | set[UserID] | dict[UserID, list[DeviceID]],
+        token: SyncToken = "",
+        timeout: int = 10000,
+    ) -> QueryKeysResponse:
         """
         Fetch devices and their identity keys for the given users.
 
@@ -118,8 +150,11 @@ class CryptoMethods(BaseClientAPI):
         resp = await self.api.request(Method.POST, Path.keys.query, data)
         return QueryKeysResponse.deserialize(resp)
 
-    async def claim_keys(self, one_time_keys: Dict[UserID, Dict[DeviceID, EncryptionKeyAlgorithm]],
-                         timeout: int = 10000) -> ClaimKeysResponse:
+    async def claim_keys(
+        self,
+        one_time_keys: dict[UserID, dict[DeviceID, EncryptionKeyAlgorithm]],
+        timeout: int = 10000,
+    ) -> ClaimKeysResponse:
         """
         Claim one-time keys for use in pre-key messages.
 
@@ -134,10 +169,15 @@ class CryptoMethods(BaseClientAPI):
             One-time keys for the queried devices and errors for homeservers that could not be
             reached.
         """
-        resp = await self.api.request(Method.POST, Path.keys.claim, {
-            "timeout": timeout,
-            "one_time_keys": {user_id: {device_id: alg.serialize()
-                                        for device_id, alg in devices.items()}
-                              for user_id, devices in one_time_keys.items()},
-        })
+        resp = await self.api.request(
+            Method.POST,
+            Path.keys.claim,
+            {
+                "timeout": timeout,
+                "one_time_keys": {
+                    user_id: {device_id: alg.serialize() for device_id, alg in devices.items()}
+                    for user_id, devices in one_time_keys.items()
+                },
+            },
+        )
         return ClaimKeysResponse.deserialize(resp)

@@ -3,16 +3,22 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Type, TypeVar, Any, Union, Optional, Tuple, Iterator, Callable, NewType
+from typing import Any, Callable, Dict, Iterator, NewType, Optional, Tuple, Type, TypeVar, Union
 from uuid import UUID
-import logging
-import attr
 import copy
+import logging
+
+import attr
 
 from ..primitive import JSON
-from .serializable import (SerializerError, UnknownSerializationError, Serializable,
-                           AbstractSerializable, SerializableSubtype)
-from .obj import Obj, Lst
+from .obj import Lst, Obj
+from .serializable import (
+    AbstractSerializable,
+    Serializable,
+    SerializableSubtype,
+    SerializerError,
+    UnknownSerializationError,
+)
 
 T = TypeVar("T")
 T2 = TypeVar("T2")
@@ -36,10 +42,18 @@ META_OMIT_DEFAULT = "omitdefault"
 log = logging.getLogger("mau.attrs")
 
 
-def field(default: Any = attr.NOTHING, factory: Optional[Callable[[], Any]] = None,
-          json: Optional[str] = None, flatten: bool = False, hidden: bool = False,
-          ignore_errors: bool = False, omit_empty: bool = True, omit_default: bool = False,
-          metadata: Optional[Dict[str, Any]] = None, **kwargs):
+def field(
+    default: Any = attr.NOTHING,
+    factory: Optional[Callable[[], Any]] = None,
+    json: Optional[str] = None,
+    flatten: bool = False,
+    hidden: bool = False,
+    ignore_errors: bool = False,
+    omit_empty: bool = True,
+    omit_default: bool = False,
+    metadata: Optional[Dict[str, Any]] = None,
+    **kwargs,
+):
     """
     A wrapper around :meth:`attr.ib` to conveniently add SerializableAttrs metadata fields.
 
@@ -163,12 +177,15 @@ def _safe_default(val: T) -> T:
     return copy.copy(val)
 
 
-def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
-                   default_if_empty: bool = False) -> T:
+def _dict_to_attrs(
+    attrs_type: Type[T], data: JSON, default: Optional[T] = None, default_if_empty: bool = False
+) -> T:
     data = data or {}
     unrecognized = {}
-    new_items = {field_meta.name.lstrip("_"): _try_deserialize(field_meta, data)
-                 for _, field_meta in _fields(attrs_type, only_if_flatten=True)}
+    new_items = {
+        field_meta.name.lstrip("_"): _try_deserialize(field_meta, data)
+        for _, field_meta in _fields(attrs_type, only_if_flatten=True)
+    }
     fields = dict(_fields(attrs_type, only_if_flatten=False))
     for key, value in data.items():
         try:
@@ -180,13 +197,15 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
         try:
             new_items[name] = _try_deserialize(field_meta, value)
         except UnknownSerializationError as e:
-            raise SerializerError(f"Failed to deserialize {value} into "
-                                  f"key {name} of {attrs_type.__name__}") from e
+            raise SerializerError(
+                f"Failed to deserialize {value} into key {name} of {attrs_type.__name__}"
+            ) from e
         except SerializerError:
             raise
         except Exception as e:
-            raise SerializerError(f"Failed to deserialize {value} into "
-                                  f"key {name} of {attrs_type.__name__}") from e
+            raise SerializerError(
+                f"Failed to deserialize {value} into key {name} of {attrs_type.__name__}"
+            ) from e
     if len(new_items) == 0 and default_if_empty and default is not attr.NOTHING:
         return _safe_default(default)
     try:
@@ -196,8 +215,9 @@ def _dict_to_attrs(attrs_type: Type[T], data: JSON, default: Optional[T] = None,
             if field_meta.default is attr.NOTHING and key not in new_items:
                 log.debug("Failed to deserialize %s into %s", data, attrs_type.__name__)
                 json_key = field_meta.metadata.get(META_JSON, key)
-                raise SerializerError("Missing value for required key "
-                                      f"{json_key} in {attrs_type.__name__}") from e
+                raise SerializerError(
+                    f"Missing value for required key {json_key} in {attrs_type.__name__}"
+                ) from e
         raise UnknownSerializationError() from e
     if len(unrecognized) > 0:
         obj.unrecognized_ = unrecognized
@@ -216,9 +236,9 @@ def _try_deserialize(field, value: JSON) -> T:
 
 
 def _has_custom_deserializer(cls) -> bool:
-    return (issubclass(cls, Serializable) and
-            getattr(cls.deserialize, '__func__')
-            != getattr(SerializableAttrs.deserialize, '__func__'))
+    return issubclass(cls, Serializable) and getattr(cls.deserialize, "__func__") != getattr(
+        SerializableAttrs.deserialize, "__func__"
+    )
 
 
 def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
@@ -256,15 +276,16 @@ def _deserialize(cls: Type[T], value: JSON, default: Optional[T] = None) -> T:
         if len(args) == 2 and isinstance(None, args[1]):
             return _deserialize(args[0], value, default)
     elif type_class == list:
-        item_cls, = args
+        (item_cls,) = args
         return [_deserialize(item_cls, item) for item in value]
     elif type_class == set:
-        item_cls, = args
+        (item_cls,) = args
         return {_deserialize(item_cls, item) for item in value}
     elif type_class == dict:
         key_cls, val_cls = args
-        return {_deserialize(key_cls, key): _deserialize(val_cls, item)
-                for key, item in value.items()}
+        return {
+            _deserialize(key_cls, key): _deserialize(val_cls, item) for key, item in value.items()
+        }
 
     if isinstance(value, list):
         return Lst(value)
@@ -343,6 +364,7 @@ class SerializableAttrs(AbstractSerializable):
         ...     index: int
         ...     field: Optional[str] = None
     """
+
     unrecognized_: Dict[str, JSON]
 
     def __init__(self):

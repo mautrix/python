@@ -15,14 +15,14 @@
 
 """Matrix async encryption/decryption functions for file uploads."""
 
+from typing import Any, AsyncGenerator, AsyncIterable, Dict, Iterable, Union
+from functools import partial
 import asyncio
 import io
-from functools import partial
-from typing import Any, AsyncGenerator, AsyncIterable, Dict, Iterable, Union
 
 from mautrix.types import EncryptedFile
 
-from .attachments import _get_decryption_info, Random, AES, SHA256, Counter
+from .attachments import AES, SHA256, Counter, Random, _get_decryption_info
 
 AsyncDataT = Union[
     bytes,
@@ -86,7 +86,7 @@ async def async_generator_from_data(
     chunk_size: int = 4 * 1024,
 ) -> AsyncGenerator[bytes, None]:
     if isinstance(data, bytes):
-        chunks = (data[i: i + chunk_size] for i in range(0, len(data), chunk_size))
+        chunks = (data[i : i + chunk_size] for i in range(0, len(data), chunk_size))
         for chunk in chunks:
             yield chunk
     elif isinstance(data, io.BufferedIOBase):

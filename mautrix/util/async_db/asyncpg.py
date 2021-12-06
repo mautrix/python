@@ -3,29 +3,35 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Any
+from __future__ import annotations
+
+from typing import Any
 import asyncio
 import logging
 
 import asyncpg
 
+from .database import AcquireResult, Database
 from .upgrade import UpgradeTable
-from .database import Database, AcquireResult
 
 
 class PostgresDatabase(Database):
     scheme = "postgres"
-    _pool: Optional[asyncpg.pool.Pool]
+    _pool: asyncpg.pool.Pool | None
     _pool_override: bool
 
-    def __init__(self, url: str, upgrade_table: UpgradeTable,
-                 db_args: Optional[Dict[str, Any]] = None,
-                 log: Optional[logging.Logger] = None) -> None:
+    def __init__(
+        self,
+        url: str,
+        upgrade_table: UpgradeTable,
+        db_args: dict[str, Any] = None,
+        log: logging.Logger | None = None,
+    ) -> None:
         super().__init__(url, db_args=db_args, upgrade_table=upgrade_table, log=log)
         self._pool = None
         self._pool_override = False
 
-    def override_pool(self, db: 'PostgresDatabase') -> None:
+    def override_pool(self, db: PostgresDatabase) -> None:
         self._pool = db._pool
         self._pool_override = True
 
@@ -46,7 +52,7 @@ class PostgresDatabase(Database):
         if not self._pool_override:
             await self.pool.close()
 
-    def acquire(self) -> 'AcquireResult':
+    def acquire(self) -> AcquireResult:
         return self.pool.acquire()
 
 

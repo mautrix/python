@@ -3,14 +3,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import TypeVar, Type
+from typing import Type, TypeVar
 from abc import ABC, abstractmethod
 from enum import Enum
 import json
 
 from ..primitive import JSON
 
-SerializableSubtype = TypeVar('SerializableSubtype', bound='SerializableAttrs')
+SerializableSubtype = TypeVar("SerializableSubtype", bound="SerializableAttrs")
 
 
 class Serializable:
@@ -39,6 +39,7 @@ class SerializerError(Exception):
     """
     SerializerErrors are raised if something goes wrong during serialization or deserialization.
     """
+
     pass
 
 

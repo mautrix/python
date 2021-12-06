@@ -1,14 +1,14 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from mautrix.types import SyncToken, IdentityKey, SessionID, RoomID, EventID, UserID, DeviceID
 from mautrix.client.state_store import SyncStore
+from mautrix.types import DeviceID, EventID, IdentityKey, RoomID, SessionID, SyncToken, UserID
 
-from .. import OlmAccount, Session, InboundGroupSession, OutboundGroupSession, DeviceIdentity
+from .. import DeviceIdentity, InboundGroupSession, OlmAccount, OutboundGroupSession, Session
 from .abstract import CryptoStore
 
 
@@ -78,16 +78,23 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
         # This is a no-op as the session object is the same one previously added.
         pass
 
-    async def put_group_session(self, room_id: RoomID, sender_key: IdentityKey,
-                                session_id: SessionID, session: InboundGroupSession) -> None:
+    async def put_group_session(
+        self,
+        room_id: RoomID,
+        sender_key: IdentityKey,
+        session_id: SessionID,
+        session: InboundGroupSession,
+    ) -> None:
         self._inbound_sessions[(room_id, sender_key, session_id)] = session
 
-    async def get_group_session(self, room_id: RoomID, sender_key: IdentityKey,
-                                session_id: SessionID) -> InboundGroupSession:
+    async def get_group_session(
+        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
+    ) -> InboundGroupSession:
         return self._inbound_sessions.get((room_id, sender_key, session_id))
 
-    async def has_group_session(self, room_id: RoomID, sender_key: IdentityKey,
-                                session_id: SessionID) -> bool:
+    async def has_group_session(
+        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
+    ) -> bool:
         return (room_id, sender_key, session_id) in self._inbound_sessions
 
     async def add_outbound_group_session(self, session: OutboundGroupSession) -> None:
@@ -107,8 +114,14 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
         for room_id in rooms:
             self._outbound_sessions.pop(room_id, None)
 
-    async def validate_message_index(self, sender_key: IdentityKey, session_id: SessionID,
-                                     event_id: EventID, index: int, timestamp: int) -> bool:
+    async def validate_message_index(
+        self,
+        sender_key: IdentityKey,
+        session_id: SessionID,
+        event_id: EventID,
+        index: int,
+        timestamp: int,
+    ) -> bool:
         try:
             return self._message_indices[(sender_key, session_id, index)] == (event_id, timestamp)
         except KeyError:
@@ -120,6 +133,14 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
 
     async def get_device(self, user_id: UserID, device_id: DeviceID) -> Optional[DeviceIdentity]:
         return self._devices.get(user_id, {}).get(device_id)
+
+    async def find_device_by_key(
+        self, user_id: UserID, identity_key: IdentityKey
+    ) -> Optional[DeviceIdentity]:
+        for device in self._devices.get(user_id, {}).values():
+            if device.identity_key == identity_key:
+                return device
+        return None
 
     async def put_devices(self, user_id: UserID, devices: Dict[DeviceID, DeviceIdentity]) -> None:
         self._devices[user_id] = devices

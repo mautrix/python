@@ -1,13 +1,13 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from __future__ import annotations
 
-from mautrix.errors import MatrixResponseError, MNotFound
 from mautrix.api import Method, Path
-from mautrix.types import UserSearchResults, Member, SerializerError, User, ContentURI, UserID
+from mautrix.errors import MatrixResponseError, MNotFound
+from mautrix.types import ContentURI, Member, SerializerError, User, UserID, UserSearchResults
 
 from .base import BaseClientAPI
 
@@ -23,8 +23,7 @@ class UserDataMethods(BaseClientAPI):
     # region 10.1 User Directory
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#user-directory
 
-    async def search_users(self, search_query: str, limit: Optional[int] = 10
-                           ) -> UserSearchResults:
+    async def search_users(self, search_query: str, limit: int | None = 10) -> UserSearchResults:
         """
         Performs a search for users on the homeserver. The homeserver may determine which subset of
         users are searched, however the homeserver MUST at a minimum consider the users the
@@ -45,13 +44,18 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The results of the search and whether or not the results were limited.
         """
-        content = await self.api.request(Method.POST, Path.user_directory.search, {
-            "search_term": search_query,
-            "limit": limit,
-        })
+        content = await self.api.request(
+            Method.POST,
+            Path.user_directory.search,
+            {
+                "search_term": search_query,
+                "limit": limit,
+            },
+        )
         try:
-            return UserSearchResults([User.deserialize(user) for user in content["results"]],
-                                     content["limited"])
+            return UserSearchResults(
+                [User.deserialize(user) for user in content["results"]], content["limited"]
+            )
         except SerializerError as e:
             raise MatrixResponseError("Invalid user in search results") from e
         except KeyError:
@@ -77,11 +81,15 @@ class UserDataMethods(BaseClientAPI):
         """
         if check_current and await self.get_displayname(self.mxid) == displayname:
             return
-        await self.api.request(Method.PUT, Path.profile[self.mxid].displayname, {
-            "displayname": displayname,
-        })
+        await self.api.request(
+            Method.PUT,
+            Path.profile[self.mxid].displayname,
+            {
+                "displayname": displayname,
+            },
+        )
 
-    async def get_displayname(self, user_id: UserID) -> Optional[str]:
+    async def get_displayname(self, user_id: UserID) -> str | None:
         """
         Get the display name of a user.
 
@@ -114,11 +122,15 @@ class UserDataMethods(BaseClientAPI):
         """
         if check_current and await self.get_avatar_url(self.mxid) == avatar_url:
             return
-        await self.api.request(Method.PUT, Path.profile[self.mxid].avatar_url, {
-            "avatar_url": avatar_url,
-        })
+        await self.api.request(
+            Method.PUT,
+            Path.profile[self.mxid].avatar_url,
+            {
+                "avatar_url": avatar_url,
+            },
+        )
 
-    async def get_avatar_url(self, user_id: UserID) -> Optional[ContentURI]:
+    async def get_avatar_url(self, user_id: UserID) -> ContentURI | None:
         """
         Get the avatar URL of a user.
 

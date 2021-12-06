@@ -3,11 +3,17 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List
+from __future__ import annotations
 
 from mautrix.api import Method, Path
-from mautrix.types import (PushRule, PushRuleScope, PushRuleKind, PushRuleID, PushAction,
-                           PushCondition)
+from mautrix.types import (
+    PushAction,
+    PushCondition,
+    PushRule,
+    PushRuleID,
+    PushRuleKind,
+    PushRuleScope,
+)
 
 from ..base import BaseClientAPI
 
@@ -19,8 +25,9 @@ class PushRuleMethods(BaseClientAPI):
 
     See also: `API reference <https://matrix.org/docs/spec/client_server/r0.6.1#id89>`__"""
 
-    async def get_push_rule(self, scope: PushRuleScope, kind: PushRuleKind, rule_id: PushRuleID
-                            ) -> PushRule:
+    async def get_push_rule(
+        self, scope: PushRuleScope, kind: PushRuleKind, rule_id: PushRuleID
+    ) -> PushRule:
         """
         Retrieve a single specified push rule.
 
@@ -37,10 +44,17 @@ class PushRuleMethods(BaseClientAPI):
         resp = await self.api.request(Method.GET, Path.pushrules[scope][kind][rule_id])
         return PushRule.deserialize(resp)
 
-    async def set_push_rule(self, scope: PushRuleScope, kind: PushRuleKind, rule_id: PushRuleID,
-                            actions: List[PushAction], pattern: Optional[str] = None,
-                            before: Optional[PushRuleID] = None, after: Optional[PushRuleID] = None,
-                            conditions: List[PushCondition] = None) -> None:
+    async def set_push_rule(
+        self,
+        scope: PushRuleScope,
+        kind: PushRuleKind,
+        rule_id: PushRuleID,
+        actions: list[PushAction],
+        pattern: str | None = None,
+        before: PushRuleID | None = None,
+        after: PushRuleID | None = None,
+        conditions: list[PushCondition] = None,
+    ) -> None:
         """
         Create or modify a push rule.
 
@@ -66,11 +80,13 @@ class PushRuleMethods(BaseClientAPI):
             content["conditions"] = [cond.serialize() for cond in conditions]
         if pattern:
             content["pattern"] = pattern
-        await self.api.request(Method.PUT, Path.pushrules[scope][kind][rule_id],
-                               query_params=query, content=content)
+        await self.api.request(
+            Method.PUT, Path.pushrules[scope][kind][rule_id], query_params=query, content=content
+        )
 
-    async def remove_push_rule(self, scope: PushRuleScope, kind: PushRuleKind, rule_id: PushRuleID
-                               ) -> None:
+    async def remove_push_rule(
+        self, scope: PushRuleScope, kind: PushRuleKind, rule_id: PushRuleID
+    ) -> None:
         """
         Remove a push rule.
 

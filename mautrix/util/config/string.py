@@ -1,9 +1,10 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from __future__ import annotations
+
 from abc import ABC
 import io
 
@@ -27,7 +28,7 @@ class BaseStringConfig(BaseConfig, ABC):
     def load(self) -> None:
         pass
 
-    def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
+    def load_base(self) -> RecursiveDict[CommentedMap] | None:
         return self._base
 
     def save(self) -> str:

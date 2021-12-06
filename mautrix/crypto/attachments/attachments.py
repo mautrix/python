@@ -17,8 +17,8 @@
 
 """Matrix encryption algorithms for file uploads."""
 
-from binascii import Error as BinAsciiError
 from typing import Any, Dict, Generator, Iterable, Tuple, Union
+from binascii import Error as BinAsciiError
 
 import unpaddedbase64
 
@@ -97,8 +97,9 @@ def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, EncryptedFile]:
     return b"".join(values[:-1]), values[-1]
 
 
-def encrypted_attachment_generator(data: DataT
-                                   ) -> Generator[Union[bytes, EncryptedFile], None, None]:
+def encrypted_attachment_generator(
+    data: DataT,
+) -> Generator[Union[bytes, EncryptedFile], None, None]:
     """Generator to encrypt data in order to send it as an encrypted
     attachment.
 
@@ -139,8 +140,15 @@ def encrypted_attachment_generator(data: DataT
 
 
 def _get_decryption_info(key: bytes, iv: bytes, sha256: SHA256.SHA256Hash) -> EncryptedFile:
-    return EncryptedFile(version="v2", iv=unpaddedbase64.encode_base64(iv + b"\x00" * 8),
-                         hashes={"sha256": unpaddedbase64.encode_base64(sha256.digest())},
-                         key=JSONWebKey(key_type="oct", algorithm="A256CTR", extractable=True,
-                                        key_ops=["encrypt", "decrypt"],
-                                        key=unpaddedbase64.encode_base64(key, urlsafe=True)))
+    return EncryptedFile(
+        version="v2",
+        iv=unpaddedbase64.encode_base64(iv + b"\x00" * 8),
+        hashes={"sha256": unpaddedbase64.encode_base64(sha256.digest())},
+        key=JSONWebKey(
+            key_type="oct",
+            algorithm="A256CTR",
+            extractable=True,
+            key_ops=["encrypt", "decrypt"],
+            key=unpaddedbase64.encode_base64(key, urlsafe=True),
+        ),
+    )

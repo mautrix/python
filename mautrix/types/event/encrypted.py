@@ -3,26 +3,27 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Union, NewType
+from typing import Dict, NewType, Optional, Union
 from enum import IntEnum
+
 from attr import dataclass
 import attr
 
-from ..primitive import JSON, IdentityKey, SessionID, DeviceID
-from ..util import SerializableAttrs, Serializable, ExtensibleEnum, Obj, deserializer
+from ..primitive import JSON, DeviceID, IdentityKey, SessionID
+from ..util import ExtensibleEnum, Obj, Serializable, SerializableAttrs, deserializer
 from .base import BaseRoomEvent, BaseUnsigned
 from .message import RelatesTo
 
 
 class EncryptionAlgorithm(ExtensibleEnum):
-    OLM_V1: 'EncryptionAlgorithm' = "m.olm.v1.curve25519-aes-sha2"
-    MEGOLM_V1: 'EncryptionAlgorithm' = "m.megolm.v1.aes-sha2"
+    OLM_V1: "EncryptionAlgorithm" = "m.olm.v1.curve25519-aes-sha2"
+    MEGOLM_V1: "EncryptionAlgorithm" = "m.megolm.v1.aes-sha2"
 
 
 class EncryptionKeyAlgorithm(ExtensibleEnum):
-    CURVE25519: 'EncryptionKeyAlgorithm' = "curve25519"
-    ED25519: 'EncryptionKeyAlgorithm' = "ed25519"
-    SIGNED_CURVE25519: 'EncryptionKeyAlgorithm' = "signed_curve25519"
+    CURVE25519: "EncryptionKeyAlgorithm" = "curve25519"
+    ED25519: "EncryptionKeyAlgorithm" = "ed25519"
+    SIGNED_CURVE25519: "EncryptionKeyAlgorithm" = "signed_curve25519"
 
 
 class OlmMsgType(Serializable, IntEnum):
@@ -33,7 +34,7 @@ class OlmMsgType(Serializable, IntEnum):
         return self.value
 
     @classmethod
-    def deserialize(cls, raw: JSON) -> 'OlmMsgType':
+    def deserialize(cls, raw: JSON) -> "OlmMsgType":
         return cls(raw)
 
 
@@ -53,6 +54,7 @@ class EncryptedOlmEventContent(SerializableAttrs):
 @dataclass
 class EncryptedMegolmEventContent(SerializableAttrs):
     """The content of an m.room.encrypted event"""
+
     ciphertext: str
     sender_key: IdentityKey
     device_id: DeviceID
@@ -71,8 +73,9 @@ class EncryptedMegolmEventContent(SerializableAttrs):
         self._relates_to = relates_to
 
 
-EncryptedEventContent = NewType('EncryptedEventContent',
-                                Union[EncryptedOlmEventContent, EncryptedMegolmEventContent])
+EncryptedEventContent = NewType(
+    "EncryptedEventContent", Union[EncryptedOlmEventContent, EncryptedMegolmEventContent]
+)
 
 
 @deserializer(EncryptedEventContent)
@@ -91,6 +94,7 @@ setattr(EncryptedEventContent, "deserialize", deserialize_encrypted)
 @dataclass
 class EncryptedEvent(BaseRoomEvent, SerializableAttrs):
     """A m.room.encrypted event"""
+
     content: EncryptedEventContent
     _unsigned: Optional[BaseUnsigned] = attr.ib(default=None, metadata={"json": "unsigned"})
 

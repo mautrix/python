@@ -4,14 +4,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional
 
 from mautrix import __optional_imports__
-from mautrix.types import EventType, Event, StateEvent
+from mautrix.types import Event, EventType, StateEvent
 
-from .state_store import SyncStore, StateStore
+from .encryption_manager import DecryptionDispatcher, EncryptingAPI
+from .state_store import StateStore, SyncStore
 from .syncer import Syncer
-from .encryption_manager import EncryptingAPI, DecryptionDispatcher
 
 if __optional_imports__:
     from .. import crypto as crypt
@@ -20,8 +19,13 @@ if __optional_imports__:
 class Client(EncryptingAPI, Syncer):
     """Client is a high-level wrapper around the client API."""
 
-    def __init__(self, *args, sync_store: Optional[SyncStore] = None,
-                 state_store: Optional[StateStore] = None, **kwargs) -> None:
+    def __init__(
+        self,
+        *args,
+        sync_store: SyncStore | None = None,
+        state_store: StateStore | None = None,
+        **kwargs,
+    ) -> None:
         EncryptingAPI.__init__(self, *args, state_store=state_store, **kwargs)
         Syncer.__init__(self, sync_store)
         self.add_event_handler(EventType.ALL, self._update_state)
@@ -32,7 +36,7 @@ class Client(EncryptingAPI, Syncer):
         await self.state_store.update_state(evt)
 
     @EncryptingAPI.crypto.setter
-    def crypto(self, crypto: Optional[crypt.OlmMachine]) -> None:
+    def crypto(self, crypto: crypt.OlmMachine | None) -> None:
         """
         Set the olm machine and enable the automatic event decryptor.
 

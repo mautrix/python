@@ -4,14 +4,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
+
 from typing import List, NamedTuple, Optional, Union
 
 from mautrix.appservice import IntentAPI
 from mautrix.errors import MatrixRequestError
-from mautrix.types import RoomID, UserID, EventID, EventType
+from mautrix.types import EventID, EventType, RoomID, UserID
 
-from .handler import command_handler, CommandEvent, SECTION_ADMIN
 from ... import bridge as br
+from .handler import SECTION_ADMIN, CommandEvent, command_handler
 
 
 class ManagementRoom(NamedTuple):
@@ -27,8 +28,7 @@ class RoomSearchResults(NamedTuple):
     empty_portals: List[br.BasePortal]
 
 
-async def _find_rooms(bridge: br.Bridge, intent: Optional[IntentAPI] = None
-                      ) -> RoomSearchResults:
+async def _find_rooms(bridge: br.Bridge, intent: Optional[IntentAPI] = None) -> RoomSearchResults:
     results = RoomSearchResults([], [], [], [], [])
     intent = intent or bridge.az.intent
     rooms = await intent.get_joined_rooms()
@@ -64,48 +64,67 @@ async def _find_rooms(bridge: br.Bridge, intent: Optional[IntentAPI] = None
     return results
 
 
-@command_handler(needs_admin=True, needs_auth=False, management_only=True, name="clean-rooms",
-                 help_section=SECTION_ADMIN,
-                 help_text="Clean up unused portal/management rooms.")
+@command_handler(
+    needs_admin=True,
+    needs_auth=False,
+    management_only=True,
+    name="clean-rooms",
+    help_section=SECTION_ADMIN,
+    help_text="Clean up unused portal/management rooms.",
+)
 async def clean_rooms(evt: CommandEvent) -> EventID:
     results = await _find_rooms(evt.bridge)
 
     reply = ["#### Management rooms (M)"]
-    reply += ([f"{n + 1}. [M{n + 1}](https://matrix.to/#/{room}) (with {other_member}"
-               for n, (room, other_member) in enumerate(results.management_rooms)]
-              or ["No management rooms found."])
+    reply += [
+        f"{n + 1}. [M{n + 1}](https://matrix.to/#/{room}) (with {other_member}"
+        for n, (room, other_member) in enumerate(results.management_rooms)
+    ] or ["No management rooms found."]
     reply.append("#### Active portal rooms (A)")
-    reply += ([f"{n + 1}. [A{n + 1}](https://matrix.to/#/{portal.mxid}) "
-               f"(to remote chat \"{portal.name}\")"
-               for n, portal in enumerate(results.portals)]
-              or ["No active portal rooms found."])
+    reply += [
+        f"{n + 1}. [A{n + 1}](https://matrix.to/#/{portal.mxid}) "
+        f'(to remote chat "{portal.name}")'
+        for n, portal in enumerate(results.portals)
+    ] or ["No active portal rooms found."]
     reply.append("#### Unidentified rooms (U)")
-    reply += ([f"{n + 1}. [U{n + 1}](https://matrix.to/#/{room})"
-               for n, room in enumerate(results.unidentified_rooms)]
-              or ["No unidentified rooms found."])
+    reply += [
+        f"{n + 1}. [U{n + 1}](https://matrix.to/#/{room})"
+        for n, room in enumerate(results.unidentified_rooms)
+    ] or ["No unidentified rooms found."]
     reply.append("#### Tombstoned rooms (T)")
-    reply += ([f"{n + 1}. [T{n + 1}](https://matrix.to/#/{room})"
-               for n, room in enumerate(results.tombstoned_rooms)]
-              or ["No tombstoned rooms found."])
+    reply += [
+        f"{n + 1}. [T{n + 1}](https://matrix.to/#/{room})"
+        for n, room in enumerate(results.tombstoned_rooms)
+    ] or ["No tombstoned rooms found."]
     reply.append("#### Inactive portal rooms (I)")
-    reply += ([f"{n}. [I{n}](https://matrix.to/#/{portal.mxid}) "
-               f"(to remote chat \"{portal.name}\")"
-               for n, portal in enumerate(results.empty_portals)]
-              or ["No inactive portal rooms found."])
+    reply += [
+        f"{n}. [I{n}](https://matrix.to/#/{portal.mxid}) " f'(to remote chat "{portal.name}")'
+        for n, portal in enumerate(results.empty_portals)
+    ] or ["No inactive portal rooms found."]
 
-    reply += ["#### Usage",
-              ("To clean the recommended set of rooms (unidentified & inactive portals), "
-               "type `$cmdprefix+sp clean-recommended`"),
-              "",
-              ("To clean other groups of rooms, type `$cmdprefix+sp clean-groups <letters>` "
-               "where `letters` are the first letters of the group names (M, A, U, I, T)"),
-              "",
-              ("To clean specific rooms, type `$cmdprefix+sp clean-range <range>` "
-               "where `range` is the range (e.g. `5-21`) prefixed with the first letter of"
-               "the group name. (e.g. `I2-6`)"),
-              "",
-              ("Please note that you will have to re-run `$cmdprefix+sp clean-rooms` "
-               "between each use of the commands above.")]
+    reply += [
+        "#### Usage",
+        (
+            "To clean the recommended set of rooms (unidentified & inactive portals), "
+            "type `$cmdprefix+sp clean-recommended`"
+        ),
+        "",
+        (
+            "To clean other groups of rooms, type `$cmdprefix+sp clean-groups <letters>` "
+            "where `letters` are the first letters of the group names (M, A, U, I, T)"
+        ),
+        "",
+        (
+            "To clean specific rooms, type `$cmdprefix+sp clean-range <range>` "
+            "where `range` is the range (e.g. `5-21`) prefixed with the first letter of"
+            "the group name. (e.g. `I2-6`)"
+        ),
+        "",
+        (
+            "Please note that you will have to re-run `$cmdprefix+sp clean-rooms` "
+            "between each use of the commands above."
+        ),
+    ]
 
     evt.sender.command_status = {
         "next": lambda clean_evt: set_rooms_to_clean(clean_evt, results),
@@ -153,27 +172,27 @@ async def set_rooms_to_clean(evt, results: RoomSearchResults) -> None:
                 group = results.tombstoned_rooms
             else:
                 raise ValueError("Unknown group")
-            rooms_to_clean = group[start - 1:end]
+            rooms_to_clean = group[start - 1 : end]
         except (KeyError, ValueError):
-            return await evt.reply(
-                "**Usage:** $cmdprefix+sp clean-range <_M|A|U|I_><range>")
+            return await evt.reply("**Usage:** $cmdprefix+sp clean-range <_M|A|U|I_><range>")
     else:
-        return await evt.reply(f"Unknown room cleaning action `{command}`. "
-                               "Use `$cmdprefix+sp cancel` to cancel room "
-                               "cleaning.")
+        return await evt.reply(
+            f"Unknown room cleaning action `{command}`. "
+            "Use `$cmdprefix+sp cancel` to cancel room cleaning."
+        )
 
     evt.sender.command_status = {
         "next": lambda confirm: execute_room_cleanup(confirm, rooms_to_clean),
         "action": "Room cleaning",
     }
-    await evt.reply(f"To confirm cleaning up {len(rooms_to_clean)} rooms, type "
-                    "`$cmdprefix+sp confirm-clean`.")
+    await evt.reply(
+        f"To confirm cleaning up {len(rooms_to_clean)} rooms, type `$cmdprefix+sp confirm-clean`."
+    )
 
 
 async def execute_room_cleanup(evt, rooms_to_clean: List[Union[br.BasePortal, RoomID]]) -> None:
     if len(evt.args) > 0 and evt.args[0] == "confirm-clean":
-        await evt.reply(f"Cleaning {len(rooms_to_clean)} rooms. "
-                        "This might take a while.")
+        await evt.reply(f"Cleaning {len(rooms_to_clean)} rooms. This might take a while.")
         cleaned = 0
         for room in rooms_to_clean:
             if isinstance(room, br.BasePortal):

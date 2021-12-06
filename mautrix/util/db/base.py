@@ -1,22 +1,22 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Iterator, Optional, TypeVar, Type, Dict, List, Any, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Type, TypeVar, cast
 from contextlib import contextmanager
 
-from sqlalchemy import Table, Constraint
-from sqlalchemy.engine.base import Engine, Connection
-from sqlalchemy.sql.base import ImmutableColumnCollection
-from sqlalchemy.sql.expression import Select, ClauseElement, and_
-from sqlalchemy.ext.declarative import as_declarative, declarative_base
+from sqlalchemy import Constraint, Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.engine.base import Connection, Engine
+from sqlalchemy.ext.declarative import as_declarative, declarative_base
+from sqlalchemy.sql.base import ImmutableColumnCollection
+from sqlalchemy.sql.expression import ClauseElement, Select, and_
 
 if TYPE_CHECKING:
-    from sqlalchemy.engine.result import RowProxy, ResultProxy
+    from sqlalchemy.engine.result import ResultProxy, RowProxy
 
-T = TypeVar('T', bound='BaseClass')
+T = TypeVar("T", bound="BaseClass")
 
 
 class BaseClass:
@@ -24,6 +24,7 @@ class BaseClass:
     Base class for SQLAlchemy models. Provides SQLAlchemy declarative base features and some
     additional utilities.
     """
+
     __tablename__: str
 
     db: Engine
@@ -40,15 +41,16 @@ class BaseClass:
         cls.column_names = cls.c.keys()
 
     @classmethod
-    def copy(cls, bind: Optional[Engine] = None, rebase: Optional[declarative_base] = None) -> \
-    Type[T]:
+    def copy(
+        cls, bind: Optional[Engine] = None, rebase: Optional[declarative_base] = None
+    ) -> Type[T]:
         copy = cast(Type[T], type(cls.__name__, (cls, rebase) if rebase else (cls,), {}))
         if bind is not None:
             copy.bind(db_engine=bind)
         return copy
 
     @classmethod
-    def _one_or_none(cls: Type[T], rows: 'ResultProxy') -> Optional[T]:
+    def _one_or_none(cls: Type[T], rows: "ResultProxy") -> Optional[T]:
         """
         Try scanning one row from a ResultProxy and return ``None`` if it fails.
 
@@ -64,7 +66,7 @@ class BaseClass:
             return None
 
     @classmethod
-    def _all(cls: Type[T], rows: 'ResultProxy') -> Iterator[T]:
+    def _all(cls: Type[T], rows: "ResultProxy") -> Iterator[T]:
         """
         Scan all rows from a ResultProxy.
 
@@ -78,7 +80,7 @@ class BaseClass:
             yield cls.scan(row)
 
     @classmethod
-    def scan(cls: Type[T], row: 'RowProxy') -> T:
+    def scan(cls: Type[T], row: "RowProxy") -> T:
         """
         Read the data from a row into an object.
 
@@ -138,8 +140,9 @@ class BaseClass:
         return cls._one_or_none(cls.db.execute(cls._make_simple_select(*args)))
 
     def _constraint_to_clause(self, constraint: Constraint) -> ClauseElement:
-        return and_(*[column == self.__dict__[name]
-                      for name, column in constraint.columns.items()])
+        return and_(
+            *[column == self.__dict__[name] for name, column in constraint.columns.items()]
+        )
 
     @property
     def _edit_identity(self: T) -> ClauseElement:
@@ -157,9 +160,7 @@ class BaseClass:
             **values: The values to change.
         """
         with self.db.begin() as conn:
-            conn.execute(self.t.update()
-                         .where(self._edit_identity)
-                         .values(**values))
+            conn.execute(self.t.update().where(self._edit_identity).values(**values))
         if _update_values:
             for key, value in values.items():
                 setattr(self, key, value)
@@ -191,9 +192,11 @@ class BaseClass:
     @property
     def _insert_values(self: T) -> Dict[str, Any]:
         """Values for inserts. Generally you want all the values in the table."""
-        return {column_name: self.__dict__[column_name]
-                for column_name in self.column_names
-                if column_name in self.__dict__}
+        return {
+            column_name: self.__dict__[column_name]
+            for column_name in self.column_names
+            if column_name in self.__dict__
+        }
 
     def insert(self) -> None:
         with self.db.begin() as conn:
@@ -205,9 +208,11 @@ class BaseClass:
         return self._insert_values
 
     def _upsert_postgres(self: T, conn: Connection) -> None:
-        conn.execute(pg_insert(self.t).values(**self._insert_values)
-                     .on_conflict_do_update(constraint=self.t.primary_key,
-                                            set_=self._upsert_values))
+        conn.execute(
+            pg_insert(self.t)
+            .values(**self._insert_values)
+            .on_conflict_do_update(constraint=self.t.primary_key, set_=self._upsert_values)
+        )
 
     def _upsert_sqlite(self: T, conn: Connection) -> None:
         conn.execute(self.t.insert().values(**self._insert_values).prefix_with("OR REPLACE"))

@@ -1,8 +1,10 @@
+from mautrix import __optional_imports__
+
 from .abstract import CryptoStore, StateStore
 from .memory import MemoryCryptoStore
-from mautrix import __optional_imports__
+
 try:
-    from .asyncpg import PgCryptoStore, PgCryptoStateStore
+    from .asyncpg import PgCryptoStateStore, PgCryptoStore
 except ImportError:
     if __optional_imports__:
         raise

@@ -4,10 +4,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
+
 from typing import ClassVar
 from abc import ABC, abstractmethod
 
-from mautrix.types import EventType, StateEvent, Membership, Event
+from mautrix.types import Event, EventType, Membership, StateEvent
 
 from . import syncer
 
@@ -19,10 +20,12 @@ class Dispatcher(ABC):
         self.client = client
 
     @abstractmethod
-    def register(self) -> None: ...
+    def register(self) -> None:
+        pass
 
     @abstractmethod
-    def unregister(self) -> None: ...
+    def unregister(self) -> None:
+        pass
 
 
 class SimpleDispatcher(Dispatcher, ABC):
@@ -35,7 +38,8 @@ class SimpleDispatcher(Dispatcher, ABC):
         self.client.remove_event_handler(self.event_type, self.handle)
 
     @abstractmethod
-    async def handle(self, evt: Event) -> None: ...
+    async def handle(self, evt: Event) -> None:
+        pass
 
 
 class MembershipEventDispatcher(SimpleDispatcher):

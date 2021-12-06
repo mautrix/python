@@ -1,13 +1,13 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, Optional
 from hashlib import sha256
+import base64
 import hmac
 import json
-import base64
 
 
 def _get_checksum(key: str, payload: bytes) -> str:

@@ -3,17 +3,19 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Set, Callable
+from __future__ import annotations
+
+from typing import Callable
 import asyncio
 import os
 
 from attr import dataclass
 
-from mautrix.types import UserID
 from mautrix.errors import MatrixConnectionError
+from mautrix.types import UserID
 from mautrix.util.manhole import start_manhole
 
-from . import command_handler, CommandEvent, SECTION_ADMIN
+from . import SECTION_ADMIN, CommandEvent, command_handler
 
 
 @dataclass
@@ -21,11 +23,16 @@ class ManholeState:
     server: asyncio.AbstractServer
     opened_by: UserID
     close: Callable[[], None]
-    whitelist: Set[int]
+    whitelist: set[int]
 
 
-@command_handler(needs_auth=False, needs_admin=True, help_section=SECTION_ADMIN,
-                 help_text="Open a manhole into the bridge.", help_args="<_uid..._>")
+@command_handler(
+    needs_auth=False,
+    needs_admin=True,
+    help_section=SECTION_ADMIN,
+    help_text="Open a manhole into the bridge.",
+    help_args="<_uid..._>",
+)
 async def open_manhole(evt: CommandEvent) -> None:
     if not evt.config["manhole.enabled"]:
         await evt.reply("The manhole has been disabled in the config.")
@@ -48,17 +55,23 @@ async def open_manhole(evt: CommandEvent) -> None:
         whitelist.add(uid)
 
     if evt.bridge.manhole:
-        added = [uid for uid in whitelist
-                 if uid not in evt.bridge.manhole.whitelist]
+        added = [uid for uid in whitelist if uid not in evt.bridge.manhole.whitelist]
         evt.bridge.manhole.whitelist |= set(added)
         if len(added) == 0:
-            await evt.reply(f"There's an existing manhole opened by {evt.bridge.manhole.opened_by}"
-                            " and all the given UIDs are already whitelisted.")
+            await evt.reply(
+                f"There's an existing manhole opened by {evt.bridge.manhole.opened_by}"
+                " and all the given UIDs are already whitelisted."
+            )
         else:
-            added_str = (f"{', '.join(str(uid) for uid in added[:-1])} and {added[-1]}"
-                         if len(added) > 1 else added[0])
-            await evt.reply(f"There's an existing manhole opened by {evt.bridge.manhole.opened_by}"
-                            f". Added {added_str} to the whitelist.")
+            added_str = (
+                f"{', '.join(str(uid) for uid in added[:-1])} and {added[-1]}"
+                if len(added) > 1
+                else added[0]
+            )
+            await evt.reply(
+                f"There's an existing manhole opened by {evt.bridge.manhole.opened_by}"
+                f". Added {added_str} to the whitelist."
+            )
             evt.log.info(f"{evt.sender.mxid} added {added_str} to the manhole whitelist.")
         return
 
@@ -67,13 +80,18 @@ async def open_manhole(evt: CommandEvent) -> None:
     path = evt.config["manhole.path"]
 
     wl_list = list(whitelist)
-    whitelist_str = (f"{', '.join(str(uid) for uid in wl_list[:-1])} and {wl_list[-1]}"
-                     if len(wl_list) > 1 else wl_list[0])
+    whitelist_str = (
+        f"{', '.join(str(uid) for uid in wl_list[:-1])} and {wl_list[-1]}"
+        if len(wl_list) > 1
+        else wl_list[0]
+    )
     evt.log.info(f"{evt.sender.mxid} opened a manhole with {whitelist_str} whitelisted.")
-    server, close = await start_manhole(path=path, banner=banner, namespace=namespace,
-                                        loop=evt.loop, whitelist=whitelist)
-    evt.bridge.manhole = ManholeState(server=server, opened_by=evt.sender.mxid, close=close,
-                                      whitelist=whitelist)
+    server, close = await start_manhole(
+        path=path, banner=banner, namespace=namespace, loop=evt.loop, whitelist=whitelist
+    )
+    evt.bridge.manhole = ManholeState(
+        server=server, opened_by=evt.sender.mxid, close=close, whitelist=whitelist
+    )
     plrl = "s" if len(whitelist) != 1 else ""
     await evt.reply(f"Opened manhole at unix://{path} with UID{plrl} {whitelist_str} whitelisted")
     await server.wait_closed()
@@ -89,8 +107,12 @@ async def open_manhole(evt: CommandEvent) -> None:
         evt.log.warning(f"Failed to send manhole close notification: {e}")
 
 
-@command_handler(needs_auth=False, needs_admin=True, help_section=SECTION_ADMIN,
-                 help_text="Close an open manhole.")
+@command_handler(
+    needs_auth=False,
+    needs_admin=True,
+    help_section=SECTION_ADMIN,
+    help_text="Close an open manhole.",
+)
 async def close_manhole(evt: CommandEvent) -> None:
     if not evt.bridge.manhole:
         await evt.reply("There is no open manhole.")

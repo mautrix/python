@@ -1,14 +1,24 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Awaitable, Optional, List, Dict, Tuple
+from __future__ import annotations
+
+from typing import Awaitable
 from abc import ABC, abstractmethod
 
-from mautrix.types import (StateEvent, EventType, RoomID, UserID, PowerLevelStateEventContent,
-                           MemberStateEventContent, RoomEncryptionStateEventContent, Member,
-                           Membership)
+from mautrix.types import (
+    EventType,
+    Member,
+    Membership,
+    MemberStateEventContent,
+    PowerLevelStateEventContent,
+    RoomEncryptionStateEventContent,
+    RoomID,
+    StateEvent,
+    UserID,
+)
 
 
 class StateStore(ABC):
@@ -22,38 +32,45 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    async def get_member(self, room_id: RoomID, user_id: UserID) -> Optional[Member]:
+    async def get_member(self, room_id: RoomID, user_id: UserID) -> Member | None:
         pass
 
     @abstractmethod
-    async def set_member(self, room_id: RoomID, user_id: UserID,
-                         member: Union[Member, MemberStateEventContent]) -> None:
+    async def set_member(
+        self, room_id: RoomID, user_id: UserID, member: Member | MemberStateEventContent
+    ) -> None:
         pass
 
     @abstractmethod
-    async def set_membership(self, room_id: RoomID, user_id: UserID, membership: Membership
-                             ) -> None:
+    async def set_membership(
+        self, room_id: RoomID, user_id: UserID, membership: Membership
+    ) -> None:
         pass
 
     @abstractmethod
     async def get_member_profiles(
-        self, room_id: RoomID,
-        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
-    ) -> Optional[Dict[UserID, Member]]:
+        self,
+        room_id: RoomID,
+        memberships: tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> dict[UserID, Member]:
         pass
 
     async def get_members(
-        self, room_id: RoomID,
-        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
-    ) -> Optional[List[UserID]]:
+        self,
+        room_id: RoomID,
+        memberships: tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> list[UserID]:
         profiles = await self.get_member_profiles(room_id, memberships)
-        return list(profiles.keys()) if profiles else None
+        return list(profiles.keys())
 
     async def get_members_filtered(
-        self, room_id: RoomID,
-        not_prefix: str, not_suffix: str, not_id: str,
-        memberships: Tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
-    ) -> Optional[List[UserID]]:
+        self,
+        room_id: RoomID,
+        not_prefix: str,
+        not_suffix: str,
+        not_id: str,
+        memberships: tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
+    ) -> list[UserID]:
         """
         A filtered version of get_members that only returns user IDs that aren't operated by a
         bridge. This should return the same as :meth:`get_members`, except users where the user ID
@@ -70,16 +87,20 @@ class StateStore(ABC):
             memberships: The membership states to include.
         """
         members = await self.get_members(room_id, memberships=memberships)
-        if members is None:
-            return None
-        return [user_id for user_id in members
-                if user_id != not_id and not (user_id.startswith(not_prefix)
-                                              and user_id.endswith(not_suffix))]
+        return [
+            user_id
+            for user_id in members
+            if user_id != not_id
+            and not (user_id.startswith(not_prefix) and user_id.endswith(not_suffix))
+        ]
 
     @abstractmethod
-    async def set_members(self, room_id: RoomID,
-                          members: Dict[UserID, Union[Member, MemberStateEventContent]],
-                          only_membership: Optional[Membership] = None) -> None:
+    async def set_members(
+        self,
+        room_id: RoomID,
+        members: dict[UserID, Member | MemberStateEventContent],
+        only_membership: Membership | None = None,
+    ) -> None:
         pass
 
     @abstractmethod
@@ -91,12 +112,13 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    async def get_power_levels(self, room_id: RoomID) -> Optional[PowerLevelStateEventContent]:
+    async def get_power_levels(self, room_id: RoomID) -> PowerLevelStateEventContent | None:
         pass
 
     @abstractmethod
-    async def set_power_levels(self, room_id: RoomID, content: PowerLevelStateEventContent
-                               ) -> None:
+    async def set_power_levels(
+        self, room_id: RoomID, content: PowerLevelStateEventContent
+    ) -> None:
         pass
 
     @abstractmethod
@@ -104,17 +126,17 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
-    async def is_encrypted(self, room_id: RoomID) -> Optional[bool]:
+    async def is_encrypted(self, room_id: RoomID) -> bool | None:
         pass
 
     @abstractmethod
-    async def get_encryption_info(self, room_id: RoomID
-                                  ) -> Optional[RoomEncryptionStateEventContent]:
+    async def get_encryption_info(self, room_id: RoomID) -> RoomEncryptionStateEventContent | None:
         pass
 
     @abstractmethod
-    async def set_encryption_info(self, room_id: RoomID, content: RoomEncryptionStateEventContent
-                                  ) -> None:
+    async def set_encryption_info(
+        self, room_id: RoomID, content: RoomEncryptionStateEventContent
+    ) -> None:
         pass
 
     async def update_state(self, evt: StateEvent) -> None:
@@ -141,8 +163,9 @@ class StateStore(ABC):
     def left(self, room_id: RoomID, user_id: UserID) -> Awaitable[None]:
         return self.set_membership(room_id, user_id, Membership.LEAVE)
 
-    async def has_power_level(self, room_id: RoomID, user_id: UserID, event_type: EventType
-                              ) -> Optional[bool]:
+    async def has_power_level(
+        self, room_id: RoomID, user_id: UserID, event_type: EventType
+    ) -> bool | None:
         room_levels = await self.get_power_levels(room_id)
         if not room_levels:
             return None
