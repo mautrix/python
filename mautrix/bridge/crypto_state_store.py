@@ -43,7 +43,6 @@ try:
                 return None
             return state.encryption
 
-
 except ImportError:
     if __optional_imports__:
         raise
