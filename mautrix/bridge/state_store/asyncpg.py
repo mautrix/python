@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Union
 
 from mautrix.appservice.state_store.asyncpg import PgASStateStore
 from mautrix.types import UserID
@@ -13,9 +13,9 @@ from mautrix.util.async_db import Database
 
 from ..puppet import BasePuppet
 
-GetPuppetFunc = (
-    Callable[[UserID], Awaitable[BasePuppet]] | Callable[[UserID, bool], Awaitable[BasePuppet]]
-)
+GetPuppetFunc = Union[
+    Callable[[UserID], Awaitable[BasePuppet]], Callable[[UserID, bool], Awaitable[BasePuppet]]
+]
 
 
 class PgBridgeStateStore(PgASStateStore):
