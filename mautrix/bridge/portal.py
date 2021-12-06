@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 from typing import Any, Optional, Tuple
-from collections import defaultdict
 from abc import ABC, abstractmethod
 from collections import defaultdict
 import asyncio
