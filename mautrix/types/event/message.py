@@ -1,26 +1,27 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Union, Pattern, Dict, Any, List
+from typing import Any, Dict, List, Optional, Pattern, Union
 from html import escape
 import re
 
 from attr import dataclass
 import attr
 
-from ..util import ExtensibleEnum, SerializableAttrs, Serializable, Obj, deserializer, field
 from ..primitive import JSON, ContentURI, EventID
+from ..util import ExtensibleEnum, Obj, Serializable, SerializableAttrs, deserializer, field
 from .base import BaseRoomEvent, BaseUnsigned
 
-
 # region Message types
+
 
 class Format(ExtensibleEnum):
     """A message format. Currently only ``org.matrix.custom.html`` is available.
     This will probably be deprecated when extensible events are implemented."""
-    HTML: 'Format' = "org.matrix.custom.html"
+
+    HTML: "Format" = "org.matrix.custom.html"
 
 
 TEXT_MESSAGE_TYPES = ("m.text", "m.emote", "m.notice")
@@ -29,15 +30,16 @@ MEDIA_MESSAGE_TYPES = ("m.image", "m.sticker", "m.video", "m.audio", "m.file")
 
 class MessageType(ExtensibleEnum):
     """A message type."""
-    TEXT: 'MessageType' = "m.text"
-    EMOTE: 'MessageType' = "m.emote"
-    NOTICE: 'MessageType' = "m.notice"
-    IMAGE: 'MessageType' = "m.image"
-    STICKER: 'MessageType' = "m.sticker"
-    VIDEO: 'MessageType' = "m.video"
-    AUDIO: 'MessageType' = "m.audio"
-    FILE: 'MessageType' = "m.file"
-    LOCATION: 'MessageType' = "m.location"
+
+    TEXT: "MessageType" = "m.text"
+    EMOTE: "MessageType" = "m.emote"
+    NOTICE: "MessageType" = "m.notice"
+    IMAGE: "MessageType" = "m.image"
+    STICKER: "MessageType" = "m.sticker"
+    VIDEO: "MessageType" = "m.video"
+    AUDIO: "MessageType" = "m.audio"
+    FILE: "MessageType" = "m.file"
+    LOCATION: "MessageType" = "m.location"
 
     @property
     def is_text(self) -> bool:
@@ -51,9 +53,11 @@ class MessageType(ExtensibleEnum):
 # endregion
 # region Relations
 
+
 class InReplyTo:
-    def __init__(self, event_id: Optional[EventID] = None,
-                 proxy_target: Optional['RelatesTo'] = None) -> None:
+    def __init__(
+        self, event_id: Optional[EventID] = None, proxy_target: Optional["RelatesTo"] = None
+    ) -> None:
         self._event_id = event_id
         self._proxy_target = proxy_target
 
@@ -73,15 +77,16 @@ class InReplyTo:
 
 
 class RelationType(ExtensibleEnum):
-    ANNOTATION: 'RelationType' = "m.annotation"
-    REFERENCE: 'RelationType' = "m.reference"
-    REPLACE: 'RelationType' = "m.replace"
-    REPLY: 'RelationType' = "net.maunium.reply"
+    ANNOTATION: "RelationType" = "m.annotation"
+    REFERENCE: "RelationType" = "m.reference"
+    REPLACE: "RelationType" = "m.replace"
+    REPLY: "RelationType" = "net.maunium.reply"
 
 
 @dataclass
 class RelatesTo(Serializable):
     """Message relations. Used for reactions, edits and replies."""
+
     rel_type: RelationType = None
     event_id: Optional[EventID] = None
     key: Optional[str] = None
@@ -91,13 +96,16 @@ class RelatesTo(Serializable):
         return bool(self.rel_type) and bool(self.event_id)
 
     @classmethod
-    def deserialize(cls, data: JSON) -> Optional['RelatesTo']:
+    def deserialize(cls, data: JSON) -> Optional["RelatesTo"]:
         if not data:
             return None
         try:
-            return cls(rel_type=RelationType.deserialize(data.pop("rel_type")),
-                       event_id=data.pop("event_id", None), key=data.pop("key", None),
-                       extra=data)
+            return cls(
+                rel_type=RelationType.deserialize(data.pop("rel_type")),
+                event_id=data.pop("event_id", None),
+                key=data.pop("key", None),
+                extra=data,
+            )
         except KeyError:
             pass
         try:
@@ -114,9 +122,7 @@ class RelatesTo(Serializable):
             "rel_type": self.rel_type.serialize(),
         }
         if self.rel_type == RelationType.REPLY:
-            data["m.in_reply_to"] = {
-                "event_id": self.event_id
-            }
+            data["m.in_reply_to"] = {"event_id": self.event_id}
         if self.event_id:
             data["event_id"] = self.event_id
         if self.key:
@@ -137,17 +143,19 @@ class RelatesTo(Serializable):
 # endregion
 # region Base event content
 
+
 class BaseMessageEventContentFuncs:
     """Base class for the contents of all message-type events (currently m.room.message and
     m.sticker). Contains relation helpers."""
+
     body: str
     _relates_to: Optional[RelatesTo]
 
-    def set_reply(self, reply_to: Union[EventID, 'MessageEvent'], **kwargs) -> None:
+    def set_reply(self, reply_to: Union[EventID, "MessageEvent"], **kwargs) -> None:
         self.relates_to.rel_type = RelationType.REPLY
         self.relates_to.event_id = reply_to if isinstance(reply_to, str) else reply_to.event_id
 
-    def set_edit(self, edits: Union[EventID, 'MessageEvent']) -> None:
+    def set_edit(self, edits: Union[EventID, "MessageEvent"]) -> None:
         self.relates_to.rel_type = RelationType.REPLACE
         self.relates_to.event_id = edits if isinstance(edits, str) else edits.event_id
 
@@ -191,6 +199,7 @@ class BaseMessageEventContentFuncs:
 @dataclass
 class BaseMessageEventContent(BaseMessageEventContentFuncs):
     """Base event content for all m.room.message-type events."""
+
     msgtype: MessageType = None
     body: str = ""
 
@@ -229,6 +238,7 @@ class BaseFileInfo(SerializableAttrs):
 @dataclass
 class ThumbnailInfo(BaseFileInfo, SerializableAttrs):
     """Information about the thumbnail for a document, video, image or location."""
+
     height: int = attr.ib(default=None, metadata={"json": "h"})
     width: int = attr.ib(default=None, metadata={"json": "w"})
     orientation: int = None
@@ -237,6 +247,7 @@ class ThumbnailInfo(BaseFileInfo, SerializableAttrs):
 @dataclass
 class FileInfo(BaseFileInfo, SerializableAttrs):
     """Information about a document message."""
+
     thumbnail_info: Optional[ThumbnailInfo] = None
     thumbnail_file: Optional[EncryptedFile] = None
     thumbnail_url: Optional[ContentURI] = None
@@ -245,6 +256,7 @@ class FileInfo(BaseFileInfo, SerializableAttrs):
 @dataclass
 class ImageInfo(FileInfo, SerializableAttrs):
     """Information about an image message."""
+
     height: int = attr.ib(default=None, metadata={"json": "h"})
     width: int = attr.ib(default=None, metadata={"json": "w"})
     orientation: int = None
@@ -253,6 +265,7 @@ class ImageInfo(FileInfo, SerializableAttrs):
 @dataclass
 class VideoInfo(ImageInfo, SerializableAttrs):
     """Information about a video message."""
+
     duration: int = None
     orientation: int = None
 
@@ -260,6 +273,7 @@ class VideoInfo(ImageInfo, SerializableAttrs):
 @dataclass
 class AudioInfo(BaseFileInfo, SerializableAttrs):
     """Information about an audio message."""
+
     duration: int = None
 
 
@@ -269,6 +283,7 @@ MediaInfo = Union[ImageInfo, VideoInfo, AudioInfo, FileInfo, Obj]
 @dataclass
 class LocationInfo(SerializableAttrs):
     """Information about a location message."""
+
     thumbnail_url: Optional[ContentURI] = None
     thumbnail_info: Optional[ThumbnailInfo] = None
     thumbnail_file: Optional[EncryptedFile] = None
@@ -277,10 +292,11 @@ class LocationInfo(SerializableAttrs):
 # endregion
 # region Event content
 
+
 @dataclass
-class MediaMessageEventContent(BaseMessageEventContent,
-                               SerializableAttrs):
+class MediaMessageEventContent(BaseMessageEventContent, SerializableAttrs):
     """The content of a media message event (m.image, m.audio, m.video, m.file)"""
+
     url: Optional[ContentURI] = None
     info: Optional[MediaInfo] = None
     file: Optional[EncryptedFile] = None
@@ -305,26 +321,24 @@ class MediaMessageEventContent(BaseMessageEventContent,
 
 
 @dataclass
-class LocationMessageEventContent(BaseMessageEventContent,
-                                  SerializableAttrs):
+class LocationMessageEventContent(BaseMessageEventContent, SerializableAttrs):
     geo_uri: str = None
     info: LocationInfo = None
 
 
-html_reply_fallback_regex: Pattern = re.compile("^<mx-reply>"
-                                                r"[\s\S]+?"
-                                                "</mx-reply>")
+html_reply_fallback_regex: Pattern = re.compile("^<mx-reply>" r"[\s\S]+?</mx-reply>")
 
 
 @dataclass
-class TextMessageEventContent(BaseMessageEventContent,
-                              SerializableAttrs):
+class TextMessageEventContent(BaseMessageEventContent, SerializableAttrs):
     """The content of a text message event (m.text, m.notice, m.emote)"""
+
     format: Format = None
     formatted_body: str = None
 
-    def set_reply(self, reply_to: Union['MessageEvent', EventID],
-                  *, displayname: Optional[str] = None) -> None:
+    def set_reply(
+        self, reply_to: Union["MessageEvent", EventID], *, displayname: Optional[str] = None
+    ) -> None:
         super().set_reply(reply_to)
         if isinstance(reply_to, str):
             return
@@ -332,8 +346,9 @@ class TextMessageEventContent(BaseMessageEventContent,
             self.format = Format.HTML
             self.formatted_body = escape(self.body).replace("\n", "<br/>")
         if isinstance(reply_to, MessageEvent):
-            self.formatted_body = (reply_to.make_reply_fallback_html(displayname)
-                                   + self.formatted_body)
+            self.formatted_body = (
+                reply_to.make_reply_fallback_html(displayname) + self.formatted_body
+            )
             self.body = reply_to.make_reply_fallback_text(displayname) + self.body
 
     def formatted(self, format: Format) -> Optional[str]:
@@ -362,23 +377,28 @@ class TextMessageEventContent(BaseMessageEventContent,
             self.formatted_body = html_reply_fallback_regex.sub("", self.formatted_body)
 
 
-MessageEventContent = Union[TextMessageEventContent, MediaMessageEventContent,
-                            LocationMessageEventContent, Obj]
+MessageEventContent = Union[
+    TextMessageEventContent, MediaMessageEventContent, LocationMessageEventContent, Obj
+]
 
 
 # endregion
 
+
 @dataclass
 class MessageUnsigned(BaseUnsigned, SerializableAttrs):
     """Unsigned information sent with message events."""
+
     transaction_id: str = None
 
 
-html_reply_fallback_format = ("<mx-reply><blockquote>"
-                              "<a href='https://matrix.to/#/{room_id}/{event_id}'>In reply to</a> "
-                              "<a href='https://matrix.to/#/{sender}'>{displayname}</a><br/>"
-                              "{content}"
-                              "</blockquote></mx-reply>")
+html_reply_fallback_format = (
+    "<mx-reply><blockquote>"
+    "<a href='https://matrix.to/#/{room_id}/{event_id}'>In reply to</a> "
+    "<a href='https://matrix.to/#/{sender}'>{displayname}</a><br/>"
+    "{content}"
+    "</blockquote></mx-reply>"
+)
 
 media_reply_fallback_body_map = {
     MessageType.IMAGE: "an image",
@@ -393,6 +413,7 @@ media_reply_fallback_body_map = {
 @dataclass
 class MessageEvent(BaseRoomEvent, SerializableAttrs):
     """An m.room.message event"""
+
     content: MessageEventContent
     unsigned: Optional[MessageUnsigned] = field(factory=lambda: MessageUnsigned())
 
@@ -401,7 +422,7 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs):
     def deserialize_content(data: JSON) -> MessageEventContent:
         if not isinstance(data, dict):
             return Obj()
-        rel = (data.get("m.relates_to", None) or {})
+        rel = data.get("m.relates_to", None) or {}
         if rel.get("rel_type", None) == RelationType.REPLACE.value:
             data = data.get("m.new_content", data)
             data["m.relates_to"] = rel
@@ -424,9 +445,13 @@ class MessageEvent(BaseRoomEvent, SerializableAttrs):
             sent_type = media_reply_fallback_body_map[self.content.msgtype] or "a message"
             body = f"sent {sent_type}"
         displayname = escape(displayname) if displayname else self.sender
-        return html_reply_fallback_format.format(room_id=self.room_id, event_id=self.event_id,
-                                                 sender=self.sender, displayname=displayname,
-                                                 content=body)
+        return html_reply_fallback_format.format(
+            room_id=self.room_id,
+            event_id=self.event_id,
+            sender=self.sender,
+            displayname=displayname,
+            content=body,
+        )
 
     def make_reply_fallback_text(self, displayname: Optional[str] = None) -> str:
         """Generate the plaintext fallback for messages replying to this event."""

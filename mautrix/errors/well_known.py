@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,6 +12,7 @@ class WellKnownError(MatrixResponseError):
 
     https://matrix.org/docs/spec/client_server/latest#get-well-known-matrix-client
     """
+
     pass
 
 
@@ -43,4 +44,6 @@ class WellKnownUnsupportedScheme(WellKnownError):
 
 class WellKnownInvalidVersionsResponse(WellKnownError):
     def __init__(self) -> None:
-        super().__init__("URL in .well-known response didn't respond to versions endpoint properly")
+        super().__init__(
+            "URL in .well-known response didn't respond to versions endpoint properly"
+        )

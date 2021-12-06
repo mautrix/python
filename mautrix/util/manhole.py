@@ -5,23 +5,23 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 # Based on https://github.com/nhoad/aiomanhole Copyright (c) 2014, Nathan Hoad
-from typing import Any, Tuple, Optional, Dict, Union, List, Set, Callable, Type
-from socket import SOL_SOCKET
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 from abc import ABC, abstractmethod
 from io import BytesIO, StringIO
+from socket import SOL_SOCKET
 from types import CodeType
+import ast
+import asyncio
+import codeop
 import contextlib
 import functools
-import traceback
-import logging
-import asyncio
 import inspect
-import struct
-import codeop
-import pwd
-import ast
-import sys
+import logging
 import os
+import pwd
+import struct
+import sys
+import traceback
 
 try:
     from socket import SO_PEERCRED
@@ -75,8 +75,9 @@ class StatefulCommandCompiler(codeop.CommandCompiler):
 
     def __init__(self) -> None:
         super().__init__()
-        self.compiler = functools.partial(compile, optimize=1,
-                                          flags=ast.PyCF_ONLY_AST | codeop.PyCF_DONT_IMPLY_DEDENT)
+        self.compiler = functools.partial(
+            compile, optimize=1, flags=ast.PyCF_ONLY_AST | codeop.PyCF_DONT_IMPLY_DEDENT
+        )
         self.buf = BytesIO()
 
     def is_partial_command(self) -> bool:
@@ -103,8 +104,9 @@ class StatefulCommandCompiler(codeop.CommandCompiler):
 
 class Interpreter(ABC):
     @abstractmethod
-    def __init__(self, namespace: Dict[str, Any], banner: Union[bytes, str],
-                 loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, namespace: Dict[str, Any], banner: Union[bytes, str], loop: asyncio.AbstractEventLoop
+    ) -> None:
         pass
 
     @abstractmethod
@@ -127,8 +129,9 @@ class AsyncInterpreter(Interpreter):
     loop: asyncio.AbstractEventLoop
     running: bool
 
-    def __init__(self, namespace: Dict[str, Any], banner: Union[bytes, str],
-                 loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, namespace: Dict[str, Any], banner: Union[bytes, str], loop: asyncio.AbstractEventLoop
+    ) -> None:
         super().__init__(namespace, banner, loop)
         self.namespace = namespace
         self.banner = banner if isinstance(banner, bytes) else str(banner).encode("utf-8")
@@ -264,9 +267,14 @@ class InterpreterFactory:
     whitelist: Set[int]
     _conn_id: int
 
-    def __init__(self, namespace: Dict[str, Any], banner: Union[bytes, str],
-                 interpreter_class: Type[Interpreter], loop: asyncio.AbstractEventLoop,
-                 whitelist: Set[int]) -> None:
+    def __init__(
+        self,
+        namespace: Dict[str, Any],
+        banner: Union[bytes, str],
+        interpreter_class: Type[Interpreter],
+        loop: asyncio.AbstractEventLoop,
+        whitelist: Set[int],
+    ) -> None:
         self.namespace = namespace or {}
         self.banner = banner
         self.loop = loop
@@ -280,13 +288,12 @@ class InterpreterFactory:
         self._conn_id += 1
         return self._conn_id
 
-    async def __call__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-                       ) -> None:
+    async def __call__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         sock = writer.transport.get_extra_info("socket")
         # TODO support non-linux OSes
         # I think FreeBSD uses SCM_CREDS
-        creds = sock.getsockopt(SOL_SOCKET, SO_PEERCRED, struct.calcsize('3i'))
-        pid, uid, gid = struct.unpack('3i', creds)
+        creds = sock.getsockopt(SOL_SOCKET, SO_PEERCRED, struct.calcsize("3i"))
+        pid, uid, gid = struct.unpack("3i", creds)
         user_info = pwd.getpwuid(uid)
         username = f"{user_info.pw_name} ({uid})" if user_info and user_info.pw_name else uid
         if len(self.whitelist) > 0 and uid not in self.whitelist:
@@ -297,8 +304,9 @@ class InterpreterFactory:
             return
 
         namespace = {**self.namespace}
-        interpreter = self.interpreter_class(namespace=namespace, banner=self.banner,
-                                             loop=self.loop)
+        interpreter = self.interpreter_class(
+            namespace=namespace, banner=self.banner, loop=self.loop
+        )
         namespace["exit"] = interpreter.close
         self.clients.append(interpreter)
         conn_id = self.conn_id
@@ -309,9 +317,13 @@ class InterpreterFactory:
         self.clients.remove(interpreter)
 
 
-async def start_manhole(path: str, banner: str = "", namespace: Optional[Dict[str, Any]] = None,
-                        loop: asyncio.AbstractEventLoop = None, whitelist: Set[int] = None,
-                        ) -> Tuple[asyncio.AbstractServer, Callable[[], None]]:
+async def start_manhole(
+    path: str,
+    banner: str = "",
+    namespace: Optional[Dict[str, Any]] = None,
+    loop: asyncio.AbstractEventLoop = None,
+    whitelist: Set[int] = None,
+) -> Tuple[asyncio.AbstractServer, Callable[[], None]]:
     """
     Starts a manhole server on a given UNIX address.
 
@@ -325,9 +337,13 @@ async def start_manhole(path: str, banner: str = "", namespace: Optional[Dict[st
     if not SO_PEERCRED:
         raise ValueError("SO_PEERCRED is not supported on this platform")
     loop = loop or asyncio.get_event_loop()
-    factory = InterpreterFactory(namespace=namespace, banner=banner,
-                                 interpreter_class=AsyncInterpreter, loop=loop,
-                                 whitelist=whitelist)
+    factory = InterpreterFactory(
+        namespace=namespace,
+        banner=banner,
+        interpreter_class=AsyncInterpreter,
+        loop=loop,
+        whitelist=whitelist,
+    )
     server = await asyncio.start_unix_server(factory, path=path, loop=loop)
     os.chmod(path, 0o666)
 

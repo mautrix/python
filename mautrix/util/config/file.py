@@ -1,18 +1,19 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional
+from __future__ import annotations
+
 from abc import ABC
-import tempfile
-import pkgutil
 import logging
 import os
+import pkgutil
+import tempfile
 
-from yarl import URL
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
+from yarl import URL
 
 from .base import BaseConfig
 from .recursive_dict import RecursiveDict
@@ -32,15 +33,15 @@ class BaseFileConfig(BaseConfig, ABC):
         self.base_path: str = base_path
 
     def load(self) -> None:
-        with open(self.path, 'r') as stream:
+        with open(self.path, "r") as stream:
             self._data = yaml.load(stream)
 
-    def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
+    def load_base(self) -> RecursiveDict[CommentedMap] | None:
         if self.base_path.startswith("pkg://"):
             url = URL(self.base_path)
             return RecursiveDict(yaml.load(pkgutil.get_data(url.host, url.path)), CommentedMap)
         try:
-            with open(self.base_path, 'r') as stream:
+            with open(self.base_path, "r") as stream:
                 return RecursiveDict(yaml.load(stream), CommentedMap)
         except OSError:
             pass
@@ -48,8 +49,9 @@ class BaseFileConfig(BaseConfig, ABC):
 
     def save(self) -> None:
         try:
-            tf = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml",
-                                             dir=os.path.dirname(self.path))
+            tf = tempfile.NamedTemporaryFile(
+                mode="w", delete=False, suffix=".yaml", dir=os.path.dirname(self.path)
+            )
         except OSError as e:
             log.warning(f"Failed to create tempfile to write updated config to disk: {e}")
             return

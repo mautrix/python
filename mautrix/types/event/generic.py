@@ -1,32 +1,61 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, NewType
+from typing import NewType, Union
 
 from ..primitive import JSON
-from ..util import deserializer, Obj
+from ..util import Obj, deserializer
+from .account_data import AccountDataEvent, AccountDataEventContent
 from .base import EventType, GenericEvent
-from .redaction import RedactionEvent, RedactionEventContent
+from .encrypted import EncryptedEvent, EncryptedEventContent
+from .ephemeral import (
+    EphemeralEvent,
+    PresenceEvent,
+    ReceiptEvent,
+    ReceiptEventContent,
+    TypingEvent,
+    TypingEventContent,
+)
 from .message import MessageEvent, MessageEventContent
 from .reaction import ReactionEvent, ReactionEventContent
-from .encrypted import EncryptedEvent, EncryptedEventContent
+from .redaction import RedactionEvent, RedactionEventContent
 from .state import StateEvent, StateEventContent
-from .account_data import AccountDataEvent, AccountDataEventContent
 from .to_device import ToDeviceEvent, ToDeviceEventContent
-from .ephemeral import (ReceiptEvent, PresenceEvent, TypingEvent, ReceiptEventContent,
-                        TypingEventContent, EphemeralEvent)
-from .voip import CallEvent, CallEventContent, type_to_class as voip_types
+from .voip import CallEvent, CallEventContent
+from .voip import type_to_class as voip_types
 
-Event = NewType("Event", Union[MessageEvent, ReactionEvent, RedactionEvent, StateEvent, TypingEvent,
-                               ReceiptEvent, PresenceEvent, EncryptedEvent, ToDeviceEvent,
-                               CallEvent, GenericEvent])
+Event = NewType(
+    "Event",
+    Union[
+        MessageEvent,
+        ReactionEvent,
+        RedactionEvent,
+        StateEvent,
+        TypingEvent,
+        ReceiptEvent,
+        PresenceEvent,
+        EncryptedEvent,
+        ToDeviceEvent,
+        CallEvent,
+        GenericEvent,
+    ],
+)
 
-EventContent = Union[MessageEventContent, RedactionEventContent, ReactionEventContent,
-                     StateEventContent, AccountDataEventContent, ReceiptEventContent,
-                     TypingEventContent, EncryptedEventContent, ToDeviceEventContent,
-                     CallEventContent, Obj]
+EventContent = Union[
+    MessageEventContent,
+    RedactionEventContent,
+    ReactionEventContent,
+    StateEventContent,
+    AccountDataEventContent,
+    ReceiptEventContent,
+    TypingEventContent,
+    EncryptedEventContent,
+    ToDeviceEventContent,
+    CallEventContent,
+    Obj,
+]
 
 
 @deserializer(Event)

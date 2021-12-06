@@ -1,21 +1,21 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Iterable, Awaitable, Optional, Type, Union, Tuple, AsyncIterable, Any
+from typing import Any, AsyncIterable, Awaitable, Iterable, Optional, Tuple, Type, Union
 from itertools import chain
 from time import time
 import argparse
+import asyncio
+import copy
 import inspect
 import logging
 import logging.config
-import asyncio
 import signal
-import copy
 import sys
 
-from .config import BaseFileConfig, BaseValidatableConfig, ConfigValueError, BaseMissingError
+from .config import BaseFileConfig, BaseMissingError, BaseValidatableConfig, ConfigValueError
 
 try:
     import uvloop
@@ -55,10 +55,15 @@ class Program:
     command: str
     description: str
 
-    def __init__(self, module: Optional[str] = None, name: Optional[str] = None,
-                 description: Optional[str] = None, command: Optional[str] = None,
-                 version: Optional[str] = None, config_class: Optional[Type[BaseFileConfig]] = None
-                 ) -> None:
+    def __init__(
+        self,
+        module: Optional[str] = None,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        command: Optional[str] = None,
+        version: Optional[str] = None,
+        config_class: Optional[Type[BaseFileConfig]] = None,
+    ) -> None:
         if module:
             self.module = module
         if name:
@@ -117,14 +122,25 @@ class Program:
     def prepare_arg_parser(self) -> None:
         """Pre-init lifecycle method. Extend this if you want custom command-line arguments."""
         self.parser = argparse.ArgumentParser(description=self.description, prog=self.command)
-        self.parser.add_argument("-c", "--config", type=str, default="config.yaml",
-                                 metavar="<path>", help="the path to your config file")
-        self.parser.add_argument("-b", "--base-config", type=str,
-                                 default=self._default_base_config,
-                                 metavar="<path>", help="the path to the example config "
-                                                        "(for automatic config updates)")
-        self.parser.add_argument("-n", "--no-update", action="store_true",
-                                 help="Don't save updated config to disk")
+        self.parser.add_argument(
+            "-c",
+            "--config",
+            type=str,
+            default="config.yaml",
+            metavar="<path>",
+            help="the path to your config file",
+        )
+        self.parser.add_argument(
+            "-b",
+            "--base-config",
+            type=str,
+            default=self._default_base_config,
+            metavar="<path>",
+            help="the path to the example config (for automatic config updates)",
+        )
+        self.parser.add_argument(
+            "-n", "--no-update", action="store_true", help="Don't save updated config to disk"
+        )
 
     def prepare_config(self) -> None:
         """Pre-init lifecycle method. Extend this if you want to customize config loading."""
@@ -139,8 +155,10 @@ class Program:
             if self.args.base_config != self._default_base_config:
                 print(f"Failed to read base config from {self.args.base_config}")
             else:
-                print("Failed to read base config from the default path "
-                      f"({self._default_base_config}). Maybe your installation is corrupted?")
+                print(
+                    "Failed to read base config from the default path "
+                    f"({self._default_base_config}). Maybe your installation is corrupted?"
+                )
             sys.exit(12)
 
     def check_config(self) -> None:
@@ -182,8 +200,9 @@ class Program:
         if not enabled:
             return
         elif not prometheus:
-            self.log.warning("Metrics are enabled in config, "
-                             "but prometheus_client is not installed")
+            self.log.warning(
+                "Metrics are enabled in config, but prometheus_client is not installed"
+            )
             return
         prometheus.start_http_server(listen_port)
 
@@ -196,8 +215,10 @@ class Program:
             start_ts = time()
             self.loop.run_until_complete(self.start())
             end_ts = time()
-            self.log.info(f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
-                          "now running forever")
+            self.log.info(
+                f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
+                "now running forever"
+            )
             self._stop_task = self.loop.create_future()
             self.loop.run_until_complete(self._stop_task)
             self.log.debug("manual_stop() called, stopping...")

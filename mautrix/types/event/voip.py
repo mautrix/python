@@ -3,15 +3,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, List, Union, Generic, TypeVar
+from typing import Generic, List, Optional, TypeVar, Union
 
 from attr import dataclass
 import attr
 
+from ..primitive import JSON, UserID
 from ..util import ExtensibleEnum, SerializableAttrs
-from ..primitive import UserID, JSON
-from .type import EventType
 from .base import BaseRoomEvent
+from .type import EventType
 
 
 class CallDataType(ExtensibleEnum):
@@ -108,11 +108,17 @@ type_to_class = {
     EventType.CALL_REJECT: CallRejectEventContent,
 }
 
-CallEventContent = Union[CallInviteEventContent, CallCandidatesEventContent, CallAnswerEventContent,
-                         CallSelectAnswerEventContent, CallHangupEventContent,
-                         CallNegotiateEventContent, CallRejectEventContent]
+CallEventContent = Union[
+    CallInviteEventContent,
+    CallCandidatesEventContent,
+    CallAnswerEventContent,
+    CallSelectAnswerEventContent,
+    CallHangupEventContent,
+    CallNegotiateEventContent,
+    CallRejectEventContent,
+]
 
-T = TypeVar('T', bound=CallEventContent)
+T = TypeVar("T", bound=CallEventContent)
 
 
 @dataclass
@@ -120,7 +126,7 @@ class CallEvent(BaseRoomEvent, SerializableAttrs, Generic[T]):
     content: T
 
     @classmethod
-    def deserialize(cls, data: JSON, event_type: Optional[EventType] = None) -> 'CallEvent':
+    def deserialize(cls, data: JSON, event_type: Optional[EventType] = None) -> "CallEvent":
         event_type = event_type or EventType.find(data.get("type"))
         data["content"] = type_to_class[event_type].deserialize(data["content"])
         return super().deserialize(data)

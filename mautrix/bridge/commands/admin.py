@@ -1,19 +1,24 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
 
-from mautrix.types import EventID, UserID, ContentURI
-from mautrix.errors import MatrixRequestError, IntentError, MForbidden
+from mautrix.errors import IntentError, MatrixRequestError, MForbidden
+from mautrix.types import ContentURI, EventID, UserID
 
-from .handler import (command_handler, CommandEvent, SECTION_ADMIN)
+from .handler import SECTION_ADMIN, CommandEvent, command_handler
 
 
-@command_handler(needs_admin=True, needs_auth=False, name="set-pl",
-                 help_section=SECTION_ADMIN, help_args="<_level_> [_mxid_]",
-                 help_text="Set a temporary power level without affecting the remote platform.")
+@command_handler(
+    needs_admin=True,
+    needs_auth=False,
+    name="set-pl",
+    help_section=SECTION_ADMIN,
+    help_args="<_level_> [_mxid_]",
+    help_text="Set a temporary power level without affecting the remote platform.",
+)
 async def set_power_level(evt: CommandEvent) -> EventID:
     try:
         level = int(evt.args[0])
@@ -33,9 +38,14 @@ async def set_power_level(evt: CommandEvent) -> EventID:
         return await evt.reply("Failed to update power levels (see logs for more details)")
 
 
-@command_handler(needs_admin=True, needs_auth=False, name="set-avatar",
-                 help_section=SECTION_ADMIN, help_args="<_mxc:// uri_> [_mxid_]",
-                 help_text="Set an avatar for a ghost user.")
+@command_handler(
+    needs_admin=True,
+    needs_auth=False,
+    name="set-avatar",
+    help_section=SECTION_ADMIN,
+    help_args="<_mxc:// uri_> [_mxid_]",
+    help_text="Set an avatar for a ghost user.",
+)
 async def set_ghost_avatar(evt: CommandEvent) -> Optional[EventID]:
     try:
         mxc_uri = ContentURI(evt.args[0])
@@ -62,9 +72,14 @@ async def set_ghost_avatar(evt: CommandEvent) -> Optional[EventID]:
         return await evt.reply("Failed to set avatar (see logs for more details).")
 
 
-@command_handler(needs_admin=True, needs_auth=False, name="remove-avatar",
-                 help_section=SECTION_ADMIN, help_args="[_mxid_]",
-                 help_text="Remove the avatar for a ghost user.")
+@command_handler(
+    needs_admin=True,
+    needs_auth=False,
+    name="remove-avatar",
+    help_section=SECTION_ADMIN,
+    help_args="[_mxid_]",
+    help_text="Remove the avatar for a ghost user.",
+)
 async def remove_ghost_avatar(evt: CommandEvent) -> Optional[EventID]:
     if len(evt.args) > 0:
         puppet = await evt.processor.bridge.get_puppet(UserID(evt.args[0]))
@@ -84,16 +99,23 @@ async def remove_ghost_avatar(evt: CommandEvent) -> Optional[EventID]:
         return await evt.reply("Failed to remove avatar (see logs for more details).")
 
 
-@command_handler(needs_admin=True, needs_auth=False, name="set-displayname",
-                 help_section=SECTION_ADMIN, help_args="<_displayname_> [_mxid_]",
-                 help_text="Set the display name for a ghost user.")
+@command_handler(
+    needs_admin=True,
+    needs_auth=False,
+    name="set-displayname",
+    help_section=SECTION_ADMIN,
+    help_args="<_displayname_> [_mxid_]",
+    help_text="Set the display name for a ghost user.",
+)
 async def set_ghost_display_name(evt: CommandEvent) -> Optional[EventID]:
     if len(evt.args) > 1:
         # This allows whitespaces in the name
         puppet = await evt.processor.bridge.get_puppet(UserID(evt.args[len(evt.args) - 1]))
         if puppet is None:
-            return await evt.reply("The given mxid was not a valid ghost user. "
-                                   "If the display name has whitespaces mxid is required")
+            return await evt.reply(
+                "The given mxid was not a valid ghost user. "
+                "If the display name has whitespaces mxid is required"
+            )
         intent = puppet.intent
         displayname = " ".join(evt.args[:-1])
     elif evt.is_portal:
@@ -110,9 +132,14 @@ async def set_ghost_display_name(evt: CommandEvent) -> Optional[EventID]:
         return await evt.reply("Failed to set display name (see logs for more details).")
 
 
-@command_handler(needs_admin=True, needs_auth=False, name="remove-displayname",
-                 help_section=SECTION_ADMIN, help_args="[_mxid_]",
-                 help_text="Remove the display name for a ghost user.")
+@command_handler(
+    needs_admin=True,
+    needs_auth=False,
+    name="remove-displayname",
+    help_section=SECTION_ADMIN,
+    help_args="[_mxid_]",
+    help_text="Remove the display name for a ghost user.",
+)
 async def set_ghost_display_name(evt: CommandEvent) -> Optional[EventID]:
     if len(evt.args) > 0:
         puppet = await evt.processor.bridge.get_puppet(UserID(evt.args[0]))

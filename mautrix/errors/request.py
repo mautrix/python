@@ -1,15 +1,16 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Optional, Dict, Type, Callable
+from typing import Callable, Dict, Optional, Type
 
 from .base import MatrixError
 
 
 class MatrixRequestError(MatrixError):
     """An error that was returned by the homeserver."""
+
     http_status: int
     message: Optional[str]
     errcode: str
@@ -18,8 +19,13 @@ class MatrixRequestError(MatrixError):
 class MatrixUnknownRequestError(MatrixRequestError):
     """An unknown error type returned by the homeserver."""
 
-    def __init__(self, http_status: int = 0, text: str = "", errcode: Optional[str] = None,
-                 message: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        http_status: int = 0,
+        text: str = "",
+        errcode: Optional[str] = None,
+        message: Optional[str] = None,
+    ) -> None:
         super().__init__(f"{http_status}: {text}")
         self.http_status: int = http_status
         self.text: str = text
@@ -29,6 +35,7 @@ class MatrixUnknownRequestError(MatrixRequestError):
 
 class MatrixStandardRequestError(MatrixRequestError):
     """A standard error type returned by the homeserver."""
+
     errcode: str = None
 
     def __init__(self, http_status: int, message: str = "") -> None:
@@ -50,8 +57,9 @@ def standard_error(code: str) -> Callable[[MxSRE], MxSRE]:
     return decorator
 
 
-def make_request_error(http_status: int, text: str, errcode: str,
-                       message: str) -> MatrixRequestError:
+def make_request_error(
+    http_status: int, text: str, errcode: str, message: str
+) -> MatrixRequestError:
     """
     Determine the correct exception class for the error code and create an instance of that class
     with the given values.
@@ -71,6 +79,7 @@ def make_request_error(http_status: int, text: str, errcode: str,
 
 # Standard error codes from https://matrix.org/docs/spec/client_server/r0.4.0.html#api-standards
 # Additionally some combining superclasses for some of the error codes
+
 
 @standard_error("M_FORBIDDEN")
 class MForbidden(MatrixStandardRequestError):

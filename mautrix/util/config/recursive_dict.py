@@ -1,33 +1,35 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Optional, Tuple, Generic, TypeVar, Type
+from __future__ import annotations
+
+from typing import Any, Generic, Type, TypeVar
 import copy
 
 from ruamel.yaml.comments import CommentedMap
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class RecursiveDict(Generic[T]):
-    def __init__(self, data: Optional[T] = None, dict_factory: Optional[Type[T]] = None) -> None:
+    def __init__(self, data: T | None = None, dict_factory: Type[T] | None = None) -> None:
         self._dict_factory = dict_factory or dict
         self._data: CommentedMap = data or self._dict_factory()
 
-    def clone(self) -> 'RecursiveDict':
+    def clone(self) -> RecursiveDict:
         return RecursiveDict(data=copy.deepcopy(self._data), dict_factory=self._dict_factory)
 
     @staticmethod
-    def parse_key(key: str) -> Tuple[str, Optional[str]]:
-        if '.' not in key:
+    def parse_key(key: str) -> tuple[str, str | None]:
+        if "." not in key:
             return key, None
-        key, next_key = key.split('.', 1)
+        key, next_key = key.split(".", 1)
         if len(key) > 0 and key[0] == "[":
             end_index = next_key.index("]")
             key = key[1:] + "." + next_key[:end_index]
-            next_key = next_key[end_index + 2:] if len(next_key) > end_index + 1 else None
+            next_key = next_key[end_index + 2 :] if len(next_key) > end_index + 1 else None
         return key, next_key
 
     def _recursive_get(self, data: T, key: str, default_value: Any) -> Any:
@@ -41,7 +43,7 @@ class RecursiveDict(Generic[T]):
             return default_value
 
     def get(self, key: str, default_value: Any, allow_recursion: bool = True) -> Any:
-        if allow_recursion and '.' in key:
+        if allow_recursion and "." in key:
             return self._recursive_get(self._data, key, default_value)
         return self._data.get(key, default_value)
 
@@ -61,7 +63,7 @@ class RecursiveDict(Generic[T]):
         data[key] = value
 
     def set(self, key: str, value: Any, allow_recursion: bool = True) -> None:
-        if allow_recursion and '.' in key:
+        if allow_recursion and "." in key:
             self._recursive_set(self._data, key, value)
             return
         self._data[key] = value
@@ -83,7 +85,7 @@ class RecursiveDict(Generic[T]):
             pass
 
     def delete(self, key: str, allow_recursion: bool = True) -> None:
-        if allow_recursion and '.' in key:
+        if allow_recursion and "." in key:
             self._recursive_del(self._data, key)
             return
         try:

@@ -1,35 +1,109 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from .type import EventType
-from .base import GenericEvent, BaseRoomEvent, BaseEvent, BaseUnsigned
-from .redaction import RedactionEventContent, RedactionEvent
-from .message import (MessageEvent, MessageEventContent, MessageUnsigned, MediaMessageEventContent,
-                      LocationMessageEventContent, LocationInfo, RelationType, MessageType, Format,
-                      MediaInfo, FileInfo, AudioInfo, VideoInfo, ImageInfo, ThumbnailInfo,
-                      TextMessageEventContent, BaseMessageEventContent, RelatesTo, BaseFileInfo,
-                      EncryptedFile, JSONWebKey)
-from .reaction import ReactionEventContent, ReactionEvent
-from .state import (PowerLevelStateEventContent, Membership, MemberStateEventContent, StateEvent,
-                    AliasesStateEventContent, CanonicalAliasStateEventContent, StrippedStateEvent,
-                    RoomNameStateEventContent, RoomTopicStateEventContent, StateEventContent,
-                    RoomPinnedEventsStateEventContent, StateUnsigned, RoomAvatarStateEventContent,
-                    RoomTombstoneStateEventContent, RoomEncryptionStateEventContent)
-from .account_data import (AccountDataEvent, AccountDataEventContent, RoomTagInfo,
-                           RoomTagAccountDataEventContent)
-from .ephemeral import (TypingEventContent, TypingEvent, PresenceEvent, PresenceState,
-                        PresenceEventContent, SingleReceiptEventContent, ReceiptEventContent,
-                        ReceiptEvent, ReceiptType, EphemeralEvent)
-from .encrypted import (EncryptedEvent, EncryptedEventContent, EncryptionAlgorithm,
-                        EncryptedOlmEventContent, EncryptedMegolmEventContent,
-                        EncryptionKeyAlgorithm, OlmMsgType, OlmCiphertext)
-from .to_device import (ToDeviceEvent, ToDeviceEventContent, RoomKeyWithheldCode,
-                        RoomKeyWithheldEventContent, RoomKeyEventContent, KeyRequestAction,
-                        RequestedKeyInfo, RoomKeyRequestEventContent, ForwardedRoomKeyEventContent)
-from .voip import (CallData, CallHangupReason, CallDataType, CallCandidate, CallInviteEventContent,
-                   CallCandidatesEventContent, CallSelectAnswerEventContent, CallAnswerEventContent,
-                   CallHangupEventContent, CallNegotiateEventContent, CallEventContent, CallEvent,
-                   CallRejectEventContent)
+from .account_data import (
+    AccountDataEvent,
+    AccountDataEventContent,
+    RoomTagAccountDataEventContent,
+    RoomTagInfo,
+)
+from .base import BaseEvent, BaseRoomEvent, BaseUnsigned, GenericEvent
+from .encrypted import (
+    EncryptedEvent,
+    EncryptedEventContent,
+    EncryptedMegolmEventContent,
+    EncryptedOlmEventContent,
+    EncryptionAlgorithm,
+    EncryptionKeyAlgorithm,
+    OlmCiphertext,
+    OlmMsgType,
+)
+from .ephemeral import (
+    EphemeralEvent,
+    PresenceEvent,
+    PresenceEventContent,
+    PresenceState,
+    ReceiptEvent,
+    ReceiptEventContent,
+    ReceiptType,
+    SingleReceiptEventContent,
+    TypingEvent,
+    TypingEventContent,
+)
 from .generic import Event, EventContent
+from .message import (
+    AudioInfo,
+    BaseFileInfo,
+    BaseMessageEventContent,
+    EncryptedFile,
+    FileInfo,
+    Format,
+    ImageInfo,
+    JSONWebKey,
+    LocationInfo,
+    LocationMessageEventContent,
+    MediaInfo,
+    MediaMessageEventContent,
+    MessageEvent,
+    MessageEventContent,
+    MessageType,
+    MessageUnsigned,
+    RelatesTo,
+    RelationType,
+    TextMessageEventContent,
+    ThumbnailInfo,
+    VideoInfo,
+)
+from .reaction import ReactionEvent, ReactionEventContent
+from .redaction import RedactionEvent, RedactionEventContent
+from .state import (
+    CanonicalAliasStateEventContent,
+    JoinRule,
+    JoinRulesStateEventContent,
+    Membership,
+    MemberStateEventContent,
+    PowerLevelStateEventContent,
+    RoomAvatarStateEventContent,
+    RoomCreateStateEventContent,
+    RoomEncryptionStateEventContent,
+    RoomNameStateEventContent,
+    RoomPinnedEventsStateEventContent,
+    RoomPredecessor,
+    RoomTombstoneStateEventContent,
+    RoomTopicStateEventContent,
+    SpaceChildStateEventContent,
+    SpaceParentStateEventContent,
+    StateEvent,
+    StateEventContent,
+    StateUnsigned,
+    StrippedStateEvent,
+)
+from .to_device import (
+    ForwardedRoomKeyEventContent,
+    KeyRequestAction,
+    RequestedKeyInfo,
+    RoomKeyEventContent,
+    RoomKeyRequestEventContent,
+    RoomKeyWithheldCode,
+    RoomKeyWithheldEventContent,
+    ToDeviceEvent,
+    ToDeviceEventContent,
+)
+from .type import EventType
+from .voip import (
+    CallAnswerEventContent,
+    CallCandidate,
+    CallCandidatesEventContent,
+    CallData,
+    CallDataType,
+    CallEvent,
+    CallEventContent,
+    CallHangupEventContent,
+    CallHangupReason,
+    CallInviteEventContent,
+    CallNegotiateEventContent,
+    CallRejectEventContent,
+    CallSelectAnswerEventContent,
+)

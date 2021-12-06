@@ -1,7 +1,7 @@
+from mautrix import __optional_imports__
+
 from .database import Database
 from .upgrade import UpgradeTable, register_upgrade
-
-from mautrix import __optional_imports__
 
 try:
     from .asyncpg import PostgresDatabase

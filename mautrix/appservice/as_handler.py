@@ -4,17 +4,27 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # Partly based on github.com/Cadair/python-appservice-framework (MIT license)
-from typing import Optional, Callable, Awaitable, List, Set, Tuple, Dict, Any
+from __future__ import annotations
+
+from typing import Any, Awaitable, Callable
 from json import JSONDecodeError
-from aiohttp import web
 import asyncio
-import logging
 import json
+import logging
 
-from mautrix.types import (JSON, UserID, RoomAlias, Event, EphemeralEvent, SerializerError,
-                           DeviceOTKCount, DeviceLists)
+from aiohttp import web
 
-QueryFunc = Callable[[web.Request], Awaitable[Optional[web.Response]]]
+from mautrix.types import (
+    JSON,
+    DeviceLists,
+    DeviceOTKCount,
+    EphemeralEvent,
+    Event,
+    RoomAlias,
+    SerializerError,
+    UserID,
+)
+
 HandlerFunc = Callable[[Event], Awaitable]
 
 
@@ -28,8 +38,8 @@ class AppServiceServerMixin:
     query_user: Callable[[UserID], JSON]
     query_alias: Callable[[RoomAlias], JSON]
 
-    transactions: Set[str]
-    event_handlers: List[HandlerFunc]
+    transactions: set[str]
+    event_handlers: list[HandlerFunc]
 
     def __init__(self, ephemeral_events: bool = False) -> None:
         self.transactions = set()
@@ -43,12 +53,14 @@ class AppServiceServerMixin:
         self.query_alias = default_query_handler
 
     def register_routes(self, app: web.Application) -> None:
-        app.router.add_route("PUT", "/transactions/{transaction_id}",
-                             self._http_handle_transaction)
+        app.router.add_route(
+            "PUT", "/transactions/{transaction_id}", self._http_handle_transaction
+        )
         app.router.add_route("GET", "/rooms/{alias}", self._http_query_alias)
         app.router.add_route("GET", "/users/{user_id}", self._http_query_user)
-        app.router.add_route("PUT", "/_matrix/app/v1/transactions/{transaction_id}",
-                             self._http_handle_transaction)
+        app.router.add_route(
+            "PUT", "/_matrix/app/v1/transactions/{transaction_id}", self._http_handle_transaction
+        )
         app.router.add_route("GET", "/_matrix/app/v1/rooms/{alias}", self._http_query_alias)
         app.router.add_route("GET", "/_matrix/app/v1/users/{user_id}", self._http_query_user)
 
@@ -105,8 +117,9 @@ class AppServiceServerMixin:
         return web.json_response(response)
 
     @staticmethod
-    def _get_with_fallback(json: Dict[str, Any], field: str, unstable_prefix: str,
-                           default: Any = None) -> Any:
+    def _get_with_fallback(
+        json: Dict[str, Any], field: str, unstable_prefix: str, default: Any = None
+    ) -> Any:
         try:
             return json.pop(field)
         except KeyError:
@@ -115,11 +128,12 @@ class AppServiceServerMixin:
             except KeyError:
                 return default
 
-    async def _read_transaction_header(self, request: web.Request) -> Tuple[str, Dict[str, Any]]:
+    async def _read_transaction_header(self, request: web.Request) -> tuple[str, dict[str, Any]]:
         if not self._check_token(request):
-            raise web.HTTPUnauthorized(content_type="application/json",
-                                       text=json.dumps({"error": "Invalid auth token",
-                                                        "errcode": "M_UNKNOWN_TOKEN"}))
+            raise web.HTTPUnauthorized(
+                content_type="application/json",
+                text=json.dumps({"error": "Invalid auth token", "errcode": "M_UNKNOWN_TOKEN"}),
+            )
 
         transaction_id = request.match_info["transaction_id"]
         if transaction_id in self.transactions:
@@ -128,9 +142,10 @@ class AppServiceServerMixin:
         try:
             return transaction_id, await request.json()
         except JSONDecodeError:
-            raise web.HTTPBadRequest(content_type="application/json",
-                                     text=json.dumps({"error": "Body is not JSON",
-                                                      "errcode": "M_NOT_JSON"}))
+            raise web.HTTPBadRequest(
+                content_type="application/json",
+                text=json.dumps({"error": "Body is not JSON", "errcode": "M_NOT_JSON"}),
+            )
 
     async def _http_handle_transaction(self, request: web.Request) -> web.Response:
         transaction_id, data = await self._read_transaction_header(request)
@@ -138,23 +153,37 @@ class AppServiceServerMixin:
         try:
             events = data.pop("events")
         except KeyError:
-            raise web.HTTPBadRequest(content_type="application/json",
-                                     text=json.dumps({"error": "Missing events object in body",
-                                                      "errcode": "M_BAD_JSON"}))
+            raise web.HTTPBadRequest(
+                content_type="application/json",
+                text=json.dumps(
+                    {"error": "Missing events object in body", "errcode": "M_BAD_JSON"}
+                ),
+            )
 
-        ephemeral = (self._get_with_fallback(data, "ephemeral", "de.sorunome.msc2409")
-                     if self.ephemeral_events else None)
+        ephemeral = (
+            self._get_with_fallback(data, "ephemeral", "de.sorunome.msc2409")
+            if self.ephemeral_events
+            else None
+        )
         device_lists = DeviceLists.deserialize(
-            self._get_with_fallback(data, "device_lists", "org.matrix.msc3202"))
-        otk_counts = {user_id: DeviceOTKCount.deserialize(count)
-                      for user_id, count
-                      in self._get_with_fallback(data, "device_one_time_keys_count",
-                                                 "org.matrix.msc3202", default={}).items()}
+            self._get_with_fallback(data, "device_lists", "org.matrix.msc3202")
+        )
+        otk_counts = {
+            user_id: DeviceOTKCount.deserialize(count)
+            for user_id, count in self._get_with_fallback(
+                data, "device_one_time_keys_count", "org.matrix.msc3202", default={}
+            ).items()
+        }
 
         try:
-            output = await self.handle_transaction(transaction_id, events=events, extra_data=data,
-                                                   ephemeral=ephemeral, device_lists=device_lists,
-                                                   device_otk_count=otk_counts)
+            output = await self.handle_transaction(
+                transaction_id,
+                events=events,
+                extra_data=data,
+                ephemeral=ephemeral,
+                device_lists=device_lists,
+                device_otk_count=otk_counts,
+            )
         except Exception:
             self.log.exception("Exception in transaction handler")
             output = None
@@ -173,10 +202,16 @@ class AppServiceServerMixin:
             except KeyError:
                 pass
 
-    async def handle_transaction(self, txn_id: str, *, events: List[JSON], extra_data: JSON,
-                                 ephemeral: Optional[List[JSON]] = None,
-                                 device_otk_count: Optional[Dict[UserID, DeviceOTKCount]] = None,
-                                 device_lists: Optional[DeviceLists] = None) -> Optional[JSON]:
+    async def handle_transaction(
+        self,
+        txn_id: str,
+        *,
+        events: list[JSON],
+        extra_data: JSON,
+        ephemeral: list[JSON] | None = None,
+        device_otk_count: dict[UserID, DeviceOTKCount] | None = None,
+        device_lists: DeviceLists | None = None,
+    ) -> JSON:
         for raw_edu in ephemeral or []:
             try:
                 edu = EphemeralEvent.deserialize(raw_edu)

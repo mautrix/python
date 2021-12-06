@@ -1,15 +1,18 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List, Sequence, Union
+from __future__ import annotations
+
+from typing import Sequence
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 
 
 class EntityType(Enum):
     """EntityType is a Matrix formatting entity type."""
+
     BOLD = auto()
     ITALIC = auto()
     STRIKETHROUGH = auto()
@@ -28,7 +31,7 @@ class FormattedString(ABC):
     """FormattedString is an abstract HTML parsing target."""
 
     @abstractmethod
-    def append(self, *args: Union[str, 'FormattedString']) -> 'FormattedString':
+    def append(self, *args: str | FormattedString) -> FormattedString:
         """
         Append strings to this FormattedString.
 
@@ -45,7 +48,7 @@ class FormattedString(ABC):
         pass
 
     @abstractmethod
-    def prepend(self, *args: Union[str, 'FormattedString']) -> 'FormattedString':
+    def prepend(self, *args: str | FormattedString) -> FormattedString:
         """
         Prepend strings to this FormattedString.
 
@@ -62,7 +65,7 @@ class FormattedString(ABC):
         pass
 
     @abstractmethod
-    def format(self, entity_type: EntityType, **kwargs) -> 'FormattedString':
+    def format(self, entity_type: EntityType, **kwargs) -> FormattedString:
         """
         Apply formatting to this FormattedString.
 
@@ -80,7 +83,7 @@ class FormattedString(ABC):
         pass
 
     @abstractmethod
-    def trim(self) -> 'FormattedString':
+    def trim(self) -> FormattedString:
         """
         Trim surrounding whitespace from this FormattedString.
 
@@ -94,7 +97,7 @@ class FormattedString(ABC):
         pass
 
     @abstractmethod
-    def split(self, separator, max_items: int = -1) -> List['FormattedString']:
+    def split(self, separator, max_items: int = -1) -> list[FormattedString]:
         """
         Split this FormattedString by the given separator.
 
@@ -109,7 +112,7 @@ class FormattedString(ABC):
         pass
 
     @classmethod
-    def concat(cls, *args: Union[str, 'FormattedString']) -> 'FormattedString':
+    def concat(cls, *args: str | FormattedString) -> FormattedString:
         """
         Concatenate many FormattedStrings.
 
@@ -123,8 +126,7 @@ class FormattedString(ABC):
 
     @classmethod
     @abstractmethod
-    def join(cls, items: Sequence[Union[str, 'FormattedString']],
-             separator: str = " ") -> 'FormattedString':
+    def join(cls, items: Sequence[str | FormattedString], separator: str = " ") -> FormattedString:
         """
         Join a list of FormattedStrings with the given separator.
 

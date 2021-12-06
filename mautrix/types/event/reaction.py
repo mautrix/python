@@ -1,9 +1,10 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Optional
+
 from attr import dataclass
 import attr
 
@@ -15,6 +16,7 @@ from .message import RelatesTo
 @dataclass
 class ReactionEventContent(SerializableAttrs):
     """The content of an m.reaction event"""
+
     _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
 
     @property
@@ -31,6 +33,7 @@ class ReactionEventContent(SerializableAttrs):
 @dataclass
 class ReactionEvent(BaseRoomEvent, SerializableAttrs):
     """A m.reaction event"""
+
     content: ReactionEventContent
     _unsigned: Optional[BaseUnsigned] = attr.ib(default=None, metadata={"json": "unsigned"})
 

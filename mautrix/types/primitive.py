@@ -3,9 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import NewType, Union, Dict, List
+from typing import Dict, List, NewType, Union
 
-JSON = NewType("JSON", Union[str, int, float, bool, None, Dict[str, 'JSON'], List['JSON']])
+JSON = NewType("JSON", Union[str, int, float, bool, None, Dict[str, "JSON"], List["JSON"]])
 JSON.__doc__ = "A union type that covers all JSON-serializable data."
 
 UserID = NewType("UserID", str)

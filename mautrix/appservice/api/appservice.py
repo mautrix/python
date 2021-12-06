@@ -1,21 +1,23 @@
-# Copyright (c) 2020 Tulir Asokan
+# Copyright (c) 2021 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
-from typing import Optional, Dict, Awaitable, Union, Any
+
+from typing import Any, Awaitable
 from datetime import datetime, timezone
 import asyncio
 
 from aiohttp import ClientSession
 from yarl import URL
 
-from mautrix.types import UserID
 from mautrix.api import HTTPAPI, Method, PathBuilder
+from mautrix.types import UserID
 from mautrix.util.logging import TraceLogger
 
-from .. import api as as_api, state_store as ss
+from .. import api as as_api
+from .. import state_store as ss
 
 
 class AppServiceAPI(HTTPAPI):
@@ -23,27 +25,37 @@ class AppServiceAPI(HTTPAPI):
     AppServiceAPI is an extension to HTTPAPI that provides appservice-specific features,
     such as child instances and easy access to IntentAPIs.
     """
+
     base_log: TraceLogger
 
-    identity: Optional[UserID]
+    identity: UserID | None
     bot_mxid: UserID
 
     state_store: ss.ASStateStore
     txn_id: int
-    children: Dict[str, ChildAppServiceAPI]
-    real_users: Dict[str, AppServiceAPI]
+    children: dict[str, ChildAppServiceAPI]
+    real_users: dict[str, AppServiceAPI]
 
     is_real_user: bool
-    real_user_content_key: Optional[str]
+    real_user_content_key: str | None
 
-    _bot_intent: Optional[as_api.IntentAPI]
+    _bot_intent: as_api.IntentAPI | None
 
-    def __init__(self, base_url: Union[URL, str], bot_mxid: UserID = None, token: str = None,
-                 identity: Optional[UserID] = None, log: TraceLogger = None,
-                 state_store: ss.ASStateStore = None, client_session: ClientSession = None,
-                 child: bool = False, real_user: bool = False,
-                 real_user_content_key: Optional[str] = None, default_retry_count: int = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+    def __init__(
+        self,
+        base_url: URL | str,
+        bot_mxid: UserID = None,
+        token: str = None,
+        identity: UserID | None = None,
+        log: TraceLogger = None,
+        state_store: ss.ASStateStore = None,
+        client_session: ClientSession = None,
+        child: bool = False,
+        real_user: bool = False,
+        real_user_content_key: str | None = None,
+        default_retry_count: int = None,
+        loop: asyncio.AbstractEventLoop | None = None,
+    ) -> None:
         """
         Args:
             base_url: The base URL of the homeserver client-server API to use.
@@ -60,9 +72,15 @@ class AppServiceAPI(HTTPAPI):
         """
         self.base_log = log
         api_log = self.base_log.getChild("api").getChild(identity or "bot")
-        super().__init__(base_url=base_url, token=token, loop=loop, log=api_log,
-                         client_session=client_session, txn_id=0 if not child else None,
-                         default_retry_count=default_retry_count)
+        super().__init__(
+            base_url=base_url,
+            token=token,
+            loop=loop,
+            log=api_log,
+            client_session=client_session,
+            txn_id=0 if not child else None,
+            default_retry_count=default_retry_count,
+        )
         self.identity = identity
         self.bot_mxid = bot_mxid
         self._bot_intent = None
@@ -96,7 +114,7 @@ class AppServiceAPI(HTTPAPI):
             self.children[user] = child
             return child
 
-    def real_user(self, mxid: UserID, token: str, base_url: Optional[URL] = None) -> AppServiceAPI:
+    def real_user(self, mxid: UserID, token: str, base_url: URL | None = None) -> AppServiceAPI:
         """
         Get the AppServiceAPI for a real (non-appservice-managed) Matrix user.
 
@@ -120,11 +138,17 @@ class AppServiceAPI(HTTPAPI):
             child.base_url = base_url or child.base_url
             child.token = token or child.token
         except KeyError:
-            child = type(self)(base_url=base_url or self.base_url, token=token, identity=mxid,
-                               log=self.base_log, state_store=self.state_store,
-                               client_session=self.session, real_user=True,
-                               real_user_content_key=self.real_user_content_key,
-                               default_retry_count=self.default_retry_count)
+            child = type(self)(
+                base_url=base_url or self.base_url,
+                token=token,
+                identity=mxid,
+                log=self.base_log,
+                state_store=self.state_store,
+                client_session=self.session,
+                real_user=True,
+                real_user_content_key=self.real_user_content_key,
+                default_retry_count=self.default_retry_count,
+            )
             self.real_users[mxid] = child
         return child
 
@@ -139,8 +163,9 @@ class AppServiceAPI(HTTPAPI):
             self._bot_intent = as_api.IntentAPI(self.bot_mxid, self, state_store=self.state_store)
         return self._bot_intent
 
-    def intent(self, user: UserID = None, token: Optional[str] = None,
-               base_url: Optional[str] = None) -> as_api.IntentAPI:
+    def intent(
+        self, user: UserID = None, token: str | None = None, base_url: str | None = None
+    ) -> as_api.IntentAPI:
         """
         Get the intent API of a child user.
 
@@ -159,16 +184,22 @@ class AppServiceAPI(HTTPAPI):
         if self.is_real_user:
             raise ValueError("Can't get child intent of real user")
         if token:
-            return as_api.IntentAPI(user, self.real_user(user, token, base_url), self.bot_intent(),
-                                    self.state_store)
+            return as_api.IntentAPI(
+                user, self.real_user(user, token, base_url), self.bot_intent(), self.state_store
+            )
         return as_api.IntentAPI(user, self.user(user), self.bot_intent(), self.state_store)
 
-    def request(self, method: Method, path: PathBuilder,
-                content: Optional[Union[Dict, bytes, str]] = None, timestamp: Optional[int] = None,
-                headers: Optional[Dict[str, str]] = None,
-                query_params: Optional[Dict[str, Any]] = None,
-                retry_count: Optional[int] = None, metrics_method: Optional[str] = ""
-                ) -> Awaitable[Dict]:
+    def request(
+        self,
+        method: Method,
+        path: PathBuilder,
+        content: dict | bytes | str | None = None,
+        timestamp: int | None = None,
+        headers: dict[str, str] | None = None,
+        query_params: dict[str, Any] | None = None,
+        retry_count: int | None = None,
+        metrics_method: str | None = "",
+    ) -> Awaitable[dict]:
         """
         Make a raw HTTP request, with optional AppService timestamp massaging and external_url
         setting.
@@ -182,6 +213,7 @@ class AppServiceAPI(HTTPAPI):
             headers: The dict of HTTP headers to send.
             query_params: The dict of query parameters to send.
             retry_count: Number of times to retry if the homeserver isn't reachable.
+            metrics_method: Name of the method to include in Prometheus timing metrics.
 
         Returns:
             The response as a dict.
@@ -194,8 +226,9 @@ class AppServiceAPI(HTTPAPI):
         if not self.is_real_user:
             query_params["user_id"] = self.identity or self.bot_mxid
 
-        return super().request(method, path, content, headers, query_params, retry_count,
-                               metrics_method)
+        return super().request(
+            method, path, content, headers, query_params, retry_count, metrics_method
+        )
 
 
 class ChildAppServiceAPI(AppServiceAPI):
@@ -211,10 +244,18 @@ class ChildAppServiceAPI(AppServiceAPI):
             user: The Matrix user ID of the child user.
             parent: The parent AppServiceAPI instance.
         """
-        super().__init__(parent.base_url, parent.bot_mxid, parent.token, user, parent.base_log,
-                         parent.state_store, parent.session, child=True,
-                         real_user_content_key=parent.real_user_content_key,
-                         default_retry_count=parent.default_retry_count)
+        super().__init__(
+            parent.base_url,
+            parent.bot_mxid,
+            parent.token,
+            user,
+            parent.base_log,
+            parent.state_store,
+            parent.session,
+            child=True,
+            real_user_content_key=parent.real_user_content_key,
+            default_retry_count=parent.default_retry_count,
+        )
         self.parent = parent
 
     @property

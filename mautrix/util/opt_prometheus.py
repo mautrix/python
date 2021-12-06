@@ -3,7 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Union, Any, cast
+from __future__ import annotations
+
+from typing import Any, cast
 
 
 class _NoopPrometheusEntity:
@@ -29,7 +31,7 @@ class _NoopPrometheusEntity:
 
 
 try:
-    from prometheus_client import Counter, Gauge, Summary, Histogram, Info, Enum
+    from prometheus_client import Counter, Enum, Gauge, Histogram, Info, Summary
 
     is_installed = True
 except ImportError:
@@ -38,7 +40,7 @@ except ImportError:
     is_installed = False
 
 
-def async_time(metric: Union[Gauge, Summary, Histogram]):
+def async_time(metric: Gauge | Summary | Histogram):
     """
     Measure the time that each execution of the decorated async function takes.
 
@@ -61,5 +63,13 @@ def async_time(metric: Union[Gauge, Summary, Histogram]):
     return decorator
 
 
-__all__ = ["Counter", "Gauge", "Summary", "Histogram", "Info", "Enum", "async_time",
-           "is_installed"]
+__all__ = [
+    "Counter",
+    "Gauge",
+    "Summary",
+    "Histogram",
+    "Info",
+    "Enum",
+    "async_time",
+    "is_installed",
+]
