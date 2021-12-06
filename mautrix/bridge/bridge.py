@@ -5,33 +5,24 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Type
+from typing import Any, Type
 from abc import ABC, abstractmethod
 import sys
 
 from aiohttp import web
 
-from mautrix import __optional_imports__
 from mautrix import __version__ as __mautrix_version__
 from mautrix.api import HTTPAPI
 from mautrix.appservice import AppService, ASStateStore
+from mautrix.client.state_store.asyncpg import PgStateStore as PgClientStateStore
 from mautrix.errors import MExclusive, MUnknownToken
 from mautrix.types import RoomID, UserID
+from mautrix.util.async_db import Database, UpgradeTable
 from mautrix.util.bridge_state import BridgeState, BridgeStateEvent, GlobalBridgeState
 from mautrix.util.program import Program
 
 from .. import bridge as br
-
-try:
-    from sqlalchemy.engine.base import Engine
-    import sqlalchemy as sql
-
-    from ..util.db import Base
-    from .state_store.sqlalchemy import SQLBridgeStateStore
-except ImportError:
-    if __optional_imports__:
-        raise
-    Base = SQLBridgeStateStore = sql = Engine = None
+from .state_store.asyncpg import PgBridgeStateStore
 
 try:
     import uvloop
@@ -40,18 +31,19 @@ except ImportError:
 
 
 class Bridge(Program, ABC):
-    db: Engine
+    db: Database
     az: AppService
-    state_store_class: Type[ASStateStore] = SQLBridgeStateStore
+    state_store_class: Type[ASStateStore] = PgBridgeStateStore
     state_store: ASStateStore
+    upgrade_table: UpgradeTable
     config_class: Type[br.BaseBridgeConfig]
     config: br.BaseBridgeConfig
     matrix_class: Type[br.BaseMatrixHandler]
     matrix: br.BaseMatrixHandler
     repo_url: str
     markdown_version: str
-    real_user_content_key: Optional[str] = None
-    manhole: Optional[br.manhole.ManholeState]
+    real_user_content_key: str | None = None
+    manhole: br.manhole.ManholeState | None
 
     def __init__(
         self,
@@ -60,7 +52,7 @@ class Bridge(Program, ABC):
         description: str = None,
         command: str = None,
         version: str = None,
-        real_user_content_key: Optional[str] = None,
+        real_user_content_key: str | None = None,
         config_class: Type[br.BaseBridgeConfig] = None,
         matrix_class: Type[br.BaseMatrixHandler] = None,
         state_store_class: Type[ASStateStore] = None,
@@ -88,8 +80,10 @@ class Bridge(Program, ABC):
             type=str,
             default="registration.yaml",
             metavar="<path>",
-            help="the path to save the generated registration to (not needed "
-            "for running the bridge)",
+            help=(
+                "the path to save the generated registration to "
+                "(not needed for running the bridge)"
+            ),
         )
 
     def preinit(self) -> None:
@@ -120,8 +114,10 @@ class Bridge(Program, ABC):
     def make_state_store(self) -> None:
         if self.state_store_class is None:
             raise RuntimeError("state_store_class is not set")
-        elif SQLBridgeStateStore and issubclass(self.state_store_class, SQLBridgeStateStore):
-            self.state_store = self.state_store_class(self.get_puppet, self.get_double_puppet)
+        elif issubclass(self.state_store_class, PgBridgeStateStore):
+            self.state_store = self.state_store_class(
+                self.db, self.get_puppet, self.get_double_puppet
+            )
         else:
             self.state_store = self.state_store_class()
 
@@ -154,22 +150,29 @@ class Bridge(Program, ABC):
         self.az.app.router.add_post("/_matrix/app/com.beeper.bridge_state", self.get_bridge_state)
 
     def prepare_db(self) -> None:
-        if not sql:
-            raise RuntimeError("SQLAlchemy is not installed")
-        self.db = sql.create_engine(
-            self.config["appservice.database"], **self.config["appservice.database_opts"]
+        if not hasattr(self, "upgrade_table") or not self.upgrade_table:
+            raise RuntimeError("upgrade_table is not set")
+        self.db = Database.create(
+            self.config["appservice.database"],
+            upgrade_table=self.upgrade_table,
+            db_args=self.config["appservice.database_opts"],
         )
-        Base.metadata.bind = self.db
-        if not self.db.has_table("alembic_version"):
-            self.log.critical(
-                "alembic_version table not found. Did you forget to `alembic upgrade head`?"
-            )
-            sys.exit(10)
 
     def prepare_bridge(self) -> None:
         self.matrix = self.matrix_class(bridge=self)
 
+    async def start_db(self) -> None:
+        if hasattr(self, "db") and isinstance(self.db, Database):
+            self.log.debug("Starting database...")
+            await self.db.start()
+            if isinstance(self.state_store, PgClientStateStore):
+                await self.state_store.upgrade_table.upgrade(self.db)
+            if self.matrix.e2ee:
+                self.matrix.e2ee.crypto_db.override_pool(self.db)
+
     async def start(self) -> None:
+        await self.start_db()
+
         self.log.debug("Starting appservice...")
         await self.az.start(self.config["appservice.hostname"], self.config["appservice.port"])
         try:
@@ -229,19 +232,19 @@ class Bridge(Program, ABC):
         return web.json_response(evt.serialize())
 
     @abstractmethod
-    async def get_user(self, user_id: UserID, create: bool = True) -> Optional[br.BaseUser]:
+    async def get_user(self, user_id: UserID, create: bool = True) -> br.BaseUser | None:
         pass
 
     @abstractmethod
-    async def get_portal(self, room_id: RoomID) -> Optional[br.BasePortal]:
+    async def get_portal(self, room_id: RoomID) -> br.BasePortal | None:
         pass
 
     @abstractmethod
-    async def get_puppet(self, user_id: UserID, create: bool = False) -> Optional[br.BasePuppet]:
+    async def get_puppet(self, user_id: UserID, create: bool = False) -> br.BasePuppet | None:
         pass
 
     @abstractmethod
-    async def get_double_puppet(self, user_id: UserID) -> Optional[br.BasePuppet]:
+    async def get_double_puppet(self, user_id: UserID) -> br.BasePuppet | None:
         pass
 
     @abstractmethod
@@ -252,7 +255,7 @@ class Bridge(Program, ABC):
     async def count_logged_in_users(self) -> int:
         return 0
 
-    async def manhole_global_namespace(self, user_id: UserID) -> Dict[str, Any]:
+    async def manhole_global_namespace(self, user_id: UserID) -> dict[str, Any]:
         own_user = await self.get_user(user_id, create=False)
         try:
             own_puppet = await own_user.get_puppet()
