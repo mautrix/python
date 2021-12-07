@@ -211,13 +211,6 @@ class RoomMethods(EventMethods, BaseClientAPI):
                 raise
             # else: ignore
 
-    async def get_room_alias(self, room_alias: RoomAlias) -> RoomAliasInfo:
-        """
-        .. deprecated:: 0.12.6
-           use :meth:`resolve_room_alias` instead
-        """
-        return await self.resolve_room_alias(room_alias)
-
     async def resolve_room_alias(self, room_alias: RoomAlias) -> RoomAliasInfo:
         """
         Request the server to resolve a room alias to a room ID.
