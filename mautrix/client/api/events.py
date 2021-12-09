@@ -42,6 +42,7 @@ from mautrix.types import (
     UserID,
 )
 from mautrix.types.event.state import state_event_content_map
+from mautrix.util.formatter import parse_html
 
 from .base import BaseClientAPI
 
@@ -431,7 +432,7 @@ class EventMethods(BaseClientAPI):
     def send_text(
         self,
         room_id: RoomID,
-        text: str,
+        text: str | None = None,
         html: str | None = None,
         msgtype: MessageType = MessageType.TEXT,
         relates_to: RelatesTo | None = None,
@@ -442,24 +443,30 @@ class EventMethods(BaseClientAPI):
 
         Args:
             room_id: The ID of the room to send the message to.
-            text: The text to send. If set to None, the given HTML is used instead.
+            text: The text to send. If set to ``None``, the given HTML will be parsed to generate
+                  a plaintext representation.
             html: The HTML to send.
             msgtype: The message type to send.
-                Defaults to :attr:`MessageType.TEXT` (normal text message)
+                     Defaults to :attr:`MessageType.TEXT` (normal text message).
             relates_to: Message relation metadata used for things like replies.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method.
 
         Returns:
             The ID of the event that was sent.
+
+        Raises:
+            ValueError: if both ``text`` and ``html`` are ``None``.
         """
-        if html:
-            if not text:
-                text = html
+        if html is not None:
+            if text is None:
+                text = parse_html(html)
             content = TextMessageEventContent(
                 msgtype=msgtype, body=text, format=Format.HTML, formatted_body=html
             )
-        else:
+        elif text is not None:
             content = TextMessageEventContent(msgtype=msgtype, body=text)
+        else:
+            raise TypeError("send_text() requires either text or html to be set")
         if relates_to:
             content.relates_to = relates_to
         return self.send_message(room_id, content, **kwargs)
@@ -467,7 +474,7 @@ class EventMethods(BaseClientAPI):
     def send_notice(
         self,
         room_id: RoomID,
-        text: str,
+        text: str | None = None,
         html: str | None = None,
         relates_to: RelatesTo | None = None,
         **kwargs,
@@ -479,22 +486,24 @@ class EventMethods(BaseClientAPI):
 
         Args:
             room_id: The ID of the room to send the message to.
-            text: The text to send. If set to None, the given HTML is used instead.
+            text: The text to send. If set to ``None``, the given HTML will be parsed to generate
+                  a plaintext representation.
             html: The HTML to send.
-            msgtype: The message type to send.
-                Defaults to :attr:`MessageType.TEXT` (normal text message)
             relates_to: Message relation metadata used for things like replies.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method.
 
         Returns:
             The ID of the event that was sent.
+
+        Raises:
+            ValueError: if both ``text`` and ``html`` are ``None``.
         """
         return self.send_text(room_id, text, html, MessageType.NOTICE, relates_to, **kwargs)
 
     def send_emote(
         self,
         room_id: RoomID,
-        text: str,
+        text: str | None = None,
         html: str | None = None,
         relates_to: RelatesTo | None = None,
         **kwargs,
@@ -505,15 +514,17 @@ class EventMethods(BaseClientAPI):
 
         Args:
             room_id: The ID of the room to send the message to.
-            text: The text to send. If set to None, the given HTML is used instead.
+            text: The text to send. If set to ``None``, the given HTML will be parsed to generate
+                  a plaintext representation.
             html: The HTML to send.
-            msgtype: The message type to send.
-                Defaults to :attr:`MessageType.TEXT` (normal text message)
             relates_to: Message relation metadata used for things like replies.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method.
 
         Returns:
             The ID of the event that was sent.
+
+        Raises:
+            ValueError: if both ``text`` and ``html`` are ``None``.
         """
         return self.send_text(room_id, text, html, MessageType.EMOTE, relates_to, **kwargs)
 
