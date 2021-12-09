@@ -24,6 +24,7 @@ def format_duration(seconds: int) -> str:
         The formatted duration.
 
     Examples:
+        >>> from mautrix.util.format_duration import format_duration
         >>> format_duration(1234)
         '20 minutes and 34 seconds'
         >>> format_duration(987654)
