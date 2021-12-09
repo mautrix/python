@@ -109,8 +109,10 @@ class BaseMatrixHandler:
         self.e2ee = None
         if self.config["bridge.encryption.allow"]:
             if not EncryptionManager:
-                self.log.fatal("Encryption enabled in config, but dependencies not installed.",
-                               exc_info=encryption_import_error)
+                self.log.fatal(
+                    "Encryption enabled in config, but dependencies not installed.",
+                    exc_info=encryption_import_error,
+                )
                 sys.exit(31)
             if not encrypt_attachment:
                 self.log.warning(
