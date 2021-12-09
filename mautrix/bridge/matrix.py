@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 import sys
+import time
 
 from mautrix import __optional_imports__
 from mautrix.appservice import AppService
