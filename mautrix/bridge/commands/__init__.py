@@ -1,8 +1,8 @@
 from .handler import (
     SECTION_ADMIN,
     SECTION_AUTH,
-    SECTION_GENERAL,
     SECTION_CONNECTION,
+    SECTION_GENERAL,
     CommandEvent,
     CommandHandler,
     CommandHandlerFunc,
@@ -13,7 +13,7 @@ from .handler import (
 )
 from .meta import cancel, help_cmd, unknown_command
 
-from . import (
+from . import (  # isort: skip
     admin,
     clean_rooms,
     crypto,
@@ -21,7 +21,7 @@ from . import (
     login_matrix,
     manhole,
     relay,
-)  # isort: skip
+)
 
 __all__ = [
     "HelpSection",
