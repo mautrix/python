@@ -13,7 +13,15 @@ from .handler import (
 )
 from .meta import cancel, help_cmd, unknown_command
 
-from . import admin, clean_rooms, crypto, delete_portal, login_matrix, manhole, relay  # isort: skip
+from . import (
+    admin,
+    clean_rooms,
+    crypto,
+    delete_portal,
+    login_matrix,
+    manhole,
+    relay,
+)  # isort: skip
 
 __all__ = [
     "HelpSection",
