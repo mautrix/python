@@ -11,6 +11,7 @@ from .handler import SECTION_CONNECTION, CommandEvent, command_handler
 @command_handler(
     needs_auth=True,
     management_only=False,
+    name="set-relay",
     help_section=SECTION_CONNECTION,
     help_text="Relay messages in this room through your account.",
 )
@@ -29,6 +30,7 @@ async def set_relay(evt: CommandEvent) -> EventID:
 @command_handler(
     needs_auth=True,
     management_only=False,
+    name="unset-relay",
     help_section=SECTION_CONNECTION,
     help_text="Stop relaying messages in this room.",
 )
