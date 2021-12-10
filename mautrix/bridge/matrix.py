@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 import time
 
 from mautrix import __optional_imports__
@@ -59,11 +60,14 @@ from mautrix.util.opt_prometheus import Histogram
 from .. import bridge as br
 from . import commands as cmd
 
+encryption_import_error = None
+
 try:
     from .e2ee import EncryptionManager
-except ImportError:
+except ImportError as e:
     if __optional_imports__:
         raise
+    encryption_import_error = e
     EncryptionManager = None
 
 try:
@@ -105,8 +109,11 @@ class BaseMatrixHandler:
         self.e2ee = None
         if self.config["bridge.encryption.allow"]:
             if not EncryptionManager:
-                self.log.error("Encryption enabled in config, but dependencies not installed.")
-                return
+                self.log.fatal(
+                    "Encryption enabled in config, but dependencies not installed.",
+                    exc_info=encryption_import_error,
+                )
+                sys.exit(31)
             if not encrypt_attachment:
                 self.log.warning(
                     "Encryption enabled in config, but media encryption dependencies "

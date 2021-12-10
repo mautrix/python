@@ -10,6 +10,7 @@ mautrix.util
    db
    file_store
    formatter
+   format_duration
    logging
    magic
    manhole
