@@ -61,6 +61,7 @@ from .. import bridge as br
 from . import commands as cmd
 
 encryption_import_error = None
+media_encrypt_import_error = None
 
 try:
     from .e2ee import EncryptionManager
@@ -72,9 +73,10 @@ except ImportError as e:
 
 try:
     from mautrix.crypto.attachments import encrypt_attachment
-except ImportError:
+except ImportError as e:
     if __optional_imports__:
         raise
+    media_encrypt_import_error = e
     encrypt_attachment = None
 
 EVENT_TIME = Histogram(
@@ -115,10 +117,12 @@ class BaseMatrixHandler:
                 )
                 sys.exit(31)
             if not encrypt_attachment:
-                self.log.warning(
+                self.log.fatal(
                     "Encryption enabled in config, but media encryption dependencies "
-                    "not installed."
+                    "not installed.",
+                    exc_info=media_encrypt_import_error,
                 )
+                sys.exit(31)
             self.e2ee = EncryptionManager(
                 bridge=bridge,
                 user_id_prefix=self.user_id_prefix,
