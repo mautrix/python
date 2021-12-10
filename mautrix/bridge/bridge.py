@@ -170,6 +170,10 @@ class Bridge(Program, ABC):
             if self.matrix.e2ee:
                 self.matrix.e2ee.crypto_db.override_pool(self.db)
 
+    async def stop_db(self) -> None:
+        if hasattr(self, "db") and isinstance(self.db, Database):
+            await self.db.stop()
+
     async def start(self) -> None:
         await self.start_db()
 
@@ -209,6 +213,7 @@ class Bridge(Program, ABC):
         await super().stop()
         if self.matrix.e2ee:
             await self.matrix.e2ee.stop()
+        await self.stop_db()
 
     async def get_bridge_state(self, req: web.Request) -> web.Response:
         if not self.az._check_token(req):

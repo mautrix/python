@@ -67,7 +67,7 @@ ENSURE_REGISTERED_METHODS = (
     ClientAPI.create_room,
     ClientAPI.add_room_alias,
     ClientAPI.remove_room_alias,
-    ClientAPI.get_room_alias,
+    ClientAPI.resolve_room_alias,
     ClientAPI.get_joined_rooms,
     StoreUpdatingAPI.join_room_by_id,
     StoreUpdatingAPI.join_room,
