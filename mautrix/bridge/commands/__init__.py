@@ -2,6 +2,7 @@ from .handler import (
     SECTION_ADMIN,
     SECTION_AUTH,
     SECTION_GENERAL,
+    SECTION_CONNECTION,
     CommandEvent,
     CommandHandler,
     CommandHandlerFunc,
@@ -12,7 +13,7 @@ from .handler import (
 )
 from .meta import cancel, help_cmd, unknown_command
 
-from . import admin, clean_rooms, crypto, delete_portal, login_matrix, manhole  # isort: skip
+from . import admin, clean_rooms, crypto, delete_portal, login_matrix, manhole, relay  # isort: skip
 
 __all__ = [
     "HelpSection",
@@ -25,4 +26,5 @@ __all__ = [
     "SECTION_GENERAL",
     "SECTION_ADMIN",
     "SECTION_AUTH",
+    "SECTION_CONNECTION",
 ]

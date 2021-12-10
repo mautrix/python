@@ -64,7 +64,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         )
 
     def do_update(self, helper: ConfigUpdateHelper) -> None:
-        copy, copy_dict = helper
+        copy, copy_dict = helper.copy, helper.copy_dict
 
         copy("homeserver.address")
         copy("homeserver.domain")
