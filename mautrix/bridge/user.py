@@ -44,6 +44,7 @@ class BaseUser(ABC):
 
     is_whitelisted: bool
     is_admin: bool
+    relay_whitelisted: bool
     mxid: UserID
 
     dm_update_lock: asyncio.Lock
@@ -57,6 +58,7 @@ class BaseUser(ABC):
         self._metric_value = defaultdict(lambda: False)
         self._prev_bridge_status = None
         self.log = self.log.getChild(self.mxid)
+        self.relay_whitelisted = False
 
     @abstractmethod
     async def is_logged_in(self) -> bool:
@@ -64,6 +66,9 @@ class BaseUser(ABC):
 
     async def get_puppet(self) -> br.BasePuppet | None:
         raise NotImplementedError()
+
+    async def needs_relay(self, portal: br.BasePortal) -> bool:
+        return not await self.is_logged_in()
 
     async def is_in_portal(self, portal: br.BasePortal) -> bool:
         try:

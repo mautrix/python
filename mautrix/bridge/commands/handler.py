@@ -29,6 +29,7 @@ HelpCacheKey = NamedTuple(
 SECTION_GENERAL = HelpSection("General", 0, "")
 SECTION_AUTH = HelpSection("Authentication", 10, "")
 SECTION_ADMIN = HelpSection("Administration", 50, "")
+SECTION_RELAY = HelpSection("Relay mode management", 15, "")
 
 
 def ensure_trailing_newline(s: str) -> str:
@@ -344,6 +345,7 @@ def command_handler(
     _handler_class: Type[CommandHandler] = CommandHandler,
     needs_auth: bool = True,
     needs_admin: bool = False,
+    is_enabled_for: IsEnabledForFunc = lambda _: True,
     **kwargs,
 ) -> Callable[[CommandHandlerFunc], CommandHandler]:
     """Decorator to create CommandHandlers"""
@@ -359,6 +361,7 @@ def command_handler(
             help_section=help_section,
             needs_auth=needs_auth,
             needs_admin=needs_admin,
+            is_enabled_for=is_enabled_for,
             **kwargs,
         )
         command_handlers[handler.name] = handler

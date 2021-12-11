@@ -377,13 +377,16 @@ class SerializableAttrs(AbstractSerializable):
     def serialize(self) -> JSON:
         return _attrs_to_dict(self)
 
-    def get(self, item, default=None):
+    def get(self, item: str, default: Any = None) -> Any:
         try:
             return self[item]
         except KeyError:
             return default
 
-    def __getitem__(self, item):
+    def __contains__(self, item: str) -> bool:
+        return hasattr(self, item) or item in getattr(self, "unrecognized_", {})
+
+    def __getitem__(self, item: str) -> Any:
         try:
             return getattr(self, item)
         except AttributeError:
@@ -393,7 +396,7 @@ class SerializableAttrs(AbstractSerializable):
                 self.unrecognized_ = {}
                 raise KeyError(item)
 
-    def __setitem__(self, item, value):
+    def __setitem__(self, item: str, value: Any) -> None:
         if hasattr(self, item):
             setattr(self, item, value)
         else:

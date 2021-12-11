@@ -200,9 +200,10 @@ class BaseMatrixHandler:
         if self.e2ee:
             await self.e2ee.start()
 
-    @staticmethod
-    async def allow_message(user: br.BaseUser) -> bool:
-        return user.is_whitelisted
+    async def allow_message(self, user: br.BaseUser) -> bool:
+        return user.is_whitelisted or (
+            self.config["bridge.relay.enabled"] and user.relay_whitelisted
+        )
 
     @staticmethod
     async def allow_command(user: br.BaseUser) -> bool:
@@ -210,7 +211,7 @@ class BaseMatrixHandler:
 
     @staticmethod
     async def allow_bridging_message(user: br.BaseUser, portal: br.BasePortal) -> bool:
-        return await user.is_logged_in()
+        return await user.is_logged_in() or (user.relay_whitelisted and portal.has_relay)
 
     async def handle_leave(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
         pass

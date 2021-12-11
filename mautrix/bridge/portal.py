@@ -5,21 +5,36 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NamedTuple
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from string import Template
 import asyncio
+import html
 import logging
 
 from mautrix.appservice import AppService, IntentAPI
 from mautrix.errors import MatrixError, MatrixRequestError, MNotFound
-from mautrix.types import EncryptionAlgorithm, EventID, EventType, MessageEventContent
-from mautrix.types import RoomEncryptionStateEventContent as Encryption
-from mautrix.types import RoomID, UserID
+from mautrix.types import (
+    EncryptionAlgorithm,
+    EventID,
+    EventType,
+    Format,
+    MessageEventContent,
+    MessageType,
+    RoomEncryptionStateEventContent,
+    RoomID,
+    UserID,
+)
 from mautrix.util.logging import TraceLogger
 from mautrix.util.simple_lock import SimpleLock
 
 from .. import bridge as br
+
+
+class RelaySender(NamedTuple):
+    sender: br.BaseUser | None
+    is_relay: bool
 
 
 class BasePortal(ABC):
@@ -36,6 +51,11 @@ class BasePortal(ABC):
     is_direct: bool
     backfill_lock: SimpleLock
 
+    relay_user_id: UserID | None
+    _relay_user: br.BaseUser | None
+    relay_emote_to_text: bool = True
+    relay_formatted_body: bool = True
+
     @abstractmethod
     async def save(self) -> None:
         pass
@@ -45,6 +65,80 @@ class BasePortal(ABC):
         self, sender: br.BaseUser, message: MessageEventContent, event_id: EventID
     ) -> None:
         pass
+
+    @property
+    def _relay_is_implemented(self) -> bool:
+        return hasattr(self, "relay_user_id") and hasattr(self, "_relay_user")
+
+    @property
+    def has_relay(self) -> bool:
+        return (
+            self._relay_is_implemented
+            and self.bridge.config["bridge.relay.enabled"]
+            and bool(self.relay_user_id)
+        )
+
+    async def get_relay_user(self) -> br.BaseUser | None:
+        if not self.has_relay:
+            return None
+        if self._relay_user is None:
+            self._relay_user = await self.bridge.get_user(self.relay_user_id)
+        return self._relay_user if await self._relay_user.is_logged_in() else None
+
+    async def set_relay_user(self, user: br.BaseUser | None) -> None:
+        if not self._relay_is_implemented or not self.bridge.config["bridge.relay.enabled"]:
+            raise RuntimeError("Can't set_relay_user() when relay mode is not enabled")
+        self._relay_user = user
+        self.relay_user_id = user.mxid if user else None
+        await self.save()
+
+    async def get_relay_sender(self, sender: br.BaseUser, evt_identifier: str) -> RelaySender:
+        if not await sender.needs_relay(self):
+            return RelaySender(sender, False)
+
+        if not self.has_relay:
+            self.log.debug(
+                f"Ignoring {evt_identifier} from non-logged-in user {sender.mxid} "
+                f"in chat with no relay user"
+            )
+            return RelaySender(None, True)
+        relay_sender = await self.get_relay_user()
+        if not relay_sender:
+            self.log.debug(
+                f"Ignoring {evt_identifier} from non-logged-in user {sender.mxid} "
+                f"relay user {self.relay_user_id} is not set up correctly"
+            )
+            return RelaySender(None, True)
+        return RelaySender(relay_sender, True)
+
+    async def apply_relay_message_format(
+        self, sender: br.BaseUser, content: MessageEventContent
+    ) -> None:
+        if self.relay_formatted_body and content.get("format", None) != Format.HTML:
+            content["format"] = Format.HTML
+            content["formatted_body"] = html.escape(content.body).replace("\n", "<br/>")
+        tpl = self.bridge.config["bridge.relay.message_formats"].get(
+            content.msgtype.value, "$sender_displayname: $message"
+        )
+        displayname = await self.get_displayname(sender)
+        username, _ = self.az.intent.parse_user_id(sender.mxid)
+        tpl_args = {
+            "sender_mxid": sender.mxid,
+            "sender_username": username,
+            "sender_displayname": html.escape(displayname),
+            "formatted_body": content["formatted_body"],
+            "body": content.body,
+            "message": content.body,
+        }
+        content.body = Template(tpl).safe_substitute(tpl_args)
+        if self.relay_formatted_body and "formatted_body" in content:
+            tpl_args["message"] = content["formatted_body"]
+            content["formatted_body"] = Template(tpl).safe_substitute(tpl_args)
+        if self.relay_emote_to_text and content.msgtype == MessageType.EMOTE:
+            content.msgtype = MessageType.TEXT
+
+    async def get_displayname(self, user: br.BaseUser) -> str:
+        return await self.main_intent.get_room_displayname(self.mxid, user.mxid) or user.mxid
 
     async def check_dm_encryption(self) -> bool | None:
         try:
@@ -69,7 +163,9 @@ class BasePortal(ABC):
             await self.az.intent.join_room_by_id(self.mxid)
             if not self.encrypted:
                 await self.main_intent.send_state_event(
-                    self.mxid, EventType.ROOM_ENCRYPTION, Encryption(EncryptionAlgorithm.MEGOLM_V1)
+                    self.mxid,
+                    EventType.ROOM_ENCRYPTION,
+                    RoomEncryptionStateEventContent(EncryptionAlgorithm.MEGOLM_V1),
                 )
         except Exception:
             self.log.warning(f"Failed to enable end-to-bridge encryption", exc_info=True)
