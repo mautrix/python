@@ -362,7 +362,7 @@ class IntentAPI(StoreUpdatingAPI):
     ) -> EventID:
         await self._ensure_has_power_level_for(room_id, event_type)
 
-        if self.api.is_real_user:
+        if self.api.is_real_user and self.api.bridge_name is not None:
             content[DOUBLE_PUPPET_SOURCE_KEY] = self.api.bridge_name
 
         return await super().send_message_event(room_id, event_type, content, **kwargs)
@@ -371,13 +371,16 @@ class IntentAPI(StoreUpdatingAPI):
         self, room_id: RoomID, event_id: EventID, reason: str | None = None, **kwargs
     ) -> EventID:
         await self._ensure_has_power_level_for(room_id, EventType.ROOM_REDACTION)
-
-        extra_content = (
-            {DOUBLE_PUPPET_SOURCE_KEY: self.api.bridge_name} if self.api.is_real_user else {}
-        )
-
         return await super().redact(
-            room_id, event_id, reason, extra_content=extra_content, **kwargs
+            room_id,
+            event_id,
+            reason,
+            extra_content=(
+                {DOUBLE_PUPPET_SOURCE_KEY: self.api.bridge_name}
+                if self.api.is_real_user and self.api.bridge_name is not None
+                else {}
+            ),
+            **kwargs,
         )
 
     async def send_state_event(
