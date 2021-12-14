@@ -12,6 +12,7 @@ import time
 
 from mautrix import __optional_imports__
 from mautrix.appservice import AppService
+from mautrix.appservice.api.intent import DOUBLE_PUPPET_SOURCE_KEY
 from mautrix.errors import (
     DecryptionError,
     IntentError,
@@ -712,7 +713,7 @@ class BaseMatrixHandler:
             # If the event is marked as double puppeted and we can confirm that we are in fact
             # double puppeting that user ID, ignore it.
             if (
-                evt.content.get(self.az.real_user_content_key, False)
+                evt.content.get(DOUBLE_PUPPET_SOURCE_KEY) == self.az.bridge_name
                 and await self.bridge.get_double_puppet(evt.sender) is not None
             ):
                 return False

@@ -97,6 +97,8 @@ ENSURE_JOINED_METHODS = (
     ClientAPI.redact,
 )
 
+DOUBLE_PUPPET_SOURCE_KEY = "fi.mau.double_puppet_source"
+
 
 class IntentAPI(StoreUpdatingAPI):
     """
@@ -360,8 +362,8 @@ class IntentAPI(StoreUpdatingAPI):
     ) -> EventID:
         await self._ensure_has_power_level_for(room_id, event_type)
 
-        if self.api.is_real_user and self.api.real_user_content_key:
-            content[self.api.real_user_content_key] = True
+        if self.api.is_real_user:
+            content[DOUBLE_PUPPET_SOURCE_KEY] = self.api.bridge_name
 
         return await super().send_message_event(room_id, event_type, content, **kwargs)
 

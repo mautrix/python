@@ -43,7 +43,7 @@ class AppService(AppServiceServerMixin):
     bot_mxid: UserID
     default_ua: str
     default_http_retry_count: int
-    real_user_content_key: str
+    bridge_name: str | None
     state_store: ASStateStore
 
     transactions: set[str]
@@ -66,6 +66,7 @@ class AppService(AppServiceServerMixin):
         hs_token: str,
         bot_localpart: str,
         id: str,
+        bridge_name: str | None,
         loop: asyncio.AbstractEventLoop | None = None,
         log: logging.Logger | str | None = None,
         verify_ssl: bool = True,
@@ -73,7 +74,6 @@ class AppService(AppServiceServerMixin):
         tls_key: str | None = None,
         query_user: QueryFunc = None,
         query_alias: QueryFunc = None,
-        real_user_content_key: str | None = "net.maunium.appservice.puppet",
         state_store: ASStateStore = None,
         aiohttp_params: dict = None,
         ephemeral_events: bool = False,
@@ -94,7 +94,7 @@ class AppService(AppServiceServerMixin):
         self.bot_mxid = UserID(f"@{bot_localpart}:{domain}")
         self.default_ua = default_ua
         self.default_http_retry_count = default_http_retry_count
-        self.real_user_content_key: str = real_user_content_key
+        self.bridge_name = bridge_name
         if not state_store:
             file = state_store if isinstance(state_store, str) else "mx-state.json"
             self.state_store = FileASStateStore(path=file, binary=False)
@@ -162,7 +162,7 @@ class AppService(AppServiceServerMixin):
             log=self.log,
             token=self.as_token,
             state_store=self.state_store,
-            real_user_content_key=self.real_user_content_key,
+            bridge_name=self.bridge_name,
             client_session=self._http_session,
             default_retry_count=self.default_http_retry_count,
         ).bot_intent()

@@ -37,7 +37,7 @@ class AppServiceAPI(HTTPAPI):
     real_users: dict[str, AppServiceAPI]
 
     is_real_user: bool
-    real_user_content_key: str | None
+    bridge_name: str | None
 
     _bot_intent: as_api.IntentAPI | None
 
@@ -52,7 +52,7 @@ class AppServiceAPI(HTTPAPI):
         client_session: ClientSession = None,
         child: bool = False,
         real_user: bool = False,
-        real_user_content_key: str | None = None,
+        bridge_name: str | None = None,
         default_retry_count: int = None,
         loop: asyncio.AbstractEventLoop | None = None,
     ) -> None:
@@ -67,8 +67,8 @@ class AppServiceAPI(HTTPAPI):
             client_session: The aiohttp ClientSession to use.
             child: Whether or not this is instance is a child of another AppServiceAPI.
             real_user: Whether or not this is a real (non-appservice-managed) user.
-            real_user_content_key: The key to inject in outgoing message events sent through real
-                users.
+            bridge_name: The name of the bridge to put in the ``fi.mau.double_puppet_source`` field
+                in outgoing message events sent through real users.
         """
         self.base_log = log
         api_log = self.base_log.getChild("api").getChild(identity or "bot")
@@ -86,7 +86,7 @@ class AppServiceAPI(HTTPAPI):
         self._bot_intent = None
         self.state_store = state_store
         self.is_real_user = real_user
-        self.real_user_content_key = real_user_content_key
+        self.bridge_name = bridge_name
 
         if not child:
             self.txn_id = 0
@@ -146,7 +146,7 @@ class AppServiceAPI(HTTPAPI):
                 state_store=self.state_store,
                 client_session=self.session,
                 real_user=True,
-                real_user_content_key=self.real_user_content_key,
+                bridge_name=self.bridge_name,
                 default_retry_count=self.default_retry_count,
             )
             self.real_users[mxid] = child
@@ -253,7 +253,7 @@ class ChildAppServiceAPI(AppServiceAPI):
             parent.state_store,
             parent.session,
             child=True,
-            real_user_content_key=parent.real_user_content_key,
+            bridge_name=parent.bridge_name,
             default_retry_count=parent.default_retry_count,
         )
         self.parent = parent
