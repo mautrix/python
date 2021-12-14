@@ -631,7 +631,12 @@ class EventMethods(BaseClientAPI):
     # API reference: https://spec.matrix.org/v1.1/client-server-api/#redactions
 
     async def redact(
-        self, room_id: RoomID, event_id: EventID, reason: str = "", **kwargs
+        self,
+        room_id: RoomID,
+        event_id: EventID,
+        reason: str | None = None,
+        extra_content: dict[str, JSON] = {},
+        **kwargs,
     ) -> EventID:
         """
         Send an event to redact a previous event.
@@ -650,6 +655,7 @@ class EventMethods(BaseClientAPI):
             room_id: The ID of the room the event is in.
             event_id: The ID of the event to redact.
             reason: The reason for the event being redacted.
+            extra_content: Extra content for the event.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method. Used by
                 :class:`IntentAPI` to pass the timestamp massaging field to
                 :meth:`AppServiceAPI.request`.
@@ -658,8 +664,9 @@ class EventMethods(BaseClientAPI):
             The ID of the event that was sent to redact the other event.
         """
         url = Path.rooms[room_id].redact[event_id][self.api.get_txn_id()]
+        content = extra_content if not reason else {**extra_content, "reason": reason}
         resp = await self.api.request(
-            Method.PUT, url, content={"reason": reason}, **kwargs, metrics_method="redact"
+            Method.PUT, url, content=content, **kwargs, metrics_method="redact"
         )
         try:
             return resp["event_id"]

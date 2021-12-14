@@ -42,7 +42,6 @@ class Bridge(Program, ABC):
     matrix: br.BaseMatrixHandler
     repo_url: str
     markdown_version: str
-    real_user_content_key: str | None = None
     manhole: br.manhole.ManholeState | None
 
     def __init__(
@@ -52,14 +51,11 @@ class Bridge(Program, ABC):
         description: str = None,
         command: str = None,
         version: str = None,
-        real_user_content_key: str | None = None,
         config_class: Type[br.BaseBridgeConfig] = None,
         matrix_class: Type[br.BaseMatrixHandler] = None,
         state_store_class: Type[ASStateStore] = None,
     ) -> None:
         super().__init__(module, name, description, command, version, config_class)
-        if real_user_content_key:
-            self.real_user_content_key = real_user_content_key
         if matrix_class:
             self.matrix_class = matrix_class
         if state_store_class:
@@ -144,7 +140,7 @@ class Bridge(Program, ABC):
             log="mau.as",
             loop=self.loop,
             state_store=self.state_store,
-            real_user_content_key=self.real_user_content_key,
+            bridge_name=self.name,
             aiohttp_params={"client_max_size": self.config["appservice.max_body_size"] * mb},
         )
         self.az.app.router.add_post("/_matrix/app/com.beeper.bridge_state", self.get_bridge_state)
