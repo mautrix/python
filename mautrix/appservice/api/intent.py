@@ -367,6 +367,19 @@ class IntentAPI(StoreUpdatingAPI):
 
         return await super().send_message_event(room_id, event_type, content, **kwargs)
 
+    async def redact(
+        self, room_id: RoomID, event_id: EventID, reason: str | None = None, **kwargs
+    ) -> EventID:
+        await self._ensure_has_power_level_for(room_id, EventType.ROOM_REDACTION)
+
+        extra_content = (
+            {DOUBLE_PUPPET_SOURCE_KEY: self.api.bridge_name} if self.api.is_real_user else {}
+        )
+
+        return await super().redact(
+            room_id, event_id, reason, extra_content=extra_content, **kwargs
+        )
+
     async def send_state_event(
         self,
         room_id: RoomID,
