@@ -11,8 +11,7 @@ import sys
 import time
 
 from mautrix import __optional_imports__
-from mautrix.appservice import AppService
-from mautrix.appservice.api.intent import DOUBLE_PUPPET_SOURCE_KEY
+from mautrix.appservice import AppService, DOUBLE_PUPPET_SOURCE_KEY
 from mautrix.errors import (
     DecryptionError,
     IntentError,
