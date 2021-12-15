@@ -8,12 +8,12 @@ from collections import defaultdict
 from datetime import timedelta
 import asyncio
 import json
+import time
 
 from mautrix.errors import EncryptionError, SessionShareError
 from mautrix.types import (
     DeviceID,
     EncryptedMegolmEventContent,
-    EncryptedOlmEventContent,
     EncryptionAlgorithm,
     EventType,
     IdentityKey,
@@ -283,13 +283,19 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
         session_id: SessionID,
         session_key: str,
     ) -> None:
+        start = time.monotonic()
         session = InboundGroupSession(
             session_key=session_key,
             signing_key=signing_key,
             sender_key=sender_key,
             room_id=room_id,
         )
-        # TODO we should probably make sure session.id == session_id
+        olm_duration = time.monotonic() - start
+        if olm_duration > 5:
+            self.log.warning(f"Creating inbound group session took {olm_duration:.3f} seconds!")
+        if session_id != session.id:
+            self.log.warning(f"Mismatching session IDs: expected {session_id}, got {session.id}")
+            session_id = session.id
         await self.crypto_store.put_group_session(room_id, sender_key, session_id, session)
         self._mark_session_received(session_id)
         self.log.debug(f"Created inbound group session {room_id}/{sender_key}/{session_id}")

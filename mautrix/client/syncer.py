@@ -9,8 +9,8 @@ from typing import Any, Awaitable, Callable, Type
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from enum import Enum, Flag, auto
-from time import time
 import asyncio
+import time
 
 from mautrix.errors import MUnknownToken
 from mautrix.types import (
@@ -330,7 +330,7 @@ class Syncer(ABC):
             )
             # These aren't required by the spec, so make sure they're set
             raw_invite.setdefault("event_id", None)
-            raw_invite.setdefault("origin_server_ts", int(time() * 1000))
+            raw_invite.setdefault("origin_server_ts", int(time.time() * 1000))
 
             invite = StateEvent.deserialize(raw_invite)
             invite.unsigned.invite_room_state = [
@@ -420,11 +420,16 @@ class Syncer(ABC):
                 is_first = False
                 continue
             is_first = False
+            start = time.monotonic()
             try:
                 tasks = self.handle_sync(data)
                 await asyncio.gather(*tasks)
             except Exception:
                 self.log.exception("Sync handling errored")
+            finally:
+                duration = time.monotonic() - start
+                if duration > 10:
+                    self.log.warning(f"Sync handling took {duration:.3f} seconds")
 
     def stop(self) -> None:
         """

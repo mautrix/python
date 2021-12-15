@@ -35,6 +35,9 @@ class OlmDecryptionMachine(BaseOlmMachine):
         except KeyError:
             raise DecryptionError("olm event doesn't contain ciphertext for this device")
 
+        self.log.debug(
+            f"Decrypting to-device olm event from {evt.sender}/{evt.content.sender_key}"
+        )
         plaintext = await self._decrypt_olm_ciphertext(
             evt.sender, evt.content.sender_key, own_content
         )
@@ -52,6 +55,10 @@ class OlmDecryptionMachine(BaseOlmMachine):
             raise DecryptionError("mismatched recipient key in olm payload")
         decrypted_evt.sender_key = evt.content.sender_key
         decrypted_evt.source = evt
+        self.log.debug(
+            f"Successfully decrypted olm event from {evt.sender}/{decrypted_evt.sender_device} "
+            f"(sender key: {decrypted_evt.sender_key} into a {decrypted_evt.type}"
+        )
         return decrypted_evt
 
     async def _decrypt_olm_ciphertext(
