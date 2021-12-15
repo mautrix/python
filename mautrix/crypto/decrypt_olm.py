@@ -130,4 +130,4 @@ class OlmDecryptionMachine(BaseOlmMachine):
         return session
 
     async def _unwedge_session(self, sender: UserID, sender_key: IdentityKey) -> None:
-        pass
+        raise NotImplementedError()
