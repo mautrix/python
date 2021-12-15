@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, Optional, Tuple
+from __future__ import annotations
 
 from mautrix.client.state_store import SyncStore
 from mautrix.types import DeviceID, EventID, IdentityKey, RoomID, SessionID, SyncToken, UserID
@@ -13,14 +13,14 @@ from .abstract import CryptoStore
 
 
 class MemoryCryptoStore(CryptoStore, SyncStore):
-    _device_id: Optional[DeviceID]
-    _sync_token: Optional[SyncToken]
-    _account: Optional[OlmAccount]
-    _message_indices: Dict[Tuple[IdentityKey, SessionID, int], Tuple[EventID, int]]
-    _devices: Dict[UserID, Dict[DeviceID, DeviceIdentity]]
-    _olm_sessions: Dict[IdentityKey, List[Session]]
-    _inbound_sessions: Dict[Tuple[RoomID, IdentityKey, SessionID], InboundGroupSession]
-    _outbound_sessions: Dict[RoomID, OutboundGroupSession]
+    _device_id: DeviceID | None
+    _sync_token: SyncToken | None
+    _account: OlmAccount | None
+    _message_indices: dict[tuple[IdentityKey, SessionID, int], tuple[EventID, int]]
+    _devices: dict[UserID, dict[DeviceID, DeviceIdentity]]
+    _olm_sessions: dict[IdentityKey, list[Session]]
+    _inbound_sessions: dict[tuple[RoomID, IdentityKey, SessionID], InboundGroupSession]
+    _outbound_sessions: dict[RoomID, OutboundGroupSession]
 
     def __init__(self, account_id: str, pickle_key: str) -> None:
         self.account_id = account_id
@@ -35,7 +35,7 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
         self._inbound_sessions = {}
         self._outbound_sessions = {}
 
-    async def get_device_id(self) -> Optional[DeviceID]:
+    async def get_device_id(self) -> DeviceID | None:
         return self._device_id
 
     async def put_device_id(self, device_id: DeviceID) -> None:
@@ -62,10 +62,10 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
     async def has_session(self, key: IdentityKey) -> bool:
         return key in self._olm_sessions
 
-    async def get_sessions(self, key: IdentityKey) -> List[Session]:
+    async def get_sessions(self, key: IdentityKey) -> list[Session]:
         return self._olm_sessions.get(key, [])
 
-    async def get_latest_session(self, key: IdentityKey) -> Optional[Session]:
+    async def get_latest_session(self, key: IdentityKey) -> Session | None:
         try:
             return self._olm_sessions[key][-1]
         except (KeyError, IndexError):
@@ -104,13 +104,13 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
         # This is a no-op as the session object is the same one previously added.
         pass
 
-    async def get_outbound_group_session(self, room_id: RoomID) -> Optional[OutboundGroupSession]:
+    async def get_outbound_group_session(self, room_id: RoomID) -> OutboundGroupSession | None:
         return self._outbound_sessions.get(room_id)
 
     async def remove_outbound_group_session(self, room_id: RoomID) -> None:
         self._outbound_sessions.pop(room_id, None)
 
-    async def remove_outbound_group_sessions(self, rooms: List[RoomID]) -> None:
+    async def remove_outbound_group_sessions(self, rooms: list[RoomID]) -> None:
         for room_id in rooms:
             self._outbound_sessions.pop(room_id, None)
 
@@ -128,22 +128,22 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
             self._message_indices[(sender_key, session_id, index)] = (event_id, timestamp)
             return True
 
-    async def get_devices(self, user_id: UserID) -> Optional[Dict[DeviceID, DeviceIdentity]]:
+    async def get_devices(self, user_id: UserID) -> dict[DeviceID, DeviceIdentity] | None:
         return self._devices.get(user_id)
 
-    async def get_device(self, user_id: UserID, device_id: DeviceID) -> Optional[DeviceIdentity]:
+    async def get_device(self, user_id: UserID, device_id: DeviceID) -> DeviceIdentity | None:
         return self._devices.get(user_id, {}).get(device_id)
 
     async def find_device_by_key(
         self, user_id: UserID, identity_key: IdentityKey
-    ) -> Optional[DeviceIdentity]:
+    ) -> DeviceIdentity | None:
         for device in self._devices.get(user_id, {}).values():
             if device.identity_key == identity_key:
                 return device
         return None
 
-    async def put_devices(self, user_id: UserID, devices: Dict[DeviceID, DeviceIdentity]) -> None:
+    async def put_devices(self, user_id: UserID, devices: dict[DeviceID, DeviceIdentity]) -> None:
         self._devices[user_id] = devices
 
-    async def filter_tracked_users(self, users: List[UserID]) -> List[UserID]:
+    async def filter_tracked_users(self, users: list[UserID]) -> list[UserID]:
         return [user_id for user_id in users if user_id in self._devices]

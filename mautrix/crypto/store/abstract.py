@@ -46,7 +46,7 @@ class CryptoStore(ABC):
     """The pickle key to use when pickling Olm objects."""
 
     @abstractmethod
-    async def get_device_id(self) -> Optional[DeviceID]:
+    async def get_device_id(self) -> DeviceID | None:
         """
         Get the device ID corresponding to this account_id
 
@@ -89,7 +89,7 @@ class CryptoStore(ABC):
         """Insert or update the OlmAccount in the store."""
 
     @abstractmethod
-    async def get_account(self) -> Optional[OlmAccount]:
+    async def get_account(self) -> OlmAccount | None:
         """Get the OlmAccount that was previously inserted with :meth:`put_account`.
         If no account has been inserted, this must return ``None``."""
 
@@ -107,7 +107,7 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def get_sessions(self, key: IdentityKey) -> List[Session]:
+    async def get_sessions(self, key: IdentityKey) -> list[Session]:
         """
         Get all Olm sessions in the store for the specific device.
 
@@ -120,7 +120,7 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def get_latest_session(self, key: IdentityKey) -> Optional[Session]:
+    async def get_latest_session(self, key: IdentityKey) -> Session | None:
         """
         Get the Olm session with the highest session ID (lexiographically sorting) for a specific
         device. It's usually safe to return the most recently added session if sorting by session
@@ -177,7 +177,7 @@ class CryptoStore(ABC):
     @abstractmethod
     async def get_group_session(
         self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
-    ) -> Optional[InboundGroupSession]:
+    ) -> InboundGroupSession | None:
         """
         Get an inbound Megolm group session that was previously inserted with
         :meth:`put_group_session`.
@@ -233,7 +233,7 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def get_outbound_group_session(self, room_id: RoomID) -> Optional[OutboundGroupSession]:
+    async def get_outbound_group_session(self, room_id: RoomID) -> OutboundGroupSession | None:
         """
         Get the stored outbound Megolm session from the store.
 
@@ -256,7 +256,7 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def remove_outbound_group_sessions(self, rooms: List[RoomID]) -> None:
+    async def remove_outbound_group_sessions(self, rooms: list[RoomID]) -> None:
         """
         Remove the stored outbound Megolm session for multiple rooms.
 
@@ -299,7 +299,7 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def get_devices(self, user_id: UserID) -> Optional[Dict[DeviceID, DeviceIdentity]]:
+    async def get_devices(self, user_id: UserID) -> dict[DeviceID, DeviceIdentity] | None:
         """
         Get all devices for a given user.
 
@@ -313,7 +313,7 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def get_device(self, user_id: UserID, device_id: DeviceID) -> Optional[DeviceIdentity]:
+    async def get_device(self, user_id: UserID, device_id: DeviceID) -> DeviceIdentity | None:
         """
         Get a specific device identity.
 
@@ -328,7 +328,7 @@ class CryptoStore(ABC):
     @abstractmethod
     async def find_device_by_key(
         self, user_id: UserID, identity_key: IdentityKey
-    ) -> Optional[DeviceIdentity]:
+    ) -> DeviceIdentity | None:
         """
         Find a specific device identity based on the identity key.
 
@@ -341,7 +341,7 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def put_devices(self, user_id: UserID, devices: Dict[DeviceID, DeviceIdentity]) -> None:
+    async def put_devices(self, user_id: UserID, devices: dict[DeviceID, DeviceIdentity]) -> None:
         """
         Replace the stored device list for a specific user.
 
@@ -351,7 +351,7 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def filter_tracked_users(self, users: List[UserID]) -> List[UserID]:
+    async def filter_tracked_users(self, users: list[UserID]) -> list[UserID]:
         """
         Filter a list of user IDs to only include users whose device lists are being tracked.
 

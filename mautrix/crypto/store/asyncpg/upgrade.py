@@ -3,7 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import List
+from __future__ import annotations
+
 import logging
 
 from asyncpg import Connection
@@ -144,7 +145,7 @@ async def upgrade_v2(conn: Connection, scheme: str) -> None:
         )
     else:
 
-        async def add_account_id_column(table: str, pkey_columns: List[str]) -> None:
+        async def add_account_id_column(table: str, pkey_columns: list[str]) -> None:
             await conn.execute(f"ALTER TABLE {table} ADD COLUMN account_id VARCHAR(255)")
             await conn.execute(f"UPDATE {table} SET account_id=''")
             await conn.execute(f"ALTER TABLE {table} ALTER COLUMN account_id SET NOT NULL")

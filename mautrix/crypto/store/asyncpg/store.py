@@ -3,7 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, Optional
+from __future__ import annotations
+
+from typing import cast
 from collections import defaultdict
 from datetime import timedelta
 
@@ -40,10 +42,10 @@ class PgCryptoStore(CryptoStore, SyncStore):
     pickle_key: str
     log: TraceLogger
 
-    _sync_token: Optional[SyncToken]
-    _device_id: Optional[DeviceID]
-    _account: Optional[OlmAccount]
-    _olm_cache: Dict[IdentityKey, Dict[SessionID, Session]]
+    _sync_token: SyncToken | None
+    _device_id: DeviceID | None
+    _account: OlmAccount | None
+    _olm_cache: dict[IdentityKey, dict[SessionID, Session]]
 
     def __init__(self, account_id: str, pickle_key: str, db: Database) -> None:
         self.db = db
@@ -61,7 +63,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
             for table in tables:
                 await conn.execute(f"DELETE FROM {table} WHERE account_id=$1", self.account_id)
 
-    async def get_device_id(self) -> Optional[DeviceID]:
+    async def get_device_id(self) -> DeviceID | None:
         device_id = await self.db.fetchval(
             "SELECT device_id FROM crypto_account WHERE account_id=$1", self.account_id
         )
@@ -128,7 +130,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
         )
         return val is not None
 
-    async def get_sessions(self, key: IdentityKey) -> List[Session]:
+    async def get_sessions(self, key: IdentityKey) -> list[Session]:
         rows = await self.db.fetch(
             "SELECT session_id, session, created_at, last_used FROM crypto_olm_session "
             "WHERE sender_key=$1 AND account_id=$2 ORDER BY session_id",
@@ -149,7 +151,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
             sessions.append(sess)
         return sessions
 
-    async def get_latest_session(self, key: IdentityKey) -> Optional[Session]:
+    async def get_latest_session(self, key: IdentityKey) -> Session | None:
         row = await self.db.fetchrow(
             "SELECT session_id, session, created_at, last_used FROM crypto_olm_session "
             "WHERE sender_key=$1 AND account_id=$2 ORDER BY session_id DESC LIMIT 1",
@@ -170,7 +172,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
 
     async def add_session(self, key: IdentityKey, session: Session) -> None:
         pickle = session.pickle(self.pickle_key)
-        self._olm_cache[key][session.id] = session
+        self._olm_cache[key][cast(SessionID, session.id)] = session
         await self.db.execute(
             "INSERT INTO crypto_olm_session (session_id, sender_key, session, "
             "created_at, last_used, account_id) VALUES ($1, $2, $3, $4, $5, $6)",
@@ -217,7 +219,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
 
     async def get_group_session(
         self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
-    ) -> Optional[InboundGroupSession]:
+    ) -> InboundGroupSession | None:
         row = await self.db.fetchrow(
             "SELECT signing_key, session, forwarding_chains FROM crypto_megolm_inbound_session "
             "WHERE room_id=$1 AND sender_key=$2 AND session_id=$3 AND account_id=$4",
@@ -286,7 +288,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
             self.account_id,
         )
 
-    async def get_outbound_group_session(self, room_id: RoomID) -> Optional[OutboundGroupSession]:
+    async def get_outbound_group_session(self, room_id: RoomID) -> OutboundGroupSession | None:
         row = await self.db.fetchrow(
             "SELECT room_id, session_id, session, shared, max_messages, message_count, max_age, "
             "       created_at, last_used "
@@ -318,7 +320,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
             self.account_id,
         )
 
-    async def remove_outbound_group_sessions(self, rooms: List[RoomID]) -> None:
+    async def remove_outbound_group_sessions(self, rooms: list[RoomID]) -> None:
         if self.db.scheme == "postgres":
             await self.db.execute(
                 "DELETE FROM crypto_megolm_outbound_session "
@@ -386,7 +388,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
             )
             return True
 
-    async def get_devices(self, user_id: UserID) -> Optional[Dict[DeviceID, DeviceIdentity]]:
+    async def get_devices(self, user_id: UserID) -> dict[DeviceID, DeviceIdentity] | None:
         tracked_user_id = await self.db.fetchval(
             "SELECT user_id FROM crypto_tracked_user WHERE user_id=$1", user_id
         )
@@ -410,7 +412,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
             )
         return result
 
-    async def get_device(self, user_id: UserID, device_id: DeviceID) -> Optional[DeviceIdentity]:
+    async def get_device(self, user_id: UserID, device_id: DeviceID) -> DeviceIdentity | None:
         row = await self.db.fetchrow(
             "SELECT identity_key, signing_key, trust, deleted, name "
             "FROM crypto_device WHERE user_id=$1 AND device_id=$2",
@@ -431,7 +433,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
 
     async def find_device_by_key(
         self, user_id: UserID, identity_key: IdentityKey
-    ) -> Optional[DeviceIdentity]:
+    ) -> DeviceIdentity | None:
         row = await self.db.fetchrow(
             "SELECT device_id, signing_key, trust, deleted, name "
             "FROM crypto_device WHERE user_id=$1 AND identity_key=$2",
@@ -450,7 +452,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
             deleted=row["deleted"],
         )
 
-    async def put_devices(self, user_id: UserID, devices: Dict[DeviceID, DeviceIdentity]) -> None:
+    async def put_devices(self, user_id: UserID, devices: dict[DeviceID, DeviceIdentity]) -> None:
         data = [
             (
                 user_id,
@@ -489,7 +491,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
                     data,
                 )
 
-    async def filter_tracked_users(self, users: List[UserID]) -> List[UserID]:
+    async def filter_tracked_users(self, users: list[UserID]) -> list[UserID]:
         if self.db.scheme == "postgres":
             rows = await self.db.fetch(
                 "SELECT user_id FROM crypto_tracked_user WHERE user_id = ANY($1)", users
