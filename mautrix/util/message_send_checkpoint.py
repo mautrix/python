@@ -22,6 +22,8 @@ class MessageSendCheckpointStatus(SerializableEnum):
     SUCCESS = "SUCCESS"
     WILL_RETRY = "WILL_RETRY"
     PERM_FAILURE = "PERM_FAILURE"
+    UNSUPPORTED = "UNSUPPORTED"
+    TIMEOUT = "TIMEOUT"
 
 
 class MessageSendCheckpointReportedBy(SerializableEnum):
