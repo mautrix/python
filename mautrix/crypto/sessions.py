@@ -6,6 +6,7 @@
 from typing import List, Optional, Set, Tuple, cast
 from datetime import datetime, timedelta
 
+from _libolm import ffi, lib
 import olm
 
 from mautrix.errors import EncryptionError
@@ -73,6 +74,18 @@ class Session(olm.Session):
             ),
             body=result.ciphertext,
         )
+
+    def describe(self) -> str:
+        parent = super()
+        if hasattr(parent, "describe"):
+            return parent.describe()
+        elif hasattr(lib, "olm_session_describe"):
+            describe_length = 600
+            describe_buffer = ffi.new("char[]", describe_length)
+            lib.olm_session_describe(self._session, describe_buffer, describe_length)
+            return ffi.string(describe_buffer).decode("utf-8")
+        else:
+            return "describe not supported"
 
 
 class InboundGroupSession(olm.InboundGroupSession):
