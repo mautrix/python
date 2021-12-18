@@ -46,16 +46,16 @@ class TxnConnection(aiosqlite.Connection):
         return await super().execute(query, args)
 
     async def execute(self, query: str, *args: Any, timeout: float | None = None) -> None:
-        await super().execute(query, args)
+        await self._execute(query, args)
 
     async def fetch(
         self, query: str, *args: Any, timeout: float | None = None
     ) -> list[sqlite3.Row]:
-        async with super().execute(query, args) as cursor:
+        async with self._execute(query, args) as cursor:
             return list(await cursor.fetchall())
 
     async def fetchrow(self, query: str, *args: Any, timeout: float | None = None) -> sqlite3.Row:
-        async with super().execute(query, args) as cursor:
+        async with self._execute(query, args) as cursor:
             return await cursor.fetchone()
 
     async def fetchval(
