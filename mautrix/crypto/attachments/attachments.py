@@ -18,7 +18,8 @@
 """Matrix encryption algorithms for file uploads."""
 
 from typing import Any, Dict, Generator, Iterable, Tuple, Union
-from binascii import Error as BinAsciiError
+import binascii
+import struct
 
 import unpaddedbase64
 
@@ -64,16 +65,19 @@ def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str) -> bytes
 
     try:
         byte_key: bytes = unpaddedbase64.decode_base64(key)
-    except (BinAsciiError, TypeError):
+    except (binascii.Error, TypeError):
         raise DecryptionError("Error decoding key.")
 
     try:
-        # Drop last 8 bytes, which are 0
-        byte_iv: bytes = unpaddedbase64.decode_base64(iv)[:8]
-    except (BinAsciiError, TypeError):
+        byte_iv: bytes = unpaddedbase64.decode_base64(iv)
+        prefix = byte_iv[:8]
+        # A non-zero IV counter is not spec-compliant, but some clients still do it,
+        # so decode the counter part too.
+        initial_value = struct.unpack(">Q", byte_iv[8:])[0]
+    except (binascii.Error, TypeError, IndexError, struct.error):
         raise DecryptionError("Error decoding initial values.")
 
-    ctr = Counter.new(64, prefix=byte_iv, initial_value=0)
+    ctr = Counter.new(64, prefix=prefix, initial_value=initial_value)
 
     try:
         cipher = AES.new(byte_key, AES.MODE_CTR, counter=ctr)
