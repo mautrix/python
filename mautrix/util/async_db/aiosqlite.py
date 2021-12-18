@@ -11,11 +11,15 @@ from urllib.parse import urlparse
 import asyncio
 import logging
 import sqlite3
+import re
 
 import aiosqlite
 
 from .database import Database
 from .upgrade import UpgradeTable
+
+
+POSITIONAL_PARAM_PATTERN = re.compile(r"\$(\d+)")
 
 
 class TxnConnection(aiosqlite.Connection):
@@ -37,6 +41,10 @@ class TxnConnection(aiosqlite.Connection):
             raise
         else:
             await self.commit()
+
+    async def _execute(self, query: str, *args: Any) -> aiosqlite.Cursor:
+        query = POSITIONAL_PARAM_PATTERN.sub(r"?\1", query)
+        return await super().execute(query, args)
 
     async def execute(self, query: str, *args: Any, timeout: float | None = None) -> None:
         await super().execute(query, args)
