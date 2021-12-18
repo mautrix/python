@@ -5,17 +5,14 @@
 # any purpose with or without fee is hereby granted, provided that the
 # above copyright notice and this permission notice appear in all copies.
 #
-# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-# SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
-# RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
-# CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-# CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+# Copyright (c) 2021 Tulir Asokan
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
 
-"""Matrix async encryption/decryption functions for file uploads."""
-
-from typing import Any, AsyncGenerator, AsyncIterable, Dict, Iterable, Union
+from typing import AsyncGenerator, AsyncIterable, Iterable
 from functools import partial
 import asyncio
 import io
@@ -24,17 +21,10 @@ from mautrix.types import EncryptedFile
 
 from .attachments import AES, SHA256, Counter, Random, _get_decryption_info
 
-AsyncDataT = Union[
-    bytes,
-    Iterable[bytes],
-    AsyncIterable[bytes],
-    io.BufferedIOBase,
-]
 
-_EncryptedReturnT = AsyncGenerator[Union[bytes, EncryptedFile], None]
-
-
-async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
+async def async_encrypt_attachment(
+    data: bytes | Iterable[bytes] | AsyncIterable[bytes] | io.BufferedIOBase,
+) -> AsyncGenerator[bytes | EncryptedFile, None]:
     """Async generator to encrypt data in order to send it as an encrypted
     attachment.
 
@@ -82,7 +72,7 @@ async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
 
 
 async def async_generator_from_data(
-    data: AsyncDataT,
+    data: bytes | Iterable[bytes] | AsyncIterable[bytes] | io.BufferedIOBase,
     chunk_size: int = 4 * 1024,
 ) -> AsyncGenerator[bytes, None]:
     if isinstance(data, bytes):

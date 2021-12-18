@@ -1,23 +1,14 @@
-# -*- coding: utf-8 -*-
+# Copyright 2018 Zil0 (under the Apache 2.0 license)
+# Copyright © 2019 Damir Jelić <poljar@termina.org.uk> (under the Apache 2.0 license)
+# Copyright (c) 2021 Tulir Asokan
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-# Copyright 2018 Zil0
-# Copyright © 2019 Damir Jelić <poljar@termina.org.uk>
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-# http://www.apache.org/licenses/LICENSE-2.0
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+from __future__ import annotations
 
-# This function is part of the matrix-python-sdk and is distributed
-# under the APACHE 2.0 licence.
-
-"""Matrix encryption algorithms for file uploads."""
-
-from typing import Any, Dict, Generator, Iterable, Tuple, Union
+from typing import Generator, Iterable
 import binascii
 import struct
 
@@ -36,8 +27,6 @@ except ImportError:
     from Cryptodome.Cipher import AES
     from Cryptodome.Hash import SHA256
     from Cryptodome.Util import Counter
-
-DataT = Union[bytes, Iterable[bytes]]
 
 
 def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str) -> bytes:
@@ -87,7 +76,7 @@ def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str) -> bytes
     return cipher.decrypt(ciphertext)
 
 
-def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, EncryptedFile]:
+def encrypt_attachment(plaintext: bytes) -> tuple[bytes, EncryptedFile]:
     """Encrypt data in order to send it as an encrypted attachment.
 
     Args:
@@ -102,8 +91,8 @@ def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, EncryptedFile]:
 
 
 def encrypted_attachment_generator(
-    data: DataT,
-) -> Generator[Union[bytes, EncryptedFile], None, None]:
+    data: bytes | Iterable[bytes],
+) -> Generator[bytes | EncryptedFile, None, None]:
     """Generator to encrypt data in order to send it as an encrypted
     attachment.
 
