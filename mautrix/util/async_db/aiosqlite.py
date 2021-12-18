@@ -10,14 +10,13 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 import asyncio
 import logging
-import sqlite3
 import re
+import sqlite3
 
 import aiosqlite
 
 from .database import Database
 from .upgrade import UpgradeTable
-
 
 POSITIONAL_PARAM_PATTERN = re.compile(r"\$(\d+)")
 
