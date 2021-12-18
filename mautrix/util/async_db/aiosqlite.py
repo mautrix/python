@@ -41,21 +41,21 @@ class TxnConnection(aiosqlite.Connection):
         else:
             await self.commit()
 
-    async def _execute(self, query: str, *args: Any) -> aiosqlite.Cursor:
+    def __execute(self, query: str, *args: Any):
         query = POSITIONAL_PARAM_PATTERN.sub(r"?\1", query)
-        return await super().execute(query, args)
+        return super().execute(query, args)
 
     async def execute(self, query: str, *args: Any, timeout: float | None = None) -> None:
-        await self._execute(query, args)
+        await self.__execute(query, *args)
 
     async def fetch(
         self, query: str, *args: Any, timeout: float | None = None
     ) -> list[sqlite3.Row]:
-        async with self._execute(query, args) as cursor:
+        async with self.__execute(query, *args) as cursor:
             return list(await cursor.fetchall())
 
     async def fetchrow(self, query: str, *args: Any, timeout: float | None = None) -> sqlite3.Row:
-        async with self._execute(query, args) as cursor:
+        async with self.__execute(query, *args) as cursor:
             return await cursor.fetchone()
 
     async def fetchval(
