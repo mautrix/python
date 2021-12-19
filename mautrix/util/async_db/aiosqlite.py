@@ -48,6 +48,10 @@ class TxnConnection(aiosqlite.Connection):
     async def execute(self, query: str, *args: Any, timeout: float | None = None) -> None:
         await self.__execute(query, *args)
 
+    async def executemany(self, query: str, *args: Any, timeout: float | None = None) -> None:
+        query = POSITIONAL_PARAM_PATTERN.sub(r"?\1", query)
+        await super().executemany(query, *args)
+
     async def fetch(
         self, query: str, *args: Any, timeout: float | None = None
     ) -> list[sqlite3.Row]:
