@@ -66,14 +66,12 @@ class MatrixParser(Generic[T]):
     ignore_less_relevant_links: bool = True
     exclude_plaintext_attrib: str = "data-mautrix-exclude-plaintext"
 
-    @classmethod
-    def list_bullet(cls, depth: int) -> str:
-        return cls.list_bullets[(depth - 1) % len(cls.list_bullets)] + " "
+    def list_bullet(self, depth: int) -> str:
+        return self.list_bullets[(depth - 1) % len(self.list_bullets)] + " "
 
-    @classmethod
-    def list_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
+    async def list_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
         ordered: bool = node.tag == "ol"
-        tagged_children: list[tuple[T, str]] = cls.node_to_tagged_fstrings(node, ctx)
+        tagged_children: list[tuple[T, str]] = await self.node_to_tagged_fstrings(node, ctx)
         counter: int = 1
         indent_length: int = 0
         if ordered:
@@ -94,112 +92,102 @@ class MatrixParser(Generic[T]):
                 prefix = f"{counter}. "
                 counter += 1
             else:
-                prefix = cls.list_bullet(ctx.ul_depth)
+                prefix = self.list_bullet(ctx.ul_depth)
             child = child.prepend(prefix)
             parts = child.split("\n")
             parts = parts[:1] + [part.prepend(indent) for part in parts[1:]]
-            child = cls.fs.join(parts, "\n")
+            child = self.fs.join(parts, "\n")
             children.append(child)
-        return cls.fs.join(children, "\n")
+        return self.fs.join(children, "\n")
 
-    @classmethod
-    def blockquote_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
-        msg = cls.tag_aware_parse_node(node, ctx)
-        return msg.format(cls.e.BLOCKQUOTE)
+    async def blockquote_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
+        msg = await self.tag_aware_parse_node(node, ctx)
+        return msg.format(self.e.BLOCKQUOTE)
 
-    @classmethod
-    def header_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
-        children = cls.node_to_fstrings(node, ctx)
+    async def header_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
+        children = await self.node_to_fstrings(node, ctx)
         length = int(node.tag[1])
-        return cls.fs.join(children, "").format(cls.e.HEADER, size=length)
+        return self.fs.join(children, "").format(self.e.HEADER, size=length)
 
-    @classmethod
-    def basic_format_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
-        msg = cls.tag_aware_parse_node(node, ctx)
-        if cls.exclude_plaintext_attrib in node.attrib:
+    async def basic_format_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
+        msg = await self.tag_aware_parse_node(node, ctx)
+        if self.exclude_plaintext_attrib in node.attrib:
             return msg
         if node.tag in ("b", "strong"):
-            msg = msg.format(cls.e.BOLD)
+            msg = msg.format(self.e.BOLD)
         elif node.tag in ("i", "em"):
-            msg = msg.format(cls.e.ITALIC)
+            msg = msg.format(self.e.ITALIC)
         elif node.tag in ("s", "strike", "del"):
-            msg = msg.format(cls.e.STRIKETHROUGH)
+            msg = msg.format(self.e.STRIKETHROUGH)
         elif node.tag in ("u", "ins"):
-            msg = msg.format(cls.e.UNDERLINE)
+            msg = msg.format(self.e.UNDERLINE)
         return msg
 
-    @classmethod
-    def link_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
-        msg = cls.tag_aware_parse_node(node, ctx)
+    async def link_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
+        msg = await self.tag_aware_parse_node(node, ctx)
         href = node.attrib.get("href", "")
         if not href:
             return msg
 
         if href.startswith("mailto:"):
-            return cls.fs(href[len("mailto:") :]).format(cls.e.EMAIL)
+            return self.fs(href[len("mailto:") :]).format(self.e.EMAIL)
 
-        mention = cls.mention_regex.match(href)
+        mention = self.mention_regex.match(href)
         if mention:
-            new_msg = cls.user_pill_to_fstring(msg, UserID(mention.group(1)))
+            new_msg = await self.user_pill_to_fstring(msg, UserID(mention.group(1)))
             if new_msg:
                 return new_msg
 
-        room = cls.room_regex.match(href)
+        room = self.room_regex.match(href)
         if room:
-            new_msg = cls.room_pill_to_fstring(msg, RoomAlias(room.group(1)))
+            new_msg = await self.room_pill_to_fstring(msg, RoomAlias(room.group(1)))
             if new_msg:
                 return new_msg
 
         # Custom attribute to tell the parser that the link isn't relevant and
         # shouldn't be included in plaintext representation.
-        if cls.ignore_less_relevant_links and cls.exclude_plaintext_attrib in node.attrib:
+        if self.ignore_less_relevant_links and self.exclude_plaintext_attrib in node.attrib:
             return msg
 
-        return cls.url_to_fstring(msg, href)
+        return await self.url_to_fstring(msg, href)
 
-    @classmethod
-    def url_to_fstring(cls, msg: T, url: str) -> T | None:
-        return msg.format(cls.e.URL, url=url)
+    async def url_to_fstring(self, msg: T, url: str) -> T | None:
+        return msg.format(self.e.URL, url=url)
 
-    @classmethod
-    def user_pill_to_fstring(cls, msg: T, user_id: UserID) -> T | None:
-        return msg.format(cls.e.USER_MENTION, user_id=user_id)
+    async def user_pill_to_fstring(self, msg: T, user_id: UserID) -> T | None:
+        return msg.format(self.e.USER_MENTION, user_id=user_id)
 
-    @classmethod
-    def room_pill_to_fstring(cls, msg: T, room_alias: RoomAlias) -> T | None:
-        return msg.format(cls.e.ROOM_MENTION, room_alias=room_alias)
+    async def room_pill_to_fstring(self, msg: T, room_alias: RoomAlias) -> T | None:
+        return msg.format(self.e.ROOM_MENTION, room_alias=room_alias)
 
-    @classmethod
-    def custom_node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T | None:
+    async def custom_node_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T | None:
         return None
 
-    @classmethod
-    def color_to_fstring(cls, node: HTMLNode, ctx: RecursionContext, color: str) -> T:
-        return cls.tag_aware_parse_node(node, ctx)
+    async def color_to_fstring(self, node: HTMLNode, ctx: RecursionContext, color: str) -> T:
+        return await self.tag_aware_parse_node(node, ctx)
 
-    @classmethod
-    def node_to_fstring(cls, node: HTMLNode, ctx: RecursionContext) -> T:
-        custom = cls.custom_node_to_fstring(node, ctx)
+    async def node_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
+        custom = await self.custom_node_to_fstring(node, ctx)
         if custom:
             return custom
         elif node.tag == "mx-reply":
-            return cls.fs("")
+            return self.fs("")
         elif node.tag == "blockquote":
-            return cls.blockquote_to_fstring(node, ctx)
+            return await self.blockquote_to_fstring(node, ctx)
         elif node.tag == "ol":
-            return cls.list_to_fstring(node, ctx)
+            return await self.list_to_fstring(node, ctx)
         elif node.tag == "ul":
-            return cls.list_to_fstring(node, ctx.enter_list())
+            return await self.list_to_fstring(node, ctx.enter_list())
         elif node.tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
-            return cls.header_to_fstring(node, ctx)
+            return await self.header_to_fstring(node, ctx)
         elif node.tag == "br":
-            return cls.fs("\n")
+            return self.fs("\n")
         elif node.tag in ("b", "strong", "i", "em", "s", "del", "u", "ins"):
-            return cls.basic_format_to_fstring(node, ctx)
+            return await self.basic_format_to_fstring(node, ctx)
         elif node.tag == "a":
-            return cls.link_to_fstring(node, ctx)
+            return await self.link_to_fstring(node, ctx)
         elif node.tag == "p":
-            return cls.tag_aware_parse_node(node, ctx).append("\n")
+            return (await self.tag_aware_parse_node(node, ctx)).append("\n")
         elif node.tag in ("font", "span"):
             try:
                 color = node.attrib["color"]
@@ -209,7 +197,7 @@ class MatrixParser(Generic[T]):
                 except KeyError:
                     color = None
             if color:
-                return cls.color_to_fstring(node, ctx, color)
+                return await self.color_to_fstring(node, ctx, color)
         elif node.tag == "pre":
             lang = ""
             try:
@@ -218,42 +206,40 @@ class MatrixParser(Generic[T]):
                     lang = node.attrib["class"][len("language-") :]
             except (IndexError, KeyError):
                 pass
-            return cls.parse_node(node, ctx.enter_code_block()).format(
-                cls.e.PREFORMATTED, language=lang
+            return (await self.parse_node(node, ctx.enter_code_block())).format(
+                self.e.PREFORMATTED, language=lang
             )
         elif node.tag == "code":
-            return cls.parse_node(node, ctx.enter_code_block()).format(cls.e.INLINE_CODE)
-        return cls.tag_aware_parse_node(node, ctx)
+            return (await self.parse_node(node, ctx.enter_code_block())).format(self.e.INLINE_CODE)
+        return await self.tag_aware_parse_node(node, ctx)
 
-    @classmethod
-    def text_to_fstring(cls, text: str, ctx: RecursionContext) -> T:
+    async def text_to_fstring(self, text: str, ctx: RecursionContext) -> T:
         if ctx.strip_linebreaks:
             text = text.replace("\n", "")
-        return cls.fs(text)
+        return self.fs(text)
 
-    @classmethod
-    def node_to_tagged_fstrings(cls, node: HTMLNode, ctx: RecursionContext) -> list[tuple[T, str]]:
+    async def node_to_tagged_fstrings(
+        self, node: HTMLNode, ctx: RecursionContext
+    ) -> list[tuple[T, str]]:
         output = []
 
         if node.text:
-            output.append((cls.text_to_fstring(node.text, ctx), "text"))
+            output.append((await self.text_to_fstring(node.text, ctx), "text"))
         for child in node:
-            output.append((cls.node_to_fstring(child, ctx), child.tag))
+            output.append((await self.node_to_fstring(child, ctx), child.tag))
             if child.tail:
-                output.append((cls.text_to_fstring(child.tail, ctx), "text"))
+                output.append((await self.text_to_fstring(child.tail, ctx), "text"))
         return output
 
-    @classmethod
-    def node_to_fstrings(cls, node: HTMLNode, ctx: RecursionContext) -> list[T]:
-        return [msg for (msg, tag) in cls.node_to_tagged_fstrings(node, ctx)]
+    async def node_to_fstrings(self, node: HTMLNode, ctx: RecursionContext) -> list[T]:
+        return [msg for (msg, tag) in await self.node_to_tagged_fstrings(node, ctx)]
 
-    @classmethod
-    def tag_aware_parse_node(cls, node: HTMLNode, ctx: RecursionContext) -> T:
-        msgs = cls.node_to_tagged_fstrings(node, ctx)
-        output = cls.fs()
+    async def tag_aware_parse_node(self, node: HTMLNode, ctx: RecursionContext) -> T:
+        msgs = await self.node_to_tagged_fstrings(node, ctx)
+        output = self.fs()
         prev_was_block = False
         for msg, tag in msgs:
-            if tag in cls.block_tags:
+            if tag in self.block_tags:
                 msg = msg.append("\n")
                 if not prev_was_block:
                     msg = msg.prepend("\n")
@@ -261,11 +247,11 @@ class MatrixParser(Generic[T]):
             output = output.append(msg)
         return output.trim()
 
-    @classmethod
-    def parse_node(cls, node: HTMLNode, ctx: RecursionContext) -> T:
-        return cls.fs.join(cls.node_to_fstrings(node, ctx))
+    async def parse_node(self, node: HTMLNode, ctx: RecursionContext) -> T:
+        return self.fs.join(await self.node_to_fstrings(node, ctx))
 
-    @classmethod
-    def parse(cls, data: str) -> T:
-        msg = cls.node_to_fstring(cls.read_html(f"<body>{data}</body>"), RecursionContext())
+    async def parse(self, data: str) -> T:
+        msg = await self.node_to_fstring(
+            self.read_html(f"<body>{data}</body>"), RecursionContext()
+        )
         return msg

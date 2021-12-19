@@ -429,7 +429,7 @@ class EventMethods(BaseClientAPI):
         )
         return self.send_message_event(room_id, EventType.REACTION, content, **kwargs)
 
-    def send_text(
+    async def send_text(
         self,
         room_id: RoomID,
         text: str | None = None,
@@ -437,7 +437,7 @@ class EventMethods(BaseClientAPI):
         msgtype: MessageType = MessageType.TEXT,
         relates_to: RelatesTo | None = None,
         **kwargs,
-    ) -> Awaitable[EventID]:
+    ) -> EventID:
         """
         Send a text message to a room.
 
@@ -459,7 +459,7 @@ class EventMethods(BaseClientAPI):
         """
         if html is not None:
             if text is None:
-                text = parse_html(html)
+                text = await parse_html(html)
             content = TextMessageEventContent(
                 msgtype=msgtype, body=text, format=Format.HTML, formatted_body=html
             )
@@ -469,7 +469,7 @@ class EventMethods(BaseClientAPI):
             raise TypeError("send_text() requires either text or html to be set")
         if relates_to:
             content.relates_to = relates_to
-        return self.send_message(room_id, content, **kwargs)
+        return await self.send_message(room_id, content, **kwargs)
 
     def send_notice(
         self,

@@ -9,5 +9,5 @@ from .markdown_string import MarkdownString
 from .parser import MatrixParser, RecursionContext
 
 
-def parse_html(input_html: str) -> str:
-    return MatrixParser.parse(input_html).text
+async def parse_html(input_html: str) -> str:
+    return (await MatrixParser().parse(input_html)).text
