@@ -214,15 +214,30 @@ class BasePortal(ABC):
         except MatrixError:
             members = []
         for user_id in members:
+            if user_id == intent.mxid:
+                continue
+
             puppet = await cls.bridge.get_puppet(user_id, create=False)
-            if user_id != intent.mxid and (not puppets_only or puppet):
-                try:
-                    if puppet:
-                        await puppet.intent.leave_room(room_id)
+            if puppet:
+                await puppet.default_mxid_intent.leave_room(room_id)
+                continue
+
+            if not puppets_only:
+                custom_puppet = await cls.bridge.get_double_puppet(user_id)
+                left = False
+                if custom_puppet:
+                    try:
+                        await custom_puppet.intent.leave_room(room_id)
+                        await custom_puppet.intent.forget_room(room_id)
+                    except MatrixError:
+                        pass
                     else:
+                        left = True
+                if not left:
+                    try:
                         await intent.kick_user(room_id, user_id, message)
-                except MatrixError:
-                    pass
+                    except MatrixError:
+                        pass
         try:
             await intent.leave_room(room_id)
         except MatrixError:
