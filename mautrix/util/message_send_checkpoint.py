@@ -43,6 +43,8 @@ class MessageSendCheckpoint(SerializableAttrs):
     retry_num: int = 0
     message_type: Optional[MessageType] = None
     info: Optional[str] = None
+    client_type: Optional[str] = None
+    client_version: Optional[str] = None
 
     async def send(self, log: logging.Logger, endpoint: str, as_token: str) -> None:
         if not endpoint:
