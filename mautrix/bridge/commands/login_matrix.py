@@ -97,7 +97,7 @@ async def clear_cache_matrix(evt: CommandEvent) -> EventID:
     try:
         puppet = await evt.sender.get_puppet()
     except NotImplementedError:
-        return await evt.reply("This bridge has not implemented the ping-matrix command")
+        return await evt.reply("This bridge has not implemented the clear-cache-matrix command")
     if not puppet.is_real_user:
         return await evt.reply("You are not logged in with your Matrix account.")
     try:
