@@ -108,6 +108,10 @@ class Database(ABC):
         async with self.acquire() as conn:
             return await conn.execute(query, *args, timeout=timeout)
 
+    async def executemany(self, query: str, *args: Any, timeout: float | None = None) -> str:
+        async with self.acquire() as conn:
+            return await conn.executemany(query, *args, timeout=timeout)
+
     async def fetch(self, query: str, *args: Any, timeout: float | None = None) -> list[Record]:
         async with self.acquire() as conn:
             return await conn.fetch(query, *args, timeout=timeout)
