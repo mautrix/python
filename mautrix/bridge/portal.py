@@ -13,7 +13,7 @@ import asyncio
 import html
 import logging
 
-from mautrix.appservice import AppService, IntentAPI, DOUBLE_PUPPET_SOURCE_KEY
+from mautrix.appservice import DOUBLE_PUPPET_SOURCE_KEY, AppService, IntentAPI
 from mautrix.errors import MatrixError, MatrixRequestError, MNotFound
 from mautrix.types import (
     EncryptionAlgorithm,
