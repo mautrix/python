@@ -13,7 +13,7 @@ import asyncio
 import html
 import logging
 
-from mautrix.appservice import AppService, IntentAPI
+from mautrix.appservice import AppService, IntentAPI, DOUBLE_PUPPET_SOURCE_KEY
 from mautrix.errors import MatrixError, MatrixRequestError, MNotFound
 from mautrix.types import (
     EncryptionAlgorithm,
@@ -227,7 +227,8 @@ class BasePortal(ABC):
                 left = False
                 if custom_puppet:
                     try:
-                        await custom_puppet.intent.leave_room(room_id)
+                        extra_content = {DOUBLE_PUPPET_SOURCE_KEY: cls.bridge.name}
+                        await custom_puppet.intent.leave_room(room_id, extra_content=extra_content)
                         await custom_puppet.intent.forget_room(room_id)
                     except MatrixError:
                         pass
