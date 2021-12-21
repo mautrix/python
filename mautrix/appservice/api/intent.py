@@ -368,19 +368,20 @@ class IntentAPI(StoreUpdatingAPI):
         return await super().send_message_event(room_id, event_type, content, **kwargs)
 
     async def redact(
-        self, room_id: RoomID, event_id: EventID, reason: str | None = None, **kwargs
+        self,
+        room_id: RoomID,
+        event_id: EventID,
+        reason: str | None = None,
+        extra_content: dict[str, JSON] | None = None,
+        **kwargs,
     ) -> EventID:
         await self._ensure_has_power_level_for(room_id, EventType.ROOM_REDACTION)
+        if self.api.is_real_user and self.api.bridge_name:
+            if not extra_content:
+                extra_content = {}
+            extra_content[DOUBLE_PUPPET_SOURCE_KEY] = self.api.bridge_name
         return await super().redact(
-            room_id,
-            event_id,
-            reason,
-            extra_content=(
-                {DOUBLE_PUPPET_SOURCE_KEY: self.api.bridge_name}
-                if self.api.is_real_user and self.api.bridge_name is not None
-                else {}
-            ),
-            **kwargs,
+            room_id, event_id, reason, extra_content=extra_content, **kwargs
         )
 
     async def send_state_event(
@@ -407,9 +408,28 @@ class IntentAPI(StoreUpdatingAPI):
             if evt.content.membership in allowed_memberships
         ]
 
-    async def mark_read(self, room_id: RoomID, event_id: EventID) -> None:
+    async def mark_read(
+        self, room_id: RoomID, event_id: EventID, extra_content: dict[str, JSON] | None = None
+    ) -> None:
         if self.state_store.get_read(room_id, self.mxid) != event_id:
-            await self.set_fully_read_marker(room_id, fully_read=event_id, read_receipt=event_id)
+            if self.api.is_real_user and self.api.bridge_name:
+                if not extra_content:
+                    extra_content = {}
+                double_puppet_indicator = {
+                    DOUBLE_PUPPET_SOURCE_KEY: self.api.bridge_name,
+                }
+                extra_content.update(
+                    {
+                        "com.beeper.fully_read.extra": double_puppet_indicator,
+                        "com.beeper.read.extra": double_puppet_indicator,
+                    }
+                )
+            await self.set_fully_read_marker(
+                room_id,
+                fully_read=event_id,
+                read_receipt=event_id,
+                extra_content=extra_content,
+            )
             self.state_store.set_read(room_id, self.mxid, event_id)
 
     async def batch_send(

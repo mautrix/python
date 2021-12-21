@@ -8,6 +8,7 @@ from __future__ import annotations
 from mautrix.api import Method, Path
 from mautrix.errors import MatrixResponseError
 from mautrix.types import (
+    JSON,
     EventID,
     PresenceEventContent,
     PresenceState,
@@ -82,7 +83,11 @@ class MiscModuleMethods(BaseClientAPI):
     # region 13.6 Fully read markers
 
     async def set_fully_read_marker(
-        self, room_id: RoomID, fully_read: EventID, read_receipt: EventID | None = None
+        self,
+        room_id: RoomID,
+        fully_read: EventID,
+        read_receipt: EventID | None = None,
+        extra_content: dict[str, JSON] | None = None,
     ) -> None:
         """
         Set the position of the read marker for the given room, and optionally send a new read
@@ -96,12 +101,15 @@ class MiscModuleMethods(BaseClientAPI):
                 interested in reading the events.
             read_receipt: The new position for the user's normal read receipt, i.e. the last event
                 the user has seen.
+            extra_content: Additional fields to include in the ``/read_markers`` request.
         """
         content = {
             "m.fully_read": fully_read,
         }
         if read_receipt:
             content["m.read"] = read_receipt
+        if extra_content:
+            content.update(extra_content)
         await self.api.request(Method.POST, Path.rooms[room_id].read_markers, content)
 
     # endregion

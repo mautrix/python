@@ -501,6 +501,12 @@ class BaseMatrixHandler:
     async def handle_receipt(self, evt: ReceiptEvent) -> None:
         for event_id, receipts in evt.content.items():
             for user_id, data in receipts[ReceiptType.READ].items():
+                if (
+                    data.get(DOUBLE_PUPPET_SOURCE_KEY) == self.az.bridge_name
+                    and await self.bridge.get_double_puppet(user_id) is not None
+                ):
+                    continue
+
                 user = await self.bridge.get_user(user_id, create=False)
                 if not user or not await user.is_logged_in():
                     continue
