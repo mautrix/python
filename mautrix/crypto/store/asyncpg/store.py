@@ -149,6 +149,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
                     last_encrypted=row["last_encrypted"],
                     last_decrypted=row["last_decrypted"],
                 )
+                self._olm_cache[key][SessionID(sess.id)] = sess
             sessions.append(sess)
         return sessions
 
@@ -164,17 +165,21 @@ class PgCryptoStore(CryptoStore, SyncStore):
         try:
             return self._olm_cache[key][row["session_id"]]
         except KeyError:
-            return Session.from_pickle(
+            sess = Session.from_pickle(
                 row["session"],
                 passphrase=self.pickle_key,
                 creation_time=row["created_at"],
                 last_encrypted=row["last_encrypted"],
                 last_decrypted=row["last_decrypted"],
             )
+            self._olm_cache[key][SessionID(sess.id)] = sess
+            return sess
 
     async def add_session(self, key: IdentityKey, session: Session) -> None:
+        if session.id in self._olm_cache[key]:
+            self.log.warning(f"Cache already contains Olm session with ID {session.id}")
+        self._olm_cache[key][SessionID(session.id)] = session
         pickle = session.pickle(self.pickle_key)
-        self._olm_cache[key][cast(SessionID, session.id)] = session
         q = """
             INSERT INTO crypto_olm_session (session_id, sender_key, session, created_at,
                                             last_encrypted, last_decrypted, account_id)
@@ -192,6 +197,13 @@ class PgCryptoStore(CryptoStore, SyncStore):
         )
 
     async def update_session(self, key: IdentityKey, session: Session) -> None:
+        try:
+            assert self._olm_cache[key][SessionID(session.id)] == session
+        except (KeyError, AssertionError) as e:
+            self.log.warning(
+                f"Cached olm session with ID {session.id} "
+                f"isn't equal to the one being saved to the database ({e})"
+            )
         pickle = session.pickle(self.pickle_key)
         q = (
             "UPDATE crypto_olm_session SET session=$1, last_encrypted=$2, last_decrypted=$3 "
