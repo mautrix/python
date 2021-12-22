@@ -163,11 +163,11 @@ class MatrixParser(Generic[T]):
     async def custom_node_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T | None:
         return None
 
-    async def color_to_fstring(self, node: HTMLNode, ctx: RecursionContext, color: str) -> T:
-        return await self.tag_aware_parse_node(node, ctx)
+    async def color_to_fstring(self, msg: T, color: str) -> T:
+        return msg.format(self.e.COLOR, color=color)
 
-    async def spoiler_to_fstring(self, node: HTMLNode, ctx: RecursionContext, reason: str) -> T:
-        return await self.tag_aware_parse_node(node, ctx)
+    async def spoiler_to_fstring(self, msg: T, reason: str) -> T:
+        return msg.format(self.e.SPOILER, reason=reason)
 
     async def node_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
         custom = await self.custom_node_to_fstring(node, ctx)
@@ -192,12 +192,13 @@ class MatrixParser(Generic[T]):
         elif node.tag == "p":
             return (await self.tag_aware_parse_node(node, ctx)).append("\n")
         elif node.tag in ("font", "span"):
+            msg = await self.tag_aware_parse_node(node, ctx)
             try:
                 spoiler = node.attrib["data-mx-spoiler"]
             except KeyError:
                 pass
             else:
-                return await self.spoiler_to_fstring(node, ctx, spoiler)
+                msg = await self.spoiler_to_fstring(msg, spoiler)
 
             try:
                 color = node.attrib["color"]
@@ -207,7 +208,8 @@ class MatrixParser(Generic[T]):
                 except KeyError:
                     color = None
             if color:
-                return await self.color_to_fstring(node, ctx, color)
+                msg = await self.color_to_fstring(msg, color)
+            return msg
         elif node.tag == "pre":
             lang = ""
             try:

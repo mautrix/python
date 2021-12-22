@@ -25,6 +25,8 @@ class EntityType(Enum):
     INLINE_CODE = auto()
     BLOCKQUOTE = auto()
     HEADER = auto()
+    COLOR = auto()
+    SPOILER = auto()
 
 
 class FormattedString(ABC):
