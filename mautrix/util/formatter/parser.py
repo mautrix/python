@@ -62,7 +62,7 @@ class MatrixParser(Generic[T]):
     list_bullets: tuple[str, ...] = ("●", "○", "■", "‣")
     e: Type[EntityType] = EntityType
     fs: Type[T] = MarkdownString
-    read_html: Callable[[str], HTMLNode] = read_html
+    read_html: Callable[[str], HTMLNode] = staticmethod(read_html)
     ignore_less_relevant_links: bool = True
     exclude_plaintext_attrib: str = "data-mautrix-exclude-plaintext"
 
