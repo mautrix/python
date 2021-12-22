@@ -131,12 +131,12 @@ class PgCryptoStore(CryptoStore, SyncStore):
         return val is not None
 
     async def get_sessions(self, key: IdentityKey) -> list[Session]:
-        rows = await self.db.fetch(
-            "SELECT session_id, session, created_at, last_used FROM crypto_olm_session "
-            "WHERE sender_key=$1 AND account_id=$2 ORDER BY session_id",
-            key,
-            self.account_id,
+        q = (
+            "SELECT session_id, session, created_at, last_encrypted, last_decrypted "
+            "FROM crypto_olm_session WHERE sender_key=$1 AND account_id=$2 "
+            "ORDER BY last_decrypted DESC"
         )
+        rows = await self.db.fetch(q, key, self.account_id)
         sessions = []
         for row in rows:
             try:
@@ -146,18 +146,19 @@ class PgCryptoStore(CryptoStore, SyncStore):
                     row["session"],
                     passphrase=self.pickle_key,
                     creation_time=row["created_at"],
-                    use_time=row["last_used"],
+                    last_encrypted=row["last_encrypted"],
+                    last_decrypted=row["last_decrypted"],
                 )
             sessions.append(sess)
         return sessions
 
     async def get_latest_session(self, key: IdentityKey) -> Session | None:
-        row = await self.db.fetchrow(
-            "SELECT session_id, session, created_at, last_used FROM crypto_olm_session "
-            "WHERE sender_key=$1 AND account_id=$2 ORDER BY session_id DESC LIMIT 1",
-            key,
-            self.account_id,
+        q = (
+            "SELECT session_id, session, created_at, last_encrypted, last_decrypted "
+            "FROM crypto_olm_session WHERE sender_key=$1 AND account_id=$2 "
+            "ORDER BY last_decrypted DESC LIMIT 1"
         )
+        row = await self.db.fetchrow(q, key, self.account_id)
         if row is None:
             return None
         try:
@@ -167,32 +168,37 @@ class PgCryptoStore(CryptoStore, SyncStore):
                 row["session"],
                 passphrase=self.pickle_key,
                 creation_time=row["created_at"],
-                use_time=row["last_used"],
+                last_encrypted=row["last_encrypted"],
+                last_decrypted=row["last_decrypted"],
             )
 
     async def add_session(self, key: IdentityKey, session: Session) -> None:
         pickle = session.pickle(self.pickle_key)
         self._olm_cache[key][cast(SessionID, session.id)] = session
+        q = """
+            INSERT INTO crypto_olm_session (session_id, sender_key, session, created_at,
+                                            last_encrypted, last_decrypted, account_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+        """
         await self.db.execute(
-            "INSERT INTO crypto_olm_session (session_id, sender_key, session, "
-            "created_at, last_used, account_id) VALUES ($1, $2, $3, $4, $5, $6)",
+            q,
             session.id,
             key,
             pickle,
             session.creation_time,
-            session.use_time,
+            session.last_encrypted,
+            session.last_decrypted,
             self.account_id,
         )
 
     async def update_session(self, key: IdentityKey, session: Session) -> None:
         pickle = session.pickle(self.pickle_key)
+        q = (
+            "UPDATE crypto_olm_session SET session=$1, last_encrypted=$2, last_decrypted=$3 "
+            "WHERE session_id=$4 AND account_id=$5"
+        )
         await self.db.execute(
-            "UPDATE crypto_olm_session SET session=$1, last_used=$2 "
-            "WHERE session_id=$3 AND account_id=$4",
-            pickle,
-            session.use_time,
-            session.id,
-            self.account_id,
+            q, pickle, session.last_encrypted, session.last_decrypted, session.id, self.account_id
         )
 
     async def put_group_session(

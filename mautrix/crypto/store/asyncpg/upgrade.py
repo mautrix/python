@@ -183,3 +183,15 @@ async def upgrade_v3(conn: Connection, scheme: str) -> None:
         "ALTER TABLE crypto_megolm_outbound_session ALTER COLUMN account_id TYPE TEXT"
     )
     await conn.execute("ALTER TABLE crypto_megolm_outbound_session ALTER COLUMN room_id TYPE TEXT")
+
+
+@upgrade_table.register(description="Split last_used into last_encrypted and last_decrypted")
+async def upgrade_v4(conn: Connection, scheme: str) -> None:
+    await conn.execute("ALTER TABLE crypto_olm_session RENAME COLUMN last_used TO last_decrypted")
+    await conn.execute("ALTER TABLE crypto_olm_session ADD COLUMN last_encrypted timestamp")
+    await conn.execute("UPDATE crypto_olm_session SET last_encrypted=last_decrypted")
+    if scheme == "postgres":
+        # This is too hard to do on sqlite, so let's just do it on postgres
+        await conn.execute(
+            "ALTER TABLE crypto_olm_session ALTER COLUMN last_encrypted SET NOT NULL"
+        )

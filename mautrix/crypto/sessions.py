@@ -25,12 +25,14 @@ from mautrix.types import (
 
 class Session(olm.Session):
     creation_time: datetime
-    use_time: datetime
+    last_encrypted: datetime
+    last_decrypted: datetime
 
     def __init__(self):
         super().__init__()
         self.creation_time = datetime.now()
-        self.use_time = datetime.now()
+        self.last_encrypted = datetime.now()
+        self.last_decrypted = datetime.now()
 
     def __new__(cls, *args, **kwargs):
         return super().__new__(cls)
@@ -45,26 +47,29 @@ class Session(olm.Session):
         pickle: bytes,
         passphrase: str,
         creation_time: datetime,
-        use_time: Optional[datetime] = None,
+        last_encrypted: Optional[datetime] = None,
+        last_decrypted: Optional[datetime] = None,
     ) -> "Session":
         session = super().from_pickle(pickle, passphrase=passphrase)
         session.creation_time = creation_time
-        session.use_time = use_time or creation_time
+        session.last_encrypted = last_encrypted or creation_time
+        session.last_decrypted = last_decrypted or creation_time
         return session
 
     def matches(self, ciphertext: str) -> bool:
         return super().matches(olm.OlmPreKeyMessage(ciphertext))
 
     def decrypt(self, ciphertext: OlmCiphertext) -> str:
-        self.use_time = datetime.now()
-        return super().decrypt(
+        plaintext = super().decrypt(
             olm.OlmPreKeyMessage(ciphertext.body)
             if ciphertext.type == OlmMsgType.PREKEY
             else olm.OlmMessage(ciphertext.body)
         )
+        self.last_decrypted = datetime.now()
+        return plaintext
 
     def encrypt(self, plaintext: str) -> OlmCiphertext:
-        self.use_time = datetime.now()
+        self.last_encrypted = datetime.now()
         result = super().encrypt(plaintext)
         return OlmCiphertext(
             type=(
