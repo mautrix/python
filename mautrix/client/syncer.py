@@ -372,8 +372,13 @@ class Syncer(ABC):
             self.log.critical("Fatal error while syncing", exc_info=True)
             await self.run_internal_event(InternalEventType.SYNC_STOPPED, error=e)
             return
+        except BaseException as e:
+            self.log.warning(
+                f"Syncing stopped with unexpected {e.__class__.__name__}", exc_info=True
+            )
+            raise
         else:
-            self.log.debug("Syncing stopped")
+            self.log.debug("Syncing stopped without exception")
         await self.run_internal_event(InternalEventType.SYNC_STOPPED, error=None)
 
     async def _start(self, filter_id: FilterID | None) -> None:
