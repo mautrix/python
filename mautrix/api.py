@@ -9,21 +9,18 @@ from typing import ClassVar, Mapping
 from enum import Enum
 from json.decoder import JSONDecodeError
 from time import time
-from urllib.parse import quote as urllib_quote
-from urllib.parse import urljoin as urllib_join
+from urllib.parse import quote as urllib_quote, urljoin as urllib_join
 import asyncio
 import json
 import logging
 import platform
 import sys
 
-from aiohttp import ClientSession
-from aiohttp import __version__ as aiohttp_version
+from aiohttp import ClientSession, __version__ as aiohttp_version
 from aiohttp.client_exceptions import ClientError, ContentTypeError
 from yarl import URL
 
-from mautrix import __optional_imports__
-from mautrix import __version__ as mautrix_version
+from mautrix import __optional_imports__, __version__ as mautrix_version
 from mautrix.errors import MatrixConnectionError, MatrixRequestError, make_request_error
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Counter

@@ -45,8 +45,7 @@ from mautrix.types import (
 )
 from mautrix.util.logging import TraceLogger
 
-from .. import api as as_api
-from .. import state_store as ss
+from .. import api as as_api, state_store as ss
 
 try:
     import magic

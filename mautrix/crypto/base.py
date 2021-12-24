@@ -25,8 +25,7 @@ from mautrix.types import (
 )
 from mautrix.util.logging import TraceLogger
 
-from .. import client as cli
-from .. import crypto
+from .. import client as cli, crypto
 
 if sys.version_info >= (3, 8):
     from typing import TypedDict

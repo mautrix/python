@@ -10,9 +10,12 @@ import json
 
 from sqlalchemy import Boolean, Column, Text, types
 
-from mautrix.types import PowerLevelStateEventContent as PowerLevels
-from mautrix.types import RoomEncryptionStateEventContent as EncryptionInfo
-from mautrix.types import RoomID, Serializable
+from mautrix.types import (
+    PowerLevelStateEventContent as PowerLevels,
+    RoomEncryptionStateEventContent as EncryptionInfo,
+    RoomID,
+    Serializable,
+)
 from mautrix.util.db import Base
 
 

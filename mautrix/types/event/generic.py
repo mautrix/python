@@ -23,8 +23,7 @@ from .reaction import ReactionEvent, ReactionEventContent
 from .redaction import RedactionEvent, RedactionEventContent
 from .state import StateEvent, StateEventContent
 from .to_device import ToDeviceEvent, ToDeviceEventContent
-from .voip import CallEvent, CallEventContent
-from .voip import type_to_class as voip_types
+from .voip import CallEvent, CallEventContent, type_to_class as voip_types
 
 Event = NewType(
     "Event",
