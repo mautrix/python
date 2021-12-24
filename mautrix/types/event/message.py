@@ -290,16 +290,51 @@ class LocationInfo(SerializableAttrs):
 
 
 # endregion
+# region Extensible Events
+
+
+@dataclass
+class ExtensibleFile:
+    file: Optional[EncryptedFile] = None
+    name: Optional[str] = None
+    mimetype: Optional[str] = None
+    size: Optional[int] = None
+
+
+@dataclass
+class Audio:
+    duration: Optional[int] = None
+    waveform: Optional[List[int]] = None
+
+
+@dataclass
+class Voice:
+    pass
+
+
+# endregion
 # region Event content
 
 
 @dataclass
 class MediaMessageEventContent(BaseMessageEventContent, SerializableAttrs):
-    """The content of a media message event (m.image, m.audio, m.video, m.file)"""
+    """
+    The content of a media message event (m.image, m.audio, m.video, m.file) or a media message
+    event using extensible events (https://github.com/matrix-org/matrix-doc/pull/1767).
+
+    See https://github.com/matrix-org/matrix-doc/pull/3246 and
+    https://github.com/matrix-org/matrix-doc/pull/3245 for details.
+    """
 
     url: Optional[ContentURI] = None
     info: Optional[MediaInfo] = None
     file: Optional[EncryptedFile] = None
+
+    # Extensible Events
+    text: Optional[str] = field(default=None, json="org.matrix.msc1767.text")
+    extensible_file: Optional[ExtensibleFile] = field(default=None, json="org.matrix.msc1767.file")
+    audio: Optional[Audio] = field(default=None, json="org.matrix.msc1767.audio")
+    voice: Optional[Voice] = field(default=None, json="org.matrix.msc3245.voice")
 
     @staticmethod
     @deserializer(MediaInfo)
