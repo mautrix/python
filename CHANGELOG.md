@@ -1,4 +1,4 @@
-### v0.14.0 (unreleased)
+### v0.14.0 (2021-12-26)
 
 * **Breaking change *(mautrix.util.formatter)*** Made `MatrixParser` async
   and non-static.
