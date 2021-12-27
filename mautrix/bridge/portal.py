@@ -50,6 +50,7 @@ class BasePortal(ABC):
     encrypted: bool
     is_direct: bool
     backfill_lock: SimpleLock
+    _relay_user: Optional["br.BaseUser"]
 
     relay_user_id: UserID | None
     _relay_user: br.BaseUser | None

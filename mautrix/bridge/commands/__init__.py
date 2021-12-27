@@ -1,6 +1,7 @@
 from .handler import (
     SECTION_ADMIN,
     SECTION_AUTH,
+    SECTION_CONNECTION,
     SECTION_GENERAL,
     SECTION_RELAY,
     CommandEvent,
