@@ -100,6 +100,8 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.management_room_text.welcome_unconnected")
         copy("bridge.management_room_text.additional_help")
         copy("bridge.management_room_multiple_messages")
+        copy("bridge.relay.enabled")
+        copy_dict("bridge.relay.message_formats")
 
         copy("bridge.relay.enabled")
         copy_dict("bridge.relay.message_formats", override_existing_map=False)
