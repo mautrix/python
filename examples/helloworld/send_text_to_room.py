@@ -1,8 +1,13 @@
+# Copyright (c) 2021 Alejandro Herrera
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import asyncio
 from markdown import markdown
 
 from mautrix.client import ClientAPI
-from mautrix.types.event.message import Format, TextMessageEventContent
+from mautrix.types.event.message import Format, MessageType, TextMessageEventContent
 
 # The user_id you have in your homeserver
 user_id = "@admin:example.com"
@@ -17,10 +22,9 @@ token = "syt_123_456"
 client = ClientAPI(user_id, base_url=base_url, token=token)
 
 
-async def send_message_to_room(room_id: str, message: str, notice: bool = False) -> None:
-
-    # Defines whether the message is a notice or a text message
-    msgtype = "m.notice" if notice else "m.text"
+async def send_message_to_room(
+    room_id: str, message: str, msgtype: MessageType = MessageType.TEXT
+) -> None:
 
     # We create the content to make the message sending request
     content = TextMessageEventContent(
@@ -39,5 +43,7 @@ loop.run_until_complete(
     send_message_to_room(
         room_id="!foo:example.com",
         message="Hello Mau! 🐈️",
+        # or notice
+        # msgtype=MessageType.NOTICE
     )
 )
