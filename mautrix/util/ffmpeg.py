@@ -116,6 +116,8 @@ async def convert_bytes(
         raise NotInstalledError()
 
     if input_mime is None:
+        if magic is None:
+            raise ValueError("input_mime was not specified and magic is not installed")
         input_mime = magic.mimetype(data)
     input_extension = mimetypes.guess_extension(input_mime)
     with tempfile.TemporaryDirectory(prefix="mautrix_ffmpeg_") as tmpdir:
