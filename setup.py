@@ -8,6 +8,9 @@ setuptools.setup(
     name="mautrix",
     version=__version__,
     url="https://github.com/mautrix/python",
+    project_urls={
+        "Changelog": "https://github.com/mautrix/python/blob/master/CHANGELOG.md",
+    },
 
     author="Tulir Asokan",
     author_email="tulir@maunium.net",
