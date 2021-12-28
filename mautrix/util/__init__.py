@@ -17,4 +17,5 @@ __all__ = [
     "message_send_checkpoint",
     "variation_selector",
     "format_duration",
+    "ffmpeg",
 ]
