@@ -8,6 +8,7 @@ mautrix.util
    bridge_state
    config
    db
+   ffmpeg
    file_store
    formatter
    format_duration
