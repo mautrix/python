@@ -19,7 +19,7 @@ except ImportError:
     magic = None
 
 
-def _abswhich(program: str | None) -> str | None:
+def _abswhich(program: str) -> str | None:
     path = shutil.which(program)
     return os.path.abspath(path) if path else None
 
