@@ -38,7 +38,7 @@ ffmpeg_default_params = ("-hide_banner", "-loglevel", "warning")
 
 
 async def convert_path(
-    input_file: Path | str,
+    input_file: os.PathLike | str,
     output_extension: str,
     input_args: Iterable[str] | None = None,
     output_args: Iterable[str] | None = None,
