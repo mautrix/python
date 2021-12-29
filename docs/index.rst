@@ -3,7 +3,7 @@ Welcome to mautrix-python's documentation!
 
 .. toctree::
    :maxdepth: 4
-   :caption: API reference:
+   :caption: API reference
 
    api/mautrix.api
    api/mautrix.client.api
