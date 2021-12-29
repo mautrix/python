@@ -1,3 +1,9 @@
+## v0.14.1 (2021-12-29)
+
+* *(util.ffmpeg)* Added simple utility module that wraps ffmpeg and tempfiles
+  to convert audio/video files to different formats, primarily intended for
+  bridging. FFmpeg must be installed separately and be present in `$PATH`.
+
 ## v0.14.0 (2021-12-26)
 
 * **Breaking change *(mautrix.util.formatter)*** Made `MatrixParser` async
