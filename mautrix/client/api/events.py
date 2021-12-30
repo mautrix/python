@@ -635,7 +635,7 @@ class EventMethods(BaseClientAPI):
         room_id: RoomID,
         event_id: EventID,
         reason: str | None = None,
-        extra_content: dict[str, JSON] = {},
+        extra_content: dict[str, JSON] | None = None,
         **kwargs,
     ) -> EventID:
         """
@@ -664,7 +664,9 @@ class EventMethods(BaseClientAPI):
             The ID of the event that was sent to redact the other event.
         """
         url = Path.rooms[room_id].redact[event_id][self.api.get_txn_id()]
-        content = extra_content if not reason else {**extra_content, "reason": reason}
+        content = extra_content or {}
+        if reason:
+            content["reason"] = reason
         resp = await self.api.request(
             Method.PUT, url, content=content, **kwargs, metrics_method="redact"
         )

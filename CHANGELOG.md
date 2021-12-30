@@ -1,3 +1,8 @@
+## v0.14.2 (2021-12-30)
+
+* *(appservice)* Fixed `IntentAPI` throwing an error when `redact` was called
+  with a `reason`, but without `extra_content`.
+
 ## v0.14.1 (2021-12-29)
 
 * *(util.ffmpeg)* Added simple utility module that wraps ffmpeg and tempfiles
