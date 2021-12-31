@@ -64,7 +64,7 @@ async def convert_path(
         raise NotInstalledError()
 
     input_file = Path(input_file)
-    output_file = input_file.parent / f"{input_file.stem}.{output_extension}"
+    output_file = input_file.parent / f"{input_file.stem}{output_extension}"
     proc = await asyncio.create_subprocess_exec(
         ffmpeg_path,
         *ffmpeg_default_params,
