@@ -9,7 +9,7 @@ from typing import NamedTuple
 
 import pytest
 
-from .matrixuri import IdentifierType, MatrixURI, MatrixURIError, PathPart, URIAction
+from .matrixuri import IdentifierType, MatrixURI, MatrixURIError, URIAction, _PathPart
 from .primitive import EventID, RoomAlias, RoomID, UserID
 
 
@@ -89,8 +89,8 @@ def test_build_errors() -> None:
 
 
 def _make_parsed(
-    part1: PathPart,
-    part2: PathPart | None = None,
+    part1: _PathPart,
+    part2: _PathPart | None = None,
     via: list[str] | None = None,
     action: URIAction | None = None,
 ) -> MatrixURI:
@@ -113,14 +113,14 @@ basic_tests = [
     BasicTestItems(
         "https://matrix.to/#/%217NdBVvkd4aLSbgKt9RXl%3Aexample.org",
         "matrix:roomid/7NdBVvkd4aLSbgKt9RXl:example.org",
-        _make_parsed(PathPart(IdentifierType.ROOM_ID, "7NdBVvkd4aLSbgKt9RXl:example.org")),
+        _make_parsed(_PathPart(IdentifierType.ROOM_ID, "7NdBVvkd4aLSbgKt9RXl:example.org")),
         (RoomID("!7NdBVvkd4aLSbgKt9RXl:example.org"), None, None, None),
     ),
     BasicTestItems(
         "https://matrix.to/#/%217NdBVvkd4aLSbgKt9RXl%3Aexample.org?via=maunium.net&via=matrix.org",
         "matrix:roomid/7NdBVvkd4aLSbgKt9RXl:example.org?via=maunium.net&via=matrix.org",
         _make_parsed(
-            PathPart(IdentifierType.ROOM_ID, "7NdBVvkd4aLSbgKt9RXl:example.org"),
+            _PathPart(IdentifierType.ROOM_ID, "7NdBVvkd4aLSbgKt9RXl:example.org"),
             via=["maunium.net", "matrix.org"],
         ),
         (RoomID("!7NdBVvkd4aLSbgKt9RXl:example.org"), None, ["maunium.net", "matrix.org"], None),
@@ -128,15 +128,15 @@ basic_tests = [
     BasicTestItems(
         "https://matrix.to/#/%23someroom%3Aexample.org",
         "matrix:r/someroom:example.org",
-        _make_parsed(PathPart(IdentifierType.ROOM_ALIAS, "someroom:example.org")),
+        _make_parsed(_PathPart(IdentifierType.ROOM_ALIAS, "someroom:example.org")),
         (RoomAlias("#someroom:example.org"), None, None, None),
     ),
     BasicTestItems(
         "https://matrix.to/#/%217NdBVvkd4aLSbgKt9RXl%3Aexample.org/%24uOH4C9cK4HhMeFWkUXMbdF_dtndJ0j9je-kIK3XpV1s",
         "matrix:roomid/7NdBVvkd4aLSbgKt9RXl:example.org/e/uOH4C9cK4HhMeFWkUXMbdF_dtndJ0j9je-kIK3XpV1s",
         _make_parsed(
-            PathPart(IdentifierType.ROOM_ID, "7NdBVvkd4aLSbgKt9RXl:example.org"),
-            PathPart(IdentifierType.EVENT, "uOH4C9cK4HhMeFWkUXMbdF_dtndJ0j9je-kIK3XpV1s"),
+            _PathPart(IdentifierType.ROOM_ID, "7NdBVvkd4aLSbgKt9RXl:example.org"),
+            _PathPart(IdentifierType.EVENT, "uOH4C9cK4HhMeFWkUXMbdF_dtndJ0j9je-kIK3XpV1s"),
         ),
         (
             RoomID("!7NdBVvkd4aLSbgKt9RXl:example.org"),
@@ -149,8 +149,8 @@ basic_tests = [
         "https://matrix.to/#/%23someroom%3Aexample.org/%24uOH4C9cK4HhMeFWkUXMbdF_dtndJ0j9je-kIK3XpV1s",
         "matrix:r/someroom:example.org/e/uOH4C9cK4HhMeFWkUXMbdF_dtndJ0j9je-kIK3XpV1s",
         _make_parsed(
-            PathPart(IdentifierType.ROOM_ALIAS, "someroom:example.org"),
-            PathPart(IdentifierType.EVENT, "uOH4C9cK4HhMeFWkUXMbdF_dtndJ0j9je-kIK3XpV1s"),
+            _PathPart(IdentifierType.ROOM_ALIAS, "someroom:example.org"),
+            _PathPart(IdentifierType.EVENT, "uOH4C9cK4HhMeFWkUXMbdF_dtndJ0j9je-kIK3XpV1s"),
         ),
         (
             RoomAlias("#someroom:example.org"),
@@ -162,7 +162,7 @@ basic_tests = [
     BasicTestItems(
         "https://matrix.to/#/%40user%3Aexample.org",
         "matrix:u/user:example.org",
-        _make_parsed(PathPart(IdentifierType.USER, "user:example.org")),
+        _make_parsed(_PathPart(IdentifierType.USER, "user:example.org")),
         (UserID("@user:example.org"), None, None, None),
     ),
 ]
