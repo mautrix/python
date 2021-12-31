@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Callable, Generic, Type, TypeVar
 
-from ...types import RoomAlias, UserID, MatrixURI, RoomID, EventID
+from ...types import EventID, MatrixURI, RoomAlias, RoomID, UserID
 from .formatted_string import EntityType, FormattedString
 from .html_reader import HTMLNode, read_html
 from .markdown_string import MarkdownString
