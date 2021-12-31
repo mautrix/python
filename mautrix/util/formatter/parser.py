@@ -5,10 +5,9 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Callable, Generic, Pattern, Type, TypeVar
-import re
+from typing import Callable, Generic, Type, TypeVar
 
-from ...types import RoomAlias, UserID
+from ...types import RoomAlias, UserID, MatrixURI, RoomID, EventID
 from .formatted_string import EntityType, FormattedString
 from .html_reader import HTMLNode, read_html
 from .markdown_string import MarkdownString
@@ -40,8 +39,6 @@ T = TypeVar("T", bound=FormattedString)
 
 
 class MatrixParser(Generic[T]):
-    mention_regex: Pattern = re.compile("https://matrix.to/#/(@.+:.+)")
-    room_regex: Pattern = re.compile("https://matrix.to/#/(#.+:.+)")
     block_tags: tuple[str, ...] = (
         "p",
         "pre",
@@ -132,18 +129,22 @@ class MatrixParser(Generic[T]):
         if href.startswith("mailto:"):
             return self.fs(href[len("mailto:") :]).format(self.e.EMAIL)
 
-        mention = self.mention_regex.match(href)
-        if mention:
-            new_msg = await self.user_pill_to_fstring(msg, UserID(mention.group(1)))
+        matrix_uri = MatrixURI.try_parse(href)
+        if matrix_uri:
+            if matrix_uri.user_id:
+                new_msg = await self.user_pill_to_fstring(msg, matrix_uri.user_id)
+            elif matrix_uri.event_id:
+                new_msg = await self.event_link_to_fstring(
+                    msg, matrix_uri.room_id or matrix_uri.room_alias, matrix_uri.event_id
+                )
+            elif matrix_uri.room_alias:
+                new_msg = await self.room_pill_to_fstring(msg, matrix_uri.room_alias)
+            elif matrix_uri.room_id:
+                new_msg = await self.room_id_link_to_fstring(msg, matrix_uri.room_id)
+            else:
+                new_msg = None
             if new_msg:
                 return new_msg
-
-        room = self.room_regex.match(href)
-        if room:
-            new_msg = await self.room_pill_to_fstring(msg, RoomAlias(room.group(1)))
-            if new_msg:
-                return new_msg
-
         # Custom attribute to tell the parser that the link isn't relevant and
         # shouldn't be included in plaintext representation.
         if self.ignore_less_relevant_links and self.exclude_plaintext_attrib in node.attrib:
@@ -159,6 +160,14 @@ class MatrixParser(Generic[T]):
 
     async def room_pill_to_fstring(self, msg: T, room_alias: RoomAlias) -> T | None:
         return msg.format(self.e.ROOM_MENTION, room_alias=room_alias)
+
+    async def room_id_link_to_fstring(self, msg: T, room_id: RoomID) -> T | None:
+        return None
+
+    async def event_link_to_fstring(
+        self, msg: T, room: RoomID | RoomAlias, event_id: EventID
+    ) -> T | None:
+        return None
 
     async def custom_node_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T | None:
         return None

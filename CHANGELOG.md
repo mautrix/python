@@ -2,6 +2,8 @@
 
 * *(types)* Added `MatrixURI` type to parse and build `matrix:` URIs and
   `https://matrix.to` URLs.
+* *(util.formatter)* `matrix:` URIs are now supported in incoming messages
+  (using the new parser mentioned above).
 
 ## v0.14.2 (2021-12-30)
 
