@@ -1,3 +1,8 @@
+## v0.14.3 (unreleased)
+
+* *(types)* Added `MatrixURI` type to parse and build `matrix:` URIs and
+  `https://matrix.to` URLs.
+
 ## v0.14.2 (2021-12-30)
 
 * *(appservice)* Fixed `IntentAPI` throwing an error when `redact` was called

@@ -114,6 +114,7 @@ from .event import (
     VideoInfo,
 )
 from .filter import EventFilter, Filter, RoomEventFilter, RoomFilter, StateFilter
+from .matrixuri import IdentifierType, MatrixURI, MatrixURIError, URIAction
 from .media import MediaRepoConfig, MXOpenGraph, OpenGraphAudio, OpenGraphImage, OpenGraphVideo
 from .misc import (
     BatchSendResponse,
