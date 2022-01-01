@@ -4,6 +4,8 @@
   `https://matrix.to` URLs.
 * *(util.formatter)* `matrix:` URIs are now supported in incoming messages
   (using the new parser mentioned above).
+* *(util.variation_selector)* Switched to generating list of emoji using data
+  directly from the Unicode spec instead of emojibase.
 
 ## v0.14.2 (2021-12-30)
 

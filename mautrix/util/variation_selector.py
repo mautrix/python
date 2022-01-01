@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Tulir Asokan
+# Copyright (c) 2022 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,10 +14,23 @@ EMOJI_VAR_URL = "https://www.unicode.org/Public/14.0.0/ucd/emoji/emoji-variation
 
 
 def read_data() -> dict[str, str]:
+    """
+    Get the list of emoji that need a variation selector. This loads the local data file that was
+    previously generated from the Unicode spec data files.
+
+    Returns:
+        A dict from hex to the emoji string (you have to bring the variation selectors yourself).
+    """
     return json.loads(pkgutil.get_data("mautrix.util", "variation_selector.json"))
 
 
 async def fetch_data() -> dict[str, str]:
+    """
+    Generate the list of emoji that need a variation selector from the Unicode spec data files.
+
+    Returns:
+        A dict from hex to the emoji string (you have to bring the variation selectors yourself).
+    """
     async with aiohttp.ClientSession() as sess, sess.get(EMOJI_VAR_URL) as resp:
         data = await resp.text()
     emojis = {}
