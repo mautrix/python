@@ -49,7 +49,7 @@ setuptools.setup(
     package_data={
         "mautrix": ["py.typed"],
         "mautrix.types.event": ["type.pyi"],
-        "mautrix.util": ["opt_prometheus.pyi"],
+        "mautrix.util": ["opt_prometheus.pyi", "variation_selector.json"],
         "mautrix.util.formatter": ["html_reader.pyi"],
     },
 )
