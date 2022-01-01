@@ -34,13 +34,14 @@ class MarkdownString(FormattedString):
             self.text = f"_{self.text}_"
         elif entity_type == EntityType.STRIKETHROUGH:
             self.text = f"~~{self.text}~~"
-        elif entity_type == EntityType.UNDERLINE:
-            self.text = self.text
+        elif entity_type == EntityType.SPOILER:
+            reason = kwargs.get("reason", "")
+            if reason:
+                self.text = f"{reason}|{self.text}"
+            self.text = f"||{self.text}||"
         elif entity_type == EntityType.URL:
             if kwargs["url"] != self.text:
                 self.text = f"[{self.text}]({kwargs['url']})"
-        elif entity_type == EntityType.EMAIL:
-            self.text = self.text
         elif entity_type == EntityType.PREFORMATTED:
             self.text = f"```{kwargs['language']}\n{self.text}\n```"
         elif entity_type == EntityType.INLINE_CODE:

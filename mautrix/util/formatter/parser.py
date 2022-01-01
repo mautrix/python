@@ -84,7 +84,7 @@ class MatrixParser(Generic[T]):
 
             longest_index = counter - 1 + len(tagged_children)
             indent_length = len(str(longest_index))
-        indent: str = (indent_length + 4) * " "
+        indent: str = (indent_length + 2) * " "
         children: list[T] = []
         for child, tag in tagged_children:
             if tag != "li":
