@@ -1,11 +1,12 @@
-# Copyright (c) 2021 Tulir Asokan
+# Copyright (c) 2022 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Callable, Generic, Type, TypeVar
+from typing import Any, Callable, Generic, Type, TypeVar
+import re
 
 from ...types import EventID, MatrixURI, RoomAlias, RoomID, UserID
 from .formatted_string import EntityType, FormattedString
@@ -14,28 +15,32 @@ from .markdown_string import MarkdownString
 
 
 class RecursionContext:
-    strip_linebreaks: bool
+    preserve_whitespace: bool
     ul_depth: int
     _inited: bool
 
-    def __init__(self, strip_linebreaks: bool = True, ul_depth: int = 0):
-        self.strip_linebreaks = strip_linebreaks
+    def __init__(self, preserve_whitespace: bool = False, ul_depth: int = 0) -> None:
+        self.preserve_whitespace = preserve_whitespace
         self.ul_depth = ul_depth
         self._inited = True
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         if getattr(self, "_inited", False) is True:
             raise TypeError("'RecursionContext' object is immutable")
         super(RecursionContext, self).__setattr__(key, value)
 
     def enter_list(self) -> RecursionContext:
-        return RecursionContext(strip_linebreaks=self.strip_linebreaks, ul_depth=self.ul_depth + 1)
+        return RecursionContext(
+            preserve_whitespace=self.preserve_whitespace, ul_depth=self.ul_depth + 1
+        )
 
     def enter_code_block(self) -> RecursionContext:
-        return RecursionContext(strip_linebreaks=False, ul_depth=self.ul_depth)
+        return RecursionContext(preserve_whitespace=True, ul_depth=self.ul_depth)
 
 
 T = TypeVar("T", bound=FormattedString)
+spaces = re.compile(r"\s+")
+space = " "
 
 
 class MatrixParser(Generic[T]):
@@ -234,9 +239,11 @@ class MatrixParser(Generic[T]):
             return (await self.parse_node(node, ctx.enter_code_block())).format(self.e.INLINE_CODE)
         return await self.tag_aware_parse_node(node, ctx)
 
-    async def text_to_fstring(self, text: str, ctx: RecursionContext) -> T:
-        if ctx.strip_linebreaks:
-            text = text.replace("\n", "")
+    async def text_to_fstring(
+        self, text: str, ctx: RecursionContext, strip_leading_whitespace: bool = False
+    ) -> T:
+        if not ctx.preserve_whitespace:
+            text = spaces.sub(space, text.lstrip() if strip_leading_whitespace else text)
         return self.fs(text)
 
     async def node_to_tagged_fstrings(
@@ -249,7 +256,12 @@ class MatrixParser(Generic[T]):
         for child in node:
             output.append((await self.node_to_fstring(child, ctx), child.tag))
             if child.tail:
-                output.append((await self.text_to_fstring(child.tail, ctx), "text"))
+                # For text following a block tag, the leading whitespace is meaningless (there'll
+                # be a newline added later), but for other tags it can be interpreted as a space.
+                text = await self.text_to_fstring(
+                    child.tail, ctx, strip_leading_whitespace=child.tag in self.block_tags
+                )
+                output.append((text, "text"))
         return output
 
     async def node_to_fstrings(self, node: HTMLNode, ctx: RecursionContext) -> list[T]:

@@ -6,6 +6,9 @@
   (using the new parser mentioned above).
 * *(util.variation_selector)* Switched to generating list of emoji using data
   directly from the Unicode spec instead of emojibase.
+* *(util.formatter)* Whitespace in non-`pre` elements is now compressed into
+  a single space. Newlines are also replaced with a space instead of removed
+  completely. Whitespace after a block element is removed completely.
 
 ## v0.14.2 (2021-12-30)
 
