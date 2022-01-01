@@ -37,7 +37,8 @@ if __name__ == "__main__":
     path = pkg_resources.resource_filename("mautrix.util", "variation_selector.json")
     emojis = asyncio.run(fetch_data())
     with open(path, "w") as file:
-        json.dump(emojis, file, indent="    ")
+        json.dump(emojis, file, indent="    ", ensure_ascii=False)
+        file.write("\n")
     print(f"Wrote {len(emojis)} emojis to {path}")
     sys.exit(0)
 
