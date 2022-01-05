@@ -29,11 +29,7 @@ class ConfigUpdateHelper:
             # Small hack to make sure comments from the user config don't
             # partially leak into the updated version.
             if isinstance(val, CommentedBase):
-                target = self.base[to_path or from_path]
-                if isinstance(target, CommentedBase):
-                    setattr(val, Comment.attrib, target.ca)
-                else:
-                    setattr(val, Comment.attrib, Comment())
+                setattr(val, Comment.attrib, Comment())
             self.base[to_path or from_path] = val
 
     def copy_dict(
@@ -45,9 +41,7 @@ class ConfigUpdateHelper:
         if from_path in self.source:
             to_path = to_path or from_path
             if override_existing_map or to_path not in self.base:
-                old = self.base[to_path]
-                new = self.base[to_path] = CommentedMap()
-                setattr(new, Comment.attrib, old.ca)
+                self.base[to_path] = CommentedMap()
             for key, value in self.source[from_path].items():
                 self.base[to_path][key] = value
 
