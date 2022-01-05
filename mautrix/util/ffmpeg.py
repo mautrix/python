@@ -39,11 +39,12 @@ ffmpeg_default_params = ("-hide_banner", "-loglevel", "warning")
 
 async def convert_path(
     input_file: os.PathLike[str] | str,
-    output_extension: str,
+    output_extension: str | None,
     input_args: Iterable[str] | None = None,
     output_args: Iterable[str] | None = None,
     remove_input: bool = False,
-) -> Path:
+    output_path_override: os.PathLike[str] | str | None = None,
+) -> Path | bytes:
     """
     Convert a media file on the disk using ffmpeg.
 
@@ -53,9 +54,12 @@ async def convert_path(
         input_args: Arguments to tell ffmpeg how to parse the input file.
         output_args: Arguments to tell ffmpeg how to convert the file to reach the wanted output.
         remove_input: Whether the input file should be removed after converting.
+                      Not compatible with ``output_path_override``.
+        output_path_override: A custom output path to use
+                              (instead of using the input path with a different extension).
 
     Returns:
-        The path to the converted file.
+        The path to the converted file, or the stdout if ``output_path_override`` was set to ``-``.
 
     Raises:
         ConverterError: if ffmpeg returns a non-zero exit code.
@@ -63,8 +67,15 @@ async def convert_path(
     if ffmpeg_path is None:
         raise NotInstalledError()
 
-    input_file = Path(input_file)
-    output_file = input_file.parent / f"{input_file.stem}{output_extension}"
+    if output_path_override:
+        output_file = output_path_override
+        if remove_input:
+            raise ValueError("remove_input can't be specified with output_path_override")
+    elif not output_extension:
+        raise ValueError("output_extension or output_path_override is required")
+    else:
+        input_file = Path(input_file)
+        output_file = input_file.parent / f"{input_file.stem}{output_extension}"
     proc = await asyncio.create_subprocess_exec(
         ffmpeg_path,
         *ffmpeg_default_params,
@@ -77,16 +88,16 @@ async def convert_path(
         stderr=asyncio.subprocess.PIPE,
         stdin=asyncio.subprocess.PIPE,
     )
-    _, stderr = await proc.communicate()
+    stdout, stderr = await proc.communicate()
     if proc.returncode != 0:
         err_text = stderr.decode("utf-8") if stderr else f"unknown ({proc.returncode})"
         raise ConverterError(f"ffmpeg error: {err_text}")
     elif stderr:
         # TODO log warnings?
         pass
-    if remove_input:
+    if remove_input and isinstance(input_file, Path):
         input_file.unlink(missing_ok=True)
-    return output_file
+    return stdout if output_file == "-" else output_file
 
 
 async def convert_bytes(
