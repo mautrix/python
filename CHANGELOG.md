@@ -9,6 +9,10 @@
 * *(util.formatter)* Whitespace in non-`pre` elements is now compressed into
   a single space. Newlines are also replaced with a space instead of removed
   completely. Whitespace after a block element is removed completely.
+* *(util.ffmpeg)* Added option to override output path, which allows outputting
+  to stdout (by specifying `-`).
+* *(util.config)* Changed `ConfigUpdateHelper.copy` to ignore comments if the
+  entity being copied is a commentable yaml object (e.g. map or list).
 
 ## v0.14.2 (2021-12-30)
 
