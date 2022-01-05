@@ -1,4 +1,4 @@
-## v0.14.3 (unreleased)
+## v0.14.3 (2022-01-05)
 
 * *(types)* Added `MatrixURI` type to parse and build `matrix:` URIs and
   `https://matrix.to` URLs.
