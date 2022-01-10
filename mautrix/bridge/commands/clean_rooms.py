@@ -98,7 +98,7 @@ async def clean_rooms(evt: CommandEvent) -> EventID:
     ] or ["No tombstoned rooms found."]
     reply.append("#### Inactive portal rooms (I)")
     reply += [
-        f"{n}. [I{n}](https://matrix.to/#/{portal.mxid}) " f'(to remote chat "{portal.name}")'
+        f'{n}. [I{n}](https://matrix.to/#/{portal.mxid}) (to remote chat "{portal.name}")'
         for n, portal in enumerate(results.empty_portals)
     ] or ["No inactive portal rooms found."]
 
