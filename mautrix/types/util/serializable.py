@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Type, TypeVar
+from typing import Type, TypeVar, Union
 from abc import ABC, abstractmethod
 from enum import Enum
 import json
@@ -30,7 +30,7 @@ class Serializable:
         return json.dumps(self.serialize())
 
     @classmethod
-    def parse_json(cls: Type[SerializableSubtype], data: str) -> SerializableSubtype:
+    def parse_json(cls: Type[SerializableSubtype], data: Union[str, bytes]) -> SerializableSubtype:
         """Parse the given string as JSON and deserialize the result into this type."""
         return cls.deserialize(json.loads(data))
 
