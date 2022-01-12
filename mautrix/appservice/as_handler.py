@@ -118,7 +118,7 @@ class AppServiceServerMixin:
 
     @staticmethod
     def _get_with_fallback(
-        json: Dict[str, Any], field: str, unstable_prefix: str, default: Any = None
+        json: dict[str, Any], field: str, unstable_prefix: str, default: Any = None
     ) -> Any:
         try:
             return json.pop(field)
