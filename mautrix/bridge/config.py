@@ -124,18 +124,12 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
             if "bridge.alias_template" in self
             else None
         )
-        group_id = (
-            {"group_id": self["appservice.community_id"]}
-            if self["appservice.community_id"]
-            else {}
-        )
 
         return {
             "users": [
                 {
                     "exclusive": True,
                     "regex": re.escape(f"@{username_format}:{homeserver}").replace(regex_ph, ".*"),
-                    **group_id,
                 }
             ],
             "aliases": [
