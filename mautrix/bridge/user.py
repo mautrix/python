@@ -169,8 +169,7 @@ class BaseUser(ABC):
         self._bridge_state_queue.append(state)
         if not self._bridge_state_loop:
             self.log.debug(f"Starting bridge state loop")
-            self._bridge_state_loop = asyncio.create_task(
-                self._start_bridge_state_send_loop())
+            self._bridge_state_loop = asyncio.create_task(self._start_bridge_state_send_loop())
         else:
             self.log.debug(f"Queued bridge state to send later: {state.state_event}")
 
@@ -185,13 +184,16 @@ class BaseUser(ABC):
             else:
                 if state._num_send_attempts <= 10:
                     retry_seconds = state._num_send_attempts ** 2
-                    self.log.warn(f"Error sending bridge state {state.state_event}, attempts: {state._num_send_attempts}, waiting {retry_seconds} seconds for retry")
+                    self.log.warn(
+                        f"Error sending bridge state {state.state_event}, attempts: {state._num_send_attempts}, waiting {retry_seconds} seconds for retry"
+                    )
                     await asyncio.sleep(retry_seconds)
                 else:
-                    self.log.error(f"Failed to send bridge state {state.state_event} after {state._num_send_attempts} tries, giving up")
+                    self.log.error(
+                        f"Failed to send bridge state {state.state_event} after {state._num_send_attempts} tries, giving up"
+                    )
                     self._bridge_state_queue.pop(0)
         self._bridge_state_loop = None
-
 
     def send_remote_checkpoint(
         self,
