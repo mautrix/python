@@ -1,3 +1,14 @@
+## v0.14.4 (2022-01-13)
+
+* Bumped minimum yarl version to 1.5. v1.4 and below didn't allow `URL.build()`
+  with a scheme but no host, which is used in the `matrix:` URI generator that
+  was added in v0.14.3.
+* *(appservice)* Removed support for adding a `group_id` to user namespaces in
+  registration files.
+* *(types)* Updated `Serializable.parse_json` type hint to allow `bytes` in
+  addition to `str` (because `json.loads` allows both).
+* *(bridge)* Added `retry_num` parameter to `User.send_remote_checkpoint`.
+
 ## v0.14.3 (2022-01-05)
 
 * *(types)* Added `MatrixURI` type to parse and build `matrix:` URIs and
