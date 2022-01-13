@@ -75,6 +75,8 @@ class BridgeState(SerializableAttrs):
     error: Optional[str] = None
     message: Optional[str] = None
 
+    _num_send_attempts = 0
+
     def fill(self) -> "BridgeState":
         self.timestamp = self.timestamp or int(time.time())
         self.source = self.source or self.default_source
@@ -104,9 +106,11 @@ class BridgeState(SerializableAttrs):
         # If there's more than ⅘ of the previous pong's time-to-live left, drop this one
         return prev_state.timestamp + (prev_state.ttl / 5) > self.timestamp
 
-    async def send(self, url: str, token: str, log: logging.Logger, log_sent: bool = True) -> None:
+    async def send(self, url: str, token: str, log: logging.Logger, log_sent: bool = True) -> bool:
         if not url:
-            return
+            log.debug(f"No url passed to send - skipping")
+            return True
+        self._num_send_attempts += 1
         headers = {"Authorization": f"Bearer {token}", "User-Agent": HTTPAPI.default_ua}
         try:
             async with aiohttp.ClientSession() as sess, sess.post(
@@ -119,10 +123,13 @@ class BridgeState(SerializableAttrs):
                         f"Unexpected status code {resp.status} "
                         f"sending bridge state update: {text}"
                     )
+                    return False
                 elif log_sent:
                     log.debug(f"Sent new bridge state {self}")
         except Exception as e:
             log.warning(f"Failed to send updated bridge state: {e}")
+            return False
+        return True
 
 
 @dataclass(kw_only=True)
