@@ -174,6 +174,7 @@ class BaseUser(ABC):
         event_type: EventType,
         message_type: MessageType | None = None,
         error: str | Exception | None = None,
+        retry_num: int = 0,
     ) -> WrappedTask:
         """
         Send a remote checkpoint for the given ``event_id``. This function spaws an
@@ -195,6 +196,7 @@ class BaseUser(ABC):
                 event_type=event_type,
                 message_type=message_type,
                 info=str(error) if error else None,
+                retry_num=retry_num,
             ).send(
                 self.log,
                 self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
