@@ -340,7 +340,11 @@ class MatrixURI:
         Returns:
             The event ID in this URI, or ``None`` if this is not a link to an event in a room.
         """
-        if (self.room_id or self.room_alias) and self._part2.type == IdentifierType.EVENT:
+        if (
+            self._part2
+            and (self.room_id or self.room_alias)
+            and self._part2.type == IdentifierType.EVENT
+        ):
             return EventID(self._part2.mxid)
         return None
 
