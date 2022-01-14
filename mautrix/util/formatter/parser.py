@@ -164,7 +164,7 @@ class MatrixParser(Generic[T]):
         return msg.format(self.e.USER_MENTION, user_id=user_id)
 
     async def room_pill_to_fstring(self, msg: T, room_alias: RoomAlias) -> T | None:
-        return msg.format(self.e.ROOM_MENTION, room_alias=room_alias)
+        return None
 
     async def room_id_link_to_fstring(self, msg: T, room_id: RoomID) -> T | None:
         return None
