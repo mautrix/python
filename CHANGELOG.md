@@ -1,3 +1,12 @@
+## v0.14.5 (2022-01-04)
+
+* *(util.formatter)* Removed the default handler for room pill conversion.
+  * This means they'll be formatted as normal links unless the bridge or other
+    thing using the formatter overrides `room_pill_to_fstring`.
+* *(types)* Fixed the `event_id` property of `MatrixURI`s throwing an error
+  (instead of returning `None`) when the parsed link didn't contain a second
+  part with an event ID.
+
 ## v0.14.4 (2022-01-13)
 
 * Bumped minimum yarl version to 1.5. v1.4 and below didn't allow `URL.build()`
