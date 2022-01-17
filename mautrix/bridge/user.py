@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, NamedTuple
 from abc import ABC, abstractmethod
-from collections import defaultdict
+from collections import defaultdict, deque
 import asyncio
 import logging
 import time
@@ -51,6 +51,8 @@ class BaseUser(ABC):
     command_status: dict[str, Any] | None
     _metric_value: dict[Gauge, bool]
     _prev_bridge_status: BridgeState | None
+    _bridge_state_queue: deque[BridgeState]
+    _bridge_state_loop: asyncio.Task | None
 
     def __init__(self) -> None:
         self.dm_update_lock = asyncio.Lock()
@@ -59,6 +61,8 @@ class BaseUser(ABC):
         self._prev_bridge_status = None
         self.log = self.log.getChild(self.mxid)
         self.relay_whitelisted = False
+        self._bridge_state_queue = deque()
+        self._bridge_state_loop = None
 
     @abstractmethod
     async def is_logged_in(self) -> bool:
@@ -162,9 +166,34 @@ class BaseUser(ABC):
         if state.should_deduplicate(self._prev_bridge_status):
             return
         self._prev_bridge_status = state
-        await state.send(
-            self.bridge.config["homeserver.status_endpoint"], self.az.as_token, self.log
-        )
+        self._bridge_state_queue.append(state)
+        if not self._bridge_state_loop:
+            self.log.debug(f"Starting bridge state loop")
+            self._bridge_state_loop = asyncio.create_task(self._start_bridge_state_send_loop())
+        else:
+            self.log.debug(f"Queued bridge state to send later: {state.state_event}")
+
+    async def _start_bridge_state_send_loop(self):
+        while self._bridge_state_queue:
+            state = self._bridge_state_queue[0]
+            success = await state.send(
+                self.bridge.config["homeserver.status_endpoint"], self.az.as_token, self.log
+            )
+            if success:
+                self._bridge_state_queue.popleft()
+            else:
+                if state._num_send_attempts <= 10:
+                    retry_seconds = state._num_send_attempts ** 2
+                    self.log.warn(
+                        f"Error sending bridge state {state.state_event}, attempts: {state._num_send_attempts}, waiting {retry_seconds} seconds for retry"
+                    )
+                    await asyncio.sleep(retry_seconds)
+                else:
+                    self.log.error(
+                        f"Failed to send bridge state {state.state_event} after {state._num_send_attempts} tries, giving up"
+                    )
+                    self._bridge_state_queue.popleft()
+        self._bridge_state_loop = None
 
     def send_remote_checkpoint(
         self,
