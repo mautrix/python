@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Deque, NamedTuple
+from typing import Any, NamedTuple
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 import asyncio
@@ -51,7 +51,7 @@ class BaseUser(ABC):
     command_status: dict[str, Any] | None
     _metric_value: dict[Gauge, bool]
     _prev_bridge_status: BridgeState | None
-    _bridge_state_queue: Deque[BridgeState]
+    _bridge_state_queue: deque[BridgeState]
     _bridge_state_loop: asyncio.Task | None
 
     def __init__(self) -> None:
