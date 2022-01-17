@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, NamedTuple, Deque
+from typing import Any, Deque, NamedTuple
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 import asyncio
