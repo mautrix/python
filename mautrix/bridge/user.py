@@ -192,7 +192,7 @@ class BaseUser(ABC):
                     self.log.error(
                         f"Failed to send bridge state {state.state_event} after {state._num_send_attempts} tries, giving up"
                     )
-                    self._bridge_state_queue.pop(0)
+                    self._bridge_state_queue.popleft()
         self._bridge_state_loop = None
 
     def send_remote_checkpoint(
