@@ -404,9 +404,9 @@ class BaseMatrixHandler:
                 message_type=message.msgtype,
                 info=error_text,
             ).send(
-                self.log,
                 self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
                 self.az.as_token,
+                self.log,
             )
 
         sender = await self.bridge.get_user(user_id)
@@ -481,9 +481,9 @@ class BaseMatrixHandler:
                     event_type=EventType.ROOM_MESSAGE,
                     message_type=message.msgtype,
                 ).send(
-                    self.log,
                     self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
                     self.az.as_token,
+                    self.log,
                 )
         else:
             await bail(
@@ -679,7 +679,7 @@ class BaseMatrixHandler:
             info=str(err) if err else None,
             retry_num=retry_num,
         )
-        asyncio.create_task(checkpoint.send(self.log, endpoint, self.az.as_token))
+        asyncio.create_task(checkpoint.send(endpoint, self.az.as_token, self.log))
 
     def send_bridge_checkpoint(self, evt: Event) -> None:
         self.send_message_send_checkpoint(evt, MessageSendCheckpointStep.BRIDGE)

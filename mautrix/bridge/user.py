@@ -229,9 +229,9 @@ class BaseUser(ABC):
                 info=str(error) if error else None,
                 retry_num=retry_num,
             ).send(
-                self.log,
                 self.bridge.config["homeserver.message_send_checkpoint_endpoint"],
                 self.az.as_token,
+                self.log,
             )
         )
         return WrappedTask(task=task)
