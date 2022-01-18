@@ -171,7 +171,7 @@ class BaseUser(ABC):
         self._prev_bridge_status = state
         self._bridge_state_queue.append(state)
         if not self._bridge_state_loop or self._bridge_state_loop.done():
-            self.log.debug(f"Starting bridge state loop")
+            self.log.trace(f"Starting bridge state loop")
             self._bridge_state_loop = asyncio.create_task(self._start_bridge_state_send_loop())
         else:
             self.log.debug(f"Queued bridge state to send later: {state.state_event}")
