@@ -1,4 +1,12 @@
-## v0.14.5 (2022-01-04)
+## v0.14.6 (2022-01-??, unreleased)
+
+* **Breaking change *(util.message_send_checkpoint)*** Changed order of `send`
+  parameters to match `BridgeState.send` (this is not used by most software,
+  which is why the breaking change is in a patch release).
+* *(util.async_db)* Changed the default size of the aiosqlite thread pool to 1,
+  as it doesn't reliably work with higher values.
+
+## v0.14.5 (2022-01-14)
 
 * *(util.formatter)* Removed the default handler for room pill conversion.
   * This means they'll be formatted as normal links unless the bridge or other
