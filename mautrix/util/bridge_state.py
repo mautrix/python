@@ -75,7 +75,7 @@ class BridgeState(SerializableAttrs):
     error: Optional[str] = None
     message: Optional[str] = None
 
-    _num_send_attempts = 0
+    send_attempts_: int = field(default=0, hidden=True)
 
     def fill(self) -> "BridgeState":
         self.timestamp = self.timestamp or int(time.time())
@@ -108,9 +108,8 @@ class BridgeState(SerializableAttrs):
 
     async def send(self, url: str, token: str, log: logging.Logger, log_sent: bool = True) -> bool:
         if not url:
-            log.debug(f"No url passed to send - skipping")
             return True
-        self._num_send_attempts += 1
+        self.send_attempts_ += 1
         headers = {"Authorization": f"Bearer {token}", "User-Agent": HTTPAPI.default_ua}
         try:
             async with aiohttp.ClientSession() as sess, sess.post(
