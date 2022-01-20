@@ -182,6 +182,7 @@ class Bridge(Program, ABC):
                 "The as_token was not accepted. Is the registration file installed "
                 "in your homeserver correctly?"
             )
+            await self.stop_db()
             sys.exit(16)
         except MExclusive:
             self.log.critical(
@@ -189,6 +190,7 @@ class Bridge(Program, ABC):
                 "Are the homeserver domain and username template in the config "
                 "correct, and do they match the values in the registration?"
             )
+            await self.stop_db()
             sys.exit(16)
 
         await self.matrix.init_encryption()
