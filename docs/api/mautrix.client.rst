@@ -11,4 +11,3 @@ mautrix.client
    :maxdepth: 1
 
    Mixins<mautrix.client.mixins>
-

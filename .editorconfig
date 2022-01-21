@@ -14,5 +14,5 @@ max_line_length = 99
 [*.{yaml,yml,py,pyi}]
 indent_style = space
 
-[{.gitlab-ci.yml,.github/workflows/*.yml}]
+[{.gitlab-ci.yml,.github/workflows/*.yml,.pre-commit-config.yaml}]
 indent_size = 2

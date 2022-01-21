@@ -1,7 +1,7 @@
 Appservice client API
 =====================
 
-.. currentmodule:: mautrix.appservice 
+.. currentmodule:: mautrix.appservice
 
 .. autoclass:: mautrix.appservice.AppServiceAPI
 

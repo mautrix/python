@@ -1,6 +1,6 @@
 Intents
 =============
 
-.. currentmodule:: mautrix.appservice 
+.. currentmodule:: mautrix.appservice
 
 .. autoclass:: mautrix.appservice.IntentAPI
