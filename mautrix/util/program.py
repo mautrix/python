@@ -1,9 +1,11 @@
-# Copyright (c) 2021 Tulir Asokan
+# Copyright (c) 2022 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, AsyncIterable, Awaitable, Iterable, Optional, Tuple, Type, Union
+from __future__ import annotations
+
+from typing import Any, AsyncIterable, Awaitable, Iterable, Union
 from itertools import chain
 from time import time
 import argparse
@@ -43,7 +45,7 @@ class Program:
     parser: argparse.ArgumentParser
     args: argparse.Namespace
 
-    config_class: Type[BaseFileConfig]
+    config_class: type[BaseFileConfig]
     config: BaseFileConfig
 
     startup_actions: TaskList
@@ -57,12 +59,12 @@ class Program:
 
     def __init__(
         self,
-        module: Optional[str] = None,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        command: Optional[str] = None,
-        version: Optional[str] = None,
-        config_class: Optional[Type[BaseFileConfig]] = None,
+        module: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        command: str | None = None,
+        version: str | None = None,
+        config_class: type[BaseFileConfig] | None = None,
     ) -> None:
         if module:
             self.module = module
@@ -276,7 +278,7 @@ class Program:
                 tasks.append(asyncio.create_task(task))
         await asyncio.gather(*tasks)
 
-    def _add_actions(self, to: TaskList, add: Tuple[NewTask, ...]) -> TaskList:
+    def _add_actions(self, to: TaskList, add: tuple[NewTask, ...]) -> TaskList:
         for item in add:
             if inspect.isasyncgen(item):
                 to.append(self._unpack_async_iterator(item))

@@ -1,9 +1,10 @@
-# Copyright (c) 2021 Tulir Asokan
+# Copyright (c) 2022 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, Optional
+from __future__ import annotations
+
 from hashlib import sha256
 import base64
 import hmac
@@ -16,14 +17,14 @@ def _get_checksum(key: str, payload: bytes) -> str:
     return checksum.decode("utf-8").rstrip("=")
 
 
-def sign_token(key: str, payload: Dict) -> str:
+def sign_token(key: str, payload: dict) -> str:
     payload_b64 = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8"))
     checksum = _get_checksum(key, payload_b64)
     payload_str = payload_b64.decode("utf-8").rstrip("=")
     return f"{checksum}:{payload_str}"
 
 
-def verify_token(key: str, data: str) -> Optional[Dict]:
+def verify_token(key: str, data: str) -> dict | None:
     if not data:
         return None
 
