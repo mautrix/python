@@ -186,7 +186,7 @@ class Program:
     def prepare_loop(self) -> None:
         """Init lifecycle method where the asyncio event loop is created."""
         if uvloop is not None:
-            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+            uvloop.install()
             self.log.debug("Using uvloop for asyncio")
 
         self.loop = asyncio.get_event_loop()
