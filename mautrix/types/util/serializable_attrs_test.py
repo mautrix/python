@@ -8,7 +8,8 @@ from typing import List, Optional
 from attr import dataclass
 import pytest
 
-from .serializable_attrs import SerializableAttrs, SerializerError, field
+from ..primitive import JSON
+from .serializable_attrs import Serializable, SerializableAttrs, SerializerError, field
 
 
 def test_simple_class():
@@ -195,3 +196,63 @@ def test_flatten():
     assert google_com_deserialized.image.size == 3428
     assert google_com_deserialized.video is None
     assert google_com_deserialized.audio is None
+
+
+def test_flatten_arbitrary_serializable():
+    @dataclass
+    class CustomSerializable(Serializable):
+        is_hello: bool = True
+
+        def serialize(self) -> JSON:
+            if self.is_hello:
+                return {"hello": "world"}
+            return {}
+
+        @classmethod
+        def deserialize(cls, raw: JSON) -> "CustomSerializable":
+            return CustomSerializable(is_hello=raw.get("hello") == "world")
+
+    @dataclass
+    class Thing(SerializableAttrs):
+        custom: CustomSerializable = field(flatten=True)
+        another: int = field(default=5)
+
+    thing_1 = {
+        "hello": "world",
+        "another": 6,
+    }
+    thing_1_deserialized = Thing.deserialize(thing_1)
+    assert thing_1_deserialized.custom.is_hello is True
+    assert thing_1_deserialized.another == 6
+
+    thing_2 = {
+        "another": 4,
+    }
+    thing_2_deserialized = Thing.deserialize(thing_2)
+    assert thing_2_deserialized.custom.is_hello is False
+    assert thing_2_deserialized.another == 4
+
+    assert Thing(custom=CustomSerializable(is_hello=True)).serialize() == {
+        "hello": "world",
+        "another": 5,
+    }
+
+
+def test_flatten_optional():
+    @dataclass
+    class OptionalThing(SerializableAttrs):
+        key: str
+
+        @classmethod
+        def deserialize(cls, data: JSON) -> Optional["OptionalThing"]:
+            if "key" in data:
+                return super().deserialize(data)
+            return None
+
+    @dataclass
+    class ThingWithOptional(SerializableAttrs):
+        optional: OptionalThing = field(flatten=True)
+        another_field: int = 2
+
+    assert ThingWithOptional.deserialize({}).optional is None
+    assert ThingWithOptional.deserialize({"key": "hi"}).optional.key == "hi"
