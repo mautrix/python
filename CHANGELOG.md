@@ -1,4 +1,4 @@
-## v0.14.6 (2022-01-??, unreleased)
+## v0.14.6 (2022-01-26)
 
 * **Breaking change *(util.message_send_checkpoint)*** Changed order of `send`
   parameters to match `BridgeState.send` (this is not used by most software,
@@ -11,6 +11,8 @@
   (>40 seconds, with the timeout being 30 seconds).
 * *(util.variation_selector)* Fixed variation selectors being incorrectly added
   even if the emoji had a skin tone selector.
+* *(bridge)* Fixed the process getting stuck if a config error caused the
+  bridge to stop itself without stopping the SQLite thread.
 * Added pre-commit hooks to run black, isort and some other checks.
 
 ## v0.14.5 (2022-01-14)
