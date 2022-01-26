@@ -59,6 +59,8 @@ VARIATION_SELECTOR_16 = "\ufe0f"
 ADD_VARIATION_TRANSLATION = str.maketrans(
     {ord(emoji): f"{emoji}{VARIATION_SELECTOR_16}" for emoji in read_data().values()}
 )
+SKIN_TONE_MODIFIERS = ("\U0001F3FB", "\U0001F3FC", "\U0001F3FD", "\U0001F3FE", "\U0001F3FF")
+SKIN_TONE_REPLACEMENTS = {f"{VARIATION_SELECTOR_16}{mod}": mod for mod in SKIN_TONE_MODIFIERS}
 
 
 def add(val: str) -> str:
@@ -85,7 +87,10 @@ def add(val: str) -> str:
     Returns:
         The string with variation selectors added.
     """
-    return remove(val).translate(ADD_VARIATION_TRANSLATION)
+    added = remove(val).translate(ADD_VARIATION_TRANSLATION)
+    for invalid_selector, replacement in SKIN_TONE_REPLACEMENTS.items():
+        added = added.replace(invalid_selector, replacement)
+    return added
 
 
 def remove(val: str) -> str:
