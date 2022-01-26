@@ -5,6 +5,13 @@
   which is why the breaking change is in a patch release).
 * *(util.async_db)* Changed the default size of the aiosqlite thread pool to 1,
   as it doesn't reliably work with higher values.
+* *(util.async_db)* Added logging for database queries that take a long time
+  (>1 second).
+* *(client)* Added logging for sync requests that take a long time
+  (>40 seconds, with the timeout being 30 seconds).
+* *(util.variation_selector)* Fixed variation selectors being incorrectly added
+  even if the emoji had a skin tone selector.
+* Added pre-commit hooks to run black, isort and some other checks.
 
 ## v0.14.5 (2022-01-14)
 
@@ -366,7 +373,7 @@
 ## v0.9.0 (2021-04-16)
 
 * Added option to retry all HTTP requests when encountering a HTTP network
-  error or gateway error response (502/503/504) 
+  error or gateway error response (502/503/504)
   * Disabled by default, you need to set the `default_retry_count` field in
     `HTTPAPI` (or `Client`), or the `default_http_retry_count` field in
     `AppService` to enable.
