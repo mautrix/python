@@ -388,14 +388,17 @@ class Syncer(ABC):
         self.log.debug("Starting syncing")
         next_batch = await self.sync_store.get_next_batch()
         await self.run_internal_event(InternalEventType.SYNC_STARTED)
+        timeout = 30
         while True:
+            current_batch = next_batch
+            start = time.monotonic()
             try:
                 data = await self.sync(
-                    since=next_batch, filter_id=filter_id, set_presence=self.presence
+                    since=current_batch,
+                    filter_id=filter_id,
+                    set_presence=self.presence,
+                    timeout=timeout * 1000,
                 )
-                if fail_sleep != 5:
-                    self.log.debug("Sync error resolved")
-                fail_sleep = 5
             except (asyncio.CancelledError, MUnknownToken):
                 raise
             except Exception as e:
@@ -409,8 +412,15 @@ class Syncer(ABC):
                 if fail_sleep < 320:
                     fail_sleep *= 2
                 continue
+            if fail_sleep != 5:
+                self.log.debug("Sync error resolved")
+            fail_sleep = 5
 
-            is_initial = not next_batch
+            duration = time.monotonic() - start
+            if current_batch and duration > timeout + 10:
+                self.log.warning(f"Sync request ({current_batch}) took {duration:.3f} seconds")
+
+            is_initial = not current_batch
             data["net.maunium.mautrix"] = {
                 "is_initial": is_initial,
                 "is_first": is_first,
@@ -425,16 +435,21 @@ class Syncer(ABC):
                 is_first = False
                 continue
             is_first = False
+            self.log.silly(f"Starting sync handling ({current_batch})")
             start = time.monotonic()
             try:
                 tasks = self.handle_sync(data)
                 await asyncio.gather(*tasks)
             except Exception:
-                self.log.exception("Sync handling errored")
+                self.log.exception(f"Sync handling ({current_batch}) errored")
+            else:
+                self.log.silly(f"Finished sync handling ({current_batch})")
             finally:
                 duration = time.monotonic() - start
                 if duration > 10:
-                    self.log.warning(f"Sync handling took {duration:.3f} seconds")
+                    self.log.warning(
+                        f"Sync handling ({current_batch}) took {duration:.3f} seconds"
+                    )
 
     def stop(self) -> None:
         """
