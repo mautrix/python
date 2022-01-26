@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Type
+from typing import Any
 from abc import ABC, abstractmethod
 import sys
 
@@ -33,12 +33,12 @@ except ImportError:
 class Bridge(Program, ABC):
     db: Database
     az: AppService
-    state_store_class: Type[ASStateStore] = PgBridgeStateStore
+    state_store_class: type[ASStateStore] = PgBridgeStateStore
     state_store: ASStateStore
     upgrade_table: UpgradeTable
-    config_class: Type[br.BaseBridgeConfig]
+    config_class: type[br.BaseBridgeConfig]
     config: br.BaseBridgeConfig
-    matrix_class: Type[br.BaseMatrixHandler]
+    matrix_class: type[br.BaseMatrixHandler]
     matrix: br.BaseMatrixHandler
     repo_url: str
     markdown_version: str
@@ -51,9 +51,9 @@ class Bridge(Program, ABC):
         description: str = None,
         command: str = None,
         version: str = None,
-        config_class: Type[br.BaseBridgeConfig] = None,
-        matrix_class: Type[br.BaseMatrixHandler] = None,
-        state_store_class: Type[ASStateStore] = None,
+        config_class: type[br.BaseBridgeConfig] = None,
+        matrix_class: type[br.BaseMatrixHandler] = None,
+        state_store_class: type[ASStateStore] = None,
     ) -> None:
         super().__init__(module, name, description, command, version, config_class)
         if matrix_class:
