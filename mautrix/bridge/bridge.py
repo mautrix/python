@@ -201,6 +201,11 @@ class Bridge(Program, ABC):
             state = BridgeState(state_event=BridgeStateEvent.UNCONFIGURED).fill()
             await state.send(status_endpoint, self.az.as_token, self.log)
 
+    async def system_exit(self) -> None:
+        if hasattr(self, "db") and isinstance(self.db, Database):
+            self.log.trace("Stopping database due to SystemExit")
+            await self.db.stop()
+
     async def stop(self) -> None:
         if self.manhole:
             self.manhole.close()

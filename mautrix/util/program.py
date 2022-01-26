@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, AsyncIterable, Awaitable, Iterable, Union
+from typing import Any, AsyncIterable, Awaitable, Iterable, Union, cast
 from itertools import chain
 from time import time
 import argparse
@@ -18,6 +18,7 @@ import signal
 import sys
 
 from .config import BaseFileConfig, BaseMissingError, BaseValidatableConfig, ConfigValueError
+from .logging import TraceLogger
 
 try:
     import uvloop
@@ -41,7 +42,7 @@ class Program:
     """
 
     loop: asyncio.AbstractEventLoop
-    log: logging.Logger
+    log: TraceLogger
     parser: argparse.ArgumentParser
     args: argparse.Namespace
 
@@ -176,7 +177,7 @@ class Program:
     def prepare_log(self) -> None:
         """Pre-init lifecycle method. Extend this if you want to customize logging setup."""
         logging.config.dictConfig(copy.deepcopy(self.config["logging"]))
-        self.log = logging.getLogger("mau.init")
+        self.log = cast(TraceLogger, logging.getLogger("mau.init"))
 
     def prepare(self) -> None:
         """
@@ -229,11 +230,17 @@ class Program:
         except Exception:
             self.log.critical("Unexpected error in main event loop", exc_info=True)
             sys.exit(2)
+        except SystemExit:
+            self.loop.run_until_complete(self.system_exit())
+            raise
         self.prepare_stop()
         self.loop.run_until_complete(self.stop())
         self.prepare_shutdown()
         self.log.info("Everything stopped, shutting down")
         sys.exit(0)
+
+    async def system_exit(self) -> None:
+        """Lifecycle method that is called if the main event loop exits using ``sys.exit()``."""
 
     async def start(self) -> None:
         """
