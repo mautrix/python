@@ -1,43 +1,29 @@
-# Copyright (c) 2021 Tulir Asokan
+# Copyright (c) 2022 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Awaitable, Type
+from typing import Any, AsyncContextManager, Type
 from abc import ABC, abstractmethod
 from urllib.parse import urlparse
 import logging
 import sys
 
 from mautrix import __optional_imports__
+from mautrix.util.logging import TraceLogger
 
+from .connection import LoggingConnection
 from .upgrade import UpgradeTable, upgrade_tables
 
 if __optional_imports__:
-    from asyncpg import Connection, Record
-
-if sys.version_info >= (3, 8):
-    from typing import Protocol
-else:
-    from typing_extensions import Protocol
-
-
-class AcquireResult(Protocol):
-    async def __aenter__(self) -> Connection:
-        pass
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
-
-    def __await__(self) -> Awaitable[Connection]:
-        pass
+    from asyncpg import Record
 
 
 class Database(ABC):
     schemes: dict[str, Type[Database]] = {}
-    log: logging.Logger
+    log: TraceLogger
 
     scheme: str
     url: str
@@ -49,12 +35,13 @@ class Database(ABC):
         url: str,
         upgrade_table: UpgradeTable,
         db_args: dict[str, Any] | None = None,
-        log: logging.Logger | None = None,
+        log: TraceLogger | None = None,
     ) -> None:
         self.url = url
         self._db_args = {**db_args} if db_args else {}
         self.upgrade_table = upgrade_table
         self.log = log or logging.getLogger("mau.db")
+        assert isinstance(self.log, TraceLogger)
 
     @classmethod
     def create(
@@ -63,7 +50,7 @@ class Database(ABC):
         *,
         db_args: dict[str, Any] | None = None,
         upgrade_table: UpgradeTable | str | None = None,
-        log: logging.Logger | None = None,
+        log: logging.Logger | TraceLogger | None = None,
     ) -> Database:
         scheme = urlparse(url).scheme
         try:
@@ -101,7 +88,7 @@ class Database(ABC):
         pass
 
     @abstractmethod
-    def acquire(self) -> AcquireResult:
+    def acquire(self) -> AsyncContextManager[LoggingConnection]:
         pass
 
     async def execute(self, query: str, *args: Any, timeout: float | None = None) -> str:

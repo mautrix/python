@@ -15,6 +15,7 @@ import sqlite3
 
 import aiosqlite
 
+from .connection import LoggingConnection
 from .database import Database
 from .upgrade import UpgradeTable
 
@@ -110,12 +111,12 @@ class SQLiteDatabase(Database):
             await conn.close()
 
     @asynccontextmanager
-    async def acquire(self) -> TxnConnection:
+    async def acquire(self) -> LoggingConnection:
         if self._stopped:
             raise RuntimeError("database pool has been stopped")
         conn = await self._pool.get()
         try:
-            yield conn
+            yield LoggingConnection(self.scheme, conn, self.log)
         finally:
             self._pool.put_nowait(conn)
 

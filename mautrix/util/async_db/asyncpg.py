@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Tulir Asokan
+# Copyright (c) 2022 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -6,12 +6,14 @@
 from __future__ import annotations
 
 from typing import Any
+from contextlib import asynccontextmanager
 import asyncio
 import logging
 
 import asyncpg
 
-from .database import AcquireResult, Database
+from .connection import LoggingConnection
+from .database import Database
 from .upgrade import UpgradeTable
 
 
@@ -52,8 +54,10 @@ class PostgresDatabase(Database):
         if not self._pool_override:
             await self.pool.close()
 
-    def acquire(self) -> AcquireResult:
-        return self.pool.acquire()
+    @asynccontextmanager
+    async def acquire(self) -> LoggingConnection:
+        async with self.pool.acquire() as conn:
+            yield LoggingConnection(self.scheme, conn, self.log)
 
 
 Database.schemes["postgres"] = PostgresDatabase
