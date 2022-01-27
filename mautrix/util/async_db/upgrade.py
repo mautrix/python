@@ -29,23 +29,45 @@ async def noop_upgrade(_: Connection) -> None:
     pass
 
 
+def table_exists(scheme: str, name: str) -> str:
+    if scheme == "sqlite":
+        return f"SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='{name}')"
+    elif scheme == "postgres":
+        return f"SELECT EXISTS(SELECT FROM information_schema.tables WHERE table_name='{name}')"
+    raise RuntimeError("unsupported database scheme")
+
+
+def column_exists(scheme: str, table: str, column: str) -> str:
+    if scheme == "sqlite":
+        return f"SELECT EXISTS(SELECT 1 FROM pragma_table_info('{table}') WHERE name='{column}')"
+    elif scheme == "postgres":
+        return (
+            f"SELECT EXISTS(SELECT FROM information_schema.columns "
+            f"WHERE table_name='{table}' AND column_name='{column}')"
+        )
+    raise RuntimeError("unsupported database scheme")
+
+
 class UpgradeTable:
     upgrades: list[Upgrade]
     allow_unsupported: bool
     database_name: str
     version_table_name: str
+    version_table_namespace: str
     log: TraceLogger
 
     def __init__(
         self,
         allow_unsupported: bool = False,
         version_table_name: str = "version",
+        version_table_namespace: str = "main",
         database_name: str = "database",
         log: logging.Logger | TraceLogger | None = None,
     ) -> None:
         self.upgrades = [noop_upgrade]
         self.allow_unsupported = allow_unsupported
         self.version_table_name = version_table_name
+        self.version_table_namespace = version_table_namespace
         self.database_name = database_name
         self.log = log or logging.getLogger("mau.db.upgrade")
 
@@ -83,19 +105,69 @@ class UpgradeTable:
 
         return actually_register(_outer_fn) if _outer_fn else actually_register
 
+    @staticmethod
+    async def _create_version_table(conn: Connection) -> None:
+        await conn.execute(
+            """
+            CREATE TABLE version (
+                namespace TEXT    PRIMARY KEY,
+                version   INTEGER NOT NULL
+            )
+        """
+        )
+
+    async def _upgrade_version_table(self, scheme: str, conn: Connection) -> None:
+        if not await conn.fetchval(table_exists(scheme, "version")):
+            self.log.debug("Creating db schema version table (v2)")
+            await self._create_version_table(conn)
+        elif not await conn.fetchval(column_exists(scheme, "version", "namespace")):
+            if self.version_table_name != "version":
+                raise RuntimeError("Can't upgrade version table with a non-primary UpgradeTable")
+            self.log.debug("Upgrading db schema version table from v1 to v2")
+            current_main_version = await conn.fetchval("SELECT version FROM version LIMIT 1")
+            await conn.execute("DROP TABLE version")
+            await self._create_version_table(conn)
+            self.log.debug(
+                f"Inserting main schema version {current_main_version} into updated version table"
+            )
+            await conn.execute(
+                self._version_insert_query, self.version_table_namespace, current_main_version
+            )
+
+        if self.version_table_name != "version" and await conn.fetchval(
+            table_exists(scheme, self.version_table_name)
+        ):
+            current_own_version = await conn.fetchval(
+                f"SELECT version FROM {self.version_table_name} LIMIT 1"
+            )
+            self.log.debug(
+                f"Inserting {self.version_table_namespace} schema version "
+                f"{current_own_version} into updated version table "
+                f"and deleting legacy {self.version_table_name} table"
+            )
+            await conn.execute(
+                self._version_insert_query, self.version_table_namespace, current_own_version
+            )
+            await conn.execute(f"DELETE TABLE {self.version_table_name}")
+
+    _version_insert_query = (
+        "INSERT INTO version (namespace, version) VALUES ($1, $2) "
+        "ON CONFLICT (namespace) DO UPDATE SET version=$2"
+    )
+
     async def _save_version(self, conn: Connection, version: int) -> None:
         self.log.trace(f"Saving current version (v{version}) to database")
-        await conn.execute(f"DELETE FROM {self.version_table_name}")
-        await conn.execute(f"INSERT INTO {self.version_table_name} (version) VALUES ($1)", version)
+        await conn.execute(self._version_insert_query, self.version_table_namespace, version)
 
     async def upgrade(self, db: async_db.Database) -> None:
-        await db.execute(
-            f"""CREATE TABLE IF NOT EXISTS {self.version_table_name} (
-                version INTEGER PRIMARY KEY
-            )"""
+        async with db.acquire() as conn, conn.transaction():
+            await self._upgrade_version_table(db.scheme, conn)
+        version: int = (
+            await db.fetchval(
+                f"SELECT version FROM version WHERE namespace=$1", self.version_table_namespace
+            )
+            or 0
         )
-        row = await db.fetchrow(f"SELECT version FROM {self.version_table_name} LIMIT 1")
-        version = row["version"] if row else 0
 
         if len(self.upgrades) < version:
             error = (
