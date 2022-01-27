@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 
-from mautrix.errors import MNotFound
+from mautrix.errors import MForbidden, MNotFound
 from mautrix.types import (
     JSON,
     EventID,
@@ -238,7 +238,7 @@ class StoreUpdatingAPI(ClientAPI):
 
             try:
                 profile = await self.get_profile(user_id)
-            except MNotFound:
+            except (MNotFound, MForbidden):
                 profile = None
             if profile:
                 self.log.trace(
