@@ -31,7 +31,12 @@ def mimetype(data: bytes | str) -> str:
     """
     if isinstance(data, str):
         return _from_filename(data)
-    return _from_buffer(data)
+    elif isinstance(data, bytes):
+        return _from_buffer(data)
+    else:
+        raise TypeError(
+            f"mimetype() argument must be a string or bytes, not {type(data).__name__!r}"
+        )
 
 
 __all__ = ["mimetype"]
