@@ -30,7 +30,7 @@ class ConverterError(ChildProcessError):
 
 class NotInstalledError(ConverterError):
     def __init__(self) -> None:
-        super().__init__("ffmpeg not found in PATH")
+        super().__init__("failed to transcode media: ffmpeg is not installed")
 
 
 ffmpeg_path = _abswhich("ffmpeg")
