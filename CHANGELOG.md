@@ -1,3 +1,12 @@
+## v0.14.7 (2022-01-29)
+
+* *(client)* Fixed error inviting users with custom member event content if the
+  server had disabled fetching profiles.
+* *(util.utf16_surrogate)* Added utilities for adding/removing unicode
+  surrogate pairs in strings.
+* *(util.magic)* Added check to make sure the parameter to `mimetype()` is
+  either `bytes` or `str`.
+
 ## v0.14.6 (2022-01-26)
 
 * **Breaking change *(util.message_send_checkpoint)*** Changed order of `send`
