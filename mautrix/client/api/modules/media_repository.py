@@ -21,7 +21,7 @@ else:
     from typing_extensions import Literal
 
 try:
-    import magic
+    from mautrix.util import magic
 except ImportError:
     if __optional_imports__:
         raise
@@ -61,7 +61,7 @@ class MediaRepositoryMethods(BaseClientAPI):
             MatrixResponseError: If the response does not contain a ``content_uri`` field.
         """
         if magic and isinstance(data, bytes):
-            mime_type = mime_type or magic.from_buffer(data, mime=True)
+            mime_type = mime_type or magic.mimetype(data)
         headers = {}
         if mime_type:
             headers["Content-Type"] = mime_type

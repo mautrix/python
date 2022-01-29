@@ -47,13 +47,6 @@ from mautrix.util.logging import TraceLogger
 
 from .. import api as as_api, state_store as ss
 
-try:
-    import magic
-except ImportError:
-    if __optional_imports__:
-        raise
-    magic = None
-
 
 def quote(*args, **kwargs):
     return urllib_quote(*args, **kwargs, safe="")
