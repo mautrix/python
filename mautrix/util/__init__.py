@@ -18,4 +18,5 @@ __all__ = [
     "variation_selector",
     "format_duration",
     "ffmpeg",
+    "utf16_surrogate",
 ]
