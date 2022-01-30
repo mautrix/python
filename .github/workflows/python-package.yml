@@ -51,9 +51,10 @@ jobs:
     - uses: isort/isort-action@master
       with:
         sortPaths: "./mautrix"
-    - uses: psf/black@21.12b0
+    - uses: psf/black@latest
       with:
         src: "./mautrix"
+        version: "22.1.0"
     - name: pre-commit
       run: |
         pip install pre-commit

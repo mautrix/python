@@ -119,7 +119,7 @@ class Bridge(Program, ABC):
 
     def prepare_appservice(self) -> None:
         self.make_state_store()
-        mb = 1024 ** 2
+        mb = 1024**2
         default_http_retry_count = self.config.get("homeserver.http_retry_count", None)
         if self.name not in HTTPAPI.default_ua:
             HTTPAPI.default_ua = f"{self.name}/{self.version} {HTTPAPI.default_ua}"

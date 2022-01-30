@@ -183,7 +183,7 @@ class BaseUser(ABC):
             success = await state.send(url, self.az.as_token, self.log)
             if not success:
                 if state.send_attempts_ <= 10:
-                    retry_seconds = state.send_attempts_ ** 2
+                    retry_seconds = state.send_attempts_**2
                     self.log.warning(
                         f"Attempt #{state.send_attempts_} of sending bridge state "
                         f"{state.state_event} failed, retrying in {retry_seconds} seconds"
