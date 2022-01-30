@@ -8,7 +8,6 @@ class HTMLNode(list[HTMLNode]):
     text: str
     tail: str
     attrib: dict[str, str]
-
     def __init__(self, tag: str, attrs: list[tuple[str, str]]) -> None: ...
 
 def read_html(data: str) -> HTMLNode: ...
