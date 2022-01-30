@@ -1,8 +1,10 @@
-## v0.14.8 (2022-02-??)
+## v0.14.8 (2022-02-??, unreleased)
 
 * *(util.formatter)* Deprecated the lxml-based HTML parser and made the
   htmlparser-based parser the default. The lxml-based parser will be removed
   in v0.15.
+* *(client.api)* Fixed `filter_json` parameter in `get_messages` not being sent
+  to the server correctly.
 
 ## v0.14.7 (2022-01-29)
 

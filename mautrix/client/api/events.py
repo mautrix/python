@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from typing import Awaitable
+import json
 
 from mautrix.api import Method, Path
 from mautrix.errors import MatrixResponseError
@@ -32,6 +33,7 @@ from mautrix.types import (
     ReactionEventContent,
     RelatesTo,
     RelationType,
+    RoomEventFilter,
     RoomID,
     Serializable,
     SerializerError,
@@ -266,7 +268,7 @@ class EventMethods(BaseClientAPI):
         from_token: SyncToken,
         to_token: SyncToken | None = None,
         limit: int | None = None,
-        filter_json: str | None = None,
+        filter_json: str | dict | RoomEventFilter | None = None,
     ) -> PaginatedMessages:
         """
         Get a list of message and state events for a room. Pagination parameters are used to
@@ -291,12 +293,16 @@ class EventMethods(BaseClientAPI):
         .. _sync endpoint:
             https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3sync
         """
+        if isinstance(filter_json, Serializable):
+            filter_json = filter_json.json()
+        elif isinstance(filter_json, dict):
+            filter_json = json.dumps(filter_json)
         query_params = {
             "from": from_token,
             "dir": direction.value,
             "to": to_token,
             "limit": str(limit) if limit else None,
-            "filter_json": filter_json,
+            "filter": filter_json,
         }
         content = await self.api.request(
             Method.GET,
