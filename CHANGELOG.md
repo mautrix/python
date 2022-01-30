@@ -1,3 +1,9 @@
+## v0.14.8 (2022-02-??)
+
+* *(util.formatter)* Deprecated the lxml-based HTML parser and made the
+  htmlparser-based parser the default. The lxml-based parser will be removed
+  in v0.15.
+
 ## v0.14.7 (2022-01-29)
 
 * *(client)* Fixed error inviting users with custom member event content if the
