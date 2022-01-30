@@ -51,7 +51,7 @@ jobs:
     - uses: isort/isort-action@master
       with:
         sortPaths: "./mautrix"
-    - uses: psf/black@latest
+    - uses: psf/black@stable
       with:
         src: "./mautrix"
         version: "22.1.0"
