@@ -27,7 +27,7 @@ setuptools.setup(
     ],
     extras_require={
         "detect_mimetype": ["python-magic>=0.4.15,<0.5"],
-        "lint": ["black==21.12b0", "isort"],
+        "lint": ["black==22.1.0", "isort"],
         "test": ["pytest", "pytest-asyncio", *test_dependencies],
         ':python_version < "3.8"': ["typing_extensions"],
     },
