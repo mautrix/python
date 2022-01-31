@@ -1,4 +1,4 @@
-## v0.14.8 (2022-02-??, unreleased)
+## v0.14.8 (2022-01-31)
 
 * *(util.formatter)* Deprecated the lxml-based HTML parser and made the
   htmlparser-based parser the default. The lxml-based parser will be removed
