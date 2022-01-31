@@ -5,6 +5,7 @@
   in v0.15.
 * *(client.api)* Fixed `filter_json` parameter in `get_messages` not being sent
   to the server correctly.
+* *(bridge)* Added utilities for implementing disappearing messages.
 
 ## v0.14.7 (2022-01-29)
 

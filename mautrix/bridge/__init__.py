@@ -10,6 +10,7 @@ from .custom_puppet import (
     OnlyLoginSelf,
     OnlyLoginTrustedDomain,
 )
+from .disappearing_message import AbstractDisappearingMessage
 from .matrix import BaseMatrixHandler
 from .notification_disabler import NotificationDisabler
 from .portal import BasePortal

@@ -5,13 +5,14 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, NamedTuple
+from typing import Any, ClassVar, NamedTuple
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from string import Template
 import asyncio
 import html
 import logging
+import time
 
 from mautrix.appservice import DOUBLE_PUPPET_SOURCE_KEY, AppService, IntentAPI
 from mautrix.errors import MatrixError, MatrixRequestError, MNotFound
@@ -40,6 +41,8 @@ class RelaySender(NamedTuple):
 class BasePortal(ABC):
     log: TraceLogger = logging.getLogger("mau.portal")
     _async_get_locks: dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
+    disappearing_msg_class: type[br.AbstractDisappearingMessage] | None = None
+    _disappearing_lock: asyncio.Lock | None
     az: AppService
     matrix: br.BaseMatrixHandler
     bridge: br.Bridge
@@ -55,6 +58,9 @@ class BasePortal(ABC):
     _relay_user: br.BaseUser | None
     relay_emote_to_text: bool = True
     relay_formatted_body: bool = True
+
+    def __init__(self) -> None:
+        self._disappearing_lock = asyncio.Lock() if self.disappearing_msg_class else None
 
     @abstractmethod
     async def save(self) -> None:
@@ -173,6 +179,65 @@ class BasePortal(ABC):
 
         self.encrypted = True
         return True
+
+    @property
+    def disappearing_enabled(self) -> bool:
+        return bool(self.disappearing_msg_class)
+
+    async def _disappear_event(self, msg: br.AbstractDisappearingMessage) -> None:
+        sleep_time = (msg.expiration_ts / 1000) - time.time()
+        self.log.trace(f"Sleeping {sleep_time:.3f} seconds before redacting {msg.event_id}")
+        await asyncio.sleep(sleep_time)
+        try:
+            await msg.delete()
+        except Exception:
+            self.log.exception(
+                f"Failed to delete disappearing message record for {msg.event_id} from database"
+            )
+        if self.mxid != msg.room_id:
+            self.log.debug(
+                f"Not redacting expired event {msg.event_id}, "
+                f"portal room seems to have changed ({self.mxid=!r} != {msg.room_id!r})"
+            )
+            return
+        try:
+            await self._do_disappear(msg.event_id)
+            self.log.debug(f"Expired event {msg.event_id} disappeared successfully")
+        except Exception as e:
+            self.log.warning(f"Failed to make expired event {msg.event_id} disappear: {e}", e)
+
+    async def _do_disappear(self, event_id: EventID) -> None:
+        await self.main_intent.redact(self.mxid, event_id)
+
+    @classmethod
+    async def restart_scheduled_disappearing(cls) -> None:
+        """
+        Restart disappearing message timers for all messages that were already scheduled to
+        disappear earlier. This should be called at bridge startup.
+        """
+        if not cls.disappearing_msg_class:
+            return
+        msgs = await cls.disappearing_msg_class.get_all_scheduled()
+        for msg in msgs:
+            portal = await cls.bridge.get_portal(msg.room_id)
+            if portal and portal.mxid:
+                asyncio.create_task(portal._disappear_event(msg))
+            else:
+                await msg.delete()
+
+    async def schedule_disappearing(self) -> None:
+        """
+        Start the disappearing message timer for all unscheduled messages in this room.
+        This is automatically called from :meth:`MatrixHandler.handle_receipt`.
+        """
+        if not self.disappearing_msg_class:
+            return
+        async with self._disappearing_lock:
+            msgs = await self.disappearing_msg_class.get_unscheduled_for_room(self.mxid)
+            for msg in msgs:
+                msg.start_timer()
+                await msg.update()
+                asyncio.create_task(self._disappear_event(msg))
 
     async def _send_message(
         self,
