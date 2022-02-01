@@ -395,7 +395,11 @@ class RoomMethods(EventMethods, BaseClientAPI):
         )
 
     async def invite_user(
-        self, room_id: RoomID, user_id: UserID, extra_content: dict[str, JSON] | None = None
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        reason: str | None = None,
+        extra_content: dict[str, JSON] | None = None,
     ) -> None:
         """
         Invite a user to participate in a particular room. They do not start participating in the
@@ -413,6 +417,8 @@ class RoomMethods(EventMethods, BaseClientAPI):
         Args:
             room_id: The ID of the room to which to invite the user.
             user_id: The fully qualified user ID of the invitee.
+            reason: The reason the user was invited. This will be supplied as the ``reason`` on
+                the `m.room.member`_ event.
             extra_content: Additional properties for the invite event content.
                 If a non-empty dict is passed, the invite event will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /invite``.
@@ -421,10 +427,11 @@ class RoomMethods(EventMethods, BaseClientAPI):
             await self.send_member_event(
                 room_id, user_id, Membership.INVITE, extra_content=extra_content
             )
-            return
-        await self.api.request(
-            Method.POST, Path.rooms[room_id].invite, content={"user_id": user_id}
-        )
+        else:
+            data = {"user_id": user_id}
+            if reason:
+                data["reason"] = reason
+            await self.api.request(Method.POST, Path.rooms[room_id].invite, content=data)
 
     # endregion
     # region 8.4.2 Leaving rooms
@@ -433,6 +440,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
     async def leave_room(
         self,
         room_id: RoomID,
+        reason: str | None = None,
         extra_content: dict[str, JSON] | None = None,
         raise_not_in_room: bool = False,
     ) -> None:
@@ -453,6 +461,8 @@ class RoomMethods(EventMethods, BaseClientAPI):
 
         Args:
             room_id: The ID of the room to leave.
+            reason: The reason for leaving the room. This will be supplied as the ``reason`` on
+                the updated `m.room.member`_ event.
             extra_content: Additional properties for the leave event content.
                 If a non-empty dict is passed, the leave event will be created using
                 the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /leave``.
@@ -464,7 +474,10 @@ class RoomMethods(EventMethods, BaseClientAPI):
                     room_id, self.mxid, Membership.LEAVE, extra_content=extra_content
                 )
             else:
-                await self.api.request(Method.POST, Path.rooms[room_id].leave)
+                data = {}
+                if reason:
+                    data["reason"] = reason
+                await self.api.request(Method.POST, Path.rooms[room_id].leave, content=data)
         except MatrixRequestError as e:
             if "not in room" not in e.message or raise_not_in_room:
                 raise

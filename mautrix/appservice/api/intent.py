@@ -192,6 +192,7 @@ class IntentAPI(StoreUpdatingAPI):
         self,
         room_id: RoomID,
         user_id: UserID,
+        reason: str | None = None,
         check_cache: bool = False,
         extra_content: dict[str, Any] | None = None,
     ) -> None:
@@ -211,6 +212,8 @@ class IntentAPI(StoreUpdatingAPI):
         Args:
             room_id: The ID of the room to which to invite the user.
             user_id: The fully qualified user ID of the invitee.
+            reason: The reason the user was invited. This will be supplied as the ``reason`` on
+                the `m.room.member`_ event.
             check_cache: If ``True``, the function will first check the state store, and not do
                          anything if the state store says the user is already invited or joined.
             extra_content: Additional properties for the invite event content.
@@ -223,7 +226,9 @@ class IntentAPI(StoreUpdatingAPI):
                 await self.state_store.get_membership(room_id, user_id) not in ok_states
             )
             if do_invite:
-                await super().invite_user(room_id, user_id, extra_content=extra_content)
+                await super().invite_user(
+                    room_id, user_id, reason=reason, extra_content=extra_content
+                )
                 await self.state_store.invited(room_id, user_id)
         except MatrixRequestError as e:
             if e.errcode == "M_FORBIDDEN" and "is already in the room" in e.message:

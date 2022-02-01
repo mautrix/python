@@ -69,10 +69,11 @@ class StoreUpdatingAPI(ClientAPI):
     async def leave_room(
         self,
         room_id: RoomID,
+        reason: str | None = None,
         extra_content: dict[str, JSON] | None = None,
         raise_not_in_room: bool = False,
     ) -> None:
-        await super().leave_room(room_id, extra_content, raise_not_in_room)
+        await super().leave_room(room_id, reason, extra_content, raise_not_in_room)
         if not extra_content and self.state_store:
             await self.state_store.set_membership(room_id, self.mxid, Membership.LEAVE)
 
@@ -80,9 +81,10 @@ class StoreUpdatingAPI(ClientAPI):
         self,
         room_id: RoomID,
         user_id: UserID,
+        reason: str | None = None,
         extra_content: dict[str, JSON] | None = None,
     ) -> None:
-        await super().invite_user(room_id, user_id, extra_content=extra_content)
+        await super().invite_user(room_id, user_id, reason, extra_content=extra_content)
         if not extra_content and self.state_store:
             await self.state_store.set_membership(room_id, user_id, Membership.INVITE)
 

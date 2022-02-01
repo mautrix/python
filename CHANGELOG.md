@@ -1,3 +1,7 @@
+## v0.14.9 (2022-02-01)
+
+* *(client.api)* Added `reason` field to `leave_room` and `invite_user` methods.
+
 ## v0.14.8 (2022-01-31)
 
 * *(util.formatter)* Deprecated the lxml-based HTML parser and made the
