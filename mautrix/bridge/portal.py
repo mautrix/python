@@ -197,7 +197,7 @@ class BasePortal(ABC):
         if self.mxid != msg.room_id:
             self.log.debug(
                 f"Not redacting expired event {msg.event_id}, "
-                f"portal room seems to have changed ({self.mxid=!r} != {msg.room_id!r})"
+                f"portal room seems to have changed ({self.mxid!r} != {msg.room_id!r})"
             )
             return
         try:

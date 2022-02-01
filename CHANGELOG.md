@@ -1,3 +1,7 @@
+## v0.14.10 (2022-02-01)
+
+* *(bridge)* Fix accidentally broken Python 3.7 compatibility.
+
 ## v0.14.9 (2022-02-01)
 
 * *(client.api)* Added `reason` field to `leave_room` and `invite_user` methods.
