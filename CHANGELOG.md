@@ -1,6 +1,10 @@
+## v0.14.11 (unreleased)
+
+* Removed Python 3.7 support.
+
 ## v0.14.10 (2022-02-01)
 
-* *(bridge)* Fix accidentally broken Python 3.7 compatibility.
+* *(bridge)* Fixed accidentally broken Python 3.7 compatibility.
 
 ## v0.14.9 (2022-02-01)
 
