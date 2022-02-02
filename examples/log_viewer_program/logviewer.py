@@ -32,7 +32,6 @@ class LogViewer(Program):
         super().__init__(module, name, description, command, version, config_class)
         if matrix_class:
             self.matrix_class = matrix_class
-        self.manhole = None
 
     def prepare_arg_parser(self) -> None:
         super().prepare_arg_parser()
@@ -60,7 +59,6 @@ class LogViewer(Program):
 
     def prepare(self) -> None:
         super().prepare()
-        # self.prepare_db()
         self.prepare_appservice()
         self.matrix = self.matrix_class(bridge=self)
 

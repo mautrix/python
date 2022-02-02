@@ -1,7 +1,7 @@
-import os
-from typing import Any
 from mautrix.bridge.config import BaseBridgeConfig
 from mautrix.util.config import ConfigUpdateHelper
+from typing import Any
+import os
 
 
 class Config(BaseBridgeConfig):

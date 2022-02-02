@@ -1,8 +1,6 @@
+from mautrix.bridge import BaseMatrixHandler
 from typing import TYPE_CHECKING
 from mautrix.types import Event
-
-
-from mautrix.bridge import BaseMatrixHandler
 
 if TYPE_CHECKING:
     from .__main__ import LogViewerAppService
