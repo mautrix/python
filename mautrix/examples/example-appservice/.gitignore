@@ -1,8 +1,0 @@
-/.venv
-/env/
-/config.yaml
-/registration.yaml
-__pycache__
-*.log*
-*.db
-*.json
