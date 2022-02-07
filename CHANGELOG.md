@@ -1,6 +1,7 @@
 ## v0.14.11 (unreleased)
 
 * Removed Python 3.7 support.
+* Removed legacy community utilities for bridges.
 
 ## v0.14.10 (2022-02-01)
 
