@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Tulir Asokan
+# Copyright (c) 2022 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,22 +10,19 @@ import functools
 import inspect
 import logging
 
-from mautrix import __optional_imports__
 from mautrix.util.logging import TraceLogger
 
 from .. import async_db
+from .connection import LoggingConnection
 
-if __optional_imports__:
-    from asyncpg import Connection
-
-Upgrade = Callable[["Connection", str], Awaitable[None]]
+Upgrade = Callable[[LoggingConnection, str], Awaitable[None]]
 
 
 class UnsupportedDatabaseVersion(Exception):
     pass
 
 
-async def noop_upgrade(_: Connection) -> None:
+async def noop_upgrade(_: LoggingConnection) -> None:
     pass
 
 
@@ -63,10 +60,10 @@ class UpgradeTable:
         def actually_register(fn: Upgrade) -> Upgrade:
             params = inspect.signature(fn).parameters
             if len(params) == 1:
-                _wrapped: Callable[[Connection], Awaitable[None]] = fn
+                _wrapped: Callable[[LoggingConnection], Awaitable[None]] = fn
 
                 @functools.wraps(_wrapped)
-                async def _wrapper(conn: Connection, _: str) -> None:
+                async def _wrapper(conn: LoggingConnection, _: str) -> None:
                     return await _wrapped(conn)
 
                 fn = _wrapper
@@ -83,7 +80,7 @@ class UpgradeTable:
 
         return actually_register(_outer_fn) if _outer_fn else actually_register
 
-    async def _save_version(self, conn: Connection, version: int) -> None:
+    async def _save_version(self, conn: LoggingConnection, version: int) -> None:
         self.log.trace(f"Saving current version (v{version}) to database")
         await conn.execute(f"DELETE FROM {self.version_table_name}")
         await conn.execute(f"INSERT INTO {self.version_table_name} (version) VALUES ($1)", version)
