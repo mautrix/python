@@ -109,8 +109,8 @@ class UpgradeTable:
             return
 
         async with db.acquire() as conn:
-            for new_version in range(version + 1, len(self.upgrades) + 1):
-                version_index = new_version - 1
+            for version_index in range(version, len(self.upgrades)):
+                new_version = version_index + 1
                 upgrade = self.upgrades[version_index]
                 desc = getattr(upgrade, "__mau_db_upgrade_description__", None)
                 suffix = f": {desc}" if desc else ""
