@@ -43,7 +43,7 @@ class UpgradeTable:
         database_name: str = "database",
         log: logging.Logger | TraceLogger | None = None,
     ) -> None:
-        self.upgrades = [noop_upgrade]
+        self.upgrades = []
         self.allow_unsupported = allow_unsupported
         self.version_table_name = version_table_name
         self.database_name = database_name
@@ -112,8 +112,9 @@ class UpgradeTable:
             return
 
         async with db.acquire() as conn:
-            for new_version in range(version + 1, len(self.upgrades)):
-                upgrade = self.upgrades[new_version]
+            for new_version in range(version + 1, len(self.upgrades) + 1):
+                version_index = new_version - 1
+                upgrade = self.upgrades[version_index]
                 desc = getattr(upgrade, "__mau_db_upgrade_description__", None)
                 suffix = f": {desc}" if desc else ""
                 self.log.debug(

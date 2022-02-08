@@ -1,7 +1,8 @@
 ## v0.14.11 (unreleased)
 
 * Removed Python 3.7 support.
-* Removed legacy community utilities for bridges.
+* *(bridge)* Removed legacy community utilities.
+* *(util.async_db)* Fixed counting number of db upgrades.
 
 ## v0.14.10 (2022-02-01)
 
