@@ -12,13 +12,17 @@ import asyncpg
 from mautrix.util.logging import TraceLogger
 
 from . import aiosqlite
+from .scheme import Scheme
 
 class LoggingConnection:
-    scheme: str
+    scheme: Scheme
     wrapped: aiosqlite.TxnConnection | asyncpg.Connection
     log: TraceLogger
     def __init__(
-        self, scheme: str, wrapped: aiosqlite.TxnConnection | asyncpg.Connection, log: TraceLogger
+        self,
+        scheme: Scheme,
+        wrapped: aiosqlite.TxnConnection | asyncpg.Connection,
+        log: TraceLogger,
     ) -> None: ...
     async def transaction(self) -> AsyncContextManager[None]: ...
     async def execute(self, query: str, *args: Any, timeout: float | None = None) -> str: ...
