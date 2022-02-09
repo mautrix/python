@@ -26,4 +26,5 @@ __all__ = [
     "PostgresDatabase",
     "SQLiteDatabase",
     "Connection",
+    "Scheme",
 ]
