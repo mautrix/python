@@ -1,5 +1,6 @@
 from mautrix import __optional_imports__
 
+from .connection import LoggingConnection as Connection
 from .database import Database
 from .upgrade import UpgradeTable, register_upgrade
 
@@ -17,4 +18,11 @@ except ImportError:
         raise
     SQLiteDatabase = None
 
-__all__ = ["Database", "UpgradeTable", "register_upgrade", "PostgresDatabase", "SQLiteDatabase"]
+__all__ = [
+    "Database",
+    "UpgradeTable",
+    "register_upgrade",
+    "PostgresDatabase",
+    "SQLiteDatabase",
+    "Connection",
+]

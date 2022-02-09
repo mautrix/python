@@ -16,16 +16,16 @@ upgrade_table = UpgradeTable(
 )
 
 
-@upgrade_table.register(description="Initial revision")
-async def upgrade_v1(conn: Connection, scheme: str) -> None:
+@upgrade_table.register(description="Latest revision", upgrades_to=2)
+async def upgrade_blank_to_v2(conn: Connection, scheme: str) -> None:
     await conn.execute(
         """CREATE TABLE mx_room_state (
-        room_id              VARCHAR(255) PRIMARY KEY,
-        is_encrypted         BOOLEAN,
-        has_full_member_list BOOLEAN,
-        encryption           TEXT,
-        power_levels         TEXT
-    )"""
+            room_id              TEXT PRIMARY KEY,
+            is_encrypted         BOOLEAN,
+            has_full_member_list BOOLEAN,
+            encryption           TEXT,
+            power_levels         TEXT
+        )"""
     )
     if scheme != "sqlite":
         await conn.execute(
@@ -33,13 +33,13 @@ async def upgrade_v1(conn: Connection, scheme: str) -> None:
         )
     await conn.execute(
         """CREATE TABLE mx_user_profile (
-        room_id     VARCHAR(255),
-        user_id     VARCHAR(255),
-        membership  membership NOT NULL,
-        displayname VARCHAR(255),
-        avatar_url  VARCHAR(255),
-        PRIMARY KEY (room_id, user_id)
-    )"""
+            room_id     TEXT,
+            user_id     TEXT,
+            membership  membership NOT NULL,
+            displayname TEXT,
+            avatar_url  TEXT,
+            PRIMARY KEY (room_id, user_id)
+        )"""
     )
 
 

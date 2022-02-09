@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Optional, cast
 import functools
 import inspect
 import logging
@@ -15,7 +15,8 @@ from mautrix.util.logging import TraceLogger
 from .. import async_db
 from .connection import LoggingConnection
 
-Upgrade = Callable[[LoggingConnection, str], Awaitable[None]]
+Upgrade = Callable[[LoggingConnection, str], Awaitable[Optional[int]]]
+UpgradeWithoutScheme = Callable[[LoggingConnection], Awaitable[Optional[int]]]
 
 
 class UnsupportedDatabaseVersion(Exception):
@@ -24,6 +25,20 @@ class UnsupportedDatabaseVersion(Exception):
 
 async def noop_upgrade(_: LoggingConnection) -> None:
     pass
+
+
+def _wrap_upgrade(fn: UpgradeWithoutScheme | Upgrade) -> Upgrade:
+    params = inspect.signature(fn).parameters
+    if len(params) == 1:
+        _wrapped: UpgradeWithoutScheme = cast(UpgradeWithoutScheme, fn)
+
+        @functools.wraps(_wrapped)
+        async def _wrapper(conn: LoggingConnection, _: str) -> Optional[int]:
+            return await _wrapped(conn)
+
+        return _wrapper
+    else:
+        return fn
 
 
 class UpgradeTable:
@@ -52,24 +67,21 @@ class UpgradeTable:
         description: str = "",
         _outer_fn: Upgrade | None = None,
         transaction: bool = True,
+        upgrades_to: int | Upgrade | None = None,
     ) -> Upgrade | Callable[[Upgrade], Upgrade] | None:
         if isinstance(index, str):
             description = index
             index = -1
 
         def actually_register(fn: Upgrade) -> Upgrade:
-            params = inspect.signature(fn).parameters
-            if len(params) == 1:
-                _wrapped: Callable[[LoggingConnection], Awaitable[None]] = fn
-
-                @functools.wraps(_wrapped)
-                async def _wrapper(conn: LoggingConnection, _: str) -> None:
-                    return await _wrapped(conn)
-
-                fn = _wrapper
-
+            fn = _wrap_upgrade(fn)
             fn.__mau_db_upgrade_description__ = description
             fn.__mau_db_upgrade_transaction__ = transaction
+            fn.__mau_db_upgrade_destination__ = (
+                upgrades_to
+                if not upgrades_to or isinstance(upgrades_to, int)
+                else _wrap_upgrade(upgrades_to)
+            )
             if index == -1 or index == len(self.upgrades):
                 self.upgrades.append(fn)
             else:
@@ -109,23 +121,29 @@ class UpgradeTable:
             return
 
         async with db.acquire() as conn:
-            for version_index in range(version, len(self.upgrades)):
-                new_version = version_index + 1
-                upgrade = self.upgrades[version_index]
+            while version < len(self.upgrades):
+                old_version = version
+                upgrade = self.upgrades[version]
+                new_version = getattr(upgrade, "__mau_db_upgrade_destination__", version + 1)
+                if callable(new_version):
+                    new_version = await new_version(conn, db.scheme)
                 desc = getattr(upgrade, "__mau_db_upgrade_description__", None)
                 suffix = f": {desc}" if desc else ""
                 self.log.debug(
-                    f"Upgrading {self.database_name} from v{version} to v{new_version}{suffix}"
+                    f"Upgrading {self.database_name} from v{old_version} to v{new_version}{suffix}"
                 )
                 if getattr(upgrade, "__mau_db_upgrade_transaction__", True):
                     async with conn.transaction():
-                        await upgrade(conn, db.scheme)
-                        version = new_version
+                        version = await upgrade(conn, db.scheme) or new_version
                         await self._save_version(conn, version)
                 else:
-                    await upgrade(conn, db.scheme)
-                    version = new_version
+                    version = await upgrade(conn, db.scheme) or new_version
                     await self._save_version(conn, version)
+                if version != new_version:
+                    self.log.warning(
+                        f"Upgrading {self.database_name} actually went from v{old_version} "
+                        f"to v{version}"
+                    )
 
 
 upgrade_tables: dict[str, UpgradeTable] = {}

@@ -3,6 +3,7 @@
 * Removed Python 3.7 support.
 * *(bridge)* Removed legacy community utilities.
 * *(util.async_db)* Fixed counting number of db upgrades.
+* *(util.async_db)* Added support for schema migrations that jump versions.
 
 ## v0.14.10 (2022-02-01)
 
