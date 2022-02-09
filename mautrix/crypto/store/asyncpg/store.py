@@ -5,14 +5,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import cast
 from collections import defaultdict
 from datetime import timedelta
 
 from mautrix.client.state_store import SyncStore
 from mautrix.client.state_store.asyncpg import PgStateStore
 from mautrix.types import DeviceID, EventID, IdentityKey, RoomID, SessionID, SyncToken, UserID
-from mautrix.util.async_db import Database
+from mautrix.util.async_db import Database, Scheme
 from mautrix.util.logging import TraceLogger
 
 from ... import (
@@ -339,7 +338,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
         )
 
     async def remove_outbound_group_sessions(self, rooms: list[RoomID]) -> None:
-        if self.db.scheme == "postgres":
+        if self.db.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
             await self.db.execute(
                 "DELETE FROM crypto_megolm_outbound_session "
                 "WHERE account_id=$1 AND room_id=ANY($2)",
@@ -374,7 +373,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
         index: int,
         timestamp: int,
     ) -> bool:
-        if self.db.scheme == "postgres":
+        if self.db.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
             row = await self.db.fetchrow(
                 self._validate_message_index_query,
                 sender_key,
@@ -499,7 +498,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
                 user_id,
             )
             await conn.execute("DELETE FROM crypto_device WHERE user_id=$1", user_id)
-            if self.db.scheme == "postgres":
+            if self.db.scheme == Scheme.POSTGRES:
                 await conn.copy_records_to_table("crypto_device", records=data, columns=columns)
             else:
                 await conn.executemany(
@@ -510,7 +509,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
                 )
 
     async def filter_tracked_users(self, users: list[UserID]) -> list[UserID]:
-        if self.db.scheme == "postgres":
+        if self.db.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
             rows = await self.db.fetch(
                 "SELECT user_id FROM crypto_tracked_user WHERE user_id = ANY($1)", users
             )

@@ -16,7 +16,7 @@ from mautrix.types import (
     RoomID,
     UserID,
 )
-from mautrix.util.async_db import Database
+from mautrix.util.async_db import Database, Scheme
 
 from ..abstract import StateStore
 from .upgrade import upgrade_table
@@ -80,7 +80,7 @@ class PgStateStore(StateStore):
         memberships: tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
     ) -> list[UserID]:
         membership_values = [membership.value for membership in memberships]
-        if self.db.scheme == "postgres":
+        if self.db.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
             q = "SELECT user_id FROM mx_user_profile WHERE room_id=$1 AND membership=ANY($2)"
             res = await self.db.fetch(q, room_id, membership_values)
         else:
@@ -98,7 +98,7 @@ class PgStateStore(StateStore):
         memberships: tuple[Membership, ...] = (Membership.JOIN, Membership.INVITE),
     ) -> dict[UserID, Member]:
         membership_values = [membership.value for membership in memberships]
-        if self.db.scheme == "postgres":
+        if self.db.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
             q = (
                 "SELECT user_id, membership, displayname, avatar_url FROM mx_user_profile "
                 "WHERE room_id=$1 AND membership=ANY($2)"
@@ -123,7 +123,7 @@ class PgStateStore(StateStore):
     ) -> list[UserID]:
         not_like = f"{not_prefix}%{not_suffix}"
         membership_values = [membership.value for membership in memberships]
-        if self.db.scheme == "postgres":
+        if self.db.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
             q = (
                 "SELECT user_id FROM mx_user_profile "
                 "WHERE room_id=$1 AND membership=ANY($2)"
@@ -155,7 +155,7 @@ class PgStateStore(StateStore):
             del_q = "DELETE FROM mx_user_profile WHERE room_id=$1"
             if only_membership is None:
                 await conn.execute(del_q, room_id)
-            elif self.db.scheme == "postgres":
+            elif self.db.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
                 del_q = f"{del_q} AND (membership=$2 OR user_id = ANY($3))"
                 await conn.execute(del_q, room_id, only_membership.value, list(members.keys()))
             else:
@@ -163,7 +163,7 @@ class PgStateStore(StateStore):
                 del_q = f"{del_q} AND (membership=? OR user_id IN ({member_placeholders}))"
                 await conn.execute(del_q, room_id, only_membership.value, *members.keys())
 
-            if self.db.scheme == "postgres":
+            if self.db.scheme == Scheme.POSTGRES:
                 await conn.copy_records_to_table(
                     "mx_user_profile", records=records, columns=columns
                 )

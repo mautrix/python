@@ -7,14 +7,16 @@ from __future__ import annotations
 
 from typing import Any, AsyncContextManager, Type
 from abc import ABC, abstractmethod
-from urllib.parse import urlparse
 import logging
 import sys
+
+from yarl import URL
 
 from mautrix import __optional_imports__
 from mautrix.util.logging import TraceLogger
 
 from .connection import LoggingConnection
+from .scheme import Scheme
 from .upgrade import UpgradeTable, upgrade_tables
 
 if __optional_imports__:
@@ -25,14 +27,14 @@ class Database(ABC):
     schemes: dict[str, Type[Database]] = {}
     log: TraceLogger
 
-    scheme: str
-    url: str
+    scheme: Scheme
+    url: URL
     _db_args: dict[str, Any]
     upgrade_table: UpgradeTable
 
     def __init__(
         self,
-        url: str,
+        url: URL,
         upgrade_table: UpgradeTable,
         db_args: dict[str, Any] | None = None,
         log: TraceLogger | None = None,
@@ -46,25 +48,27 @@ class Database(ABC):
     @classmethod
     def create(
         cls,
-        url: str,
+        url: str | URL,
         *,
         db_args: dict[str, Any] | None = None,
         upgrade_table: UpgradeTable | str | None = None,
         log: logging.Logger | TraceLogger | None = None,
     ) -> Database:
-        scheme = urlparse(url).scheme
+        url = URL(url)
         try:
-            impl = cls.schemes[scheme]
+            impl = cls.schemes[url.scheme]
         except KeyError as e:
-            if scheme in ("postgres", "postgresql"):
+            if url.scheme in ("postgres", "postgresql"):
                 raise RuntimeError(
-                    f"Unknown database scheme {scheme}. Perhaps you forgot to install asyncpg?"
+                    f"Unknown database scheme {url.scheme}."
+                    " Perhaps you forgot to install asyncpg?"
                 ) from e
-            elif scheme in ("sqlite", "sqlite3"):
+            elif url.scheme in ("sqlite", "sqlite3"):
                 raise RuntimeError(
-                    f"Unknown database scheme {scheme}. Perhaps you forgot to install aiosqlite?"
+                    f"Unknown database scheme {url.scheme}."
+                    " Perhaps you forgot to install aiosqlite?"
                 ) from e
-            raise RuntimeError(f"Unknown database scheme {scheme}") from e
+            raise RuntimeError(f"Unknown database scheme {url.scheme}") from e
         if isinstance(upgrade_table, str):
             upgrade_table = upgrade_tables[upgrade_table]
         elif upgrade_table is None:

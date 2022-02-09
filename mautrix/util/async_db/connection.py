@@ -14,6 +14,8 @@ import time
 from mautrix import __optional_imports__
 from mautrix.util.logging import SILLY, TraceLogger
 
+from .scheme import Scheme
+
 if __optional_imports__:
     from sqlite3 import Row
 
@@ -41,12 +43,15 @@ def log_duration(func: Decorated) -> Decorated:
 
 
 class LoggingConnection:
-    scheme: str
+    scheme: Scheme
     wrapped: aiosqlite.TxnConnection | asyncpg.Connection
     log: TraceLogger
 
     def __init__(
-        self, scheme: str, wrapped: aiosqlite.TxnConnection | asyncpg.Connection, log: TraceLogger
+        self,
+        scheme: Scheme,
+        wrapped: aiosqlite.TxnConnection | asyncpg.Connection,
+        log: TraceLogger,
     ) -> None:
         self.scheme = scheme
         self.wrapped = wrapped
@@ -97,8 +102,8 @@ class LoggingConnection:
         schema_name: str | None = None,
         timeout: float | None = None,
     ) -> None:
-        if self.scheme != "postgres":
-            raise RuntimeError("copy_records_to_table is not supported on SQLite")
+        if self.scheme != Scheme.POSTGRES:
+            raise RuntimeError("copy_records_to_table is only supported on Postgres")
         return await self.wrapped.copy_records_to_table(
             table_name, records=records, columns=columns, schema_name=schema_name, timeout=timeout
         )

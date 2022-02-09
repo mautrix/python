@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 
-from mautrix.util.async_db import Connection, UpgradeTable
+from mautrix.util.async_db import Connection, Scheme, UpgradeTable
 
 upgrade_table = UpgradeTable(
     version_table_name="crypto_version",
@@ -96,8 +96,8 @@ async def upgrade_blank_to_v4(conn: Connection) -> None:
 
 
 @upgrade_table.register(description="Add account_id primary key column")
-async def upgrade_v2(conn: Connection, scheme: str) -> None:
-    if scheme == "sqlite":
+async def upgrade_v2(conn: Connection, scheme: Scheme) -> None:
+    if scheme == Scheme.SQLITE:
         await conn.execute("DROP TABLE crypto_account")
         await conn.execute("DROP TABLE crypto_olm_session")
         await conn.execute("DROP TABLE crypto_megolm_inbound_session")
@@ -170,8 +170,8 @@ async def upgrade_v2(conn: Connection, scheme: str) -> None:
 
 
 @upgrade_table.register(description="Stop using size-limited string fields")
-async def upgrade_v3(conn: Connection, scheme: str) -> None:
-    if scheme == "sqlite":
+async def upgrade_v3(conn: Connection, scheme: Scheme) -> None:
+    if scheme == Scheme.SQLITE:
         return
     await conn.execute("ALTER TABLE crypto_account ALTER COLUMN account_id TYPE TEXT")
     await conn.execute("ALTER TABLE crypto_account ALTER COLUMN device_id TYPE TEXT")
@@ -192,11 +192,11 @@ async def upgrade_v3(conn: Connection, scheme: str) -> None:
 
 
 @upgrade_table.register(description="Split last_used into last_encrypted and last_decrypted")
-async def upgrade_v4(conn: Connection, scheme: str) -> None:
+async def upgrade_v4(conn: Connection, scheme: Scheme) -> None:
     await conn.execute("ALTER TABLE crypto_olm_session RENAME COLUMN last_used TO last_decrypted")
     await conn.execute("ALTER TABLE crypto_olm_session ADD COLUMN last_encrypted timestamp")
     await conn.execute("UPDATE crypto_olm_session SET last_encrypted=last_decrypted")
-    if scheme == "postgres":
+    if scheme == Scheme.POSTGRES:
         # This is too hard to do on sqlite, so let's just do it on postgres
         await conn.execute(
             "ALTER TABLE crypto_olm_session ALTER COLUMN last_encrypted SET NOT NULL"

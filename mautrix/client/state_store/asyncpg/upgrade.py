@@ -5,9 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 
-from asyncpg import Connection
-
-from mautrix.util.async_db.upgrade import UpgradeTable
+from mautrix.util.async_db import Connection, Scheme, UpgradeTable
 
 upgrade_table = UpgradeTable(
     version_table_name="mx_version",
@@ -17,7 +15,7 @@ upgrade_table = UpgradeTable(
 
 
 @upgrade_table.register(description="Latest revision", upgrades_to=2)
-async def upgrade_blank_to_v2(conn: Connection, scheme: str) -> None:
+async def upgrade_blank_to_v2(conn: Connection, scheme: Scheme) -> None:
     await conn.execute(
         """CREATE TABLE mx_room_state (
             room_id              TEXT PRIMARY KEY,
@@ -27,7 +25,7 @@ async def upgrade_blank_to_v2(conn: Connection, scheme: str) -> None:
             power_levels         TEXT
         )"""
     )
-    if scheme != "sqlite":
+    if scheme != Scheme.SQLITE:
         await conn.execute(
             "CREATE TYPE membership AS ENUM ('join', 'leave', 'invite', 'ban', 'knock')"
         )
@@ -44,8 +42,8 @@ async def upgrade_blank_to_v2(conn: Connection, scheme: str) -> None:
 
 
 @upgrade_table.register(description="Stop using size-limited string fields")
-async def upgrade_v2(conn: Connection, scheme: str) -> None:
-    if scheme == "sqlite":
+async def upgrade_v2(conn: Connection, scheme: Scheme) -> None:
+    if scheme == Scheme.SQLITE:
         # SQLite doesn't care about types
         return
     await conn.execute("ALTER TABLE mx_room_state ALTER COLUMN room_id TYPE TEXT")

@@ -14,8 +14,9 @@ from mautrix.util.logging import TraceLogger
 
 from .. import async_db
 from .connection import LoggingConnection
+from .scheme import Scheme
 
-Upgrade = Callable[[LoggingConnection, str], Awaitable[Optional[int]]]
+Upgrade = Callable[[LoggingConnection, Scheme], Awaitable[Optional[int]]]
 UpgradeWithoutScheme = Callable[[LoggingConnection], Awaitable[Optional[int]]]
 
 
@@ -33,7 +34,7 @@ def _wrap_upgrade(fn: UpgradeWithoutScheme | Upgrade) -> Upgrade:
         _wrapped: UpgradeWithoutScheme = cast(UpgradeWithoutScheme, fn)
 
         @functools.wraps(_wrapped)
-        async def _wrapper(conn: LoggingConnection, _: str) -> Optional[int]:
+        async def _wrapper(conn: LoggingConnection, _: Scheme) -> Optional[int]:
             return await _wrapped(conn)
 
         return _wrapper

@@ -7,16 +7,17 @@ from __future__ import annotations
 
 from typing import Any
 from contextlib import asynccontextmanager
-from urllib.parse import urlparse
 import asyncio
 import logging
 import re
 import sqlite3
 
+from yarl import URL
 import aiosqlite
 
 from .connection import LoggingConnection
 from .database import Database
+from .scheme import Scheme
 from .upgrade import UpgradeTable
 
 POSITIONAL_PARAM_PATTERN = re.compile(r"\$(\d+)")
@@ -73,20 +74,20 @@ class TxnConnection(aiosqlite.Connection):
 
 
 class SQLiteDatabase(Database):
-    scheme = "sqlite"
+    scheme = Scheme.SQLITE
     _pool: asyncio.Queue[TxnConnection]
     _stopped: bool
     _conns: int
 
     def __init__(
         self,
-        url: str,
+        url: URL,
         upgrade_table: UpgradeTable,
         db_args: dict[str, Any] | None = None,
         log: logging.Logger | None = None,
     ) -> None:
         super().__init__(url, db_args=db_args, upgrade_table=upgrade_table, log=log)
-        self._path = urlparse(url).path
+        self._path = url.path
         if self._path.startswith("/"):
             self._path = self._path[1:]
         self._pool = asyncio.Queue(self._db_args.pop("min_size", 1))
