@@ -36,7 +36,7 @@ class SimpleLock:
     def locked(self) -> bool:
         return not self._event.is_set()
 
-    async def wait(self, task: Optional[str] = None) -> None:
+    async def wait(self, task: str | None = None) -> None:
         if not self._event.is_set():
             if self.log and self.message:
                 self.log.debug(self.message, task)
