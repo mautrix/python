@@ -10,18 +10,21 @@ from datetime import timedelta
 
 from mautrix.client.state_store import SyncStore
 from mautrix.client.state_store.asyncpg import PgStateStore
-from mautrix.types import DeviceID, EventID, IdentityKey, RoomID, SessionID, SyncToken, UserID
+from mautrix.types import (
+    DeviceID,
+    DeviceIdentity,
+    EventID,
+    IdentityKey,
+    RoomID,
+    SessionID,
+    SyncToken,
+    TrustState,
+    UserID,
+)
 from mautrix.util.async_db import Database, Scheme
 from mautrix.util.logging import TraceLogger
 
-from ... import (
-    DeviceIdentity,
-    InboundGroupSession,
-    OlmAccount,
-    OutboundGroupSession,
-    Session,
-    TrustState,
-)
+from ... import InboundGroupSession, OlmAccount, OutboundGroupSession, Session
 from ..abstract import CryptoStore, StateStore
 from .upgrade import upgrade_table
 

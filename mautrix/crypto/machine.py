@@ -11,6 +11,7 @@ import logging
 
 from mautrix import client as cli
 from mautrix.types import (
+    DecryptedOlmEvent,
     DeviceLists,
     DeviceOTKCount,
     EncryptionAlgorithm,
@@ -27,7 +28,6 @@ from .encrypt_megolm import MegolmEncryptionMachine
 from .key_request import KeyRequestingMachine
 from .key_share import KeySharingMachine
 from .store import CryptoStore, StateStore
-from .types import DecryptedOlmEvent
 from .unwedge import OlmUnwedgingMachine
 
 

@@ -14,7 +14,16 @@ from .auth import (
     UserIdentifierType,
     WhoamiResponse,
 )
-from .crypto import ClaimKeysResponse, DeviceKeys, QueryKeysResponse, UnsignedDeviceInfo
+from .crypto import (
+    ClaimKeysResponse,
+    DecryptedOlmEvent,
+    DeviceIdentity,
+    DeviceKeys,
+    OlmEventKeys,
+    QueryKeysResponse,
+    TrustState,
+    UnsignedDeviceInfo,
+)
 from .event import (
     AccountDataEvent,
     AccountDataEventContent,

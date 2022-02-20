@@ -13,6 +13,7 @@ import time
 from mautrix.errors import EncryptionError, SessionShareError
 from mautrix.types import (
     DeviceID,
+    DeviceIdentity,
     EncryptedMegolmEventContent,
     EncryptionAlgorithm,
     EventType,
@@ -24,13 +25,13 @@ from mautrix.types import (
     Serializable,
     SessionID,
     SigningKey,
+    TrustState,
     UserID,
 )
 
 from .device_lists import DeviceListMachine
 from .encrypt_olm import OlmEncryptionMachine
 from .sessions import InboundGroupSession, OutboundGroupSession, Session
-from .types import DeviceIdentity, TrustState
 
 
 class Sentinel:

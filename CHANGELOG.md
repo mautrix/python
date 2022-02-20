@@ -1,6 +1,6 @@
 ## v0.15.0 (unreleased)
 
-* **Breaking change (all)** Removed Python 3.7 support.
+* **Breaking change *(\*)*** Removed Python 3.7 support.
 * **Breaking change *(api)*** Removed `r0` from default path builders in order
   to update to `v3` and per-endpoint versioning.
   * The client API modules have been updated to specify v3 in the paths, other
@@ -15,6 +15,9 @@
   * The parsed data format is still compatible with lxml, so it is possible to
     use lxml with `MatrixParser` by setting `lxml.html.fromstring` as the
     `read_html` method.
+* **Breaking change *(crypto)*** Moved `TrustState`, `DeviceIdentity`,
+  `OlmEventKeys` and `DecryptedOlmEvent` dataclasses from `crypto.types`
+  into `types.crypto`.
 * *(bridge)* Removed legacy community utilities.
 * *(util.async_db)* Fixed counting number of db upgrades.
 * *(util.async_db)* Added support for schema migrations that jump versions.

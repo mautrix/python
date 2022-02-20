@@ -4,12 +4,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Any, Dict, List, Optional
+from enum import IntEnum
 
 from attr import dataclass
 
-from .event.encrypted import EncryptionAlgorithm, EncryptionKeyAlgorithm
+from .event import EncryptionAlgorithm, EncryptionKeyAlgorithm, ToDeviceEvent
 from .primitive import DeviceID, IdentityKey, SigningKey, UserID
-from .util import SerializableAttrs
+from .util import SerializableAttrs, field
 
 
 @dataclass
@@ -55,3 +56,36 @@ class QueryKeysResponse(SerializableAttrs):
 class ClaimKeysResponse(SerializableAttrs):
     failures: Dict[str, Any]
     one_time_keys: Dict[UserID, Dict[DeviceID, Dict[str, Any]]]
+
+
+class TrustState(IntEnum):
+    UNSET = 0
+    VERIFIED = 1
+    BLACKLISTED = 2
+    IGNORED = 3
+
+
+@dataclass
+class DeviceIdentity:
+    user_id: UserID
+    device_id: DeviceID
+    identity_key: IdentityKey
+    signing_key: SigningKey
+
+    trust: TrustState
+    deleted: bool
+    name: str
+
+
+@dataclass
+class OlmEventKeys(SerializableAttrs):
+    ed25519: SigningKey
+
+
+@dataclass
+class DecryptedOlmEvent(ToDeviceEvent, SerializableAttrs):
+    keys: OlmEventKeys
+    recipient: UserID
+    recipient_keys: OlmEventKeys
+    sender_device: Optional[DeviceID] = None
+    sender_key: IdentityKey = field(hidden=True, default=None)

@@ -7,6 +7,7 @@ from typing import Optional
 
 from mautrix.errors import MatrixConnectionError, MatrixError, MatrixRequestError
 from mautrix.types import (
+    DeviceIdentity,
     EncryptionAlgorithm,
     EventType,
     ForwardedRoomKeyEventContent,
@@ -16,11 +17,11 @@ from mautrix.types import (
     RoomKeyWithheldCode,
     RoomKeyWithheldEventContent,
     ToDeviceEvent,
+    TrustState,
 )
 
 from .device_lists import DeviceListMachine
 from .encrypt_olm import OlmEncryptionMachine
-from .types import DeviceIdentity, TrustState
 
 
 class RejectKeyShare(MatrixError):

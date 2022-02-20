@@ -6,9 +6,19 @@
 from __future__ import annotations
 
 from mautrix.client.state_store import SyncStore
-from mautrix.types import DeviceID, EventID, IdentityKey, RoomID, SessionID, SyncToken, UserID
+from mautrix.types import (
+    DeviceID,
+    DeviceIdentity,
+    EventID,
+    IdentityKey,
+    RoomID,
+    SessionID,
+    SyncToken,
+    UserID,
+)
 
-from .. import DeviceIdentity, InboundGroupSession, OlmAccount, OutboundGroupSession, Session
+from ..account import OlmAccount
+from ..sessions import InboundGroupSession, OutboundGroupSession, Session
 from .abstract import CryptoStore
 
 

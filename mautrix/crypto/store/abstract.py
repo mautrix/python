@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 
 from mautrix.types import (
     DeviceID,
+    DeviceIdentity,
     EventID,
     IdentityKey,
     RoomEncryptionStateEventContent,
@@ -17,7 +18,8 @@ from mautrix.types import (
     UserID,
 )
 
-from .. import DeviceIdentity, InboundGroupSession, OlmAccount, OutboundGroupSession, Session
+from ..account import OlmAccount
+from ..sessions import InboundGroupSession, OutboundGroupSession, Session
 
 
 class StateStore(ABC):

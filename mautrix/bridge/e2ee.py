@@ -12,18 +12,11 @@ import sys
 from mautrix import __optional_imports__
 from mautrix.appservice import AppService
 from mautrix.client import Client, SyncStore
-from mautrix.crypto import (
-    CryptoStore,
-    DeviceIdentity,
-    OlmMachine,
-    PgCryptoStore,
-    RejectKeyShare,
-    StateStore,
-    TrustState,
-)
+from mautrix.crypto import CryptoStore, OlmMachine, PgCryptoStore, RejectKeyShare, StateStore
 from mautrix.errors import EncryptionError, SessionNotFound
 from mautrix.types import (
     JSON,
+    DeviceIdentity,
     EncryptedEvent,
     EncryptedMegolmEventContent,
     EventFilter,
@@ -39,6 +32,7 @@ from mautrix.types import (
     Serializable,
     StateEvent,
     StateFilter,
+    TrustState,
 )
 from mautrix.util.logging import TraceLogger
 

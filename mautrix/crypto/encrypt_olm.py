@@ -7,17 +7,19 @@ from typing import Any, Dict
 import asyncio
 
 from mautrix.types import (
+    DecryptedOlmEvent,
     DeviceID,
+    DeviceIdentity,
     EncryptedOlmEventContent,
     EncryptionKeyAlgorithm,
     EventType,
+    OlmEventKeys,
     ToDeviceEventContent,
     UserID,
 )
 
 from .base import BaseOlmMachine, verify_signature_json
 from .sessions import Session
-from .types import DecryptedOlmEvent, DeviceIdentity, OlmEventKeys
 
 ClaimKeysList = Dict[UserID, Dict[DeviceID, DeviceIdentity]]
 

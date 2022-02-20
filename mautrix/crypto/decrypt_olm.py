@@ -10,6 +10,7 @@ import olm
 
 from mautrix.errors import DecryptionError, MatchingSessionDecryptionError
 from mautrix.types import (
+    DecryptedOlmEvent,
     EncryptedOlmEventContent,
     EncryptionAlgorithm,
     IdentityKey,
@@ -21,7 +22,6 @@ from mautrix.types import (
 
 from .base import BaseOlmMachine
 from .sessions import Session
-from .types import DecryptedOlmEvent
 
 
 class OlmDecryptionMachine(BaseOlmMachine):

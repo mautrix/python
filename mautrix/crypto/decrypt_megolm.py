@@ -15,10 +15,15 @@ from mautrix.errors import (
     SessionNotFound,
     VerificationError,
 )
-from mautrix.types import EncryptedEvent, EncryptedMegolmEventContent, EncryptionAlgorithm, Event
+from mautrix.types import (
+    EncryptedEvent,
+    EncryptedMegolmEventContent,
+    EncryptionAlgorithm,
+    Event,
+    TrustState,
+)
 
 from .base import BaseOlmMachine
-from .types import TrustState
 
 
 class MegolmDecryptionMachine(BaseOlmMachine):

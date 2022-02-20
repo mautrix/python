@@ -8,6 +8,7 @@ import asyncio
 import uuid
 
 from mautrix.types import (
+    DecryptedOlmEvent,
     DeviceID,
     EncryptionAlgorithm,
     EventType,
@@ -23,7 +24,6 @@ from mautrix.types import (
 
 from .base import BaseOlmMachine
 from .sessions import InboundGroupSession
-from .types import DecryptedOlmEvent
 
 
 class KeyRequestingMachine(BaseOlmMachine):
