@@ -1,6 +1,6 @@
 # Copyright 2018 Zil0 (under the Apache 2.0 license)
 # Copyright © 2019 Damir Jelić <poljar@termina.org.uk> (under the Apache 2.0 license)
-# Copyright (c) 2021 Tulir Asokan
+# Copyright (c) 2022 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
