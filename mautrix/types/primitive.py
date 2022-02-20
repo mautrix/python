@@ -32,7 +32,7 @@ ContentURI.__doc__ = """
 A Matrix `content URI`_, used by the content repository.
 
 .. _content URI:
-    https://spec.matrix.org/v1.1/client-server-api/#matrix-content-mxc-uris
+    https://spec.matrix.org/v1.2/client-server-api/#matrix-content-mxc-uris
 """
 
 SyncToken = NewType("SyncToken", str)

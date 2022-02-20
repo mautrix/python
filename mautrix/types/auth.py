@@ -6,10 +6,9 @@
 from typing import List, NewType, Optional, Union
 
 from attr import dataclass
-import attr
 
 from .primitive import JSON, DeviceID, UserID
-from .util import ExtensibleEnum, Obj, SerializableAttrs, deserializer
+from .util import ExtensibleEnum, Obj, SerializableAttrs, deserializer, field
 
 
 class LoginType(ExtensibleEnum):
@@ -17,7 +16,7 @@ class LoginType(ExtensibleEnum):
     A login type, as specified in the `POST /login endpoint`_
 
     .. _POST /login endpoint:
-        https://matrix.org/docs/spec/client_server/r0.6.1#post-matrix-client-r0-login
+        https://spec.matrix.org/v1.2/client-server-api/#post_matrixclientv3login
     """
 
     PASSWORD: "LoginType" = "m.login.password"
@@ -35,7 +34,7 @@ class LoginFlow(SerializableAttrs):
     A login flow, as specified in the `GET /login endpoint`_
 
     .. _GET /login endpoint:
-        https://matrix.org/docs/spec/client_server/r0.6.1#get-matrix-client-r0-login
+        https://spec.matrix.org/v1.2/client-server-api/#get_matrixclientv3login
     """
 
     type: LoginType
@@ -60,7 +59,7 @@ class UserIdentifierType(ExtensibleEnum):
     A user identifier type, as specified in the `Identifier types`_ section of the login spec.
 
     .. _Identifier types:
-        https://matrix.org/docs/spec/client_server/latest#identifier-types
+        https://spec.matrix.org/v1.2/client-server-api/#identifier-types
     """
 
     MATRIX_USER: "UserIdentifierType" = "m.id.user"
@@ -89,9 +88,9 @@ class ThirdPartyIdentifier(SerializableAttrs):
     Appendix for a list of Third-party ID media.
 
     .. _/account/3pid:
-        https://matrix.org/docs/spec/client_server/latest#post-matrix-client-r0-account-3pid
+        https://spec.matrix.org/v1.2/client-server-api/#post_matrixclientv3account3pid
     .. _3PID Types:
-        https://matrix.org/docs/spec/appendices.html#pid-types
+        https://spec.matrix.org/v1.2/appendices/#3pid-types
     """
 
     medium: str
@@ -109,7 +108,7 @@ class PhoneIdentifier(SerializableAttrs):
     identifier type with a ``medium`` of ``msisdn`` instead.
 
     .. _/account/3pid:
-        https://matrix.org/docs/spec/client_server/latest#post-matrix-client-r0-account-3pid
+        https://spec.matrix.org/v1.2/client-server-api/#post_matrixclientv3account3pid
     """
 
     country: str
@@ -154,19 +153,24 @@ class DiscoveryIntegrationServer(SerializableAttrs):
 
 @dataclass
 class DiscoveryIntegrations(SerializableAttrs):
-    managers: List[DiscoveryIntegrationServer] = attr.ib(factory=lambda: [])
+    managers: List[DiscoveryIntegrationServer] = field(factory=lambda: [])
 
 
 @dataclass
 class DiscoveryInformation(SerializableAttrs):
-    homeserver: Optional[DiscoveryServer] = attr.ib(
-        metadata={"json": "m.homeserver"}, factory=DiscoveryServer
+    """
+    .well-known discovery information, as specified in the `GET /.well-known/matrix/client endpoint`_
+
+    .. _GET /.well-known/matrix/client endpoint:
+        https://spec.matrix.org/v1.2/client-server-api/#getwell-knownmatrixclient
+    """
+
+    homeserver: Optional[DiscoveryServer] = field(json="m.homeserver", factory=DiscoveryServer)
+    identity_server: Optional[DiscoveryServer] = field(
+        json="m.identity_server", factory=DiscoveryServer
     )
-    identity_server: Optional[DiscoveryServer] = attr.ib(
-        metadata={"json": "m.identity_server"}, factory=DiscoveryServer
-    )
-    integrations: Optional[DiscoveryServer] = attr.ib(
-        metadata={"json": "m.integrations"}, factory=DiscoveryIntegrations
+    integrations: Optional[DiscoveryServer] = field(
+        json="m.integrations", factory=DiscoveryIntegrations
     )
 
 
@@ -176,13 +180,13 @@ class LoginResponse(SerializableAttrs):
     The response for a login request, as specified in the `POST /login endpoint`_
 
     .. _POST /login endpoint:
-        https://matrix.org/docs/spec/client_server/r0.6.1#post-matrix-client-r0-login
+        https://spec.matrix.org/v1.2/client-server-api/#post_matrixclientv3login
     """
 
     user_id: UserID
     device_id: DeviceID
     access_token: str
-    well_known: DiscoveryInformation = attr.ib(factory=DiscoveryInformation)
+    well_known: DiscoveryInformation = field(factory=DiscoveryInformation)
 
 
 @dataclass
@@ -191,8 +195,9 @@ class WhoamiResponse(SerializableAttrs):
     The response for a whoami request, as specified in the `GET /account/whoami endpoint`_
 
     .. _GET /account/whoami endpoint:
-        https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3accountwhoami
+        https://spec.matrix.org/v1.2/client-server-api/#get_matrixclientv3accountwhoami
     """
 
     user_id: UserID
     device_id: Optional[DeviceID] = None
+    is_guest: bool = False

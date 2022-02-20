@@ -4,10 +4,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from attr import dataclass
-import attr
 
 from .primitive import ContentURI
-from .util import SerializableAttrs
+from .util import SerializableAttrs, field
 
 
 @dataclass
@@ -16,34 +15,34 @@ class MediaRepoConfig(SerializableAttrs):
     Matrix media repo config. See `GET /_matrix/media/r0/config`_.
 
     .. _GET /_matrix/media/r0/config:
-        https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-media-r0-config
+        https://spec.matrix.org/v1.2/client-server-api/#get_matrixmediav3config
     """
 
-    upload_size: int = attr.ib(metadata={"json": "m.upload.size"})
+    upload_size: int = field(json="m.upload.size")
 
 
 @dataclass
 class OpenGraphImage(SerializableAttrs):
-    url: ContentURI = attr.ib(default=None, metadata={"json": "og:image"})
-    mimetype: str = attr.ib(default=None, metadata={"json": "og:image:type"})
-    height: int = attr.ib(default=None, metadata={"json": "og:image:width"})
-    width: int = attr.ib(default=None, metadata={"json": "og:image:height"})
-    size: int = attr.ib(default=None, metadata={"json": "matrix:image:size"})
+    url: ContentURI = field(default=None, json="og:image")
+    mimetype: str = field(default=None, json="og:image:type")
+    height: int = field(default=None, json="og:image:width")
+    width: int = field(default=None, json="og:image:height")
+    size: int = field(default=None, json="matrix:image:size")
 
 
 @dataclass
 class OpenGraphVideo(SerializableAttrs):
-    url: ContentURI = attr.ib(default=None, metadata={"json": "og:video"})
-    mimetype: str = attr.ib(default=None, metadata={"json": "og:video:type"})
-    height: int = attr.ib(default=None, metadata={"json": "og:video:width"})
-    width: int = attr.ib(default=None, metadata={"json": "og:video:height"})
-    size: int = attr.ib(default=None, metadata={"json": "matrix:video:size"})
+    url: ContentURI = field(default=None, json="og:video")
+    mimetype: str = field(default=None, json="og:video:type")
+    height: int = field(default=None, json="og:video:width")
+    width: int = field(default=None, json="og:video:height")
+    size: int = field(default=None, json="matrix:video:size")
 
 
 @dataclass
 class OpenGraphAudio(SerializableAttrs):
-    url: ContentURI = attr.ib(default=None, metadata={"json": "og:audio"})
-    mimetype: str = attr.ib(default=None, metadata={"json": "og:audio:type"})
+    url: ContentURI = field(default=None, json="og:audio")
+    mimetype: str = field(default=None, json="og:audio:type")
 
 
 @dataclass
@@ -52,11 +51,11 @@ class MXOpenGraph(SerializableAttrs):
     Matrix URL preview response. See `GET /_matrix/media/r0/preview_url`_.
 
     .. _GET /_matrix/media/r0/preview_url:
-        https://matrix.org/docs/spec/client_server/r0.5.0#get-matrix-media-r0-preview-url
+        https://spec.matrix.org/v1.2/client-server-api/#get_matrixmediav3preview_url
     """
 
-    title: str = attr.ib(default=None, metadata={"json": "og:title"})
-    description: str = attr.ib(default=None, metadata={"json": "og:description"})
-    image: OpenGraphImage = attr.ib(default=None, metadata={"flatten": True})
-    video: OpenGraphVideo = attr.ib(default=None, metadata={"flatten": True})
-    audio: OpenGraphAudio = attr.ib(default=None, metadata={"flatten": True})
+    title: str = field(default=None, json="og:title")
+    description: str = field(default=None, json="og:description")
+    image: OpenGraphImage = field(default=None, flatten=True)
+    video: OpenGraphVideo = field(default=None, flatten=True)
+    audio: OpenGraphAudio = field(default=None, flatten=True)

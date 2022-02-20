@@ -132,7 +132,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         """
         Get information about a URL for a client.
 
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-preview-url>`__
+        See also: `API reference <https://spec.matrix.org/v1.2/client-server-api/#get_matrixmediav3preview_url>`__
 
         Args:
             url: The URL to get a preview of.

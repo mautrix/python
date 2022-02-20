@@ -31,7 +31,7 @@ class RoomCreatePreset(Enum):
     Room creation preset, as specified in the `createRoom endpoint`_
 
     .. _createRoom endpoint:
-        https://spec.matrix.org/v1.1/client-server-api/#post_matrixclientv3createroom
+        https://spec.matrix.org/v1.2/client-server-api/#post_matrixclientv3createroom
     """
 
     PRIVATE = "private_chat"
@@ -44,7 +44,7 @@ class RoomDirectoryVisibility(Enum):
     Room directory visibility, as specified in the `createRoom endpoint`_
 
     .. _createRoom endpoint:
-        https://spec.matrix.org/v1.1/client-server-api/#post_matrixclientv3createroom
+        https://spec.matrix.org/v1.2/client-server-api/#post_matrixclientv3createroom
     """
 
     PRIVATE = "private"
@@ -64,7 +64,7 @@ class RoomAliasInfo(SerializableAttrs):
     Room alias query result, as specified in the `alias resolve endpoint`_
 
     .. _alias resolve endpoint:
-        https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3directoryroomroomalias
+        https://spec.matrix.org/v1.2/client-server-api/#get_matrixclientv3directoryroomroomalias
     """
 
     room_id: RoomID = None

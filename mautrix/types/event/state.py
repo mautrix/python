@@ -74,7 +74,7 @@ class Membership(SerializableEnum):
     The membership state of a user in a room as specified in section `8.4 Room membership`_ of the
     spec.
 
-    .. _8.4 Room membership: https://spec.matrix.org/v1.1/client-server-api/#room-membership
+    .. _8.4 Room membership: https://spec.matrix.org/v1.2/client-server-api/#room-membership
     """
 
     JOIN = "join"
@@ -88,7 +88,7 @@ class Membership(SerializableEnum):
 class MemberStateEventContent(SerializableAttrs):
     """The content of a membership event. `Spec link`_
 
-    .. _Spec link: https://spec.matrix.org/v1.1/client-server-api/#mroommember"""
+    .. _Spec link: https://spec.matrix.org/v1.2/client-server-api/#mroommember"""
 
     membership: Membership = Membership.LEAVE
     avatar_url: ContentURI = None
@@ -109,7 +109,7 @@ class CanonicalAliasStateEventContent(SerializableAttrs):
 
     See also: `m.room.canonical_alias in the spec`_
 
-    .. _m.room.canonical_alias in the spec: https://spec.matrix.org/v1.1/client-server-api/#mroomcanonical_alias
+    .. _m.room.canonical_alias in the spec: https://spec.matrix.org/v1.2/client-server-api/#mroomcanonical_alias
     """
 
     canonical_alias: RoomAlias = attr.ib(default=None, metadata={"json": "alias"})
