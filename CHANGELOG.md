@@ -11,6 +11,10 @@
     with /r0 if the server doesn't advertise support for Matrix v1.1 or higher.
     It can be activated by calling the `.versions()` method in `ClientAPI`.
     The bridge module calls that method automatically.
+* **Breaking change *(util.formatter)*** Removed lxml-based HTML parser.
+  * The parsed data format is still compatible with lxml, so it is possible to
+    use lxml with `MatrixParser` by setting `lxml.html.fromstring` as the
+    `read_html` method.
 * *(bridge)* Removed legacy community utilities.
 * *(util.async_db)* Fixed counting number of db upgrades.
 * *(util.async_db)* Added support for schema migrations that jump versions.
