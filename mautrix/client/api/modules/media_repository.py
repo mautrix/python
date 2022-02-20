@@ -65,7 +65,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         if filename:
             query["filename"] = filename
         resp = await self.api.request(
-            Method.POST, MediaPath.upload, content=data, headers=headers, query_params=query
+            Method.POST, MediaPath.v3.upload, content=data, headers=headers, query_params=query
         )
         try:
             return resp["content_uri"]
@@ -143,7 +143,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         if timestamp is not None:
             query_params["ts"] = timestamp
         content = await self.api.request(
-            Method.GET, MediaPath.preview_url, query_params=query_params
+            Method.GET, MediaPath.v3.preview_url, query_params=query_params
         )
         try:
             return MXOpenGraph.deserialize(content)
@@ -167,7 +167,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         Returns:
             The media repository config.
         """
-        content = await self.api.request(Method.GET, MediaPath.config)
+        content = await self.api.request(Method.GET, MediaPath.v3.config)
         try:
             return MediaRepoConfig.deserialize(content)
         except SerializerError as e:

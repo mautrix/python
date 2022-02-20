@@ -46,9 +46,8 @@ class APIPath(Enum):
     These don't start with a slash so they can be used nicely with yarl.
     """
 
-    CLIENT = "_matrix/client/r0"
-    CLIENT_UNSTABLE = "_matrix/client/unstable"
-    MEDIA = "_matrix/media/r0"
+    CLIENT = "_matrix/client"
+    MEDIA = "_matrix/media"
     SYNAPSE_ADMIN = "_synapse/admin"
 
     def __repr__(self):
@@ -82,8 +81,8 @@ class PathBuilder:
         >>> from mautrix.api import Path
         >>> room_id = "!foo:example.com"
         >>> event_id = "$bar:example.com"
-        >>> str(Path.rooms[room_id].event[event_id])
-        "_matrix/client/r0/rooms/%21foo%3Aexample.com/event/%24bar%3Aexample.com"
+        >>> str(Path.v3.rooms[room_id].event[event_id])
+        "_matrix/client/v3/rooms/%21foo%3Aexample.com/event/%24bar%3Aexample.com"
     """
 
     def __init__(self, path: str | APIPath = "") -> None:
@@ -126,33 +125,28 @@ class PathBuilder:
 
 ClientPath = PathBuilder(APIPath.CLIENT)
 ClientPath.__doc__ = """
-A path builder with the standard client r0 prefix ( ``/_matrix/client/r0``, :attr:`APIPath.CLIENT`)
+A path builder with the standard client prefix ( ``/_matrix/client``, :attr:`APIPath.CLIENT`).
 """
 Path = PathBuilder(APIPath.CLIENT)
 Path.__doc__ = """A shorter alias for :attr:`ClientPath`"""
-UnstableClientPath = PathBuilder(APIPath.CLIENT_UNSTABLE)
-UnstableClientPath.__doc__ = """
-A path builder for client endpoints that haven't reached the spec yet
-(``/_matrix/client/unstable``, :attr:`APIPath.CLIENT_UNSTABLE`)
-"""
 MediaPath = PathBuilder(APIPath.MEDIA)
 MediaPath.__doc__ = """
-A path builder for standard media r0 paths (``/_matrix/media/r0``, :attr:`APIPath.MEDIA`)
+A path builder with the standard media prefix (``/_matrix/media``, :attr:`APIPath.MEDIA`)
 
 Examples:
     >>> from mautrix.api import MediaPath
-    >>> str(MediaPath.config)
-    "_matrix/media/r0/config"
+    >>> str(MediaPath.v3.config)
+    "_matrix/media/v3/config"
 """
 SynapseAdminPath = PathBuilder(APIPath.SYNAPSE_ADMIN)
 SynapseAdminPath.__doc__ = """
 A path builder for synapse-specific admin API paths
-(``/_synapse/admin/v1``, :attr:`APIPath.SYNAPSE_ADMIN`)
+(``/_synapse/admin``, :attr:`APIPath.SYNAPSE_ADMIN`)
 
 Examples:
     >>> from mautrix.api import SynapseAdminPath
     >>> user_id = "@user:example.com"
-    >>> str(SynapseAdminPath.users[user_id]/login)
+    >>> str(SynapseAdminPath.v1.users[user_id]/login)
     "_synapse/admin/v1/users/%40user%3Aexample.com/login"
 """
 
@@ -268,7 +262,7 @@ class HTTPAPI:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = query_params.get("user_id", None)
-        level = 1 if path == Path.sync else 5
+        level = 1 if path == Path.v3.sync else 5
         self.log.log(
             level,
             f"{method}#{req_id} /{path} {log_content}".strip(" "),

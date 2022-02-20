@@ -32,7 +32,7 @@ class FilteringMethods(BaseClientAPI):
         Returns:
             The filter data.
         """
-        content = await self.api.request(Method.GET, Path.user[self.mxid].filter[filter_id])
+        content = await self.api.request(Method.GET, Path.v3.user[self.mxid].filter[filter_id])
         return Filter.deserialize(content)
 
     async def create_filter(self, filter_params: Filter) -> FilterID:
@@ -49,7 +49,7 @@ class FilteringMethods(BaseClientAPI):
         """
         resp = await self.api.request(
             Method.POST,
-            Path.user[self.mxid].filter,
+            Path.v3.user[self.mxid].filter,
             filter_params.serialize()
             if isinstance(filter_params, Serializable)
             else filter_params,

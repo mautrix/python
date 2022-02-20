@@ -33,7 +33,7 @@ class AccountDataMethods(BaseClientAPI):
         """
         if isinstance(type, EventType) and not type.is_account_data:
             raise ValueError("Event type is not an account data event type")
-        base_path = Path.user[self.mxid]
+        base_path = Path.v3.user[self.mxid]
         if room_id:
             base_path = base_path.rooms[room_id]
         return await self.api.request(Method.GET, base_path.account_data[type])
@@ -56,7 +56,7 @@ class AccountDataMethods(BaseClientAPI):
         """
         if isinstance(type, EventType) and not type.is_account_data:
             raise ValueError("Event type is not an account data event type")
-        base_path = Path.user[self.mxid]
+        base_path = Path.v3.user[self.mxid]
         if room_id:
             base_path = base_path.rooms[room_id]
         await self.api.request(

@@ -46,7 +46,7 @@ class UserDataMethods(BaseClientAPI):
         """
         content = await self.api.request(
             Method.POST,
-            Path.user_directory.search,
+            Path.v3.user_directory.search,
             {
                 "search_term": search_query,
                 "limit": limit,
@@ -83,7 +83,7 @@ class UserDataMethods(BaseClientAPI):
             return
         await self.api.request(
             Method.PUT,
-            Path.profile[self.mxid].displayname,
+            Path.v3.profile[self.mxid].displayname,
             {
                 "displayname": displayname,
             },
@@ -102,7 +102,7 @@ class UserDataMethods(BaseClientAPI):
             The display name of the given user.
         """
         try:
-            content = await self.api.request(Method.GET, Path.profile[user_id].displayname)
+            content = await self.api.request(Method.GET, Path.v3.profile[user_id].displayname)
         except MNotFound:
             return None
         try:
@@ -124,7 +124,7 @@ class UserDataMethods(BaseClientAPI):
             return
         await self.api.request(
             Method.PUT,
-            Path.profile[self.mxid].avatar_url,
+            Path.v3.profile[self.mxid].avatar_url,
             {
                 "avatar_url": avatar_url,
             },
@@ -143,7 +143,7 @@ class UserDataMethods(BaseClientAPI):
             The ``mxc://`` URI to the user's avatar.
         """
         try:
-            content = await self.api.request(Method.GET, Path.profile[user_id].avatar_url)
+            content = await self.api.request(Method.GET, Path.v3.profile[user_id].avatar_url)
         except MNotFound:
             return None
         try:
@@ -163,7 +163,7 @@ class UserDataMethods(BaseClientAPI):
         Returns:
             The profile information of the given user.
         """
-        content = await self.api.request(Method.GET, Path.profile[user_id])
+        content = await self.api.request(Method.GET, Path.v3.profile[user_id])
         try:
             return Member.deserialize(content)
         except SerializerError as e:

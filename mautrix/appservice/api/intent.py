@@ -538,7 +538,7 @@ class IntentAPI(StoreUpdatingAPI):
             "inhibit_login": True,
         }
         query_params = {"kind": "user"}
-        return self.api.request(Method.POST, Path.register, content, query_params=query_params)
+        return self.api.request(Method.POST, Path.v3.register, content, query_params=query_params)
 
     async def ensure_registered(self) -> None:
         """

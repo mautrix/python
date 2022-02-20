@@ -34,7 +34,7 @@ class NotificationDisabler:
 
     @property
     def _path(self) -> PathBuilder:
-        return Path.pushrules["global"].override[
+        return Path.v3.pushrules["global"].override[
             f"net.maunium.silence_while_backfilling:{self.room_id}"
         ]
 

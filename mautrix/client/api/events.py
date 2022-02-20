@@ -97,7 +97,7 @@ class EventMethods(BaseClientAPI):
         if set_presence:
             request["set_presence"] = str(set_presence)
         return self.api.request(
-            Method.GET, Path.sync, query_params=request, retry_count=0, metrics_method="sync"
+            Method.GET, Path.v3.sync, query_params=request, retry_count=0, metrics_method="sync"
         )
 
     # endregion
@@ -119,7 +119,7 @@ class EventMethods(BaseClientAPI):
             The event.
         """
         content = await self.api.request(
-            Method.GET, Path.rooms[room_id].event[event_id], metrics_method="getEvent"
+            Method.GET, Path.v3.rooms[room_id].event[event_id], metrics_method="getEvent"
         )
         try:
             return Event.deserialize(content)
@@ -149,7 +149,7 @@ class EventMethods(BaseClientAPI):
         """
         content = await self.api.request(
             Method.GET,
-            Path.rooms[room_id].state[event_type][state_key],
+            Path.v3.rooms[room_id].state[event_type][state_key],
             metrics_method="getStateEvent",
         )
         try:
@@ -172,7 +172,7 @@ class EventMethods(BaseClientAPI):
             A list of state events with the most recent of each event_type/state_key pair.
         """
         content = await self.api.request(
-            Method.GET, Path.rooms[room_id].state, metrics_method="getState"
+            Method.GET, Path.v3.rooms[room_id].state, metrics_method="getState"
         )
         try:
             return [StateEvent.deserialize(event) for event in content]
@@ -215,7 +215,7 @@ class EventMethods(BaseClientAPI):
             query["not_membership"] = not_membership.value
         content = await self.api.request(
             Method.GET,
-            Path.rooms[room_id].members,
+            Path.v3.rooms[room_id].members,
             query_params=query,
             metrics_method="getMembers",
         )
@@ -245,7 +245,7 @@ class EventMethods(BaseClientAPI):
             https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3roomsroomidmembers
         """
         content = await self.api.request(
-            Method.GET, Path.rooms[room_id].joined_members, metrics_method="getJoinedMembers"
+            Method.GET, Path.v3.rooms[room_id].joined_members, metrics_method="getJoinedMembers"
         )
         try:
             return {
@@ -306,7 +306,7 @@ class EventMethods(BaseClientAPI):
         }
         content = await self.api.request(
             Method.GET,
-            Path.rooms[room_id].messages,
+            Path.v3.rooms[room_id].messages,
             query_params=query_params,
             metrics_method="getMessages",
         )
@@ -358,7 +358,7 @@ class EventMethods(BaseClientAPI):
         content = content.serialize() if isinstance(content, Serializable) else content
         resp = await self.api.request(
             Method.PUT,
-            Path.rooms[room_id].state[event_type][state_key],
+            Path.v3.rooms[room_id].state[event_type][state_key],
             content,
             **kwargs,
             metrics_method="sendStateEvent",
@@ -398,7 +398,7 @@ class EventMethods(BaseClientAPI):
             raise ValueError("Room ID not given")
         elif not event_type:
             raise ValueError("Event type not given")
-        url = Path.rooms[room_id].send[event_type][txn_id or self.api.get_txn_id()]
+        url = Path.v3.rooms[room_id].send[event_type][txn_id or self.api.get_txn_id()]
         content = content.serialize() if isinstance(content, Serializable) else content
         resp = await self.api.request(
             Method.PUT, url, content, **kwargs, metrics_method="sendMessageEvent"
@@ -669,7 +669,7 @@ class EventMethods(BaseClientAPI):
         Returns:
             The ID of the event that was sent to redact the other event.
         """
-        url = Path.rooms[room_id].redact[event_id][self.api.get_txn_id()]
+        url = Path.v3.rooms[room_id].redact[event_id][self.api.get_txn_id()]
         content = extra_content or {}
         if reason:
             content["reason"] = reason

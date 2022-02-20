@@ -170,7 +170,7 @@ class CustomPuppetMixin(ABC):
             else:
                 raise AutologinError(f"No homeserver URL configured for {server}")
         password = hmac.new(secret, mxid.encode("utf-8"), hashlib.sha512).hexdigest()
-        url = base_url / str(Path.login)
+        url = base_url / str(Path.v3.login)
         resp = await cls.az.http_session.post(
             url,
             data=json.dumps(

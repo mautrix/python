@@ -31,7 +31,7 @@ class RoomTaggingMethods(BaseClientAPI):
         Returns:
             The m.tag account data event.
         """
-        resp = await self.api.request(Method.GET, Path.user[self.mxid].rooms[room_id].tags)
+        resp = await self.api.request(Method.GET, Path.v3.user[self.mxid].rooms[room_id].tags)
         return RoomTagAccountDataEventContent.deserialize(resp)
 
     async def get_room_tag(self, room_id: RoomID, tag: str) -> RoomTagInfo | None:
@@ -66,7 +66,7 @@ class RoomTaggingMethods(BaseClientAPI):
         """
         await self.api.request(
             Method.PUT,
-            Path.user[self.mxid].rooms[room_id].tags[tag],
+            Path.v3.user[self.mxid].rooms[room_id].tags[tag],
             content=(info.serialize() if isinstance(info, Serializable) else (info or {})),
         )
 
@@ -80,4 +80,4 @@ class RoomTaggingMethods(BaseClientAPI):
             room_id: The room ID to remove the tag from.
             tag: The tag to remove.
         """
-        await self.api.request(Method.DELETE, Path.user[self.mxid].rooms[room_id].tags[tag])
+        await self.api.request(Method.DELETE, Path.v3.user[self.mxid].rooms[room_id].tags[tag])

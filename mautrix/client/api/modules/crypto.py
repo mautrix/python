@@ -47,7 +47,7 @@ class CryptoMethods(BaseClientAPI):
             raise ValueError("Event type must be a to-device event type")
         await self.api.request(
             Method.PUT,
-            Path.sendToDevice[event_type][self.api.get_txn_id()],
+            Path.v3.sendToDevice[event_type][self.api.get_txn_id()],
             {
                 "messages": {
                     user_id: {
@@ -105,7 +105,7 @@ class CryptoMethods(BaseClientAPI):
             data["device_keys"] = device_keys
         if one_time_keys:
             data["one_time_keys"] = one_time_keys
-        resp = await self.api.request(Method.POST, Path.keys.upload, data)
+        resp = await self.api.request(Method.POST, Path.v3.keys.upload, data)
         try:
             return {
                 EncryptionKeyAlgorithm.deserialize(alg): count
@@ -147,7 +147,7 @@ class CryptoMethods(BaseClientAPI):
         }
         if token:
             data["token"] = token
-        resp = await self.api.request(Method.POST, Path.keys.query, data)
+        resp = await self.api.request(Method.POST, Path.v3.keys.query, data)
         return QueryKeysResponse.deserialize(resp)
 
     async def claim_keys(
@@ -171,7 +171,7 @@ class CryptoMethods(BaseClientAPI):
         """
         resp = await self.api.request(
             Method.POST,
-            Path.keys.claim,
+            Path.v3.keys.claim,
             {
                 "timeout": timeout,
                 "one_time_keys": {

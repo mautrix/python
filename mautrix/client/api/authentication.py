@@ -8,6 +8,7 @@ from __future__ import annotations
 from mautrix.api import Method, Path
 from mautrix.errors import MatrixResponseError
 from mautrix.types import (
+    DeviceID,
     LoginFlowList,
     LoginResponse,
     LoginType,
@@ -40,7 +41,7 @@ class ClientAuthenticationMethods(BaseClientAPI):
         Returns:
             The list of login flows that the homeserver supports.
         """
-        resp = await self.api.request(Method.GET, Path.login)
+        resp = await self.api.request(Method.GET, Path.v3.login)
         try:
             return LoginFlowList.deserialize(resp)
         except KeyError:
@@ -93,7 +94,7 @@ class ClientAuthenticationMethods(BaseClientAPI):
             kwargs["device_id"] = self.device_id
         resp = await self.api.request(
             Method.POST,
-            Path.login,
+            Path.v3.login,
             {
                 "type": str(login_type),
                 "identifier": identifier.serialize(),
@@ -127,10 +128,10 @@ class ClientAuthenticationMethods(BaseClientAPI):
         Args:
             clear_access_token: Whether or not mautrix-python should forget the stored access token.
         """
-        await self.api.request(Method.POST, Path.logout)
+        await self.api.request(Method.POST, Path.v3.logout)
         if clear_access_token:
             self.api.token = ""
-            self.device_id = ""
+            self.device_id = DeviceID("")
 
     async def logout_all(self, clear_access_token: bool = True) -> None:
         """
@@ -151,10 +152,10 @@ class ClientAuthenticationMethods(BaseClientAPI):
         Args:
             clear_access_token: Whether or not mautrix-python should forget the stored access token.
         """
-        await self.api.request(Method.POST, Path.logout.all)
+        await self.api.request(Method.POST, Path.v3.logout.all)
         if clear_access_token:
             self.api.token = ""
-            self.device_id = ""
+            self.device_id = DeviceID("")
 
     # endregion
 
@@ -170,7 +171,7 @@ class ClientAuthenticationMethods(BaseClientAPI):
         Returns:
             The user ID and device ID of the current user.
         """
-        resp = await self.api.request(Method.GET, Path.account.whoami)
+        resp = await self.api.request(Method.GET, Path.v3.account.whoami)
         return WhoamiResponse.deserialize(resp)
 
     # endregion

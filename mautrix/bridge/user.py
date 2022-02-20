@@ -12,7 +12,7 @@ import asyncio
 import logging
 import time
 
-from mautrix.api import Method, UnstableClientPath
+from mautrix.api import Method, Path
 from mautrix.appservice import AppService
 from mautrix.errors import MNotFound
 from mautrix.types import EventID, EventType, Membership, MessageType, RoomID, UserID
@@ -28,7 +28,7 @@ from mautrix.util.opt_prometheus import Gauge
 
 from .. import bridge as br
 
-AsmuxPath = UnstableClientPath["com.beeper.asmux"]
+AsmuxPath = Path.unstable["com.beeper.asmux"]
 
 
 class WrappedTask(NamedTuple):
