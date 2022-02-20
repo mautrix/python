@@ -1,6 +1,6 @@
 ## v0.15.0 (unreleased)
 
-* **Breaking change *(\*)*** Removed Python 3.7 support.
+* **Breaking change** Removed Python 3.7 support.
 * **Breaking change *(api)*** Removed `r0` from default path builders in order
   to update to `v3` and per-endpoint versioning.
   * The client API modules have been updated to specify v3 in the paths, other
