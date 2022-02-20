@@ -8,8 +8,7 @@ from __future__ import annotations
 from typing import Any, Awaitable, Iterable
 from urllib.parse import quote as urllib_quote
 
-from mautrix import __optional_imports__
-from mautrix.api import Method, Path, UnstableClientPath
+from mautrix.api import Method, Path
 from mautrix.client import ClientAPI, StoreUpdatingAPI
 from mautrix.errors import (
     IntentError,
@@ -458,7 +457,7 @@ class IntentAPI(StoreUpdatingAPI):
         Returns:
             All the event IDs generated, plus a batch ID that can be passed back to this method.
         """
-        path = UnstableClientPath["org.matrix.msc2716"].rooms[room_id].batch_send
+        path = Path.unstable["org.matrix.msc2716"].rooms[room_id].batch_send
         query = {"prev_event_id": prev_event_id}
         if batch_id:
             query["batch_id"] = batch_id
