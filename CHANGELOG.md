@@ -1,6 +1,16 @@
-## v0.14.11 (unreleased)
+## v0.15.0 (unreleased)
 
 * Removed Python 3.7 support.
+* **Breaking change *(api)*** Removed `r0` from default path builders in order
+  to update to `v3` and per-endpoint versioning.
+  * The client API modules have been updated to specify v3 in the paths, other
+    direct usage of `Path`, `ClientPath` and `MediaPath` will have to be
+    updated manually. `UnstableClientPath` no longer exists and should be
+    replaced with `Path.unstable`.
+  * There's a temporary hacky backwards-compatibility layer which replaces /v3
+    with /r0 if the server doesn't advertise support for Matrix v1.1 or higher.
+    It can be activated by calling the `.versions()` method in `ClientAPI`.
+    The bridge module calls that method automatically.
 * *(bridge)* Removed legacy community utilities.
 * *(util.async_db)* Fixed counting number of db upgrades.
 * *(util.async_db)* Added support for schema migrations that jump versions.
