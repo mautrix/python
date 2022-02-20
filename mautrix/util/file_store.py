@@ -5,18 +5,12 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import IO, Any
+from typing import IO, Any, Protocol
 from abc import ABC, abstractmethod
 from pathlib import Path
 import json
 import pickle
-import sys
 import time
-
-if sys.version_info >= (3, 8):
-    from typing import Protocol
-else:
-    from typing_extensions import Protocol
 
 
 class Filer(Protocol):

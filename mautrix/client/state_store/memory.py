@@ -5,8 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any
-import sys
+from typing import Any, TypedDict
 
 from mautrix.types import (
     Member,
@@ -19,11 +18,6 @@ from mautrix.types import (
 )
 
 from .abstract import StateStore
-
-if sys.version_info >= (3, 8):
-    from typing import TypedDict
-else:
-    from typing_extensions import TypedDict
 
 
 class SerializedStateStore(TypedDict):

@@ -5,11 +5,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any, Awaitable, Callable, Dict, TypedDict
 import asyncio
 import functools
 import json
-import sys
 
 import olm
 
@@ -26,11 +25,6 @@ from mautrix.types import (
 from mautrix.util.logging import TraceLogger
 
 from .. import client as cli, crypto
-
-if sys.version_info >= (3, 8):
-    from typing import TypedDict
-else:
-    from typing_extensions import TypedDict
 
 
 class SignedObject(TypedDict):

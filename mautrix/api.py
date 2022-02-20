@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import ClassVar, Mapping
+from typing import ClassVar, Literal, Mapping
 from enum import Enum
 from json.decoder import JSONDecodeError
 from time import time
@@ -14,7 +14,6 @@ import asyncio
 import json
 import logging
 import platform
-import sys
 
 from aiohttp import ClientSession, __version__ as aiohttp_version
 from aiohttp.client_exceptions import ClientError, ContentTypeError
@@ -24,11 +23,6 @@ from mautrix import __optional_imports__, __version__ as mautrix_version
 from mautrix.errors import MatrixConnectionError, MatrixRequestError, make_request_error
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Counter
-
-if sys.version_info >= (3, 8):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
 
 if __optional_imports__:
     # Safe to import, but it's not actually needed, so don't force-import the whole types module.
