@@ -1,6 +1,6 @@
 ## v0.15.0 (unreleased)
 
-* Removed Python 3.7 support.
+* **Breaking change (all)** Removed Python 3.7 support.
 * **Breaking change *(api)*** Removed `r0` from default path builders in order
   to update to `v3` and per-endpoint versioning.
   * The client API modules have been updated to specify v3 in the paths, other
@@ -18,6 +18,8 @@
 * *(bridge)* Removed legacy community utilities.
 * *(util.async_db)* Fixed counting number of db upgrades.
 * *(util.async_db)* Added support for schema migrations that jump versions.
+* *(util.db)* Module deprecated. The async_db module is recommended. However,
+  the SQLAlchemy helpers will remain until maubot has switched to asyncpg.
 
 ## v0.14.10 (2022-02-01)
 
