@@ -5,3 +5,24 @@ from .encryption_manager import DecryptionDispatcher, EncryptingAPI
 from .state_store import FileStateStore, MemoryStateStore, MemorySyncStore, StateStore, SyncStore
 from .store_updater import StoreUpdatingAPI
 from .syncer import EventHandler, InternalEventType, Syncer, SyncStream
+
+__all__ = [
+    "ClientAPI",
+    "Client",
+    "Dispatcher",
+    "MembershipEventDispatcher",
+    "SimpleDispatcher",
+    "DecryptionDispatcher",
+    "EncryptingAPI",
+    "FileStateStore",
+    "MemoryStateStore",
+    "MemorySyncStore",
+    "StateStore",
+    "SyncStore",
+    "StoreUpdatingAPI",
+    "EventHandler",
+    "InternalEventType",
+    "Syncer",
+    "SyncStream",
+    "state_store",
+]

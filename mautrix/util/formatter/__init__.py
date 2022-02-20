@@ -12,3 +12,19 @@ from .parser import MatrixParser, RecursionContext
 
 async def parse_html(input_html: str) -> str:
     return (await MatrixParser().parse(input_html)).text
+
+
+__all__ = [
+    "AbstractEntity",
+    "EntityString",
+    "SemiAbstractEntity",
+    "SimpleEntity",
+    "EntityType",
+    "FormattedString",
+    "HTMLNode",
+    "read_html",
+    "MarkdownString",
+    "MatrixParser",
+    "RecursionContext",
+    "parse_html",
+]

@@ -37,6 +37,7 @@ from .message import (
     AudioInfo,
     BaseFileInfo,
     BaseMessageEventContent,
+    BaseMessageEventContentFuncs,
     EncryptedFile,
     FileInfo,
     Format,

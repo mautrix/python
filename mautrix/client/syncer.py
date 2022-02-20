@@ -16,6 +16,7 @@ from mautrix.errors import MUnknownToken
 from mautrix.types import (
     JSON,
     AccountDataEvent,
+    BaseMessageEventContentFuncs,
     DeviceLists,
     DeviceOTKCount,
     EphemeralEvent,
@@ -31,7 +32,6 @@ from mautrix.types import (
     ToDeviceEvent,
     UserID,
 )
-from mautrix.types.event.message import BaseMessageEventContentFuncs
 from mautrix.util.logging import TraceLogger
 
 from . import dispatcher

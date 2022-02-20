@@ -18,6 +18,7 @@
 * **Breaking change *(crypto)*** Moved `TrustState`, `DeviceIdentity`,
   `OlmEventKeys` and `DecryptedOlmEvent` dataclasses from `crypto.types`
   into `types.crypto`.
+* Added a redundant `__all__` to various `__init__.py` files to appease pyright.
 * *(bridge)* Removed legacy community utilities.
 * *(util.async_db)* Fixed counting number of db upgrades.
 * *(util.async_db)* Added support for schema migrations that jump versions.

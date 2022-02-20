@@ -43,7 +43,6 @@ from mautrix.types import (
     TextMessageEventContent,
     UserID,
 )
-from mautrix.types.event.state import state_event_content_map
 from mautrix.util.formatter import parse_html
 
 from .base import BaseClientAPI
@@ -152,10 +151,9 @@ class EventMethods(BaseClientAPI):
             Path.v3.rooms[room_id].state[event_type][state_key],
             metrics_method="getStateEvent",
         )
+        content["__mautrix_event_type"] = event_type
         try:
-            return state_event_content_map[event_type].deserialize(content)
-        except KeyError:
-            return Obj(**content)
+            return StateEvent.deserialize_content(content)
         except SerializerError as e:
             raise MatrixResponseError("Invalid state event in response") from e
 

@@ -11,4 +11,5 @@ __all__ = [
     "ASStateStore",
     "AppServiceServerMixin",
     "DOUBLE_PUPPET_SOURCE_KEY",
+    "state_store",
 ]

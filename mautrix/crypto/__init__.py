@@ -12,3 +12,18 @@ from .store import (  # isort: skip
 )
 
 from .machine import OlmMachine  # isort: skip
+
+__all__ = [
+    "OlmAccount",
+    "RejectKeyShare",
+    "InboundGroupSession",
+    "OutboundGroupSession",
+    "Session",
+    "CryptoStore",
+    "MemoryCryptoStore",
+    "PgCryptoStateStore",
+    "PgCryptoStore",
+    "StateStore",
+    "OlmMachine",
+    "attachments",
+]
