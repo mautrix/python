@@ -10,7 +10,7 @@ import json
 from aiohttp import ClientError, ClientSession, ContentTypeError
 from yarl import URL
 
-from mautrix.api import HTTPAPI, Method
+from mautrix.api import HTTPAPI, Method, Path
 from mautrix.errors import (
     WellKnownInvalidVersionsResponse,
     WellKnownMissingHomeserver,
@@ -37,6 +37,7 @@ class BaseClientAPI:
     device_id: DeviceID
     api: HTTPAPI
     log: TraceLogger
+    versions_cache: VersionsResponse | None
 
     def __init__(
         self, mxid: UserID = "", device_id: DeviceID = "", api: HTTPAPI | None = None, **kwargs
@@ -62,6 +63,7 @@ class BaseClientAPI:
             self.localpart = None
             self.domain = None
         self.fill_member_event_callback = None
+        self.versions_cache = None
         self.device_id = device_id
         self.api = api or HTTPAPI(**kwargs)
         self.log = self.api.log
@@ -101,10 +103,26 @@ class BaseClientAPI:
         self.localpart, self.domain = self.parse_user_id(mxid)
         self._mxid = mxid
 
-    async def versions(self) -> VersionsResponse:
-        """Get client-server spec versions supported by the server."""
-        resp = await self.api.request(Method.GET, "_matrix/client/versions")
-        return VersionsResponse.deserialize(resp)
+    async def versions(self, no_cache: bool = False) -> VersionsResponse:
+        """
+        Get client-server spec versions supported by the server.
+
+        Args:
+            no_cache: If true, the versions will always be fetched from the server
+                      rather than using cached results when availab.e.
+
+        Returns:
+            The supported Matrix spec versions and unstable features.
+        """
+        if no_cache or not self.versions_cache:
+            resp = await self.api.request(Method.GET, Path.versions)
+            vers = self.versions_cache = VersionsResponse.deserialize(resp)
+            if not vers.has_modern_versions and vers.has_legacy_versions:
+                self.log.warning(
+                    "Server isn't advertising modern spec versions, falling back to /r0 endpoints"
+                )
+                self.api.hacky_replace_v3_with_r0 = True
+        return self.versions_cache
 
     @classmethod
     async def discover(cls, domain: str, session: ClientSession | None = None) -> URL | None:

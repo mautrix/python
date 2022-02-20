@@ -226,6 +226,7 @@ class EncryptionManager:
         return decrypted
 
     async def start(self) -> None:
+        self.client.api.hacky_replace_v3_with_r0 = self.az.intent.api.hacky_replace_v3_with_r0
         flows = await self.client.get_login_flows()
         flow = flows.get_first_of_type(LoginType.APPSERVICE, LoginType.UNSTABLE_APPSERVICE)
         if flow is None:

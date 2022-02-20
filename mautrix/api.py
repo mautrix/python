@@ -122,6 +122,9 @@ class PathBuilder:
             return self
         return PathBuilder(f"{self.path}/{self._quote(str(append))}")
 
+    def replace(self, find: str, replace: str) -> PathBuilder:
+        return PathBuilder(self.path.replace(find, replace))
+
 
 ClientPath = PathBuilder(APIPath.CLIENT)
 ClientPath.__doc__ = """
@@ -187,6 +190,9 @@ class HTTPAPI:
     """A counter used for generating transaction IDs."""
     default_retry_count: int
     """The default retry count to use if a custom value is not passed to :meth:`request`"""
+
+    hacky_replace_v3_with_r0: bool = False
+    """A hacky flag to replace /v3 with /r0 in all API paths."""
 
     def __init__(
         self,
@@ -262,7 +268,7 @@ class HTTPAPI:
             return
         log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
         as_user = query_params.get("user_id", None)
-        level = 1 if path == Path.v3.sync else 5
+        level = 1 if path == Path.v3.sync or path == Path.r0.sync else 5
         self.log.log(
             level,
             f"{method}#{req_id} /{path} {log_content}".strip(" "),
@@ -317,6 +323,10 @@ class HTTPAPI:
         Returns:
             The parsed response JSON.
         """
+        if self.hacky_replace_v3_with_r0:
+            path = path.replace("_matrix/client/v3", "_matrix/client/r0")
+            path = path.replace("_matrix/media/v3", "_matrix/media/r0")
+
         headers = headers or {}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"

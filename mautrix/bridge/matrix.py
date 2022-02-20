@@ -45,6 +45,7 @@ from mautrix.types import (
     TextMessageEventContent,
     TypingEvent,
     UserID,
+    VersionsResponse,
 )
 from mautrix.util import markdown
 from mautrix.util.logging import TraceLogger
@@ -92,6 +93,7 @@ class BaseMatrixHandler:
     bridge: br.Bridge
     e2ee: EncryptionManager | None
     media_config: MediaRepoConfig
+    versions: VersionsResponse
 
     user_id_prefix: str
     user_id_suffix: str
@@ -106,6 +108,7 @@ class BaseMatrixHandler:
         self.bridge = bridge
         self.commands = command_processor or cmd.CommandProcessor(bridge=bridge)
         self.media_config = MediaRepoConfig(upload_size=50 * 1024 * 1024)
+        self.versions = VersionsResponse(versions=["v1.2"])
         self.az.matrix_event_handler(self.int_handle_event)
 
         self.e2ee = None
@@ -151,6 +154,7 @@ class BaseMatrixHandler:
         tried_to_register = False
         while True:
             try:
+                self.versions = await self.az.intent.versions()
                 await self.az.intent.whoami()
                 break
             except (MUnknownToken, MExclusive):

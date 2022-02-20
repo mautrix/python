@@ -112,6 +112,14 @@ class VersionsResponse(SerializableAttrs):
     versions: List[str]
     unstable_features: Dict[str, bool] = attr.ib(factory=lambda: {})
 
+    @property
+    def has_legacy_versions(self) -> bool:
+        return any(v for v in self.versions if v.startswith("r0."))
+
+    @property
+    def has_modern_versions(self) -> bool:
+        return any(v for v in self.versions if v.startswith("v"))
+
 
 @dataclass
 class BatchSendResponse(SerializableAttrs):
