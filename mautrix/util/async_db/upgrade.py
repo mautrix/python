@@ -125,7 +125,9 @@ class UpgradeTable:
             while version < len(self.upgrades):
                 old_version = version
                 upgrade = self.upgrades[version]
-                new_version = getattr(upgrade, "__mau_db_upgrade_destination__", version + 1)
+                new_version = (
+                    getattr(upgrade, "__mau_db_upgrade_destination__", None) or version + 1
+                )
                 if callable(new_version):
                     new_version = await new_version(conn, db.scheme)
                 desc = getattr(upgrade, "__mau_db_upgrade_description__", None)
