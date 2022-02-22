@@ -406,6 +406,7 @@ class HTTPAPI:
             "https://matrix.org/_matrix/media/r0/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6"
         """
         if mxc_uri.startswith("mxc://"):
-            return self.base_url / str(APIPath.MEDIA) / download_type / mxc_uri[6:]
+            version = "r0" if self.hacky_replace_v3_with_r0 else "v3"
+            return self.base_url / str(APIPath.MEDIA) / version / download_type / mxc_uri[6:]
         else:
             raise ValueError("MXC URI did not begin with `mxc://`")
