@@ -12,9 +12,9 @@ from .util import SerializableAttrs, field
 @dataclass
 class MediaRepoConfig(SerializableAttrs):
     """
-    Matrix media repo config. See `GET /_matrix/media/r0/config`_.
+    Matrix media repo config. See `GET /_matrix/media/v3/config`_.
 
-    .. _GET /_matrix/media/r0/config:
+    .. _GET /_matrix/media/v3/config:
         https://spec.matrix.org/v1.2/client-server-api/#get_matrixmediav3config
     """
 
@@ -48,9 +48,9 @@ class OpenGraphAudio(SerializableAttrs):
 @dataclass
 class MXOpenGraph(SerializableAttrs):
     """
-    Matrix URL preview response. See `GET /_matrix/media/r0/preview_url`_.
+    Matrix URL preview response. See `GET /_matrix/media/v3/preview_url`_.
 
-    .. _GET /_matrix/media/r0/preview_url:
+    .. _GET /_matrix/media/v3/preview_url:
         https://spec.matrix.org/v1.2/client-server-api/#get_matrixmediav3preview_url
     """
 

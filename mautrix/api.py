@@ -403,7 +403,7 @@ class HTTPAPI:
         Examples:
             >>> api = HTTPAPI(...)
             >>> api.get_download_url("mxc://matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6")
-            "https://matrix.org/_matrix/media/r0/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6"
+            "https://matrix.org/_matrix/media/v3/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6"
         """
         if mxc_uri.startswith("mxc://"):
             version = "r0" if self.hacky_replace_v3_with_r0 else "v3"
