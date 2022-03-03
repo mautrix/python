@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, ClassVar, NamedTuple
+from typing import Any, NamedTuple
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from string import Template
@@ -15,7 +15,7 @@ import logging
 import time
 
 from mautrix.appservice import DOUBLE_PUPPET_SOURCE_KEY, AppService, IntentAPI
-from mautrix.errors import MatrixError, MatrixRequestError, MNotFound
+from mautrix.errors import MatrixError, MatrixRequestError, MForbidden, MNotFound
 from mautrix.types import (
     EncryptionAlgorithm,
     EventID,
@@ -25,6 +25,8 @@ from mautrix.types import (
     MessageType,
     RoomEncryptionStateEventContent,
     RoomID,
+    RoomTombstoneStateEventContent,
+    TextMessageEventContent,
     UserID,
 )
 from mautrix.util.logging import TraceLogger
@@ -36,6 +38,24 @@ from .. import bridge as br
 class RelaySender(NamedTuple):
     sender: br.BaseUser | None
     is_relay: bool
+
+
+class RejectMatrixInvite(Exception):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class IgnoreMatrixInvite(Exception):
+    pass
+
+
+class DMCreateError(RejectMatrixInvite):
+    """
+    An error raised by :meth:`BasePortal.prepare_dm` if the DM can't be set up.
+
+    The message in the exception will be sent to the user as a message before the ghost leaves.
+    """
 
 
 class BasePortal(ABC):
@@ -67,10 +87,149 @@ class BasePortal(ABC):
         pass
 
     @abstractmethod
+    async def get_dm_puppet(self) -> br.BasePuppet | None:
+        """
+        Get the ghost representing the other end of this direct chat.
+
+        Returns:
+            A puppet entity, or ``None`` if this is not a 1:1 chat.
+        """
+
+    @abstractmethod
     async def handle_matrix_message(
         self, sender: br.BaseUser, message: MessageEventContent, event_id: EventID
     ) -> None:
         pass
+
+    async def prepare_remote_dm(
+        self, room_id: RoomID, invited_by: br.BaseUser, puppet: br.BasePuppet
+    ) -> str:
+        """
+        Do whatever is needed on the remote platform to set up a direct chat between the user
+        and the ghost. By default, this does nothing (and lets :meth:`setup_matrix_dm` handle
+        everything).
+
+        Args:
+            room_id: The room ID that will be used.
+            invited_by: The Matrix user who invited the ghost.
+            puppet: The ghost who was invited.
+
+        Returns:
+            A simple message indicating what was done (will be sent as a notice to the room).
+            If empty, the message won't be sent.
+
+        Raises:
+            DMCreateError: if the DM could not be created and the ghost should leave the room.
+        """
+        return "Portal to private chat created."
+
+    async def postprocess_matrix_dm(self, user: br.BaseUser, puppet: br.BasePuppet) -> None:
+        await self.update_bridge_info()
+
+    async def reject_duplicate_dm(
+        self, room_id: RoomID, invited_by: br.BaseUser, puppet: br.BasePuppet
+    ) -> None:
+        try:
+            await puppet.default_mxid_intent.send_notice(
+                room_id,
+                text=f"You already have a private chat with me: {self.mxid}",
+                html=(
+                    "You already have a private chat with me: "
+                    f"<a href='https://matrix.to/#/{self.mxid}'>Link to room</a>"
+                ),
+            )
+        except Exception as e:
+            self.log.debug(f"Failed to send notice to duplicate private chat room: {e}")
+
+        try:
+            await puppet.default_mxid_intent.send_state_event(
+                room_id,
+                event_type=EventType.ROOM_TOMBSTONE,
+                content=RoomTombstoneStateEventContent(
+                    replacement_room=self.mxid,
+                    body="You already have a private chat with me",
+                ),
+            )
+        except Exception as e:
+            self.log.debug(f"Failed to send tombstone to duplicate private chat room: {e}")
+
+        await puppet.default_mxid_intent.leave_room(room_id)
+
+    async def accept_matrix_dm(
+        self, room_id: RoomID, invited_by: br.BaseUser, puppet: br.BasePuppet
+    ) -> None:
+        """
+        Set up a room as a direct chat portal.
+
+        The ghost has already accepted the invite at this point, so this method needs to make it
+        leave if the DM can't be created for some reason.
+
+        By default, this checks if there's an existing portal and redirects the user there if it
+        does exist. If a portal doesn't exist, this will call :meth:`prepare_matrix_dm` and then
+        save the room ID, enable encryption and update bridge info. If the portal exists, but isn't
+        usable, the old room will be cleaned up and the function will continue.
+
+        Args:
+            room_id: The room ID that will be used.
+            invited_by: The Matrix user who invited the ghost.
+            puppet: The ghost who was invited.
+        """
+        if self.mxid:
+            try:
+                portal_members = await self.main_intent.get_room_members(self.mxid)
+            except (MForbidden, MNotFound):
+                portal_members = []
+            if invited_by.mxid in portal_members:
+                await self.reject_duplicate_dm(room_id, invited_by, puppet)
+                return
+            self.log.debug(
+                f"{invited_by.mxid} isn't in old portal room {self.mxid},"
+                " cleaning up and accepting new room as the DM portal"
+            )
+            await self.cleanup_portal(
+                message="User seems to have left DM portal", puppets_only=True
+            )
+        try:
+            message = await self.prepare_remote_dm(room_id, invited_by, puppet)
+        except DMCreateError as e:
+            if e.message:
+                await puppet.default_mxid_intent.send_notice(room_id, text=e.message)
+            await puppet.default_mxid_intent.leave_room(room_id, reason="Failed to create DM")
+            return
+        self.mxid = room_id
+        e2be_ok = await self.check_dm_encryption()
+        await self.save()
+        if e2be_ok is False:
+            message += "\n\nWarning: Failed to enable end-to-bridge encryption."
+        if message:
+            await self._send_message(
+                puppet.default_mxid_intent,
+                TextMessageEventContent(
+                    msgtype=MessageType.NOTICE,
+                    body=message,
+                ),
+            )
+        await self.postprocess_matrix_dm(invited_by, puppet)
+
+    async def handle_matrix_invite(self, invited_by: br.BaseUser, puppet: br.BasePuppet) -> None:
+        """
+        Called when a Matrix user invites a bridge ghost to a room to process the invite (and check
+        if it should be accepted).
+
+        Args:
+            invited_by: The user who invited the ghost.
+            puppet: The ghost who was invited.
+
+        Raises:
+            RejectMatrixInvite: if the invite should be rejected.
+            IgnoreMatrixInvite: if the invite should be ignored (e.g. if it was already accepted).
+        """
+        if self.is_direct:
+            raise RejectMatrixInvite("You can't invite additional users to private chats.")
+        raise RejectMatrixInvite("This bridge does not implement inviting users to portals.")
+
+    async def update_bridge_info(self) -> None:
+        """Resend the ``m.bridge`` event into the room."""
 
     @property
     def _relay_is_implemented(self) -> bool:
@@ -178,7 +337,21 @@ class BasePortal(ABC):
             return False
 
         self.encrypted = True
+        await self.update_info_from_puppet()
         return True
+
+    async def update_info_from_puppet(self, puppet: br.BasePuppet | None = None) -> None:
+        """
+        Update the room metadata to match the ghost's name/avatar.
+
+        This is called after enabling encryption, as the bridge bot needs to join for e2ee,
+        but that messes up the default name generation. If/when canonical DMs happen,
+        this might not be necessary anymore.
+
+        Args:
+            puppet: The ghost that is the other participant in the room.
+                If ``None``, the entity should be fetched as necessary.
+        """
 
     @property
     def disappearing_enabled(self) -> bool:

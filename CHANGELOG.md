@@ -18,6 +18,9 @@
 * **Breaking change *(crypto)*** Moved `TrustState`, `DeviceIdentity`,
   `OlmEventKeys` and `DecryptedOlmEvent` dataclasses from `crypto.types`
   into `types.crypto`.
+* **Breaking change *(bridge)*** Made `User.get_puppet` abstract and added new
+  abstract `User.get_portal_with` and `Portal.get_dm_puppet` methods.
+* Added support for creating DM portals with minimal bridge-specific code.
 * Added a redundant `__all__` to various `__init__.py` files to appease pyright.
 * *(bridge)* Removed legacy community utilities.
 * *(util.async_db)* Fixed counting number of db upgrades.

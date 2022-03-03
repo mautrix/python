@@ -39,6 +39,7 @@ from mautrix.types import (
     ReceiptType,
     RedactionEvent,
     RoomID,
+    RoomType,
     SingleReceiptEventContent,
     StateEvent,
     StateUnsigned,
@@ -217,6 +218,10 @@ class BaseMatrixHandler:
     async def allow_bridging_message(user: br.BaseUser, portal: br.BasePortal) -> bool:
         return await user.is_logged_in() or (user.relay_whitelisted and portal.has_relay)
 
+    @staticmethod
+    async def allow_puppet_invite(user: br.BaseUser, puppet: br.BasePuppet) -> bool:
+        return await user.is_logged_in()
+
     async def handle_leave(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
         pass
 
@@ -248,13 +253,81 @@ class BaseMatrixHandler:
     ) -> None:
         pass
 
-    async def handle_puppet_invite(
-        self, room_id: RoomID, puppet: br.BasePuppet, invited_by: br.BaseUser, event_id: EventID
+    async def handle_puppet_group_invite(
+        self,
+        room_id: RoomID,
+        puppet: br.BasePuppet,
+        invited_by: br.BaseUser,
+        evt: StateEvent,
+        members: list[UserID],
     ) -> None:
-        pass
+        if self.az.bot_mxid not in members:
+            await puppet.default_mxid_intent.leave_room(
+                room_id, reason="This ghost does not join multi-user rooms without the bridge bot."
+            )
+
+    async def handle_puppet_dm_invite(
+        self, room_id: RoomID, puppet: br.BasePuppet, invited_by: br.BaseUser, evt: StateEvent
+    ) -> None:
+        portal = await invited_by.get_portal_with(puppet)
+        if portal:
+            await portal.accept_matrix_dm(room_id, invited_by, puppet)
+        else:
+            await puppet.default_mxid_intent.leave_room(
+                room_id, reason="This bridge does not support creating DMs."
+            )
+
+    async def handle_puppet_space_invite(
+        self, room_id: RoomID, puppet: br.BasePuppet, invited_by: br.BaseUser, evt: StateEvent
+    ) -> None:
+        await puppet.default_mxid_intent.leave_room(
+            room_id, reason="This ghost does not join spaces."
+        )
+
+    async def handle_puppet_nonportal_invite(
+        self, room_id: RoomID, puppet: br.BasePuppet, invited_by: br.BaseUser, evt: StateEvent
+    ) -> None:
+        intent = puppet.default_mxid_intent
+        await intent.join_room(room_id)
+        try:
+            create_evt = await intent.get_state_event(room_id, EventType.ROOM_CREATE)
+            members = await intent.get_room_members(room_id)
+        except MatrixError:
+            self.log.exception(f"Failed to get state after joining {room_id} as {intent.mxid}")
+            asyncio.create_task(intent.leave_room(room_id, reason="Internal error"))
+            return
+        if create_evt.type == RoomType.SPACE:
+            await self.handle_puppet_space_invite(room_id, puppet, invited_by, evt)
+        elif len(members) > 2:
+            await self.handle_puppet_group_invite(room_id, puppet, invited_by, evt, members)
+        else:
+            await self.handle_puppet_dm_invite(room_id, puppet, invited_by, evt)
+
+    async def handle_puppet_invite(
+        self, room_id: RoomID, puppet: br.BasePuppet, invited_by: br.BaseUser, evt: StateEvent
+    ) -> None:
+        intent = puppet.default_mxid_intent
+        if not await self.allow_puppet_invite(invited_by, puppet):
+            self.log.debug(f"Rejecting invite for {intent.mxid} to {room_id}: user can't invite")
+            await intent.leave_room(room_id, reason="You're not allowed to invite this ghost.")
+            return
+
+        portal = await self.bridge.get_portal(room_id)
+        if portal:
+            try:
+                await portal.handle_matrix_invite(invited_by, puppet)
+            except br.RejectMatrixInvite as e:
+                await intent.leave_room(room_id, reason=e.message)
+            except br.IgnoreMatrixInvite:
+                pass
+            else:
+                await intent.join_room(room_id)
+            return
+        else:
+            await self.handle_puppet_nonportal_invite(room_id, puppet, invited_by, evt)
 
     async def handle_invite(
-        self, room_id: RoomID, user_id: UserID, inviter: br.BaseUser, event_id: EventID
+        self, room_id: RoomID, user_id: UserID, invited_by: br.BaseUser, evt: StateEvent
     ) -> None:
         pass
 
@@ -363,26 +436,22 @@ class BaseMatrixHandler:
             combined_html = "".join(map(markdown.render, welcome_messages))
             await self.az.intent.send_notice(room_id, text=combined, html=combined_html)
 
-    async def int_handle_invite(
-        self, room_id: RoomID, user_id: UserID, invited_by: UserID, event_id: EventID
-    ) -> None:
-        self.log.debug(f"{invited_by} invited {user_id} to {room_id}")
-        inviter = await self.bridge.get_user(invited_by)
+    async def int_handle_invite(self, evt: StateEvent) -> None:
+        self.log.debug(f"{evt.sender} invited {evt.state_key} to {evt.room_id}")
+        inviter = await self.bridge.get_user(evt.sender)
         if inviter is None:
-            self.log.exception(f"Failed to find user with Matrix ID {invited_by}")
+            self.log.exception(f"Failed to find user with Matrix ID {evt.sender}")
             return
-        elif user_id == self.az.bot_mxid:
-            await self.accept_bot_invite(room_id, inviter)
-            return
-        elif not await self.allow_command(inviter):
+        elif evt.state_key == self.az.bot_mxid:
+            await self.accept_bot_invite(evt.room_id, inviter)
             return
 
-        puppet = await self.bridge.get_puppet(user_id)
+        puppet = await self.bridge.get_puppet(UserID(evt.state_key))
         if puppet:
-            await self.handle_puppet_invite(room_id, puppet, inviter, event_id)
+            await self.handle_puppet_invite(evt.room_id, puppet, inviter, evt)
             return
 
-        await self.handle_invite(room_id, user_id, inviter, event_id)
+        await self.handle_invite(evt.room_id, UserID(evt.state_key), inviter, evt)
 
     def is_command(self, message: MessageEventContent) -> tuple[bool, str]:
         text = message.body
@@ -748,9 +817,7 @@ class BaseMatrixHandler:
             prev_content = unsigned.prev_content or MemberStateEventContent()
             prev_membership = prev_content.membership if prev_content else Membership.JOIN
             if evt.content.membership == Membership.INVITE:
-                await self.int_handle_invite(
-                    evt.room_id, UserID(evt.state_key), evt.sender, evt.event_id
-                )
+                await self.int_handle_invite(evt)
             elif evt.content.membership == Membership.LEAVE:
                 if prev_membership == Membership.BAN:
                     await self.handle_unban(

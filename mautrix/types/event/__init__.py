@@ -74,6 +74,7 @@ from .state import (
     RoomPredecessor,
     RoomTombstoneStateEventContent,
     RoomTopicStateEventContent,
+    RoomType,
     SpaceChildStateEventContent,
     SpaceParentStateEventContent,
     StateEvent,

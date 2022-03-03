@@ -68,8 +68,32 @@ class BaseUser(ABC):
     async def is_logged_in(self) -> bool:
         raise NotImplementedError()
 
+    @abstractmethod
     async def get_puppet(self) -> br.BasePuppet | None:
+        """
+        Get the ghost that represents this Matrix user on the remote network.
+
+        Returns:
+            The puppet entity, or ``None`` if the user is not logged in,
+            or it's otherwise not possible to find the remote ghost.
+        """
         raise NotImplementedError()
+
+    @abstractmethod
+    async def get_portal_with(
+        self, puppet: br.BasePuppet, create: bool = True
+    ) -> br.BasePortal | None:
+        """
+        Get a private chat portal between this user and the given ghost.
+
+        Args:
+            puppet: The ghost who the portal should be with.
+            create: ``True`` if the portal entity should be created if it doesn't exist.
+
+        Returns:
+            The portal entity, or ``None`` if it can't be found,
+            or doesn't exist and ``create`` is ``False``.
+        """
 
     async def needs_relay(self, portal: br.BasePortal) -> bool:
         return not await self.is_logged_in()

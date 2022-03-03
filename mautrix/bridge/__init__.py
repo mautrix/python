@@ -13,7 +13,7 @@ from .custom_puppet import (
 from .disappearing_message import AbstractDisappearingMessage
 from .matrix import BaseMatrixHandler
 from .notification_disabler import NotificationDisabler
-from .portal import BasePortal
+from .portal import BasePortal, DMCreateError, IgnoreMatrixInvite, RejectMatrixInvite
 from .puppet import BasePuppet
 from .user import BaseUser
 
