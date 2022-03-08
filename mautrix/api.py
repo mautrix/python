@@ -266,7 +266,9 @@ class HTTPAPI:
     ) -> None:
         if not self.log:
             return
-        log_content = content if not isinstance(content, bytes) else f"<{len(content)} bytes>"
+        log_content = (
+            content if not isinstance(content, (bytes, bytearray)) else f"<{len(content)} bytes>"
+        )
         as_user = query_params.get("user_id", None)
         level = 1 if path == Path.v3.sync or path == Path.r0.sync else 5
         self.log.log(
