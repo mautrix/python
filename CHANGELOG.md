@@ -20,11 +20,11 @@
   into `types.crypto`.
 * **Breaking change *(bridge)*** Made `User.get_puppet` abstract and added new
   abstract `User.get_portal_with` and `Portal.get_dm_puppet` methods.
-* Added support for creating DM portals with minimal bridge-specific code.
 * Added a redundant `__all__` to various `__init__.py` files to appease pyright.
 * *(api)* Reduced aiohttp memory usage when uploading large files by making
   an in-memory async iterable instead of passing the bytes directly.
 * *(bridge)* Removed legacy community utilities.
+* *(bridge)* Added support for creating DM portals with minimal bridge-specific code.
 * *(util.async_db)* Fixed counting number of db upgrades.
 * *(util.async_db)* Added support for schema migrations that jump versions.
 * *(util.db)* Module deprecated. The async_db module is recommended. However,
