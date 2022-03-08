@@ -19,7 +19,7 @@ import io
 
 from mautrix.types import EncryptedFile
 
-from .attachments import AES, SHA256, Counter, Random, _get_decryption_info
+from .attachments import _get_decryption_info, _prepare_encryption, inplace_encrypt_attachment
 
 
 async def async_encrypt_attachment(
@@ -48,16 +48,9 @@ async def async_encrypt_attachment(
         | hashes.sha256: Base64 encoded SHA-256 hash of the ciphertext.
     """
 
-    key = Random.new().read(32)
-    # 8 bytes IV
-    iv = Random.new().read(8)
-    # 8 bytes counter, prefixed by the IV
-    ctr = Counter.new(64, prefix=iv, initial_value=0)
+    key, iv, cipher, sha256 = _prepare_encryption()
 
-    cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
-    sha256 = SHA256.new()
-
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     async for chunk in async_generator_from_data(data):
         update_crypt = partial(cipher.encrypt, chunk)
@@ -69,6 +62,11 @@ async def async_encrypt_attachment(
         yield crypt_chunk
 
     yield _get_decryption_info(key, iv, sha256)
+
+
+async def async_inplace_encrypt_attachment(data: bytearray) -> EncryptedFile:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, partial(inplace_encrypt_attachment, data))
 
 
 async def async_generator_from_data(

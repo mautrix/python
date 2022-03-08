@@ -90,6 +90,28 @@ def encrypt_attachment(plaintext: bytes) -> tuple[bytes, EncryptedFile]:
     return b"".join(values[:-1]), values[-1]
 
 
+def _prepare_encryption() -> tuple[bytes, bytes, AES, SHA256.SHA256Hash]:
+    key = Random.new().read(32)
+    # 8 bytes IV
+    iv = Random.new().read(8)
+    # 8 bytes counter, prefixed by the IV
+    ctr = Counter.new(64, prefix=iv, initial_value=0)
+
+    cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
+    sha256 = SHA256.new()
+
+    return key, iv, cipher, sha256
+
+
+def inplace_encrypt_attachment(data: bytearray) -> EncryptedFile:
+    key, iv, cipher, sha256 = _prepare_encryption()
+
+    cipher.encrypt(plaintext=data, output=data)
+    sha256.update(data)
+
+    return _get_decryption_info(key, iv, sha256)
+
+
 def encrypted_attachment_generator(
     data: bytes | Iterable[bytes],
 ) -> Generator[bytes | EncryptedFile, None, None]:
@@ -105,21 +127,10 @@ def encrypted_attachment_generator(
 
     Yields:
         The encrypted bytes for each chunk of data.
-        The last yielded value will be a dict containing the info needed to
-        decrypt data. The keys are:
-        | key: AES-CTR JWK key object.
-        | iv: Base64 encoded 16 byte AES-CTR IV.
-        | hashes.sha256: Base64 encoded SHA-256 hash of the ciphertext.
+        The last yielded value will be a dict containing the info needed to decrypt data.
     """
 
-    key = Random.new().read(32)
-    # 8 bytes IV
-    iv = Random.new().read(8)
-    # 8 bytes counter, prefixed by the IV
-    ctr = Counter.new(64, prefix=iv, initial_value=0)
-
-    cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
-    sha256 = SHA256.new()
+    key, iv, cipher, sha256 = _prepare_encryption()
 
     if isinstance(data, bytes):
         data = [data]
