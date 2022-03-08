@@ -165,10 +165,9 @@ def _next_global_req_id() -> int:
 
 
 async def _async_iter_bytes(data: bytearray | bytes, chunk_size: int = 1024**2) -> AsyncBody:
-    mv = memoryview(data)
-    for i in range(0, len(data), chunk_size):
-        yield mv[i : i + chunk_size]
-    mv.release()
+    with memoryview(data) as mv:
+        for i in range(0, len(data), chunk_size):
+            yield mv[i : i + chunk_size]
 
 
 class HTTPAPI:
