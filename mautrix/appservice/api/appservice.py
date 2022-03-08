@@ -199,24 +199,31 @@ class AppServiceAPI(HTTPAPI):
         query_params: dict[str, Any] | None = None,
         retry_count: int | None = None,
         metrics_method: str | None = "",
+        min_iter_size: int = 25 * 1024 * 1024,
     ) -> Awaitable[dict]:
         """
-        Make a raw HTTP request, with optional AppService timestamp massaging and external_url
-        setting.
+        Make a raw Matrix API request, acting as the appservice user assigned to this AppServiceAPI
+        instance and optionally including timestamp massaging.
 
         Args:
             method: The HTTP method to use.
-            path: The API endpoint to call.
-                Does not include the base path (e.g. /_matrix/client/r0).
-            content: The content to post as a dict (json) or bytes/str (raw).
+            path: The full API endpoint to call (including the _matrix/... prefix)
+            content: The content to post as a dict/list (will be serialized as JSON)
+                     or bytes/str (will be sent as-is).
             timestamp: The timestamp query param used for timestamp massaging.
-            headers: The dict of HTTP headers to send.
-            query_params: The dict of query parameters to send.
+            headers: A dict of HTTP headers to send. If the headers don't contain ``Content-Type``,
+                     it'll be set to ``application/json``. The ``Authorization`` header is always
+                     overridden if :attr:`token` is set.
+            query_params: A dict of query parameters to send.
             retry_count: Number of times to retry if the homeserver isn't reachable.
+                         Defaults to :attr:`default_retry_count`.
             metrics_method: Name of the method to include in Prometheus timing metrics.
+            min_iter_size: If the request body is larger than this value, it will be passed to
+                           aiohttp as an async iterable to stop it from copying the whole thing
+                           in memory.
 
         Returns:
-            The response as a dict.
+            The parsed response JSON.
         """
         query_params = query_params or {}
         if timestamp is not None:
