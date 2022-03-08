@@ -22,11 +22,16 @@
   abstract `User.get_portal_with` and `Portal.get_dm_puppet` methods.
 * Added support for creating DM portals with minimal bridge-specific code.
 * Added a redundant `__all__` to various `__init__.py` files to appease pyright.
+* *(api)* Reduced aiohttp memory usage when uploading large files by making
+  an in-memory async iterable instead of passing the bytes directly.
 * *(bridge)* Removed legacy community utilities.
 * *(util.async_db)* Fixed counting number of db upgrades.
 * *(util.async_db)* Added support for schema migrations that jump versions.
 * *(util.db)* Module deprecated. The async_db module is recommended. However,
   the SQLAlchemy helpers will remain until maubot has switched to asyncpg.
+* *(util.magic)* Allowed `bytearray` as an input type for the `mimetype` method.
+* *(crypto.attachments)* Added method to encrypt a `bytearray` in-place to
+  avoid unnecessarily duplicating data in memory.
 
 ## v0.14.10 (2022-02-01)
 

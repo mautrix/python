@@ -32,7 +32,7 @@ class MediaRepositoryMethods(BaseClientAPI):
 
     async def upload_media(
         self,
-        data: bytes | AsyncIterable[bytes],
+        data: bytes | bytearray | AsyncIterable[bytes],
         mime_type: str | None = None,
         filename: str | None = None,
         size: int | None = None,

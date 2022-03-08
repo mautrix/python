@@ -5,12 +5,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import ClassVar, Literal, Mapping
+from typing import AsyncGenerator, AsyncIterable, ClassVar, Literal, Mapping, Union
 from enum import Enum
 from json.decoder import JSONDecodeError
 from time import time
 from urllib.parse import quote as urllib_quote, urljoin as urllib_join
 import asyncio
+import inspect
 import json
 import logging
 import platform
@@ -154,12 +155,20 @@ Examples:
 """
 
 _req_id = 0
+AsyncBody = AsyncGenerator[Union[bytes, bytearray, memoryview], None]
 
 
 def _next_global_req_id() -> int:
     global _req_id
     _req_id += 1
     return _req_id
+
+
+async def _async_iter_bytes(data: bytearray | bytes, chunk_size: int = 1024**2) -> AsyncBody:
+    mv = memoryview(data)
+    for i in range(0, len(data), chunk_size):
+        yield mv[i : i + chunk_size]
+    mv.release()
 
 
 class HTTPAPI:
@@ -231,7 +240,7 @@ class HTTPAPI:
         self,
         method: Method,
         url: URL,
-        content: bytes | str,
+        content: bytes | bytearray | str | AsyncBody,
         query_params: dict[str, str],
         headers: dict[str, str],
     ) -> JSON:
@@ -259,16 +268,21 @@ class HTTPAPI:
         self,
         method: Method,
         path: PathBuilder,
-        content: str | bytes,
+        content: str | bytes | bytearray | AsyncBody,
         orig_content,
         query_params: dict[str, str],
+        headers: dict[str, str],
         req_id: int,
     ) -> None:
         if not self.log:
             return
-        log_content = (
-            content if not isinstance(content, (bytes, bytearray)) else f"<{len(content)} bytes>"
-        )
+        if isinstance(content, (bytes, bytearray)):
+            log_content = f"<{len(content)} bytes>"
+        elif inspect.isasyncgen(content):
+            size = headers.get("Content-Length", None)
+            log_content = f"<{size} async bytes>" if size else f"<stream with unknown length>"
+        else:
+            log_content = content
         as_user = query_params.get("user_id", None)
         level = 1 if path == Path.v3.sync or path == Path.r0.sync else 5
         self.log.log(
@@ -300,11 +314,12 @@ class HTTPAPI:
         self,
         method: Method,
         path: PathBuilder | str,
-        content: dict | list | bytes | str | None = None,
+        content: dict | list | bytes | bytearray | str | AsyncBody | None = None,
         headers: dict[str, str] | None = None,
         query_params: Mapping[str, str] | None = None,
         retry_count: int | None = None,
         metrics_method: str = "",
+        min_iter_size: int = 25 * 1024 * 1024,
     ) -> JSON:
         """
         Make a raw Matrix API request.
@@ -321,6 +336,9 @@ class HTTPAPI:
             retry_count: Number of times to retry if the homeserver isn't reachable.
                          Defaults to :attr:`default_retry_count`.
             metrics_method: Name of the method to include in Prometheus timing metrics.
+            min_iter_size: If the request body is larger than this value, it will be passed to
+                           aiohttp as an async iterable to stop it from copying the whole thing
+                           in memory.
 
         Returns:
             The parsed response JSON.
@@ -351,12 +369,19 @@ class HTTPAPI:
 
         if retry_count is None:
             retry_count = self.default_retry_count
+        if inspect.isasyncgen(content):
+            # Can't retry with non-static body
+            retry_count = 0
+        do_fake_iter = content and hasattr(content, "__len__") and len(content) > min_iter_size
+        if do_fake_iter:
+            headers["Content-Length"] = str(len(content))
         backoff = 4
         while True:
-            self._log_request(method, path, content, orig_content, query_params, req_id)
+            self._log_request(method, path, content, orig_content, query_params, headers, req_id)
             API_CALLS.labels(method=metrics_method).inc()
+            req_content = _async_iter_bytes(content) if do_fake_iter else content
             try:
-                return await self._send(method, full_url, content, query_params, headers or {})
+                return await self._send(method, full_url, req_content, query_params, headers or {})
             except MatrixRequestError as e:
                 API_CALLS_FAILED.labels(method=metrics_method).inc()
                 if retry_count > 0 and e.http_status in (502, 503, 504):
