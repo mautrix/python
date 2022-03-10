@@ -70,6 +70,7 @@ ENSURE_REGISTERED_METHODS = (
     ClientAPI.set_displayname,
     ClientAPI.set_avatar_url,
     ClientAPI.upload_media,
+    ClientAPI.download_media,
     ClientAPI.send_receipt,
     ClientAPI.set_fully_read_marker,
 )
