@@ -16,6 +16,7 @@ from mautrix import __optional_imports__
 from mautrix.util.logging import TraceLogger
 
 from .connection import LoggingConnection
+from .errors import DatabaseNotOwned, ForeignTablesFound
 from .scheme import Scheme
 from .upgrade import UpgradeTable, upgrade_tables
 
@@ -31,6 +32,8 @@ class Database(ABC):
     url: URL
     _db_args: dict[str, Any]
     upgrade_table: UpgradeTable
+    owner_name: str | None
+    ignore_foreign_tables: bool
 
     def __init__(
         self,
@@ -38,10 +41,14 @@ class Database(ABC):
         upgrade_table: UpgradeTable,
         db_args: dict[str, Any] | None = None,
         log: TraceLogger | None = None,
+        owner_name: str | None = None,
+        ignore_foreign_tables: bool = True,
     ) -> None:
         self.url = url
         self._db_args = {**db_args} if db_args else {}
         self.upgrade_table = upgrade_table
+        self.owner_name = owner_name
+        self.ignore_foreign_tables = ignore_foreign_tables
         self.log = log or logging.getLogger("mau.db")
         assert isinstance(self.log, TraceLogger)
 
@@ -53,6 +60,8 @@ class Database(ABC):
         db_args: dict[str, Any] | None = None,
         upgrade_table: UpgradeTable | str | None = None,
         log: logging.Logger | TraceLogger | None = None,
+        owner_name: str | None = None,
+        ignore_foreign_tables: bool = True,
     ) -> Database:
         url = URL(url)
         try:
@@ -75,17 +84,45 @@ class Database(ABC):
             upgrade_table = UpgradeTable()
         elif not isinstance(upgrade_table, UpgradeTable):
             raise ValueError(f"Can't use {type(upgrade_table)} as the upgrade table")
-        return impl(url, db_args=db_args, upgrade_table=upgrade_table, log=log)
+        return impl(
+            url,
+            db_args=db_args,
+            upgrade_table=upgrade_table,
+            log=log,
+            owner_name=owner_name,
+            ignore_foreign_tables=ignore_foreign_tables,
+        )
 
     def override_pool(self, db: Database) -> None:
         pass
 
     async def start(self) -> None:
-        try:
-            await self.upgrade_table.upgrade(self)
-        except Exception:
-            self.log.critical("Failed to upgrade database", exc_info=True)
-            sys.exit(25)
+        if not self.ignore_foreign_tables:
+            await self._check_foreign_tables()
+        if self.owner_name:
+            await self._check_owner()
+        await self.upgrade_table.upgrade(self)
+
+    async def _check_foreign_tables(self) -> None:
+        if await self.table_exists("state_groups_state"):
+            raise ForeignTablesFound("found state_groups_state likely belonging to Synapse")
+        elif await self.table_exists("goose_db_version"):
+            raise ForeignTablesFound("found goose_db_version possibly belonging to Dendrite")
+
+    async def _check_owner(self) -> None:
+        await self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS database_owner (
+                key   INTEGER PRIMARY KEY DEFAULT 0,
+                owner TEXT NOT NULL
+            )
+        """
+        )
+        owner = await self.fetchval("SELECT owner FROM database_owner WHERE key=0")
+        if not owner:
+            await self.execute("INSERT INTO database_owner (owner) VALUES ($1)", self.owner_name)
+        elif owner != self.owner_name:
+            raise DatabaseNotOwned(owner)
 
     @abstractmethod
     async def stop(self) -> None:
@@ -116,3 +153,7 @@ class Database(ABC):
     async def fetchrow(self, query: str, *args: Any, timeout: float | None = None) -> Record:
         async with self.acquire() as conn:
             return await conn.fetchrow(query, *args, timeout=timeout)
+
+    async def table_exists(self, name: str) -> bool:
+        async with self.acquire() as conn:
+            return await conn.table_exists(name)

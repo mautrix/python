@@ -34,6 +34,7 @@ from mautrix.types import (
     StateFilter,
     TrustState,
 )
+from mautrix.util.async_db import Database, DatabaseException
 from mautrix.util.logging import TraceLogger
 
 from .. import bridge as br
@@ -45,13 +46,6 @@ except ImportError:
     if __optional_imports__:
         raise
     UserProfile = None
-
-try:
-    from mautrix.util.async_db import Database
-except ImportError:
-    if __optional_imports__:
-        raise
-    Database = None
 
 
 class EncryptionManager:
@@ -231,7 +225,10 @@ class EncryptionManager:
             sys.exit(30)
         self.log.debug(f"Logging in with bridge bot user (using login type {flow.type.value})")
         if self.crypto_db:
-            await self.crypto_db.start()
+            try:
+                await self.crypto_db.start()
+            except DatabaseException as e:
+                self.bridge._log_db_error(e)
         await self.crypto_store.open()
         device_id = await self.crypto_store.get_device_id()
         if device_id:

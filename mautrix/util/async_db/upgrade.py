@@ -14,14 +14,11 @@ from mautrix.util.logging import TraceLogger
 
 from .. import async_db
 from .connection import LoggingConnection
+from .errors import UnsupportedDatabaseVersion
 from .scheme import Scheme
 
 Upgrade = Callable[[LoggingConnection, Scheme], Awaitable[Optional[int]]]
 UpgradeWithoutScheme = Callable[[LoggingConnection], Awaitable[Optional[int]]]
-
-
-class UnsupportedDatabaseVersion(Exception):
-    pass
 
 
 async def noop_upgrade(_: LoggingConnection) -> None:
@@ -108,14 +105,13 @@ class UpgradeTable:
         version = row["version"] if row else 0
 
         if len(self.upgrades) < version:
-            error = (
-                f"Unsupported database version v{version} "
-                f"(latest known is v{len(self.upgrades) - 1})"
+            unsupported_version_error = UnsupportedDatabaseVersion(
+                self.database_name, version, len(self.upgrades)
             )
             if not self.allow_unsupported:
-                raise UnsupportedDatabaseVersion(error)
+                raise unsupported_version_error
             else:
-                self.log.warning(error)
+                self.log.warning(str(unsupported_version_error))
                 return
         elif len(self.upgrades) == version:
             self.log.debug(f"Database at v{version}, not upgrading")

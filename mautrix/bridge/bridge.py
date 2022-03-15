@@ -17,7 +17,14 @@ from mautrix.appservice import AppService, ASStateStore
 from mautrix.client.state_store.asyncpg import PgStateStore as PgClientStateStore
 from mautrix.errors import MExclusive, MUnknownToken
 from mautrix.types import RoomID, UserID
-from mautrix.util.async_db import Database, UpgradeTable
+from mautrix.util.async_db import (
+    Database,
+    DatabaseException,
+    DatabaseNotOwned,
+    ForeignTablesFound,
+    UnsupportedDatabaseVersion,
+    UpgradeTable,
+)
 from mautrix.util.bridge_state import BridgeState, BridgeStateEvent, GlobalBridgeState
 from mautrix.util.program import Program
 
@@ -80,6 +87,16 @@ class Bridge(Program, ABC):
                 "the path to save the generated registration to "
                 "(not needed for running the bridge)"
             ),
+        )
+        self.parser.add_argument(
+            "--ignore-unsupported-database",
+            action="store_true",
+            help="Run even if the database schema is too new",
+        )
+        self.parser.add_argument(
+            "--ignore-foreign-tables",
+            action="store_true",
+            help="Run even if the database contains tables from other programs (like Synapse)",
         )
 
     def preinit(self) -> None:
@@ -152,19 +169,38 @@ class Bridge(Program, ABC):
             self.config["appservice.database"],
             upgrade_table=self.upgrade_table,
             db_args=self.config["appservice.database_opts"],
+            owner_name=self.name,
+            ignore_foreign_tables=self.args.ignore_foreign_tables,
         )
 
     def prepare_bridge(self) -> None:
         self.matrix = self.matrix_class(bridge=self)
 
+    def _log_db_error(self, e: DatabaseException) -> None:
+        self.log.critical("Failed to initialize database", exc_info=e)
+        if isinstance(e, DatabaseNotOwned):
+            self.log.info("Sharing the same database with different programs is not supported")
+        elif isinstance(e, ForeignTablesFound):
+            self.log.info("You can use --ignore-foreign-tables to ignore this error")
+        elif isinstance(e, UnsupportedDatabaseVersion):
+            self.log.info("Downgrading the bridge is not supported")
+        sys.exit(25)
+
     async def start_db(self) -> None:
         if hasattr(self, "db") and isinstance(self.db, Database):
             self.log.debug("Starting database...")
-            await self.db.start()
-            if isinstance(self.state_store, PgClientStateStore):
-                await self.state_store.upgrade_table.upgrade(self.db)
-            if self.matrix.e2ee:
-                self.matrix.e2ee.crypto_db.override_pool(self.db)
+            ignore_unsupported = self.args.ignore_unsupported_database
+            self.db.upgrade_table.allow_unsupported = ignore_unsupported
+            try:
+                await self.db.start()
+                if isinstance(self.state_store, PgClientStateStore):
+                    self.state_store.upgrade_table.allow_unsupported = ignore_unsupported
+                    await self.state_store.upgrade_table.upgrade(self.db)
+                if self.matrix.e2ee:
+                    self.matrix.e2ee.crypto_db.allow_unsupported = ignore_unsupported
+                    self.matrix.e2ee.crypto_db.override_pool(self.db)
+            except DatabaseException as e:
+                self._log_db_error(e)
 
     async def stop_db(self) -> None:
         if hasattr(self, "db") and isinstance(self.db, Database):

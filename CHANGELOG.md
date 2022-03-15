@@ -27,6 +27,13 @@
 * *(bridge)* Added support for creating DM portals with minimal bridge-specific code.
 * *(util.async_db)* Fixed counting number of db upgrades.
 * *(util.async_db)* Added support for schema migrations that jump versions.
+* *(util.async_db)* Added system for preventing using the same database for
+  multiple programs.
+  * To enable it, provide an unique program name as the `owner_name` parameter
+    in `Database.create`.
+  * Additionally, if `ignore_foreign_tables` is set to `True`, it will check
+    for tables of some known software like Synapse and Dendrite.
+  * The `bridge` module enables both options by default.
 * *(util.db)* Module deprecated. The async_db module is recommended. However,
   the SQLAlchemy helpers will remain until maubot has switched to asyncpg.
 * *(util.magic)* Allowed `bytearray` as an input type for the `mimetype` method.

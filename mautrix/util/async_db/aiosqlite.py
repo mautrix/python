@@ -85,8 +85,17 @@ class SQLiteDatabase(Database):
         upgrade_table: UpgradeTable,
         db_args: dict[str, Any] | None = None,
         log: logging.Logger | None = None,
+        owner_name: str | None = None,
+        ignore_foreign_tables: bool = True,
     ) -> None:
-        super().__init__(url, db_args=db_args, upgrade_table=upgrade_table, log=log)
+        super().__init__(
+            url,
+            db_args=db_args,
+            upgrade_table=upgrade_table,
+            log=log,
+            owner_name=owner_name,
+            ignore_foreign_tables=ignore_foreign_tables,
+        )
         self._path = url.path
         if self._path.startswith("/"):
             self._path = self._path[1:]

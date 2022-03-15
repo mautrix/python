@@ -92,6 +92,18 @@ class LoggingConnection:
     async def fetchrow(self, query: str, *args: Any, timeout: float | None = None) -> Row | Record:
         return await self.wrapped.fetchrow(query, *args, timeout=timeout)
 
+    async def table_exists(self, name: str) -> bool:
+        if self.scheme == Scheme.SQLITE:
+            return await self.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name=?1)", name
+            )
+        elif self.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
+            return await self.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name=$1)", name
+            )
+        else:
+            raise RuntimeError(f"Unknown scheme {self.scheme}")
+
     @log_duration
     async def copy_records_to_table(
         self,

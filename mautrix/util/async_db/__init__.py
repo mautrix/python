@@ -2,6 +2,12 @@ from mautrix import __optional_imports__
 
 from .connection import LoggingConnection as Connection
 from .database import Database
+from .errors import (
+    DatabaseException,
+    DatabaseNotOwned,
+    ForeignTablesFound,
+    UnsupportedDatabaseVersion,
+)
 from .scheme import Scheme
 from .upgrade import UpgradeTable, register_upgrade
 
@@ -27,4 +33,8 @@ __all__ = [
     "SQLiteDatabase",
     "Connection",
     "Scheme",
+    "DatabaseException",
+    "DatabaseNotOwned",
+    "UnsupportedDatabaseVersion",
+    "ForeignTablesFound",
 ]

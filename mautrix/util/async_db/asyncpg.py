@@ -30,12 +30,21 @@ class PostgresDatabase(Database):
         upgrade_table: UpgradeTable,
         db_args: dict[str, Any] = None,
         log: logging.Logger | None = None,
+        owner_name: str | None = None,
+        ignore_foreign_tables: bool = True,
     ) -> None:
         if url.scheme in ("cockroach", "cockroachdb"):
             self.scheme = Scheme.COCKROACH
             # Send postgres scheme to asyncpg
             url = url.with_scheme("postgres")
-        super().__init__(url, db_args=db_args, upgrade_table=upgrade_table, log=log)
+        super().__init__(
+            url,
+            db_args=db_args,
+            upgrade_table=upgrade_table,
+            log=log,
+            owner_name=owner_name,
+            ignore_foreign_tables=ignore_foreign_tables,
+        )
         self._pool = None
         self._pool_override = False
 

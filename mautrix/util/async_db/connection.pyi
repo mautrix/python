@@ -36,6 +36,7 @@ class LoggingConnection:
     async def fetchrow(
         self, query: str, *args: Any, timeout: float | None = None
     ) -> Row | Record: ...
+    async def table_exists(self, name: str) -> bool: ...
     async def copy_records_to_table(
         self,
         table_name: str,
