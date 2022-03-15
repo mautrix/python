@@ -111,12 +111,10 @@ class Database(ABC):
 
     async def _check_owner(self) -> None:
         await self.execute(
-            """
-            CREATE TABLE IF NOT EXISTS database_owner (
+            """CREATE TABLE IF NOT EXISTS database_owner (
                 key   INTEGER PRIMARY KEY DEFAULT 0,
                 owner TEXT NOT NULL
-            )
-        """
+            )"""
         )
         owner = await self.fetchval("SELECT owner FROM database_owner WHERE key=0")
         if not owner:
