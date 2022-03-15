@@ -287,9 +287,9 @@ class CommandHandler:
                 "you may only run it in management rooms."
             )
         elif self.needs_admin and not evt.sender.is_admin:
-            return "This command requires administrator privileges."
+            return "That command is limited to bridge administrators."
         elif self.needs_auth and not await evt.sender.is_logged_in():
-            return "This command requires you to be logged in."
+            return "That command requires you to be logged in."
         return None
 
     def has_permission(self, key: HelpCacheKey) -> bool:
