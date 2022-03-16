@@ -1,4 +1,4 @@
-## v0.15.0 (unreleased)
+## v0.15.0 (2022-03-16)
 
 * **Breaking change** Removed Python 3.7 support.
 * **Breaking change *(api)*** Removed `r0` from default path builders in order
