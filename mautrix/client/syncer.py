@@ -403,7 +403,8 @@ class Syncer(ABC):
                 raise
             except Exception as e:
                 self.log.warning(
-                    f"Sync request errored: {e}, waiting {fail_sleep} seconds before continuing"
+                    f"Sync request errored: {type(e).__name__}: {e}, waiting {fail_sleep}"
+                    " seconds before continuing"
                 )
                 await self.run_internal_event(
                     InternalEventType.SYNC_ERRORED, error=e, sleep_for=fail_sleep
