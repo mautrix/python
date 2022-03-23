@@ -342,14 +342,17 @@ class TextMessageEventContent(BaseMessageEventContent, SerializableAttrs):
         super().set_reply(reply_to)
         if isinstance(reply_to, str):
             return
-        if not self.formatted_body or len(self.formatted_body) == 0 or self.format != Format.HTML:
-            self.format = Format.HTML
-            self.formatted_body = escape(self.body).replace("\n", "<br/>")
         if isinstance(reply_to, MessageEvent):
+            self.ensure_has_html()
             self.formatted_body = (
                 reply_to.make_reply_fallback_html(displayname) + self.formatted_body
             )
             self.body = reply_to.make_reply_fallback_text(displayname) + self.body
+
+    def ensure_has_html(self) -> None:
+        if not self.formatted_body or self.format != Format.HTML:
+            self.format = Format.HTML
+            self.formatted_body = escape(self.body).replace("\n", "<br/>")
 
     def formatted(self, format: Format) -> Optional[str]:
         if self.format == format:

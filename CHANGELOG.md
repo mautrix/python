@@ -1,3 +1,9 @@
+## v0.15.1 (2022-03-23)
+
+* Added `ensure_has_html` method for `TextMessageEventContent` to generate
+  a HTML `formatted_body` from the plaintext `body` correctly (i.e. escaping
+  HTML and replacing newlines).
+
 ## v0.15.0 (2022-03-16)
 
 * **Breaking change** Removed Python 3.7 support.
