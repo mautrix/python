@@ -25,15 +25,18 @@ async def upgrade_blank_to_v2(conn: Connection, scheme: Scheme) -> None:
             power_levels         TEXT
         )"""
     )
+    membership_check = ""
     if scheme != Scheme.SQLITE:
         await conn.execute(
             "CREATE TYPE membership AS ENUM ('join', 'leave', 'invite', 'ban', 'knock')"
         )
+    else:
+        membership_check = "CHECK (membership IN ('join', 'leave', 'invite', 'ban', 'knock'))"
     await conn.execute(
-        """CREATE TABLE mx_user_profile (
+        f"""CREATE TABLE mx_user_profile (
             room_id     TEXT,
             user_id     TEXT,
-            membership  membership NOT NULL,
+            membership  membership NOT NULL {membership_check},
             displayname TEXT,
             avatar_url  TEXT,
             PRIMARY KEY (room_id, user_id)
