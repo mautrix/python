@@ -178,12 +178,8 @@ class Bridge(Program, ABC):
 
     def _log_db_error(self, e: DatabaseException) -> None:
         self.log.critical("Failed to initialize database", exc_info=e)
-        if isinstance(e, DatabaseNotOwned):
-            self.log.info("Sharing the same database with different programs is not supported")
-        elif isinstance(e, ForeignTablesFound):
-            self.log.info("You can use --ignore-foreign-tables to ignore this error")
-        elif isinstance(e, UnsupportedDatabaseVersion):
-            self.log.info("Downgrading the bridge is not supported")
+        if e.explanation:
+            self.log.info(e.explanation)
         sys.exit(25)
 
     async def start_db(self) -> None:
