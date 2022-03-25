@@ -1,3 +1,11 @@
+## v0.15.2 (unreleased)
+
+* Added support for async media uploads ([MSC2246]).
+* Moved `async_getter_lock` decorator to `mautrix.util` (from `mautrix.bridge`).
+  * The old import path will keep working.
+
+[MSC2246]: https://github.com/matrix-org/matrix-spec-proposals/pull/2246
+
 ## v0.15.1 (2022-03-23)
 
 * Added `ensure_has_html` method for `TextMessageEventContent` to generate
@@ -211,7 +219,7 @@
 * Added utility method for adding variation selector 16 to emoji strings the
   same way as Element does (using emojibase data).
 
-[MSC2716]: https://github.com/matrix-org/matrix-doc/pull/2716
+[MSC2716]: https://github.com/matrix-org/matrix-spec-proposals/pull/2716
 
 ## v0.12.4 (2021-11-25)
 
@@ -381,8 +389,8 @@
 * Fixed receiving appservice transactions with `Authorization` header
   (i.e. fixed [MSC2832] support).
 
-[MSC3202]: https://github.com/matrix-org/matrix-doc/pull/3202
-[MSC2832]: https://github.com/matrix-org/matrix-doc/pull/2832
+[MSC3202]: https://github.com/matrix-org/matrix-spec-proposals/pull/3202
+[MSC2832]: https://github.com/matrix-org/matrix-spec-proposals/pull/2832
 [@sumnerevans]: https://github.com/sumnerevans
 [#49]: https://github.com/mautrix/python/pull/49
 
@@ -615,8 +623,8 @@
   `EventType.Class.UNKNOWN` as the type class.
 * Fixed regex escaping in bridge registration generation.
 
-[MSC2778]: https://github.com/matrix-org/matrix-doc/pull/2778
-[MSC2409]: https://github.com/matrix-org/matrix-doc/pull/2409
+[MSC2778]: https://github.com/matrix-org/matrix-spec-proposals/pull/2778
+[MSC2409]: https://github.com/matrix-org/matrix-spec-proposals/pull/2409
 [@ShadowJonathan]: https://github.com/ShadowJonathan
 [@witchent]: https://github.com/witchent
 [#26]: https://github.com/mautrix/python/pull/26
