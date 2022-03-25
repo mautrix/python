@@ -101,7 +101,8 @@ class Database(ABC):
             await self._check_foreign_tables()
         if self.owner_name:
             await self._check_owner()
-        await self.upgrade_table.upgrade(self)
+        if self.upgrade_table and len(self.upgrade_table.upgrades) > 0:
+            await self.upgrade_table.upgrade(self)
 
     async def _check_foreign_tables(self) -> None:
         if await self.table_exists("state_groups_state"):
