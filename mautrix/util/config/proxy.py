@@ -30,7 +30,7 @@ class BaseProxyConfig(BaseConfig, ABC):
     def load(self) -> None:
         self._data = self._load_proxy() or CommentedMap()
 
-    def load_base(self) -> Optional[RecursiveDict[CommentedMap]]:
+    def load_base(self) -> RecursiveDict[CommentedMap] | None:
         return self._load_base_proxy()
 
     def save(self) -> None:
