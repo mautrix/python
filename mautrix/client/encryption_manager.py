@@ -40,8 +40,10 @@ class EncryptingAPI(store_updater.StoreUpdatingAPI):
     """The logger to use for crypto-related things."""
     _share_session_events: dict[RoomID, asyncio.Event]
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, crypto_log: TraceLogger | None = None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        if crypto_log:
+            self.crypto_log = crypto_log
         self._crypto = None
         self._share_session_events = {}
 
