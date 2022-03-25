@@ -1,4 +1,4 @@
-## v0.15.2 (unreleased)
+## v0.15.2 (2022-03-25)
 
 * Added support for async media uploads ([MSC2246]).
 * Moved `async_getter_lock` decorator to `mautrix.util` (from `mautrix.bridge`).
