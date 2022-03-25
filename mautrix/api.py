@@ -437,7 +437,8 @@ class HTTPAPI:
             self.base_url / str(APIPath.MEDIA) / version / download_type / server_name / media_id
         )
 
-    def parse_mxc_uri(self, mxc_uri: str) -> tuple[str, str]:
+    @staticmethod
+    def parse_mxc_uri(mxc_uri: str) -> tuple[str, str]:
         """
         Parse a ``mxc://`` URI.
 

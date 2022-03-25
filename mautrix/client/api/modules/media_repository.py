@@ -36,7 +36,7 @@ class MediaRepositoryMethods(BaseClientAPI):
     uploads of media.
     """
 
-    async def create_mxc(self) -> ContentURI:
+    async def unstable_create_mxc(self) -> ContentURI:
         """
         Create a media ID for uploading media to the homeserver. Requires the homeserver to have
         `MSC2246 <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ support.
@@ -53,34 +53,6 @@ class MediaRepositoryMethods(BaseClientAPI):
         except KeyError:
             raise MatrixResponseError("`content_uri` not in response.")
 
-    async def upload_async(
-        self,
-        data: bytes | bytearray | AsyncIterable[bytes],
-        mime_type: str | None = None,
-        filename: str | None = None,
-        size: int | None = None,
-    ) -> ContentURI:
-        """
-        Create a blank content URI with create_mxc, then start uploading the data in the background
-        and returns the created MXC immediately. Requires the homeserver to have `MSC2246
-        <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ support.
-
-        Args:
-            data: The data to upload.
-            mime_type: The MIME type to send with the upload request.
-            filename: The filename to send with the upload request.
-            size: The file size to send with the upload request.
-
-        Returns:
-            The MXC URI of the file being uploaded asynchronously.
-
-        Raises:
-            MatrixResponseError: If the response does not contain a ``content_uri`` field.
-        """
-        content_uri = await self.create_mxc()
-        asyncio.create_task(self.upload_media(data, mime_type, filename, size, content_uri))
-        return content_uri
-
     async def upload_media(
         self,
         data: bytes | bytearray | AsyncIterable[bytes],
@@ -88,11 +60,12 @@ class MediaRepositoryMethods(BaseClientAPI):
         filename: str | None = None,
         size: int | None = None,
         mxc: ContentURI | None = None,
+        async_upload: bool = False,
     ) -> ContentURI:
         """
         Upload a file to the content repository.
 
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#post-matrix-media-r0-upload>`__
+        See also: `API reference <https://spec.matrix.org/v1.2/client-server-api/#post_matrixmediav3upload>`__
 
         Args:
             data: The data to upload.
@@ -100,14 +73,20 @@ class MediaRepositoryMethods(BaseClientAPI):
             filename: The filename to send with the upload request.
             size: The file size to send with the upload request.
             mxc: An existing MXC URI which doesn't have content yet to upload into. Requires the
-                homesrver to have `MSC2246
-                <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ support.
+                homeserver to have MSC2246_ support.
+            async_upload: Should the media be uploaded in the background (using MSC2246_)?
+                If ``True``, this will create a MXC URI, start uploading in the background and then
+                immediately return the created URI. This is mutually exclusive with manually
+                passing the ``mxc`` parameter.
+
+        .. _MSC2246: https://github.com/matrix-org/matrix-spec-proposals/pull/2246
 
         Returns:
             The MXC URI to the uploaded file.
 
         Raises:
             MatrixResponseError: If the response does not contain a ``content_uri`` field.
+            ValueError: if both ``async_upload`` and ``mxc`` are provided at the same time.
         """
         if magic and isinstance(data, bytes):
             mime_type = mime_type or magic.mimetype(data)
@@ -120,18 +99,35 @@ class MediaRepositoryMethods(BaseClientAPI):
         if filename:
             query["filename"] = filename
 
+        if async_upload:
+            if mxc:
+                raise ValueError("async_upload and mxc can't be provided simultaneously")
+            mxc = await self.unstable_create_mxc()
+
         path = MediaPath.v3.upload
         if mxc:
             server_name, media_id = self.api.parse_mxc_uri(mxc)
             path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id]
 
-        resp = await self.api.request(
+        task = self.api.request(
             Method.POST, path, content=data, headers=headers, query_params=query
         )
-        try:
-            return resp["content_uri"]
-        except KeyError:
-            raise MatrixResponseError("`content_uri` not in response.")
+        if async_upload:
+
+            async def _try_upload():
+                try:
+                    await task
+                except Exception as e:
+                    self.log.error(f"Failed to upload {mxc}: {type(e).__name__}: {e}")
+
+            asyncio.create_task(_try_upload())
+            return mxc
+        else:
+            resp = await task
+            try:
+                return resp["content_uri"]
+            except KeyError:
+                raise MatrixResponseError("`content_uri` not in response.")
 
     async def download_media(self, url: ContentURI, max_stall_ms: int | None = None) -> bytes:
         """
