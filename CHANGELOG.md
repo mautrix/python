@@ -1,3 +1,7 @@
+## v0.15.3 (2022-03-25)
+
+* Fixed incorrect HTTP method in async media uploads.
+
 ## v0.15.2 (2022-03-25)
 
 * Added support for async media uploads ([MSC2246]).
