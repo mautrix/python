@@ -73,6 +73,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("homeserver.connection_limit")
         copy("homeserver.status_endpoint")
         copy("homeserver.message_send_checkpoint_endpoint")
+        copy("homeserver.async_media")
 
         copy("appservice.address")
         copy("appservice.hostname")
