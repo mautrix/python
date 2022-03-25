@@ -431,8 +431,27 @@ class HTTPAPI:
             >>> api.get_download_url("mxc://matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6")
             "https://matrix.org/_matrix/media/v3/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6"
         """
+        server_name, media_id = self.parse_mxc_uri(mxc_uri)
+        version = "r0" if self.hacky_replace_v3_with_r0 else "v3"
+        return (
+            self.base_url / str(APIPath.MEDIA) / version / download_type / server_name / media_id
+        )
+
+    def parse_mxc_uri(self, mxc_uri: str) -> tuple[str, str]:
+        """
+        Parse a ``mxc://`` URI.
+
+        Args:
+            mxc_uri: The MXC URI to parse.
+
+        Returns:
+            A tuple containing the server and media ID of the MXC URI.
+
+        Raises:
+            ValueError: If `mxc_uri` doesn't begin with ``mxc://``.
+        """
         if mxc_uri.startswith("mxc://"):
-            version = "r0" if self.hacky_replace_v3_with_r0 else "v3"
-            return self.base_url / str(APIPath.MEDIA) / version / download_type / mxc_uri[6:]
+            server_name, media_id = mxc_uri[6:].split("/")
+            return server_name, media_id
         else:
             raise ValueError("MXC URI did not begin with `mxc://`")

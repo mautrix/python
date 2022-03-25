@@ -5,7 +5,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import AsyncIterable, Literal
+from typing import Any, AsyncIterable, Literal
+import asyncio
 
 from mautrix import __optional_imports__
 from mautrix.api import MediaPath, Method
@@ -28,7 +29,57 @@ class MediaRepositoryMethods(BaseClientAPI):
     downloading content from the media repository and for getting URL previews without leaking
     client IPs.
 
-    See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#id112>`__"""
+    See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#id112>`__
+
+    There are also methods for supporting `MSC2246
+    <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ which allows asynchronous
+    uploads of media.
+    """
+
+    async def create_mxc(self) -> ContentURI:
+        """
+        Create a media ID for uploading media to the homeserver. Requires the homeserver to have
+        `MSC2246 <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ support.
+
+        Returns:
+            The MXC URI that can be used to upload a file to later.
+
+        Raises:
+            MatrixResponseError: If the response does not contain a ``content_uri`` field.
+        """
+        resp = await self.api.request(Method.PUT, MediaPath.unstable["fi.mau.msc2246"].create)
+        try:
+            return resp["content_uri"]
+        except KeyError:
+            raise MatrixResponseError("`content_uri` not in response.")
+
+    async def upload_async(
+        self,
+        data: bytes | bytearray | AsyncIterable[bytes],
+        mime_type: str | None = None,
+        filename: str | None = None,
+        size: int | None = None,
+    ) -> ContentURI:
+        """
+        Create a blank content URI with create_mxc, then start uploading the data in the background
+        and returns the created MXC immediately. Requires the homeserver to have `MSC2246
+        <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ support.
+
+        Args:
+            data: The data to upload.
+            mime_type: The MIME type to send with the upload request.
+            filename: The filename to send with the upload request.
+            size: The file size to send with the upload request.
+
+        Returns:
+            The MXC URI of the file being uploaded asynchronously.
+
+        Raises:
+            MatrixResponseError: If the response does not contain a ``content_uri`` field.
+        """
+        content_uri = await self.create_mxc()
+        asyncio.create_task(self.upload_media(data, mime_type, filename, size, content_uri))
+        return content_uri
 
     async def upload_media(
         self,
@@ -36,6 +87,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         mime_type: str | None = None,
         filename: str | None = None,
         size: int | None = None,
+        mxc: ContentURI | None = None,
     ) -> ContentURI:
         """
         Upload a file to the content repository.
@@ -47,6 +99,9 @@ class MediaRepositoryMethods(BaseClientAPI):
             mime_type: The MIME type to send with the upload request.
             filename: The filename to send with the upload request.
             size: The file size to send with the upload request.
+            mxc: An existing MXC URI which doesn't have content yet to upload into. Requires the
+                homesrver to have `MSC2246
+                <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ support.
 
         Returns:
             The MXC URI to the uploaded file.
@@ -64,15 +119,21 @@ class MediaRepositoryMethods(BaseClientAPI):
         query = {}
         if filename:
             query["filename"] = filename
+
+        path = MediaPath.v3.upload
+        if mxc:
+            server_name, media_id = self.api.parse_mxc_uri(mxc)
+            path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id]
+
         resp = await self.api.request(
-            Method.POST, MediaPath.v3.upload, content=data, headers=headers, query_params=query
+            Method.POST, path, content=data, headers=headers, query_params=query
         )
         try:
             return resp["content_uri"]
         except KeyError:
             raise MatrixResponseError("`content_uri` not in response.")
 
-    async def download_media(self, url: ContentURI) -> bytes:
+    async def download_media(self, url: ContentURI, max_stall_ms: int | None = None) -> bytes:
         """
         Download a file from the content repository.
 
@@ -80,12 +141,18 @@ class MediaRepositoryMethods(BaseClientAPI):
 
         Args:
             url: The MXC URI to download.
+            max_stall_ms: The maximum number of milliseconds that the client is willing to wait to
+                start receiving data. Used for MSC2246 Asynchronous Uploads.
 
         Returns:
             The raw downloaded data.
         """
         url = self.api.get_download_url(url)
-        async with self.api.session.get(url) as response:
+        query_params: dict[str, Any] = {}
+        if max_stall_ms is not None:
+            query_params["max_stall_ms"] = max_stall_ms
+            query_params["fi.mau.msc2246.max_stall_ms"] = max_stall_ms
+        async with self.api.session.get(url, params=query_params) as response:
             return await response.read()
 
     async def download_thumbnail(
@@ -95,6 +162,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         height: int | None = None,
         resize_method: Literal["crop", "scale"] = None,
         allow_remote: bool = True,
+        max_stall_ms: int | None = None,
     ):
         """
         Download a thumbnail for a file in the content repository.
@@ -111,12 +179,14 @@ class MediaRepositoryMethods(BaseClientAPI):
             allow_remote: Indicates to the server that it should not attempt to fetch the media if
                 it is deemed remote. This is to prevent routing loops where the server contacts
                 itself.
+            max_stall_ms: The maximum number of milliseconds that the client is willing to wait to
+                start receiving data. Used for MSC2246 Asynchronous Uploads.
 
         Returns:
             The raw downloaded data.
         """
         url = self.api.get_download_url(url, download_type="thumbnail")
-        query_params = {}
+        query_params: dict[str, Any] = {}
         if width is not None:
             query_params["width"] = width
         if height is not None:
@@ -125,6 +195,9 @@ class MediaRepositoryMethods(BaseClientAPI):
             query_params["method"] = resize_method
         if allow_remote is not None:
             query_params["allow_remote"] = allow_remote
+        if max_stall_ms is not None:
+            query_params["max_stall_ms"] = max_stall_ms
+            query_params["fi.mau.msc2246.max_stall_ms"] = max_stall_ms
         async with self.api.session.get(url, params=query_params) as response:
             return await response.read()
 
