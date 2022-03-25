@@ -1,4 +1,4 @@
-from .async_getter_lock import async_getter_lock
+from ..util.async_getter_lock import async_getter_lock
 from .bridge import Bridge
 from .config import BaseBridgeConfig
 from .custom_puppet import (
