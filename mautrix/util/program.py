@@ -229,6 +229,7 @@ class Program:
             self.log.debug("Interrupt received, stopping...")
         except Exception:
             self.log.critical("Unexpected error in main event loop", exc_info=True)
+            self.loop.run_until_complete(self.system_exit())
             sys.exit(2)
         except SystemExit:
             self.loop.run_until_complete(self.system_exit())
