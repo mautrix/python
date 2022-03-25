@@ -47,7 +47,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         Raises:
             MatrixResponseError: If the response does not contain a ``content_uri`` field.
         """
-        resp = await self.api.request(Method.PUT, MediaPath.unstable["fi.mau.msc2246"].create)
+        resp = await self.api.request(Method.POST, MediaPath.unstable["fi.mau.msc2246"].create)
         try:
             return resp["content_uri"]
         except KeyError:
