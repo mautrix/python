@@ -105,13 +105,13 @@ class MediaRepositoryMethods(BaseClientAPI):
             mxc = await self.unstable_create_mxc()
 
         path = MediaPath.v3.upload
+        method = Method.POST
         if mxc:
             server_name, media_id = self.api.parse_mxc_uri(mxc)
             path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id]
+            method = Method.PUT
 
-        task = self.api.request(
-            Method.POST, path, content=data, headers=headers, query_params=query
-        )
+        task = self.api.request(method, path, content=data, headers=headers, query_params=query)
         if async_upload:
 
             async def _try_upload():
