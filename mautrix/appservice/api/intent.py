@@ -69,6 +69,7 @@ ENSURE_REGISTERED_METHODS = (
     ClientAPI.search_users,
     ClientAPI.set_displayname,
     ClientAPI.set_avatar_url,
+    ClientAPI.unstable_create_mxc,
     ClientAPI.upload_media,
     ClientAPI.send_receipt,
     ClientAPI.set_fully_read_marker,
