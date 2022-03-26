@@ -89,7 +89,9 @@ class LoggingConnection:
         return await self.wrapped.fetchval(query, *args, column=column, timeout=timeout)
 
     @log_duration
-    async def fetchrow(self, query: str, *args: Any, timeout: float | None = None) -> Row | Record:
+    async def fetchrow(
+        self, query: str, *args: Any, timeout: float | None = None
+    ) -> Row | Record | None:
         return await self.wrapped.fetchrow(query, *args, timeout=timeout)
 
     async def table_exists(self, name: str) -> bool:

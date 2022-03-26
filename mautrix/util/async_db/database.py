@@ -149,7 +149,9 @@ class Database(ABC):
         async with self.acquire() as conn:
             return await conn.fetchval(query, *args, column=column, timeout=timeout)
 
-    async def fetchrow(self, query: str, *args: Any, timeout: float | None = None) -> Record:
+    async def fetchrow(
+        self, query: str, *args: Any, timeout: float | None = None
+    ) -> Record | None:
         async with self.acquire() as conn:
             return await conn.fetchrow(query, *args, timeout=timeout)
 
