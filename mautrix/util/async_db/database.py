@@ -31,14 +31,14 @@ class Database(ABC):
     scheme: Scheme
     url: URL
     _db_args: dict[str, Any]
-    upgrade_table: UpgradeTable
+    upgrade_table: UpgradeTable | None
     owner_name: str | None
     ignore_foreign_tables: bool
 
     def __init__(
         self,
         url: URL,
-        upgrade_table: UpgradeTable,
+        upgrade_table: UpgradeTable | None,
         db_args: dict[str, Any] | None = None,
         log: TraceLogger | None = None,
         owner_name: str | None = None,
