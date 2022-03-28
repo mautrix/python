@@ -65,9 +65,7 @@ class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
         """
         if device.user_id != self.client.mxid:
             raise RejectKeyShare(
-                f"Rejecting key request from a different user ({device.user_id})",
-                code=RoomKeyWithheldCode.UNAUTHORIZED,
-                reason="This device does not share keys to other users",
+                f"Ignoring key request from a different user ({device.user_id})", code=None
             )
         elif device.device_id == self.client.device_id:
             raise RejectKeyShare("Ignoring key request from ourselves", code=None)
