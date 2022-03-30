@@ -326,7 +326,7 @@ class LocationMessageEventContent(BaseMessageEventContent, SerializableAttrs):
     info: LocationInfo = None
 
 
-html_reply_fallback_regex: Pattern = re.compile("^<mx-reply>" r"[\s\S]+?</mx-reply>")
+html_reply_fallback_regex: Pattern = re.compile(r"^<mx-reply>[\s\S]+</mx-reply>")
 
 
 @dataclass
@@ -344,6 +344,8 @@ class TextMessageEventContent(BaseMessageEventContent, SerializableAttrs):
             return
         if isinstance(reply_to, MessageEvent):
             self.ensure_has_html()
+            if isinstance(reply_to.content, TextMessageEventContent):
+                reply_to.content.trim_reply_fallback()
             self.formatted_body = (
                 reply_to.make_reply_fallback_html(displayname) + self.formatted_body
             )
