@@ -411,7 +411,10 @@ class HTTPAPI:
         return f"mautrix-python_R{self.txn_id}@T{int(time() * 1000)}"
 
     def get_download_url(
-        self, mxc_uri: str, download_type: Literal["download", "thumbnail"] = "download"
+        self,
+        mxc_uri: str,
+        download_type: Literal["download", "thumbnail"] = "download",
+        file_name: str | None = None,
     ) -> URL:
         """
         Get the full HTTP URL to download a ``mxc://`` URI.
@@ -419,6 +422,7 @@ class HTTPAPI:
         Args:
             mxc_uri: The MXC URI whose full URL to get.
             download_type: The type of download ("download" or "thumbnail").
+            file_name: Optionally, a file name to include in the download URL.
 
         Returns:
             The full HTTP URL.
@@ -427,15 +431,18 @@ class HTTPAPI:
             ValueError: If `mxc_uri` doesn't begin with ``mxc://``.
 
         Examples:
-            >>> api = HTTPAPI(...)
+            >>> api = HTTPAPI(base_url="https://matrix-client.matrix.org", ...)
             >>> api.get_download_url("mxc://matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6")
-            "https://matrix.org/_matrix/media/v3/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6"
+            "https://matrix-client.matrix.org/_matrix/media/v3/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6"
+            >>> api.get_download_url("mxc://matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6", file_name="hello.png")
+            "https://matrix-client.matrix.org/_matrix/media/v3/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6/hello.png"
         """
         server_name, media_id = self.parse_mxc_uri(mxc_uri)
         version = "r0" if self.hacky_replace_v3_with_r0 else "v3"
-        return (
-            self.base_url / str(APIPath.MEDIA) / version / download_type / server_name / media_id
-        )
+        url = self.base_url / str(APIPath.MEDIA) / version / download_type / server_name / media_id
+        if file_name:
+            url /= file_name
+        return url
 
     @staticmethod
     def parse_mxc_uri(mxc_uri: str) -> tuple[str, str]:
