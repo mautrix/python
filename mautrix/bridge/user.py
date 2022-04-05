@@ -178,6 +178,8 @@ class BaseUser(ABC):
         message: str | None = None,
         ttl: int | None = None,
         remote_id: str | None = None,
+        info: dict[str, Any] | None = None,
+        reason: str | None = None,
     ) -> None:
         if not self.bridge.config["homeserver.status_endpoint"]:
             return
@@ -188,6 +190,8 @@ class BaseUser(ABC):
             message=message,
             ttl=ttl,
             remote_id=remote_id,
+            info=info,
+            reason=reason,
         )
         await self.fill_bridge_state(state)
         if state.should_deduplicate(self._prev_bridge_status):

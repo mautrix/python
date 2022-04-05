@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional
 import logging
 import time
 
@@ -74,6 +74,8 @@ class BridgeState(SerializableAttrs):
     source: Optional[str] = None
     error: Optional[str] = None
     message: Optional[str] = None
+    info: Optional[Dict[str, Any]] = None
+    reason: Optional[str] = None
 
     send_attempts_: int = field(default=0, hidden=True)
 
