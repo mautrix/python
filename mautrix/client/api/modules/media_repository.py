@@ -6,12 +6,15 @@
 from __future__ import annotations
 
 from typing import Any, AsyncIterable, Literal
+from contextlib import contextmanager
 import asyncio
+import time
 
 from mautrix import __optional_imports__
 from mautrix.api import MediaPath, Method
 from mautrix.errors import MatrixResponseError
 from mautrix.types import ContentURI, MediaRepoConfig, MXOpenGraph, SerializerError
+from mautrix.util.opt_prometheus import Histogram
 
 from ..base import BaseClientAPI
 
@@ -21,6 +24,12 @@ except ImportError:
     if __optional_imports__:
         raise
     magic = None  # type: ignore
+
+UPLOAD_TIME = Histogram(
+    "bridge_media_upload_time",
+    "Time spent uploading media (milliseconds per megabyte)",
+    buckets=[1, 5, 10, 25, 50, 100, 250, 500, 750, 1000, 2500, 5000, 10000],
+)
 
 
 class MediaRepositoryMethods(BaseClientAPI):
@@ -52,6 +61,17 @@ class MediaRepositoryMethods(BaseClientAPI):
             return resp["content_uri"]
         except KeyError:
             raise MatrixResponseError("`content_uri` not in response.")
+
+    @contextmanager
+    def _observe_upload_time(self, size: int | None, mxc: ContentURI | None = None) -> None:
+        start = time.monotonic_ns()
+        yield
+        duration = time.monotonic_ns() - start
+        if mxc:
+            duration_sec = duration / 1000**3
+            self.log.debug(f"Completed asynchronous upload of {mxc} in {duration_sec:.3f} seconds")
+        if size:
+            UPLOAD_TIME.observe(duration / size)
 
     async def upload_media(
         self,
@@ -95,6 +115,8 @@ class MediaRepositoryMethods(BaseClientAPI):
             headers["Content-Type"] = mime_type
         if size:
             headers["Content-Length"] = str(size)
+        elif isinstance(data, (bytes, bytearray)):
+            size = len(data)
         query = {}
         if filename:
             query["filename"] = filename
@@ -116,14 +138,16 @@ class MediaRepositoryMethods(BaseClientAPI):
 
             async def _try_upload():
                 try:
-                    await task
+                    with self._observe_upload_time(size, mxc):
+                        await task
                 except Exception as e:
                     self.log.error(f"Failed to upload {mxc}: {type(e).__name__}: {e}")
 
             asyncio.create_task(_try_upload())
             return mxc
         else:
-            resp = await task
+            with self._observe_upload_time(size):
+                resp = await task
             try:
                 return resp["content_uri"]
             except KeyError:
