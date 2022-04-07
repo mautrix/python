@@ -28,7 +28,7 @@ except ImportError:
 UPLOAD_TIME = Histogram(
     "bridge_media_upload_time",
     "Time spent uploading media (milliseconds per megabyte)",
-    buckets=[1, 5, 10, 25, 50, 100, 250, 500, 750, 1000, 2500, 5000, 10000],
+    buckets=[10, 25, 50, 100, 250, 500, 750, 1000, 2500, 5000, 10000],
 )
 
 
