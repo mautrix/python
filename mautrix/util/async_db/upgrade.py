@@ -61,17 +61,18 @@ class UpgradeTable:
 
     def register(
         self,
+        _outer_fn: Upgrade | UpgradeWithoutScheme | None = None,
+        *,
         index: int = -1,
         description: str = "",
-        _outer_fn: Upgrade | None = None,
         transaction: bool = True,
         upgrades_to: int | Upgrade | None = None,
-    ) -> Upgrade | Callable[[Upgrade], Upgrade] | None:
+    ) -> Upgrade | Callable[[Upgrade | UpgradeWithoutScheme], Upgrade]:
         if isinstance(index, str):
             description = index
             index = -1
 
-        def actually_register(fn: Upgrade) -> Upgrade:
+        def actually_register(fn: Upgrade | UpgradeWithoutScheme) -> Upgrade:
             fn = _wrap_upgrade(fn)
             fn.__mau_db_upgrade_description__ = description
             fn.__mau_db_upgrade_transaction__ = transaction
