@@ -55,7 +55,10 @@ class PostgresDatabase(Database):
     async def start(self) -> None:
         if not self._pool_override:
             self._db_args["loop"] = asyncio.get_running_loop()
-            self.log.debug(f"Connecting to {self.url}")
+            log_url = self.url
+            if log_url.password:
+                log_url = log_url.with_password("password-redacted")
+            self.log.debug(f"Connecting to {log_url}")
             self._pool = await asyncpg.create_pool(str(self.url), **self._db_args)
         await super().start()
 
