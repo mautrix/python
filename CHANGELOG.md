@@ -2,6 +2,7 @@
 
 * *(client.api)* Added experimental prometheus metric for file upload speed.
 * *(util.async_db)* Improved type hints for `UpgradeTable.register`
+* *(util.async_db)* Changed connection string log to redact database password.
 
 ## v0.15.7 (2022-04-05)
 
