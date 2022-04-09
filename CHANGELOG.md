@@ -1,3 +1,12 @@
+## v0.16.0 (unreleased)
+
+* **Breaking change *(types)*** Removed custom `REPLY` relation type and
+  changed `RelatesTo` structure to match the actual event content.
+  * Applications using `content.get_reply_to()` and `content.set_reply()` will
+    keep working with no changes.
+* *(types)* Added `THREAD` relation type and `is_falling_back` field to
+  `RelatesTo`.
+
 ## v0.15.8 (2022-04-08)
 
 * *(client.api)* Added experimental prometheus metric for file upload speed.

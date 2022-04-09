@@ -54,90 +54,35 @@ class MessageType(ExtensibleEnum):
 # region Relations
 
 
-class InReplyTo:
-    def __init__(
-        self, event_id: Optional[EventID] = None, proxy_target: Optional["RelatesTo"] = None
-    ) -> None:
-        self._event_id = event_id
-        self._proxy_target = proxy_target
-
-    @property
-    def event_id(self) -> EventID:
-        if self._proxy_target:
-            return self._proxy_target.event_id
-        return self._event_id
-
-    @event_id.setter
-    def event_id(self, event_id: EventID) -> None:
-        if self._proxy_target:
-            self._proxy_target.rel_type = RelationType.REPLY
-            self._proxy_target.event_id = event_id
-        else:
-            self._event_id = event_id
+@dataclass
+class InReplyTo(SerializableAttrs):
+    event_id: EventID
 
 
 class RelationType(ExtensibleEnum):
     ANNOTATION: "RelationType" = "m.annotation"
     REFERENCE: "RelationType" = "m.reference"
     REPLACE: "RelationType" = "m.replace"
-    REPLY: "RelationType" = "net.maunium.reply"
+    THREAD: "RelationType" = "m.thread"
 
 
 @dataclass
-class RelatesTo(Serializable):
+class RelatesTo(SerializableAttrs):
     """Message relations. Used for reactions, edits and replies."""
 
     rel_type: RelationType = None
     event_id: Optional[EventID] = None
     key: Optional[str] = None
-    _extra: Dict[str, Any] = attr.ib(factory=lambda: {})
+    is_falling_back: Optional[bool] = None
+    in_reply_to: Optional[InReplyTo] = field(default=None, json="m.in_reply_to")
 
     def __bool__(self) -> bool:
-        return bool(self.rel_type) and bool(self.event_id)
-
-    @classmethod
-    def deserialize(cls, data: JSON) -> Optional["RelatesTo"]:
-        if not data:
-            return None
-        try:
-            return cls(
-                rel_type=RelationType.deserialize(data.pop("rel_type")),
-                event_id=data.pop("event_id", None),
-                key=data.pop("key", None),
-                extra=data,
-            )
-        except KeyError:
-            pass
-        try:
-            return cls(rel_type=RelationType.REPLY, event_id=data["m.in_reply_to"]["event_id"])
-        except KeyError:
-            pass
-        return None
+        return (bool(self.rel_type) and bool(self.event_id)) or bool(self.in_reply_to)
 
     def serialize(self) -> JSON:
         if not self:
             return attr.NOTHING
-        data = {
-            **self._extra,
-            "rel_type": self.rel_type.serialize(),
-        }
-        if self.rel_type == RelationType.REPLY:
-            data["m.in_reply_to"] = {"event_id": self.event_id}
-        if self.event_id:
-            data["event_id"] = self.event_id
-        if self.key:
-            data["key"] = self.key
-        return data
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        if key in ("rel_type", "event_id", "key"):
-            return setattr(self, key, value)
-        self._extra[key] = value
-
-    def __getitem__(self, item: str) -> None:
-        if item in ("rel_type", "event_id", "key"):
-            return getattr(self, item)
-        return self._extra[item]
+        return super().serialize()
 
 
 # endregion
@@ -152,8 +97,9 @@ class BaseMessageEventContentFuncs:
     _relates_to: Optional[RelatesTo]
 
     def set_reply(self, reply_to: Union[EventID, "MessageEvent"], **kwargs) -> None:
-        self.relates_to.rel_type = RelationType.REPLY
-        self.relates_to.event_id = reply_to if isinstance(reply_to, str) else reply_to.event_id
+        self.relates_to.in_reply_to = InReplyTo(
+            event_id=reply_to if isinstance(reply_to, str) else reply_to.event_id
+        )
 
     def set_edit(self, edits: Union[EventID, "MessageEvent"]) -> None:
         self.relates_to.rel_type = RelationType.REPLACE
@@ -183,8 +129,8 @@ class BaseMessageEventContentFuncs:
         self._relates_to = relates_to
 
     def get_reply_to(self) -> Optional[EventID]:
-        if self._relates_to and self._relates_to.rel_type == RelationType.REPLY:
-            return self._relates_to.event_id
+        if self._relates_to and self._relates_to.in_reply_to:
+            return self._relates_to.in_reply_to.event_id
         return None
 
     def get_edit(self) -> Optional[EventID]:

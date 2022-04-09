@@ -42,6 +42,7 @@ from .message import (
     FileInfo,
     Format,
     ImageInfo,
+    InReplyTo,
     JSONWebKey,
     LocationInfo,
     LocationMessageEventContent,
