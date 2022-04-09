@@ -9,9 +9,6 @@ import black
 root_module = Path(__file__).parent
 
 black_cfg = black.parse_pyproject_toml(str(root_module.parent / "pyproject.toml"))
-assert (
-    black.__version__ == black_cfg["required_version"]
-), f"Incorrect Black version {black.__version__}"
 black_mode = black.Mode(
     target_versions={black.TargetVersion[ver.upper()] for ver in black_cfg["target_version"]},
     line_length=black_cfg["line_length"],
