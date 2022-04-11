@@ -1,4 +1,4 @@
-## v0.16.0 (unreleased)
+## v0.16.0 (2022-04-11)
 
 * **Breaking change *(types)*** Removed custom `REPLY` relation type and
   changed `RelatesTo` structure to match the actual event content.
