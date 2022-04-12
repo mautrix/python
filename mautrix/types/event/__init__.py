@@ -10,6 +10,7 @@ from .account_data import (
     RoomTagInfo,
 )
 from .base import BaseEvent, BaseRoomEvent, BaseUnsigned, GenericEvent
+from .batch import BatchSendEvent, BatchSendStateEvent
 from .encrypted import (
     EncryptedEvent,
     EncryptedEventContent,
