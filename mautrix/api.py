@@ -199,9 +199,6 @@ class HTTPAPI:
     default_retry_count: int
     """The default retry count to use if a custom value is not passed to :meth:`request`"""
 
-    hacky_replace_v3_with_r0: bool = False
-    """A hacky flag to replace /v3 with /r0 in all API paths."""
-
     def __init__(
         self,
         base_url: URL | str,
@@ -283,7 +280,7 @@ class HTTPAPI:
         else:
             log_content = content
         as_user = query_params.get("user_id", None)
-        level = 1 if path == Path.v3.sync or path == Path.r0.sync else 5
+        level = 1 if path == Path.v3.sync else 5
         self.log.log(
             level,
             f"{method}#{req_id} /{path} {log_content}".strip(" "),
@@ -342,10 +339,6 @@ class HTTPAPI:
         Returns:
             The parsed response JSON.
         """
-        if self.hacky_replace_v3_with_r0:
-            path = path.replace("_matrix/client/v3", "_matrix/client/r0")
-            path = path.replace("_matrix/media/v3", "_matrix/media/r0")
-
         headers = headers or {}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
@@ -438,8 +431,7 @@ class HTTPAPI:
             "https://matrix-client.matrix.org/_matrix/media/v3/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6/hello.png"
         """
         server_name, media_id = self.parse_mxc_uri(mxc_uri)
-        version = "r0" if self.hacky_replace_v3_with_r0 else "v3"
-        url = self.base_url / str(APIPath.MEDIA) / version / download_type / server_name / media_id
+        url = self.base_url / str(APIPath.MEDIA) / "v3" / download_type / server_name / media_id
         if file_name:
             url /= file_name
         return url

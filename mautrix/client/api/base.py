@@ -118,10 +118,7 @@ class BaseClientAPI:
             resp = await self.api.request(Method.GET, Path.versions)
             vers = self.versions_cache = VersionsResponse.deserialize(resp)
             if not vers.has_modern_versions and vers.has_legacy_versions:
-                self.log.warning(
-                    "Server isn't advertising modern spec versions, falling back to /r0 endpoints"
-                )
-                self.api.hacky_replace_v3_with_r0 = True
+                self.log.warning("Server isn't advertising modern spec versions")
         return self.versions_cache
 
     @classmethod

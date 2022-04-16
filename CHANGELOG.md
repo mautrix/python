@@ -1,3 +1,9 @@
+## v0.16.1 (unreleased)
+
+* **Breaking change** Removed `r0` path support.
+  * The new `v3` paths are implemented since Synapse 1.48, Dendrite 0.6.5,
+    and Conduit 0.4.0. Servers older than these are no longer supported.
+
 ## v0.16.0 (2022-04-11)
 
 * **Breaking change *(types)*** Removed custom `REPLY` relation type and

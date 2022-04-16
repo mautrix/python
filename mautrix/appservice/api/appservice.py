@@ -148,7 +148,6 @@ class AppServiceAPI(HTTPAPI):
                 bridge_name=self.bridge_name,
                 default_retry_count=self.default_retry_count,
             )
-            child.hacky_replace_v3_with_r0 = self.hacky_replace_v3_with_r0
             self.real_users[mxid] = child
         return child
 
@@ -263,7 +262,6 @@ class ChildAppServiceAPI(AppServiceAPI):
             bridge_name=parent.bridge_name,
             default_retry_count=parent.default_retry_count,
         )
-        self.hacky_replace_v3_with_r0 = parent.hacky_replace_v3_with_r0
         self.parent = parent
 
     @property
