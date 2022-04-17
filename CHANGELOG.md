@@ -1,4 +1,4 @@
-## v0.16.1 (unreleased)
+## v0.16.1 (2022-04-17)
 
 * **Breaking change** Removed `r0` path support.
   * The new `v3` paths are implemented since Synapse 1.48, Dendrite 0.6.5,
