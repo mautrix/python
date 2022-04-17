@@ -101,6 +101,22 @@ class BaseMessageEventContentFuncs:
             event_id=reply_to if isinstance(reply_to, str) else reply_to.event_id
         )
 
+    def set_thread_parent(
+        self,
+        thread_parent: Union[EventID, "MessageEvent"],
+        reply_to: Union[EventID, "MessageEvent", None] = None,
+        **kwargs,
+    ) -> None:
+        self.relates_to.rel_type = RelationType.THREAD
+        self.relates_to.event_id = (
+            thread_parent if isinstance(thread_parent, str) else thread_parent.event_id
+        )
+        if reply_to is None:
+            self.set_reply(thread_parent, **kwargs)
+            self.relates_to.is_falling_back = True
+        else:
+            self.set_reply(reply_to, **kwargs)
+
     def set_edit(self, edits: Union[EventID, "MessageEvent"]) -> None:
         self.relates_to.rel_type = RelationType.REPLACE
         self.relates_to.event_id = edits if isinstance(edits, str) else edits.event_id
@@ -135,6 +151,11 @@ class BaseMessageEventContentFuncs:
 
     def get_edit(self) -> Optional[EventID]:
         if self._relates_to and self._relates_to.rel_type == RelationType.REPLACE:
+            return self._relates_to.event_id
+        return None
+
+    def get_thread_parent(self) -> Optional[EventID]:
+        if self._relates_to and self._relates_to.rel_type == RelationType.THREAD:
             return self._relates_to.event_id
         return None
 
