@@ -135,5 +135,5 @@ class BridgeState(SerializableAttrs):
 
 @dataclass(kw_only=True)
 class GlobalBridgeState(SerializableAttrs):
-    remote_states: Optional[Dict[str, BridgeState]] = field(json="remoteState")
+    remote_states: Optional[Dict[str, BridgeState]] = field(json="remoteState", default=None)
     bridge_state: BridgeState = field(json="bridgeState")
