@@ -1,3 +1,8 @@
+## v0.16.2 (2022-04-21)
+
+* Added `get_thread_parent` and `set_thread_parent` helper methods for `MessageEventContent`.
+* Increased timeout for `MessageSendCheckpoint.send`.
+
 ## v0.16.1 (2022-04-17)
 
 * **Breaking change** Removed `r0` path support.
