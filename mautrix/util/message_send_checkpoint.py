@@ -60,22 +60,23 @@ class MessageSendCheckpoint(SerializableAttrs):
                 endpoint,
                 json={"checkpoints": [self.serialize()]},
                 headers=headers,
-                timeout=ClientTimeout(5),
+                timeout=ClientTimeout(30),
             ) as resp:
                 if not 200 <= resp.status < 300:
                     text = await resp.text()
                     text = text.replace("\n", "\\n")
                     log.warning(
-                        f"Unexpected status code {resp.status} sending message send checkpoints "
+                        f"Unexpected status code {resp.status} sending checkpoints "
                         f"for {self.event_id}: {text}"
                     )
                 else:
                     log.info(
-                        f"Successfully sent message send checkpoints for {self.event_id} "
-                        f"(step: {self.step})"
+                        f"Successfully sent checkpoint for {self.event_id} (step: {self.step})"
                     )
         except Exception as e:
-            log.warning(f"Failed to send message send checkpoints for {self.event_id}: {e}")
+            log.warning(
+                f"Failed to send checkpoint for {self.event_id}: " f"{type(e).__name__}: {e}"
+            )
 
 
 CHECKPOINT_TYPES = {
