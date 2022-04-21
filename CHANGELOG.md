@@ -1,3 +1,8 @@
+## v0.16.3 (2022-04-21)
+
+* Changed `set_thread_parent` to have an explicit option for disabling the
+  thread-as-reply fallback.
+
 ## v0.16.2 (2022-04-21)
 
 * Added `get_thread_parent` and `set_thread_parent` helper methods for `MessageEventContent`.

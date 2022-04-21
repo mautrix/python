@@ -104,18 +104,17 @@ class BaseMessageEventContentFuncs:
     def set_thread_parent(
         self,
         thread_parent: Union[EventID, "MessageEvent"],
-        reply_to: Union[EventID, "MessageEvent", None] = None,
+        last_event_in_thread: Union[EventID, "MessageEvent", None] = None,
+        disable_reply_fallback: bool = False,
         **kwargs,
     ) -> None:
         self.relates_to.rel_type = RelationType.THREAD
         self.relates_to.event_id = (
             thread_parent if isinstance(thread_parent, str) else thread_parent.event_id
         )
-        if reply_to is None:
-            self.set_reply(thread_parent, **kwargs)
+        if not disable_reply_fallback:
+            self.set_reply(last_event_in_thread or thread_parent, **kwargs)
             self.relates_to.is_falling_back = True
-        else:
-            self.set_reply(reply_to, **kwargs)
 
     def set_edit(self, edits: Union[EventID, "MessageEvent"]) -> None:
         self.relates_to.rel_type = RelationType.REPLACE
