@@ -25,7 +25,6 @@ class LoginType(ExtensibleEnum):
     APPSERVICE: "LoginType" = "m.login.application_service"
 
     UNSTABLE_JWT: "LoginType" = "org.matrix.login.jwt"
-    UNSTABLE_APPSERVICE: "LoginType" = "uk.half-shot.msc2778.login.application_service"
 
 
 @dataclass

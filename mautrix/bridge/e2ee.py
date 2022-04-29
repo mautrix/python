@@ -215,14 +215,12 @@ class EncryptionManager:
 
     async def start(self) -> None:
         flows = await self.client.get_login_flows()
-        flow = flows.get_first_of_type(LoginType.APPSERVICE, LoginType.UNSTABLE_APPSERVICE)
-        if flow is None:
+        if not flows.supports_type(LoginType.APPSERVICE):
             self.log.critical(
-                "Encryption enabled in config, but homeserver does not "
-                "advertise appservice login"
+                "Encryption enabled in config, but homeserver does not advertise appservice login"
             )
             sys.exit(30)
-        self.log.debug(f"Logging in with bridge bot user (using login type {flow.type.value})")
+        self.log.debug("Logging in with bridge bot user")
         if self.crypto_db:
             try:
                 await self.crypto_db.start()
@@ -236,7 +234,7 @@ class EncryptionManager:
         # It'll get overridden after the login
         self.client.api.token = self.az.as_token
         await self.client.login(
-            login_type=flow.type,
+            login_type=LoginType.APPSERVICE,
             device_name=self.device_name,
             device_id=device_id,
             store_access_token=True,
