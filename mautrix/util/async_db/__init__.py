@@ -19,11 +19,14 @@ except ImportError:
     PostgresDatabase = None
 
 try:
+    from aiosqlite import Cursor as SQLiteCursor
+
     from .aiosqlite import SQLiteDatabase
 except ImportError:
     if __optional_imports__:
         raise
     SQLiteDatabase = None
+    SQLiteCursor = None
 
 __all__ = [
     "Database",
@@ -31,6 +34,7 @@ __all__ = [
     "register_upgrade",
     "PostgresDatabase",
     "SQLiteDatabase",
+    "SQLiteCursor",
     "Connection",
     "Scheme",
     "DatabaseException",

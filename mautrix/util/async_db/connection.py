@@ -19,6 +19,7 @@ from .scheme import Scheme
 if __optional_imports__:
     from sqlite3 import Row
 
+    from aiosqlite import Cursor
     from asyncpg import Record
     import asyncpg
 
@@ -69,11 +70,13 @@ class LoggingConnection:
             yield
 
     @log_duration
-    async def execute(self, query: str, *args: Any, timeout: float | None = None) -> str:
+    async def execute(self, query: str, *args: Any, timeout: float | None = None) -> str | Cursor:
         return await self.wrapped.execute(query, *args, timeout=timeout)
 
     @log_duration
-    async def executemany(self, query: str, *args: Any, timeout: float | None = None) -> str:
+    async def executemany(
+        self, query: str, *args: Any, timeout: float | None = None
+    ) -> str | Cursor:
         return await self.wrapped.executemany(query, *args, timeout=timeout)
 
     @log_duration

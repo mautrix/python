@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import Any, AsyncContextManager, Type
 from abc import ABC, abstractmethod
 import logging
-import sys
 
 from yarl import URL
 
@@ -21,6 +20,7 @@ from .scheme import Scheme
 from .upgrade import UpgradeTable, upgrade_tables
 
 if __optional_imports__:
+    from aiosqlite import Cursor
     from asyncpg import Record
 
 
@@ -131,11 +131,13 @@ class Database(ABC):
     def acquire(self) -> AsyncContextManager[LoggingConnection]:
         pass
 
-    async def execute(self, query: str, *args: Any, timeout: float | None = None) -> str:
+    async def execute(self, query: str, *args: Any, timeout: float | None = None) -> str | Cursor:
         async with self.acquire() as conn:
             return await conn.execute(query, *args, timeout=timeout)
 
-    async def executemany(self, query: str, *args: Any, timeout: float | None = None) -> str:
+    async def executemany(
+        self, query: str, *args: Any, timeout: float | None = None
+    ) -> str | Cursor:
         async with self.acquire() as conn:
             return await conn.executemany(query, *args, timeout=timeout)
 
