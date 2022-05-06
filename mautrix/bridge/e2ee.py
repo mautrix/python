@@ -217,7 +217,7 @@ class EncryptionManager:
         flows = await self.client.get_login_flows()
         if not flows.supports_type(LoginType.APPSERVICE):
             self.log.critical(
-                "Encryption enabled in config, but homeserver does not advertise appservice login"
+                "Encryption enabled in config, but homeserver does not support appservice login"
             )
             sys.exit(30)
         self.log.debug("Logging in with bridge bot user")
