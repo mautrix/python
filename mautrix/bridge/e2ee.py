@@ -224,7 +224,7 @@ class EncryptionManager:
         if self.crypto_db:
             try:
                 await self.crypto_db.start()
-            except DatabaseException as e:
+            except Exception as e:
                 self.bridge._log_db_error(e)
         await self.crypto_store.open()
         device_id = await self.crypto_store.get_device_id()

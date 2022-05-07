@@ -176,9 +176,9 @@ class Bridge(Program, ABC):
     def prepare_bridge(self) -> None:
         self.matrix = self.matrix_class(bridge=self)
 
-    def _log_db_error(self, e: DatabaseException) -> None:
+    def _log_db_error(self, e: Exception) -> None:
         self.log.critical("Failed to initialize database", exc_info=e)
-        if e.explanation:
+        if isinstance(e, DatabaseException) and e.explanation:
             self.log.info(e.explanation)
         sys.exit(25)
 
@@ -195,7 +195,7 @@ class Bridge(Program, ABC):
                 if self.matrix.e2ee:
                     self.matrix.e2ee.crypto_db.allow_unsupported = ignore_unsupported
                     self.matrix.e2ee.crypto_db.override_pool(self.db)
-            except DatabaseException as e:
+            except Exception as e:
                 self._log_db_error(e)
 
     async def stop_db(self) -> None:
