@@ -69,8 +69,8 @@ class PostgresDatabase(Database):
         return self._pool
 
     async def stop(self) -> None:
-        if not self._pool_override:
-            await self.pool.close()
+        if not self._pool_override and self._pool is not None:
+            await self._pool.close()
 
     @asynccontextmanager
     async def acquire(self) -> LoggingConnection:
