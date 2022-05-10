@@ -12,6 +12,7 @@ import time
 import traceback
 
 from mautrix.appservice import AppService, IntentAPI
+from mautrix.errors import MForbidden
 from mautrix.types import EventID, MessageEventContent, RoomID
 from mautrix.util import markdown
 from mautrix.util.logging import TraceLogger
@@ -143,6 +144,20 @@ class CommandEvent:
     @property
     def main_intent(self) -> IntentAPI:
         return self.portal.main_intent if self.portal else self.az.intent
+
+    async def redact(self) -> None:
+        """
+        Try to redact the command.
+
+        If the redaction fails with M_FORBIDDEN, the error will be logged and ignored.
+        """
+        try:
+            if self.has_bridge_bot:
+                await self.az.intent.redact(self.room_id, self.event_id)
+            else:
+                await self.main_intent.redact(self.room_id, self.event_id)
+        except MForbidden as e:
+            self.log.warning(f"Failed to redact command {self.command}: {e}")
 
     def reply(
         self, message: str, allow_html: bool = False, render_markdown: bool = True
