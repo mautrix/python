@@ -1,3 +1,9 @@
+## v0.16.4 (2022-05-10)
+
+* Dropped support for appservice login with unstable prefix.
+* Fixed some database start errors causing unnecessary noise in logs.
+* Added helper method to redact bridge commands.
+
 ## v0.16.3 (2022-04-21)
 
 * Changed `set_thread_parent` to have an explicit option for disabling the
