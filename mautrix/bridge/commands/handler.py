@@ -145,7 +145,7 @@ class CommandEvent:
     def main_intent(self) -> IntentAPI:
         return self.portal.main_intent if self.portal else self.az.intent
 
-    async def redact(self) -> None:
+    async def redact(self, reason: str | None = None) -> None:
         """
         Try to redact the command.
 
@@ -153,9 +153,9 @@ class CommandEvent:
         """
         try:
             if self.has_bridge_bot:
-                await self.az.intent.redact(self.room_id, self.event_id)
+                await self.az.intent.redact(self.room_id, self.event_id, reason=reason)
             else:
-                await self.main_intent.redact(self.room_id, self.event_id)
+                await self.main_intent.redact(self.room_id, self.event_id, reason=reason)
         except MForbidden as e:
             self.log.warning(f"Failed to redact command {self.command}: {e}")
 
