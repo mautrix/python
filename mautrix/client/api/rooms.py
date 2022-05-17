@@ -581,7 +581,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             Method.POST, Path.v3.rooms[room_id].ban, {"user_id": user_id, "reason": reason}
         )
 
-    async def unban_user(self, room_id: RoomID, user_id: UserID) -> None:
+    async def unban_user(self, room_id: RoomID, user_id: UserID, reason: str = "") -> None:
         """
         Unban a user from the room. This allows them to be invited to the room, and join if they
         would otherwise be allowed to join according to its join rules. The caller must have the
@@ -592,8 +592,12 @@ class RoomMethods(EventMethods, BaseClientAPI):
         Args:
             room_id: The ID of the room from which the user should be unbanned.
             user_id: The fully qualified user ID of the user being banned.
+            reason: The reason the user has been unbanned. This will be supplied as the ``reason`` on
+                the target's updated `m.room.member`_ event.
         """
-        await self.api.request(Method.POST, Path.v3.rooms[room_id].unban, {"user_id": user_id})
+        await self.api.request(
+            Method.POST, Path.v3.rooms[room_id].unban, {"user_id": user_id, "reason": reason}
+        )
 
     # endregion
 
