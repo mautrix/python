@@ -1,18 +1,37 @@
+## v0.16.5 (unreleased)
+
+* *(bridge.commands)* Added `reason` field for `CommandEvent.redact`.
+* *(client.api)* Added `reason` field for the `unban_user` method
+  (thanks to [@maltee1] in [#101]).
+* *(bridge)* Changed automatic DM portal creation to only apply when the invite
+  event specifies `"is_direct": true` (thanks to [@maltee1] in [#102]).
+* *(util.program)* Changed `Program` to use create and set an event loop
+  explicitly instead of using `get_event_loop`.
+* *(appservice.api)* Switched `IntentAPI.batch_send` method to use custom Event
+  classes instead of the default ones (since some normal event fields aren't
+  applicable when batch sending).
+
+[@maltee1]: https://github.com/maltee1
+[#101]: https://github.com/mautrix/python/pull/101
+[#102]: https://github.com/mautrix/python/pull/102
+
 ## v0.16.4 (2022-05-10)
 
-* Dropped support for appservice login with unstable prefix.
-* Fixed some database start errors causing unnecessary noise in logs.
-* Added helper method to redact bridge commands.
+* *(types, bridge)* Dropped support for appservice login with unstable prefix.
+* *(util.async_db)* Fixed some database start errors causing unnecessary noise
+  in logs.
+* *(bridge.commands)* Added helper method to redact bridge commands.
 
 ## v0.16.3 (2022-04-21)
 
-* Changed `set_thread_parent` to have an explicit option for disabling the
-  thread-as-reply fallback.
+* *(types)* Changed `set_thread_parent` to have an explicit option for
+  disabling the thread-as-reply fallback.
 
 ## v0.16.2 (2022-04-21)
 
-* Added `get_thread_parent` and `set_thread_parent` helper methods for `MessageEventContent`.
-* Increased timeout for `MessageSendCheckpoint.send`.
+* *(types)* Added `get_thread_parent` and `set_thread_parent` helper methods
+  for `MessageEventContent`.
+* *(bridge)* Increased timeout for `MessageSendCheckpoint.send`.
 
 ## v0.16.1 (2022-04-17)
 
@@ -272,12 +291,14 @@
 
 ## v0.12.5 (2021-11-30)
 
-* Added wrapper for [MSC2716]'s `/batch_send` endpoint in `IntentAPI`
-* Added some Matrix request metrics (thanks to @jaller94 in #68)
+* Added wrapper for [MSC2716]'s `/batch_send` endpoint in `IntentAPI`.
+* Added some Matrix request metrics (thanks to [@jaller94] in [#68]).
 * Added utility method for adding variation selector 16 to emoji strings the
   same way as Element does (using emojibase data).
 
 [MSC2716]: https://github.com/matrix-org/matrix-spec-proposals/pull/2716
+[@jaller94]: https://github.com/jaller94
+[#68]: https://github.com/mautrix/python/pull/68
 
 ## v0.12.4 (2021-11-25)
 
