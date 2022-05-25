@@ -298,7 +298,7 @@ class BaseMatrixHandler:
             return
         if create_evt.type == RoomType.SPACE:
             await self.handle_puppet_space_invite(room_id, puppet, invited_by, evt)
-        elif len(members) > 2:
+        elif len(members) > 2 or not evt.content.is_direct:
             await self.handle_puppet_group_invite(room_id, puppet, invited_by, evt, members)
         else:
             await self.handle_puppet_dm_invite(room_id, puppet, invited_by, evt)
