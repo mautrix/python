@@ -107,8 +107,8 @@ class Database(ABC):
     async def _check_foreign_tables(self) -> None:
         if await self.table_exists("state_groups_state"):
             raise ForeignTablesFound("found state_groups_state likely belonging to Synapse")
-        elif await self.table_exists("goose_db_version"):
-            raise ForeignTablesFound("found goose_db_version possibly belonging to Dendrite")
+        elif await self.table_exists("roomserver_rooms"):
+            raise ForeignTablesFound("found roomserver_rooms possibly belonging to Dendrite")
 
     async def _check_owner(self) -> None:
         await self.execute(
