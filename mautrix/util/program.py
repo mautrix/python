@@ -192,7 +192,8 @@ class Program:
             uvloop.install()
             self.log.debug("Using uvloop for asyncio")
 
-        self.loop = asyncio.get_event_loop()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
 
     def start_prometheus(self) -> None:
         try:
@@ -237,6 +238,8 @@ class Program:
         self.prepare_stop()
         self.loop.run_until_complete(self.stop())
         self.prepare_shutdown()
+        self.loop.close()
+        asyncio.set_event_loop(None)
         self.log.info("Everything stopped, shutting down")
         sys.exit(0)
 
