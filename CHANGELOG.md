@@ -7,6 +7,9 @@
   event specifies `"is_direct": true` (thanks to [@maltee1] in [#102]).
 * *(util.program)* Changed `Program` to use create and set an event loop
   explicitly instead of using `get_event_loop`.
+* *(util.program)* Added optional `exit_code` parameter to `manual_stop`.
+* *(util.manhole)* Removed usage of loop parameters to fix Python 3.10
+  compatibility.
 * *(appservice.api)* Switched `IntentAPI.batch_send` method to use custom Event
   classes instead of the default ones (since some normal event fields aren't
   applicable when batch sending).

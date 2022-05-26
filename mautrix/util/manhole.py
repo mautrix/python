@@ -104,9 +104,7 @@ class StatefulCommandCompiler(codeop.CommandCompiler):
 
 class Interpreter(ABC):
     @abstractmethod
-    def __init__(
-        self, namespace: Dict[str, Any], banner: Union[bytes, str], loop: asyncio.AbstractEventLoop
-    ) -> None:
+    def __init__(self, namespace: Dict[str, Any], banner: Union[bytes, str]) -> None:
         pass
 
     @abstractmethod
@@ -126,17 +124,13 @@ class AsyncInterpreter(Interpreter):
     namespace: Dict[str, Any]
     banner: bytes
     compiler: StatefulCommandCompiler
-    loop: asyncio.AbstractEventLoop
     running: bool
 
-    def __init__(
-        self, namespace: Dict[str, Any], banner: Union[bytes, str], loop: asyncio.AbstractEventLoop
-    ) -> None:
-        super().__init__(namespace, banner, loop)
+    def __init__(self, namespace: Dict[str, Any], banner: Union[bytes, str]) -> None:
+        super().__init__(namespace, banner)
         self.namespace = namespace
         self.banner = banner if isinstance(banner, bytes) else str(banner).encode("utf-8")
         self.compiler = StatefulCommandCompiler()
-        self.loop = loop
 
     async def send_exception(self) -> None:
         """When an exception has occurred, write the traceback to the user."""
@@ -261,7 +255,6 @@ class AsyncInterpreter(Interpreter):
 class InterpreterFactory:
     namespace: Dict[str, Any]
     banner: bytes
-    loop: asyncio.AbstractEventLoop
     interpreter_class: Type[Interpreter]
     clients: List[Interpreter]
     whitelist: Set[int]
@@ -272,12 +265,10 @@ class InterpreterFactory:
         namespace: Dict[str, Any],
         banner: Union[bytes, str],
         interpreter_class: Type[Interpreter],
-        loop: asyncio.AbstractEventLoop,
         whitelist: Set[int],
     ) -> None:
         self.namespace = namespace or {}
         self.banner = banner
-        self.loop = loop
         self.interpreter_class = interpreter_class
         self.clients = []
         self.whitelist = whitelist
@@ -304,9 +295,7 @@ class InterpreterFactory:
             return
 
         namespace = {**self.namespace}
-        interpreter = self.interpreter_class(
-            namespace=namespace, banner=self.banner, loop=self.loop
-        )
+        interpreter = self.interpreter_class(namespace=namespace, banner=self.banner)
         namespace["exit"] = interpreter.close
         self.clients.append(interpreter)
         conn_id = self.conn_id
@@ -336,15 +325,13 @@ async def start_manhole(
     """
     if not SO_PEERCRED:
         raise ValueError("SO_PEERCRED is not supported on this platform")
-    loop = loop or asyncio.get_event_loop()
     factory = InterpreterFactory(
         namespace=namespace,
         banner=banner,
         interpreter_class=AsyncInterpreter,
-        loop=loop,
         whitelist=whitelist,
     )
-    server = await asyncio.start_unix_server(factory, path=path, loop=loop)
+    server = await asyncio.start_unix_server(factory, path=path)
     os.chmod(path, 0o666)
 
     def stop():
