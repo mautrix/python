@@ -1,4 +1,4 @@
-## v0.16.5 (unreleased)
+## v0.16.5 (2022-05-26)
 
 * *(bridge.commands)* Added `reason` field for `CommandEvent.redact`.
 * *(client.api)* Added `reason` field for the `unban_user` method
