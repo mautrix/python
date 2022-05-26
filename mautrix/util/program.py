@@ -214,6 +214,7 @@ class Program:
         signal.signal(signal.SIGINT, signal.default_int_handler)
         signal.signal(signal.SIGTERM, signal.default_int_handler)
 
+        exit_code = 0
         try:
             self.log.debug("Running startup actions...")
             start_ts = time()
@@ -224,7 +225,7 @@ class Program:
                 "now running forever"
             )
             self._stop_task = self.loop.create_future()
-            self.loop.run_until_complete(self._stop_task)
+            exit_code = self.loop.run_until_complete(self._stop_task)
             self.log.debug("manual_stop() called, stopping...")
         except KeyboardInterrupt:
             self.log.debug("Interrupt received, stopping...")
@@ -241,7 +242,7 @@ class Program:
         self.loop.close()
         asyncio.set_event_loop(None)
         self.log.info("Everything stopped, shutting down")
-        sys.exit(0)
+        sys.exit(exit_code)
 
     async def system_exit(self) -> None:
         """Lifecycle method that is called if the main event loop exits using ``sys.exit()``."""
@@ -271,9 +272,9 @@ class Program:
     def prepare_shutdown(self) -> None:
         """Lifecycle method that is called right before ``sys.exit(0)``."""
 
-    def manual_stop(self) -> None:
+    def manual_stop(self, exit_code: int = 0) -> None:
         """Tell the event loop to cleanly stop and run the stop lifecycle steps."""
-        self._stop_task.set_result(None)
+        self._stop_task.set_result(exit_code)
 
     def add_startup_actions(self, *actions: NewTask) -> None:
         self.startup_actions = self._add_actions(self.startup_actions, actions)
