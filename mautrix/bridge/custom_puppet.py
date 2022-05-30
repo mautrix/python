@@ -273,12 +273,13 @@ class CustomPuppetMixin(ABC):
         if not whoami or whoami.user_id != self.custom_mxid:
             if self.custom_mxid and self.by_custom_mxid.get(self.custom_mxid) == self:
                 del self.by_custom_mxid[self.custom_mxid]
+            prev_custom_mxid = self.custom_mxid
             self.custom_mxid = None
             self.access_token = None
             self.next_batch = None
             await self.save()
             self.intent = self._fresh_intent()
-            if whoami.user_id != self.custom_mxid:
+            if whoami and whoami.user_id != prev_custom_mxid:
                 raise OnlyLoginSelf()
             raise InvalidAccessToken()
         if self.sync_with_custom_puppets and start_sync_task:
