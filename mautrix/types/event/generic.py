@@ -9,6 +9,7 @@ from ..primitive import JSON
 from ..util import Obj, deserializer
 from .account_data import AccountDataEvent, AccountDataEventContent
 from .base import EventType, GenericEvent
+from .beeper import BeeperMessageStatusEvent, BeeperMessageStatusEventContent
 from .encrypted import EncryptedEvent, EncryptedEventContent
 from .ephemeral import (
     EphemeralEvent,
@@ -38,6 +39,7 @@ Event = NewType(
         EncryptedEvent,
         ToDeviceEvent,
         CallEvent,
+        BeeperMessageStatusEvent,
         GenericEvent,
     ],
 )
@@ -53,6 +55,7 @@ EventContent = Union[
     EncryptedEventContent,
     ToDeviceEventContent,
     CallEventContent,
+    BeeperMessageStatusEventContent,
     Obj,
 ]
 
@@ -81,6 +84,8 @@ def deserialize_event(data: JSON) -> Event:
         return AccountDataEvent.deserialize(data)
     elif event_type.is_ephemeral:
         return EphemeralEvent.deserialize(data)
+    elif event_type == EventType.BEEPER_MESSAGE_STATUS:
+        return BeeperMessageStatusEvent.deserialize(data)
     else:
         return GenericEvent.deserialize(data)
 

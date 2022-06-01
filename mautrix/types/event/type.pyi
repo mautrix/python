@@ -50,6 +50,8 @@ class EventType(Serializable):
     CALL_REJECT: "EventType"
     CALL_NEGOTIATE: "EventType"
 
+    BEEPER_MESSAGE_STATUS: "EventType"
+
     RECEIPT: "EventType"
     TYPING: "EventType"
     PRESENCE: "EventType"

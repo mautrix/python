@@ -195,6 +195,7 @@ _standard_types = {
         "m.call.hangup": "CALL_HANGUP",
         "m.call.reject": "CALL_REJECT",
         "m.call.negotiate": "CALL_NEGOTIATE",
+        "com.beeper.message_send_status": "BEEPER_MESSAGE_STATUS",
     },
     EventType.Class.EPHEMERAL: {
         "m.receipt": "RECEIPT",
