@@ -1,3 +1,10 @@
+## v0.16.6 (2022-06-02)
+
+* *(bridge)* Fixed double puppeting `start` method not handling some errors
+  from /whoami correctly.
+* *(types)* Added `com.beeper.message_send_status` event type for bridging
+  status.
+
 ## v0.16.5 (2022-05-26)
 
 * *(bridge.commands)* Added `reason` field for `CommandEvent.redact`.
