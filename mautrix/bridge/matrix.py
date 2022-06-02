@@ -243,21 +243,23 @@ class BaseMatrixHandler:
     async def handle_join(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
         pass
 
-    async def handle_knock(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
+    async def handle_knock(
+        self, room_id: RoomID, user_id: UserID, reason: str, event_id: EventID
+    ) -> None:
         pass
 
     async def handle_retract_knock(
-        self, room_id: RoomID, user_id: UserID, event_id: EventID
+        self, room_id: RoomID, user_id: UserID, reason: str, event_id: EventID
     ) -> None:
         pass
 
     async def handle_reject_knock(
-        self, room_id: RoomID, user_id: UserID, event_id: EventID
+        self, room_id: RoomID, user_id: UserID, sender: UserID, reason: str, event_id: EventID
     ) -> None:
         pass
 
     async def handle_accept_knock(
-        self, room_id: RoomID, user_id: UserID, event_id: EventID
+        self, room_id: RoomID, user_id: UserID, sender: UserID, reason: str, event_id: EventID
     ) -> None:
         pass
 
@@ -837,7 +839,11 @@ class BaseMatrixHandler:
             if evt.content.membership == Membership.INVITE:
                 if prev_membership == Membership.KNOCK:
                     await self.handle_accept_knock(
-                        evt.room_id, UserID(evt.state_key), evt.event_id
+                        evt.room_id,
+                        UserID(evt.state_key),
+                        evt.sender,
+                        evt.content.reason,
+                        evt.event_id,
                     )
                 else:
                     await self.int_handle_invite(evt)
@@ -906,7 +912,6 @@ class BaseMatrixHandler:
                 await self.handle_knock(
                     evt.room_id,
                     UserID(evt.state_key),
-                    evt.sender,
                     evt.content.reason,
                     evt.event_id,
                 )
