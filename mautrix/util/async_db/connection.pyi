@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, AsyncContextManager
+from typing import Any, AsyncContextManager, Callable, Awaitable
 from sqlite3 import Row
 
 from asyncpg import Record
@@ -17,12 +17,14 @@ from .scheme import Scheme
 class LoggingConnection:
     scheme: Scheme
     wrapped: aiosqlite.TxnConnection | asyncpg.Connection
+    _handle_exception: Callable[[Exception], Awaitable[None]]
     log: TraceLogger
     def __init__(
         self,
         scheme: Scheme,
         wrapped: aiosqlite.TxnConnection | asyncpg.Connection,
         log: TraceLogger,
+        handle_exception: Callable[[Exception], Awaitable[None]] = None,
     ) -> None: ...
     async def transaction(self) -> AsyncContextManager[None]: ...
     async def execute(self, query: str, *args: Any, timeout: float | None = None) -> str: ...

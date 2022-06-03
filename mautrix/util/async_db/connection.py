@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, Awaitable
 from contextlib import asynccontextmanager
 from logging import WARNING
 import functools
@@ -43,20 +43,22 @@ def log_duration(func: Decorated) -> Decorated:
     return wrapper
 
 
-class LoggingConnection:
-    scheme: Scheme
-    wrapped: aiosqlite.TxnConnection | asyncpg.Connection
-    log: TraceLogger
+async def handle_exception_noop() -> None:
+    pass
 
+
+class LoggingConnection:
     def __init__(
         self,
         scheme: Scheme,
         wrapped: aiosqlite.TxnConnection | asyncpg.Connection,
         log: TraceLogger,
+        handle_exception: Callable[[Exception], Awaitable[None]] = handle_exception_noop
     ) -> None:
         self.scheme = scheme
         self.wrapped = wrapped
         self.log = log
+        self._handle_exception = handle_exception
         self._inited = True
 
     def __setattr__(self, key: str, value: Any) -> None:
@@ -66,36 +68,60 @@ class LoggingConnection:
 
     @asynccontextmanager
     async def transaction(self) -> None:
-        async with self.wrapped.transaction():
-            yield
+        try:
+            async with self.wrapped.transaction():
+                yield
+        except Exception as e:
+            await self._handle_exception(e)
+            raise
 
     @log_duration
     async def execute(self, query: str, *args: Any, timeout: float | None = None) -> str | Cursor:
-        return await self.wrapped.execute(query, *args, timeout=timeout)
+        try:
+            return await self.wrapped.execute(query, *args, timeout=timeout)
+        except Exception as e:
+            await self._handle_exception(e)
+            raise
 
     @log_duration
     async def executemany(
         self, query: str, *args: Any, timeout: float | None = None
     ) -> str | Cursor:
-        return await self.wrapped.executemany(query, *args, timeout=timeout)
+        try:
+            return await self.wrapped.executemany(query, *args, timeout=timeout)
+        except Exception as e:
+            await self._handle_exception(e)
+            raise
 
     @log_duration
     async def fetch(
         self, query: str, *args: Any, timeout: float | None = None
     ) -> list[Row | Record]:
-        return await self.wrapped.fetch(query, *args, timeout=timeout)
+        try:
+            return await self.wrapped.fetch(query, *args, timeout=timeout)
+        except Exception as e:
+            await self._handle_exception(e)
+            raise
 
     @log_duration
     async def fetchval(
         self, query: str, *args: Any, column: int = 0, timeout: float | None = None
     ) -> Any:
-        return await self.wrapped.fetchval(query, *args, column=column, timeout=timeout)
+        try:
+            return await self.wrapped.fetchval(query, *args, column=column, timeout=timeout)
+        except Exception as e:
+            await self._handle_exception(e)
+            raise
 
     @log_duration
     async def fetchrow(
         self, query: str, *args: Any, timeout: float | None = None
     ) -> Row | Record | None:
-        return await self.wrapped.fetchrow(query, *args, timeout=timeout)
+        try:
+            return await self.wrapped.fetchrow(query, *args, timeout=timeout)
+        except Exception as e:
+            await self._handle_exception(e)
+            raise
 
     async def table_exists(self, name: str) -> bool:
         if self.scheme == Scheme.SQLITE:
@@ -121,6 +147,14 @@ class LoggingConnection:
     ) -> None:
         if self.scheme != Scheme.POSTGRES:
             raise RuntimeError("copy_records_to_table is only supported on Postgres")
-        return await self.wrapped.copy_records_to_table(
-            table_name, records=records, columns=columns, schema_name=schema_name, timeout=timeout
-        )
+        try:
+            return await self.wrapped.copy_records_to_table(
+                table_name,
+                records=records,
+                columns=columns,
+                schema_name=schema_name,
+                timeout=timeout,
+            )
+        except Exception as e:
+            await self._handle_exception(e)
+            raise
