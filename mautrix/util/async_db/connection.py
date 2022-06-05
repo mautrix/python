@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar, Awaitable
+from typing import Any, Awaitable, Callable, TypeVar
 from contextlib import asynccontextmanager
 from logging import WARNING
 import functools
@@ -53,7 +53,7 @@ class LoggingConnection:
         scheme: Scheme,
         wrapped: aiosqlite.TxnConnection | asyncpg.Connection,
         log: TraceLogger,
-        handle_exception: Callable[[Exception], Awaitable[None]] = handle_exception_noop
+        handle_exception: Callable[[Exception], Awaitable[None]] = handle_exception_noop,
     ) -> None:
         self.scheme = scheme
         self.wrapped = wrapped
