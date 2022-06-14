@@ -174,6 +174,9 @@ class MatrixParser(Generic[T]):
     ) -> T | None:
         return None
 
+    async def img_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
+        return self.fs(node.attrib.get("alt") or node.attrib.get("title") or "")
+
     async def custom_node_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T | None:
         return None
 
@@ -203,6 +206,8 @@ class MatrixParser(Generic[T]):
             return await self.basic_format_to_fstring(node, ctx)
         elif node.tag == "a":
             return await self.link_to_fstring(node, ctx)
+        elif node.tag == "img":
+            return await self.img_to_fstring(node, ctx)
         elif node.tag == "p":
             return (await self.tag_aware_parse_node(node, ctx)).append("\n")
         elif node.tag in ("font", "span"):
