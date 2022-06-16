@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, NamedTuple, NewType
+from typing import Dict, List, NamedTuple, NewType, Optional
 from enum import Enum
 
 from attr import dataclass
@@ -128,6 +128,5 @@ class BatchSendResponse(SerializableAttrs):
 
     insertion_event_id: EventID
     batch_event_id: EventID
-    base_insertion_event_id: EventID
-
     next_batch_id: BatchID
+    base_insertion_event_id: Optional[EventID] = None
