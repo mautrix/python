@@ -16,6 +16,11 @@ from .type import EventType, RoomType
 
 
 @dataclass
+class NotificationPowerLevels(SerializableAttrs):
+    room: int = 50
+
+
+@dataclass
 class PowerLevelStateEventContent(SerializableAttrs):
     """The content of a power level event."""
 
@@ -26,6 +31,8 @@ class PowerLevelStateEventContent(SerializableAttrs):
         default=attr.Factory(dict), metadata={"omitempty": False}
     )
     events_default: int = 0
+
+    notifications: NotificationPowerLevels = attr.ib(factory=lambda: NotificationPowerLevels())
 
     state_default: int = 50
 
