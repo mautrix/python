@@ -243,6 +243,26 @@ class BaseMatrixHandler:
     async def handle_join(self, room_id: RoomID, user_id: UserID, event_id: EventID) -> None:
         pass
 
+    async def handle_knock(
+        self, room_id: RoomID, user_id: UserID, reason: str, event_id: EventID
+    ) -> None:
+        pass
+
+    async def handle_retract_knock(
+        self, room_id: RoomID, user_id: UserID, reason: str, event_id: EventID
+    ) -> None:
+        pass
+
+    async def handle_reject_knock(
+        self, room_id: RoomID, user_id: UserID, sender: UserID, reason: str, event_id: EventID
+    ) -> None:
+        pass
+
+    async def handle_accept_knock(
+        self, room_id: RoomID, user_id: UserID, sender: UserID, reason: str, event_id: EventID
+    ) -> None:
+        pass
+
     async def handle_member_info_change(
         self,
         room_id: RoomID,
@@ -817,7 +837,16 @@ class BaseMatrixHandler:
             prev_content = unsigned.prev_content or MemberStateEventContent()
             prev_membership = prev_content.membership if prev_content else Membership.JOIN
             if evt.content.membership == Membership.INVITE:
-                await self.int_handle_invite(evt)
+                if prev_membership == Membership.KNOCK:
+                    await self.handle_accept_knock(
+                        evt.room_id,
+                        UserID(evt.state_key),
+                        evt.sender,
+                        evt.content.reason,
+                        evt.event_id,
+                    )
+                else:
+                    await self.int_handle_invite(evt)
             elif evt.content.membership == Membership.LEAVE:
                 if prev_membership == Membership.BAN:
                     await self.handle_unban(
@@ -840,6 +869,20 @@ class BaseMatrixHandler:
                             evt.content.reason,
                             evt.event_id,
                         )
+                elif prev_membership == Membership.KNOCK:
+                    if evt.sender == evt.state_key:
+                        await self.handle_retract_knock(
+                            evt.room_id, UserID(evt.state_key), evt.content.reason, evt.event_id
+                        )
+                    else:
+                        await self.handle_reject_knock(
+                            evt.room_id,
+                            UserID(evt.state_key),
+                            evt.sender,
+                            evt.content.reason,
+                            evt.event_id,
+                        )
+
                 elif evt.sender == evt.state_key:
                     await self.handle_leave(evt.room_id, UserID(evt.state_key), evt.event_id)
                 else:
@@ -865,6 +908,13 @@ class BaseMatrixHandler:
                     await self.handle_member_info_change(
                         evt.room_id, UserID(evt.state_key), evt.content, prev_content, evt.event_id
                     )
+            elif evt.content.membership == Membership.KNOCK:
+                await self.handle_knock(
+                    evt.room_id,
+                    UserID(evt.state_key),
+                    evt.content.reason,
+                    evt.event_id,
+                )
         elif evt.type in (EventType.ROOM_MESSAGE, EventType.STICKER):
             evt: MessageEvent
             if evt.type != EventType.ROOM_MESSAGE:
