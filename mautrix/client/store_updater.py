@@ -110,8 +110,14 @@ class StoreUpdatingAPI(ClientAPI):
         if not extra_content and self.state_store:
             await self.state_store.set_membership(room_id, user_id, Membership.BAN)
 
-    async def unban_user(self, room_id: RoomID, user_id: UserID, reason: str = "") -> None:
-        await super().unban_user(room_id, user_id, reason=reason)
+    async def unban_user(
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        reason: str = "",
+        extra_content: dict[str, JSON] | None = None,
+    ) -> None:
+        await super().unban_user(room_id, user_id, reason=reason, extra_content=extra_content)
         if self.state_store:
             await self.state_store.set_membership(room_id, user_id, Membership.LEAVE)
 

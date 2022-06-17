@@ -581,7 +581,13 @@ class RoomMethods(EventMethods, BaseClientAPI):
             Method.POST, Path.v3.rooms[room_id].ban, {"user_id": user_id, "reason": reason}
         )
 
-    async def unban_user(self, room_id: RoomID, user_id: UserID, reason: str = "") -> None:
+    async def unban_user(
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        reason: str = "",
+        extra_content: dict[str, JSON] | None = None,
+    ) -> None:
         """
         Unban a user from the room. This allows them to be invited to the room, and join if they
         would otherwise be allowed to join according to its join rules. The caller must have the
@@ -594,7 +600,17 @@ class RoomMethods(EventMethods, BaseClientAPI):
             user_id: The fully qualified user ID of the user being banned.
             reason: The reason the user has been unbanned. This will be supplied as the ``reason`` on
                 the target's updated `m.room.member`_ event.
+            extra_content: Additional properties for the unban (leave) event content.
+                If a non-empty dict is passed, the unban will be created using
+                the ``PUT /state/m.room.member/...`` endpoint instead of ``POST /unban``.
         """
+        if extra_content:
+            if reason and "reason" not in extra_content:
+                extra_content["reason"] = reason
+            await self.send_member_event(
+                room_id, user_id, Membership.LEAVE, extra_content=extra_content
+            )
+            return
         await self.api.request(
             Method.POST, Path.v3.rooms[room_id].unban, {"user_id": user_id, "reason": reason}
         )

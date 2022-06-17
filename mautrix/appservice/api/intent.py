@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Awaitable, Iterable
+from typing import Any, Awaitable, Iterable, TypeVar
 from urllib.parse import quote as urllib_quote
 
 from mautrix.api import Method, Path
@@ -39,6 +39,7 @@ from mautrix.types import (
     RoomNameStateEventContent,
     RoomPinnedEventsStateEventContent,
     RoomTopicStateEventContent,
+    SerializableAttrs,
     StateEventContent,
     UserID,
 )
@@ -90,6 +91,8 @@ ENSURE_JOINED_METHODS = (
 )
 
 DOUBLE_PUPPET_SOURCE_KEY = "fi.mau.double_puppet_source"
+
+T = TypeVar("T")
 
 
 class IntentAPI(StoreUpdatingAPI):
@@ -188,6 +191,13 @@ class IntentAPI(StoreUpdatingAPI):
     # endregion
     # region Room actions
 
+    def _add_source_key(self, content: T = None) -> T:
+        if self.api.is_real_user and self.api.bridge_name:
+            if not content:
+                content = {}
+            content[DOUBLE_PUPPET_SOURCE_KEY] = self.api.bridge_name
+        return content
+
     async def invite_user(
         self,
         room_id: RoomID,
@@ -226,6 +236,7 @@ class IntentAPI(StoreUpdatingAPI):
                 await self.state_store.get_membership(room_id, user_id) not in ok_states
             )
             if do_invite:
+                extra_content = self._add_source_key(extra_content)
                 await super().invite_user(
                     room_id, user_id, reason=reason, extra_content=extra_content
                 )
@@ -236,22 +247,73 @@ class IntentAPI(StoreUpdatingAPI):
             else:
                 raise IntentError(f"Failed to invite {user_id} to {room_id}", e)
 
+    async def kick_user(
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        reason: str = "",
+        extra_content: dict[str, JSON] | None = None,
+    ) -> None:
+        extra_content = self._add_source_key(extra_content)
+        await super().kick_user(room_id, user_id, reason=reason, extra_content=extra_content)
+
+    async def ban_user(
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        reason: str = "",
+        extra_content: dict[str, JSON] | None = None,
+    ) -> None:
+        extra_content = self._add_source_key(extra_content)
+        await super().ban_user(room_id, user_id, reason=reason, extra_content=extra_content)
+
+    async def unban_user(
+        self,
+        room_id: RoomID,
+        user_id: UserID,
+        reason: str = "",
+        extra_content: dict[str, JSON] | None = None,
+    ) -> None:
+        extra_content = self._add_source_key(extra_content)
+        await super().unban_user(room_id, user_id, reason=reason, extra_content=extra_content)
+
+    async def join_room_by_id(
+        self,
+        room_id: RoomID,
+        third_party_signed: JSON = None,
+        extra_content: dict[str, JSON] | None = None,
+    ) -> RoomID:
+        extra_content = self._add_source_key(extra_content)
+        return await super().join_room_by_id(
+            room_id, third_party_signed=third_party_signed, extra_content=extra_content
+        )
+
+    async def leave_room(
+        self,
+        room_id: RoomID,
+        reason: str | None = None,
+        extra_content: dict[str, JSON] | None = None,
+        raise_not_in_room: bool = False,
+    ) -> None:
+        extra_content = self._add_source_key(extra_content)
+        await super().leave_room(room_id, reason, extra_content, raise_not_in_room)
+
     def set_room_avatar(
         self, room_id: RoomID, avatar_url: ContentURI | None, **kwargs
     ) -> Awaitable[EventID]:
-        return self.send_state_event(
-            room_id, EventType.ROOM_AVATAR, RoomAvatarStateEventContent(url=avatar_url), **kwargs
-        )
+        content = RoomAvatarStateEventContent(url=avatar_url)
+        content = self._add_source_key(content)
+        return self.send_state_event(room_id, EventType.ROOM_AVATAR, content, **kwargs)
 
     def set_room_name(self, room_id: RoomID, name: str, **kwargs) -> Awaitable[EventID]:
-        return self.send_state_event(
-            room_id, EventType.ROOM_NAME, RoomNameStateEventContent(name=name), **kwargs
-        )
+        content = RoomNameStateEventContent(name=name)
+        content = self._add_source_key(content)
+        return self.send_state_event(room_id, EventType.ROOM_NAME, content, **kwargs)
 
     def set_room_topic(self, room_id: RoomID, topic: str, **kwargs) -> Awaitable[EventID]:
-        return self.send_state_event(
-            room_id, EventType.ROOM_TOPIC, RoomTopicStateEventContent(topic=topic), **kwargs
-        )
+        content = RoomTopicStateEventContent(topic=topic)
+        content = self._add_source_key(content)
+        return self.send_state_event(room_id, EventType.ROOM_TOPIC, content, **kwargs)
 
     async def get_power_levels(
         self, room_id: RoomID, ignore_cache: bool = False
@@ -271,6 +333,7 @@ class IntentAPI(StoreUpdatingAPI):
     async def set_power_levels(
         self, room_id: RoomID, content: PowerLevelStateEventContent, **kwargs
     ) -> EventID:
+        content = self._add_source_key(content)
         response = await self.send_state_event(
             room_id, EventType.ROOM_POWER_LEVELS, content, **kwargs
         )
@@ -289,12 +352,9 @@ class IntentAPI(StoreUpdatingAPI):
     def set_pinned_messages(
         self, room_id: RoomID, events: list[EventID], **kwargs
     ) -> Awaitable[EventID]:
-        return self.send_state_event(
-            room_id,
-            EventType.ROOM_PINNED_EVENTS,
-            RoomPinnedEventsStateEventContent(pinned=events),
-            **kwargs,
-        )
+        content = RoomPinnedEventsStateEventContent(pinned=events)
+        content = self._add_source_key(content)
+        return self.send_state_event(room_id, EventType.ROOM_PINNED_EVENTS, content, **kwargs)
 
     async def pin_message(self, room_id: RoomID, event_id: EventID) -> None:
         events = await self.get_pinned_messages(room_id)
@@ -309,12 +369,9 @@ class IntentAPI(StoreUpdatingAPI):
             await self.set_pinned_messages(room_id, events)
 
     async def set_join_rule(self, room_id: RoomID, join_rule: JoinRule, **kwargs):
-        await self.send_state_event(
-            room_id,
-            EventType.ROOM_JOIN_RULES,
-            JoinRulesStateEventContent(join_rule=join_rule),
-            **kwargs,
-        )
+        content = JoinRulesStateEventContent(join_rule=join_rule)
+        content = self._add_source_key(content)
+        await self.send_state_event(room_id, EventType.ROOM_JOIN_RULES, content, **kwargs)
 
     async def get_room_displayname(
         self, room_id: RoomID, user_id: UserID, ignore_cache=False
@@ -358,10 +415,7 @@ class IntentAPI(StoreUpdatingAPI):
         self, room_id: RoomID, event_type: EventType, content: EventContent, **kwargs
     ) -> EventID:
         await self._ensure_has_power_level_for(room_id, event_type)
-
-        if self.api.is_real_user and self.api.bridge_name is not None:
-            content[DOUBLE_PUPPET_SOURCE_KEY] = self.api.bridge_name
-
+        content = self._add_source_key(content)
         return await super().send_message_event(room_id, event_type, content, **kwargs)
 
     async def redact(
@@ -373,10 +427,7 @@ class IntentAPI(StoreUpdatingAPI):
         **kwargs,
     ) -> EventID:
         await self._ensure_has_power_level_for(room_id, EventType.ROOM_REDACTION)
-        if self.api.is_real_user and self.api.bridge_name:
-            if not extra_content:
-                extra_content = {}
-            extra_content[DOUBLE_PUPPET_SOURCE_KEY] = self.api.bridge_name
+        extra_content = self._add_source_key(extra_content)
         return await super().redact(
             room_id, event_id, reason, extra_content=extra_content, **kwargs
         )
@@ -390,6 +441,7 @@ class IntentAPI(StoreUpdatingAPI):
         **kwargs,
     ) -> EventID:
         await self._ensure_has_power_level_for(room_id, event_type, state_key=state_key)
+        content = self._add_source_key(content)
         return await super().send_state_event(room_id, event_type, content, state_key, **kwargs)
 
     async def get_room_members(

@@ -465,8 +465,7 @@ class BasePortal(ABC):
                 left = False
                 if custom_puppet:
                     try:
-                        extra_content = {DOUBLE_PUPPET_SOURCE_KEY: cls.bridge.name}
-                        await custom_puppet.intent.leave_room(room_id, extra_content=extra_content)
+                        await custom_puppet.intent.leave_room(room_id)
                         await custom_puppet.intent.forget_room(room_id)
                     except MatrixError:
                         pass
