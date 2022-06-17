@@ -1,3 +1,13 @@
+## unreleased
+
+* *(util.formatter)* Added support for parsing `img` tags
+  * By default, the `alt` or `title` attribute will be used as plaintext.
+* *(types)* Added `notifications` object to power level content class.
+* *(bridge)* Added utility methods for handling incoming knocks in
+  `MatrixHandler` (thanks to [@maltee1] in [#103]).
+
+[#103]: https://github.com/mautrix/python/pull/103
+
 ## v0.16.6 (2022-06-02)
 
 * *(bridge)* Fixed double puppeting `start` method not handling some errors
