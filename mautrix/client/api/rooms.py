@@ -482,6 +482,45 @@ class RoomMethods(EventMethods, BaseClientAPI):
             if "not in room" not in e.message or raise_not_in_room:
                 raise
 
+    async def knock_room(
+        self,
+        room_id_or_alias: RoomID | RoomAlias,
+        reason: str | None = None,
+        servers: list[str] | None = None,
+    ) -> RoomID:
+        """
+        knock on a room, i.e. request to join it by its ID or alias, with an optional list of
+        servers to ask about the ID from.
+
+        See also: `API reference <https://spec.matrix.org/v1.1/client-server-api/#post_matrixclientv3joinroomidoralias>`__
+
+        Args:
+            room_id_or_alias: The ID of the room to knock on, or an alias pointing to the room.
+            reason: The reason for knocking on the room. This will be supplied as the ``reason`` on
+                the updated `m.room.member`_ event.
+            servers: A list of servers to ask about the room ID to knock. Not applicable for aliases,
+                as aliases already contain the necessary server information.
+
+        Returns:
+            The ID of the room the user knocked on.
+        """
+        data = {}
+        if reason:
+            data["reason"] = reason
+        query_params = CIMultiDict()
+        for server_name in servers or []:
+            query_params.add("server_name", server_name)
+        content = await self.api.request(
+            Method.POST,
+            Path.v3.knock[room_id_or_alias],
+            content=data,
+            query_params=query_params,
+        )
+        try:
+            return content["room_id"]
+        except KeyError:
+            raise MatrixResponseError("`room_id` not in response.")
+
     async def forget_room(self, room_id: RoomID) -> None:
         """
         Stop remembering a particular room, i.e. forget it.
