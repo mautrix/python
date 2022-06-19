@@ -1,10 +1,13 @@
-## unreleased
+## v0.16.7 (2022-06-19)
 
 * *(util.formatter)* Added support for parsing `img` tags
   * By default, the `alt` or `title` attribute will be used as plaintext.
 * *(types)* Added `notifications` object to power level content class.
 * *(bridge)* Added utility methods for handling incoming knocks in
   `MatrixHandler` (thanks to [@maltee1] in [#103]).
+* *(appservice)* Updated `IntentAPI` to add the `fi.mau.double_puppet_source`
+  to all state events sent with double puppeted intents (previously it was only
+  added to non-state events).
 
 [#103]: https://github.com/mautrix/python/pull/103
 
