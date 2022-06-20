@@ -1,3 +1,12 @@
+## v0.16.8 (2022-06-20)
+
+* *(bridge)* Updated e2be helper to stop bridge if syncing fails.
+* *(util.async_db)* Updated asyncpg connector to stop program if an asyncpg
+  `InternalClientError` is thrown. These errors usually cause everything to
+  get stuck.
+  * The behavior can be disabled by passing `meow_exit_on_ice` = `false` in
+    the `db_args`.
+
 ## v0.16.7 (2022-06-19)
 
 * *(util.formatter)* Added support for parsing `img` tags
