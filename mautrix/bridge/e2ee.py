@@ -11,7 +11,7 @@ import sys
 
 from mautrix import __optional_imports__
 from mautrix.appservice import AppService
-from mautrix.client import Client, SyncStore
+from mautrix.client import Client, InternalEventType, SyncStore
 from mautrix.crypto import CryptoStore, OlmMachine, PgCryptoStore, RejectKeyShare, StateStore
 from mautrix.errors import EncryptionError, SessionNotFound
 from mautrix.types import (
@@ -100,7 +100,13 @@ class EncryptionManager:
             default_retry_count=default_http_retry_count,
         )
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
+        self.client.add_event_handler(InternalEventType.SYNC_STOPPED, self._exit_on_sync_fail)
         self.crypto.allow_key_share = self.allow_key_share
+
+    async def _exit_on_sync_fail(self, data) -> None:
+        if data["error"]:
+            self.log.critical("Exiting due to crypto sync error")
+            sys.exit(32)
 
     async def allow_key_share(self, device: DeviceIdentity, request: RequestedKeyInfo) -> bool:
         require_verification = self.key_sharing_config.get("require_verification", True)
