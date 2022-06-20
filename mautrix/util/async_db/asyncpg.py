@@ -9,6 +9,8 @@ from typing import Any
 from contextlib import asynccontextmanager
 import asyncio
 import logging
+import sys
+import traceback
 
 from yarl import URL
 import asyncpg
@@ -23,6 +25,7 @@ class PostgresDatabase(Database):
     scheme = Scheme.POSTGRES
     _pool: asyncpg.pool.Pool | None
     _pool_override: bool
+    _exit_on_ice: bool
 
     def __init__(
         self,
@@ -37,6 +40,7 @@ class PostgresDatabase(Database):
             self.scheme = Scheme.COCKROACH
             # Send postgres scheme to asyncpg
             url = url.with_scheme("postgres")
+        self._exit_on_ice = (db_args or {}).pop("meow_exit_on_ice", True)
         super().__init__(
             url,
             db_args=db_args,
@@ -72,10 +76,26 @@ class PostgresDatabase(Database):
         if not self._pool_override and self._pool is not None:
             await self._pool.close()
 
+    async def _handle_exception(self, err: Exception) -> None:
+        if self._exit_on_ice and isinstance(err, asyncpg.InternalClientError):
+            pre_stack = traceback.format_stack()[:-2]
+            post_stack = traceback.format_exception(err)
+            header = post_stack[0]
+            post_stack = post_stack[1:]
+            self.log.critical(
+                "Got asyncpg internal client error, exiting...\n%s%s%s",
+                header,
+                "".join(pre_stack),
+                "".join(post_stack),
+            )
+            sys.exit(26)
+
     @asynccontextmanager
     async def acquire(self) -> LoggingConnection:
         async with self.pool.acquire() as conn:
-            yield LoggingConnection(self.scheme, conn, self.log)
+            yield LoggingConnection(
+                self.scheme, conn, self.log, handle_exception=self._handle_exception
+            )
 
 
 Database.schemes["postgres"] = PostgresDatabase
