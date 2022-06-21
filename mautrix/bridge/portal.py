@@ -14,9 +14,10 @@ import html
 import logging
 import time
 
-from mautrix.appservice import DOUBLE_PUPPET_SOURCE_KEY, AppService, IntentAPI
+from mautrix.appservice import AppService, IntentAPI
 from mautrix.errors import MatrixError, MatrixRequestError, MForbidden, MNotFound
 from mautrix.types import (
+    JSON,
     EncryptionAlgorithm,
     EventID,
     EventType,
@@ -321,6 +322,13 @@ class BasePortal(ABC):
             return await self.enable_dm_encryption()
         return None
 
+    def get_encryption_state_event_json(self) -> JSON:
+        evt = RoomEncryptionStateEventContent(EncryptionAlgorithm.MEGOLM_V1)
+        if self.bridge.config["bridge.encryption.rotation.enable_custom"]:
+            evt.rotation_period_ms = self.bridge.config["bridge.encryption.rotation.milliseconds"]
+            evt.rotation_period_msgs = self.bridge.config["bridge.encryption.rotation.messages"]
+        return evt.serialize()
+
     async def enable_dm_encryption(self) -> bool:
         self.log.debug("Inviting bridge bot to room for end-to-bridge encryption")
         try:
@@ -330,7 +338,7 @@ class BasePortal(ABC):
                 await self.main_intent.send_state_event(
                     self.mxid,
                     EventType.ROOM_ENCRYPTION,
-                    RoomEncryptionStateEventContent(EncryptionAlgorithm.MEGOLM_V1),
+                    self.get_encryption_state_event_json(),
                 )
         except Exception:
             self.log.warning(f"Failed to enable end-to-bridge encryption", exc_info=True)
