@@ -1,3 +1,10 @@
+## v0.16.9 (2022-06-22)
+
+* *(client)* Added support for knocking on rooms (thanks to [@maltee1] in [#105]).
+* *(bridge)* Added config option to set key rotation settings with e2be.
+
+[#105]: https://github.com/mautrix/python/pull/105
+
 ## v0.16.8 (2022-06-20)
 
 * *(bridge)* Updated e2be helper to stop bridge if syncing fails.
