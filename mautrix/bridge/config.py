@@ -102,6 +102,15 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.management_room_text.additional_help")
         copy("bridge.management_room_multiple_messages")
 
+        copy("bridge.encryption.allow")
+        copy("bridge.encryption.default")
+        copy("bridge.encryption.key_sharing.allow")
+        copy("bridge.encryption.key_sharing.require_cross_signing")
+        copy("bridge.encryption.key_sharing.require_verification")
+        copy("bridge.encryption.rotation.enable_custom")
+        copy("bridge.encryption.rotation.milliseconds")
+        copy("bridge.encryption.rotation.messages")
+
         copy("bridge.relay.enabled")
         copy_dict("bridge.relay.message_formats", override_existing_map=False)
 
