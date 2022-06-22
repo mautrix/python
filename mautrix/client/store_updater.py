@@ -77,6 +77,17 @@ class StoreUpdatingAPI(ClientAPI):
         if not extra_content and self.state_store:
             await self.state_store.set_membership(room_id, self.mxid, Membership.LEAVE)
 
+    async def knock_room(
+        self,
+        room_id_or_alias: RoomID | RoomAlias,
+        reason: str | None = None,
+        servers: list[str] | None = None,
+    ) -> RoomID:
+        room_id = await super().knock_room(room_id_or_alias, reason, servers)
+        if room_id and self.state_store:
+            await self.state_store.set_membership(room_id, self.mxid, Membership.KNOCK)
+        return room_id
+
     async def invite_user(
         self,
         room_id: RoomID,
