@@ -24,7 +24,7 @@ class ClientAPI(
     functions for accessing the client-server API.
 
     This class can be used directly, but generally you should use the higher-level wrappers that
-    inherit from this class, such as :class:`mautrix.client.ClientAPI`
+    inherit from this class, such as :class:`mautrix.client.Client`
     or :class:`mautrix.appservice.IntentAPI`.
 
     Examples:
