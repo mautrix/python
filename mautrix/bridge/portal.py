@@ -429,7 +429,10 @@ class BasePortal(ABC):
     ) -> EventID:
         if self.encrypted and self.matrix.e2ee:
             event_type, content = await self.matrix.e2ee.encrypt(self.mxid, event_type, content)
-        return await intent.send_message_event(self.mxid, event_type, content, **kwargs)
+        event_id = await intent.send_message_event(self.mxid, event_type, content, **kwargs)
+        if intent.api.is_real_user:
+            asyncio.create_task(intent.mark_read(self.mxid, event_id))
+        return event_id
 
     @property
     @abstractmethod
