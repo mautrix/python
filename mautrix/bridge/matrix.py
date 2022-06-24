@@ -41,11 +41,13 @@ from mautrix.types import (
     RoomID,
     RoomType,
     SingleReceiptEventContent,
+    SpecVersions,
     StateEvent,
     StateUnsigned,
     TextMessageEventContent,
     TypingEvent,
     UserID,
+    Version,
     VersionsResponse,
 )
 from mautrix.util import markdown
@@ -95,6 +97,7 @@ class BaseMatrixHandler:
     e2ee: EncryptionManager | None
     media_config: MediaRepoConfig
     versions: VersionsResponse
+    minimum_spec_version: Version = SpecVersions.V11
 
     user_id_prefix: str
     user_id_suffix: str
@@ -109,7 +112,7 @@ class BaseMatrixHandler:
         self.bridge = bridge
         self.commands = command_processor or cmd.CommandProcessor(bridge=bridge)
         self.media_config = MediaRepoConfig(upload_size=50 * 1024 * 1024)
-        self.versions = VersionsResponse(versions=["v1.2"])
+        self.versions = VersionsResponse.deserialize({"versions": ["v1.3"]})
         self.az.matrix_event_handler(self.int_handle_event)
 
         self.e2ee = None
@@ -149,6 +152,16 @@ class BaseMatrixHandler:
             False,
         )
 
+    async def check_versions(self) -> None:
+        if not self.versions.supports_at_least(self.minimum_spec_version):
+            self.log.fatal(
+                "Server isn't advertising modern spec versions "
+                "(latest supported by server: %s, minimum required by bridge: %s)",
+                self.versions.latest_version,
+                self.minimum_spec_version,
+            )
+            sys.exit(18)
+
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")
         errors = 0
@@ -156,6 +169,7 @@ class BaseMatrixHandler:
         while True:
             try:
                 self.versions = await self.az.intent.versions()
+                await self.check_versions()
                 await self.az.intent.whoami()
                 break
             except (MUnknownToken, MExclusive):

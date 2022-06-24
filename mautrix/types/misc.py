@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, NamedTuple, NewType, Optional
+from typing import List, NamedTuple, NewType, Optional
 from enum import Enum
 
 from attr import dataclass
@@ -105,20 +105,6 @@ class RoomDirectoryResponse(SerializableAttrs):
 PaginatedMessages = NamedTuple(
     "PaginatedMessages", start=SyncToken, end=SyncToken, events=List[Event]
 )
-
-
-@dataclass
-class VersionsResponse(SerializableAttrs):
-    versions: List[str]
-    unstable_features: Dict[str, bool] = attr.ib(factory=lambda: {})
-
-    @property
-    def has_legacy_versions(self) -> bool:
-        return any(v for v in self.versions if v.startswith("r0."))
-
-    @property
-    def has_modern_versions(self) -> bool:
-        return any(v for v in self.versions if v.startswith("v"))
 
 
 @dataclass

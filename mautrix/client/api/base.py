@@ -116,9 +116,7 @@ class BaseClientAPI:
         """
         if no_cache or not self.versions_cache:
             resp = await self.api.request(Method.GET, Path.versions)
-            vers = self.versions_cache = VersionsResponse.deserialize(resp)
-            if not vers.has_modern_versions and vers.has_legacy_versions:
-                self.log.warning("Server isn't advertising modern spec versions")
+            self.versions_cache = VersionsResponse.deserialize(resp)
         return self.versions_cache
 
     @classmethod

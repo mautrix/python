@@ -144,7 +144,6 @@ from .misc import (
     RoomCreatePreset,
     RoomDirectoryResponse,
     RoomDirectoryVisibility,
-    VersionsResponse,
 )
 from .primitive import (
     JSON,
@@ -186,6 +185,7 @@ from .util import (
     field,
     serializer,
 )
+from .versions import SpecVersions, Version, VersionFormat, VersionsResponse
 
 __all__ = [
     "DiscoveryInformation",
@@ -338,7 +338,6 @@ __all__ = [
     "RoomCreatePreset",
     "RoomDirectoryResponse",
     "RoomDirectoryVisibility",
-    "VersionsResponse",
     "JSON",
     "BatchID",
     "ContentURI",
@@ -375,4 +374,8 @@ __all__ = [
     "deserializer",
     "field",
     "serializer",
+    "SpecVersions",
+    "Version",
+    "VersionFormat",
+    "VersionsResponse",
 ]
