@@ -1,3 +1,9 @@
+## v0.16.10 (2022-06-24)
+
+* *(bridge)* Started requiring Matrix v1.1 support from homeservers.
+* *(bridge)* Added hack to automatically send a read receipt for messages sent
+  to Matrix with double puppeting (to work around weird unread count issues).
+
 ## v0.16.9 (2022-06-22)
 
 * *(client)* Added support for knocking on rooms (thanks to [@maltee1] in [#105]).
