@@ -1,3 +1,8 @@
+## v0.16.11 (2022-06-28)
+
+* *(appservice)* Fixed the `extra_content` parameter in membership methods
+  causing duplicate join events through the `ensure_joined` mechanism.
+
 ## v0.16.10 (2022-06-24)
 
 * *(bridge)* Started requiring Matrix v1.1 support from homeservers.
