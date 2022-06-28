@@ -391,7 +391,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
             content[key] = value
         content = await self.fill_member_event(room_id, user_id, content) or content
         return await self.send_state_event(
-            room_id, EventType.ROOM_MEMBER, content=content, state_key=user_id
+            room_id, EventType.ROOM_MEMBER, content=content, state_key=user_id, ensure_joined=False
         )
 
     async def invite_user(

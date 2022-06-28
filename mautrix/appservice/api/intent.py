@@ -134,7 +134,9 @@ class IntentAPI(StoreUpdatingAPI):
                 room_id = kwargs.get("room_id", None)
                 if not room_id:
                     room_id = args[0]
-                await __self.ensure_joined(room_id)
+                ensure_joined = kwargs.pop("ensure_joined", True)
+                if ensure_joined:
+                    await __self.ensure_joined(room_id)
                 return await __method(*args, **kwargs)
 
             setattr(self, method.__name__, wrapper)
@@ -316,9 +318,10 @@ class IntentAPI(StoreUpdatingAPI):
         return self.send_state_event(room_id, EventType.ROOM_TOPIC, content, **kwargs)
 
     async def get_power_levels(
-        self, room_id: RoomID, ignore_cache: bool = False
+        self, room_id: RoomID, ignore_cache: bool = False, ensure_joined: bool = True
     ) -> PowerLevelStateEventContent:
-        await self.ensure_joined(room_id)
+        if ensure_joined:
+            await self.ensure_joined(room_id)
         if not ignore_cache:
             levels = await self.state_store.get_power_levels(room_id)
             if levels:
@@ -327,6 +330,10 @@ class IntentAPI(StoreUpdatingAPI):
             levels = await self.get_state_event(room_id, EventType.ROOM_POWER_LEVELS)
         except MNotFound:
             levels = PowerLevelStateEventContent()
+        except MForbidden:
+            if not ensure_joined:
+                return PowerLevelStateEventContent()
+            raise
         await self.state_store.set_power_levels(room_id, levels)
         return levels
 
@@ -623,7 +630,7 @@ class IntentAPI(StoreUpdatingAPI):
             return
         if not await self.state_store.has_power_levels_cached(room_id):
             # TODO add option to not try to fetch power levels from server
-            await self.get_power_levels(room_id, ignore_cache=True)
+            await self.get_power_levels(room_id, ignore_cache=True, ensure_joined=False)
         if not await self.state_store.has_power_level(room_id, self.mxid, event_type):
             # TODO implement something better
             raise IntentError(

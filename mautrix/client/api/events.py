@@ -333,6 +333,7 @@ class EventMethods(BaseClientAPI):
         event_type: EventType,
         content: StateEventContent,
         state_key: str = "",
+        ensure_joined: bool = True,
         **kwargs,
     ) -> EventID:
         """
@@ -346,6 +347,8 @@ class EventMethods(BaseClientAPI):
             event_type: The type of state to send.
             content: The content to send.
             state_key: The key for the state to send. Defaults to empty string.
+            ensure_joined: Used by IntentAPI to determine if it should ensure the user is joined
+                before sending the event.
             **kwargs: Optional parameters to pass to the :meth:`HTTPAPI.request` method. Used by
                 :class:`IntentAPI` to pass the timestamp massaging field to
                 :meth:`AppServiceAPI.request`.
