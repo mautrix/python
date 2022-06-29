@@ -263,7 +263,7 @@ class EventMethods(BaseClientAPI):
         self,
         room_id: RoomID,
         direction: PaginationDirection,
-        from_token: SyncToken,
+        from_token: SyncToken | None = None,
         to_token: SyncToken | None = None,
         limit: int | None = None,
         filter_json: str | dict | RoomEventFilter | None = None,
@@ -272,7 +272,7 @@ class EventMethods(BaseClientAPI):
         Get a list of message and state events for a room. Pagination parameters are used to
         paginate history in the room.
 
-        See also: `API reference <https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3roomsroomidmessages>`__
+        See also: `API reference <https://spec.matrix.org/v1.3/client-server-api/#get_matrixclientv3roomsroomidmessages>`__
 
         Args:
             room_id: The ID of the room to get events from.
@@ -280,6 +280,9 @@ class EventMethods(BaseClientAPI):
             from_token: The token to start returning events from. This token can be obtained from a
                 ``prev_batch`` token returned for each room by the `sync endpoint`_, or from a
                 ``start`` or ``end`` token returned by a previous request to this endpoint.
+
+                Starting from Matrix v1.3, this field can be omitted to fetch events from the
+                beginning or end of the room.
             to_token: The token to stop returning events at.
             limit: The maximum number of events to return. Defaults to 10.
             filter_json: A JSON RoomEventFilter_ to filter returned events with.
@@ -287,9 +290,9 @@ class EventMethods(BaseClientAPI):
         Returns:
 
         .. _RoomEventFilter:
-            https://spec.matrix.org/v1.1/client-server-api/#filtering
+            https://spec.matrix.org/v1.3/client-server-api/#filtering
         .. _sync endpoint:
-            https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3sync
+            https://spec.matrix.org/v1.3/client-server-api/#get_matrixclientv3sync
         """
         if isinstance(filter_json, Serializable):
             filter_json = filter_json.json()
