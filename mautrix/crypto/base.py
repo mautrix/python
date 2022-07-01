@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Dict, TypedDict
+from typing import Any, Awaitable, Callable, TypedDict
 import asyncio
 import functools
 import json
@@ -16,10 +16,12 @@ from mautrix.types import (
     DeviceID,
     EncryptionKeyAlgorithm,
     IdentityKey,
+    KeyID,
     RequestedKeyInfo,
     RoomID,
     SessionID,
     SigningKey,
+    TrustState,
     UserID,
 )
 from mautrix.util.logging import TraceLogger
@@ -28,7 +30,7 @@ from .. import client as cli, crypto
 
 
 class SignedObject(TypedDict):
-    signatures: Dict[UserID, Dict[str, str]]
+    signatures: dict[UserID, dict[str, str]]
     unsigned: Any
 
 
@@ -45,11 +47,13 @@ class BaseOlmMachine:
     allow_key_share: Callable[[crypto.DeviceIdentity, RequestedKeyInfo], Awaitable[bool]]
 
     # Futures that wait for responses to a key request
-    _key_request_waiters: Dict[SessionID, asyncio.Future]
+    _key_request_waiters: dict[SessionID, asyncio.Future]
     # Futures that wait for a session to be received (either normally or through a key request)
-    _inbound_session_waiters: Dict[SessionID, asyncio.Future]
+    _inbound_session_waiters: dict[SessionID, asyncio.Future]
 
-    _prev_unwedge: Dict[IdentityKey, float]
+    _prev_unwedge: dict[IdentityKey, float]
+    _fetch_keys_lock: asyncio.Lock
+    _cs_fetch_attempted: set[UserID]
 
     async def wait_for_session(
         self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID, timeout: float = 3
@@ -77,12 +81,13 @@ canonical_json = functools.partial(
 
 
 def verify_signature_json(
-    data: "SignedObject", user_id: UserID, device_id: DeviceID, key: SigningKey
+    data: "SignedObject", user_id: UserID, key_name: DeviceID | str, key: SigningKey
 ) -> bool:
     data_copy = {**data}
     data_copy.pop("unsigned", None)
     signatures = data_copy.pop("signatures")
-    signature = signatures[user_id][f"{EncryptionKeyAlgorithm.ED25519}:{device_id}"]
+    key_id = str(KeyID(EncryptionKeyAlgorithm.ED25519, key_name))
+    signature = signatures[user_id][key_id]
     signed_data = canonical_json(data_copy)
     try:
         olm.ed25519_verify(key, signed_data, signature)

@@ -19,6 +19,7 @@ from mautrix.types import (
     Membership,
     StateEvent,
     ToDeviceEvent,
+    TrustState,
 )
 from mautrix.util.logging import TraceLogger
 
@@ -50,11 +51,7 @@ class OlmMachine(
     crypto_store: CryptoStore
     state_store: StateStore
 
-    _fetch_keys_lock: asyncio.Lock
-
     account: Optional[OlmAccount]
-
-    allow_unverified_devices: bool
 
     def __init__(
         self,
@@ -78,6 +75,7 @@ class OlmMachine(
         self._key_request_waiters = {}
         self._inbound_session_waiters = {}
         self._prev_unwedge = {}
+        self._cs_fetch_attempted = set()
 
         self.client.add_event_handler(
             cli.InternalEventType.DEVICE_OTK_COUNT, self.handle_otk_count, wait_sync=True

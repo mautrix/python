@@ -53,3 +53,5 @@ SigningKey = NewType("SigningKey", str)
 SigningKey.__doc__ = "A ed25519 public key as unpadded base64"
 IdentityKey = NewType("IdentityKey", str)
 IdentityKey.__doc__ = "A curve25519 public key as unpadded base64"
+Signature = NewType("Signature", str)
+Signature.__doc__ = "An ed25519 signature as unpadded base64"

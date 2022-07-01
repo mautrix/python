@@ -7,10 +7,15 @@ from typing import Dict, List, Optional
 
 from mautrix.errors import DeviceValidationError
 from mautrix.types import (
+    CrossSigner,
+    CrossSigningUsage,
     DeviceID,
     DeviceIdentity,
     DeviceKeys,
+    EncryptionKeyAlgorithm,
     IdentityKey,
+    KeyID,
+    SigningKey,
     SyncToken,
     TrustState,
     UserID,
@@ -30,13 +35,13 @@ class DeviceListMachine(BaseOlmMachine):
         users = set(users)
 
         self.log.trace(f"Querying keys for {users}")
-        keys = await self.client.query_keys(users, token=since)
+        resp = await self.client.query_keys(users, token=since)
 
-        for server, err in keys.failures.items():
+        for server, err in resp.failures.items():
             self.log.warning(f"Query keys failure for {server}: {err}")
 
         data = {}
-        for user_id, devices in keys.device_keys.items():
+        for user_id, devices in resp.device_keys.items():
             users.remove(user_id)
 
             new_devices = {}
@@ -47,20 +52,26 @@ class DeviceListMachine(BaseOlmMachine):
                 f"have {len(existing_devices)} in store"
             )
             changed = False
-            for device_id, keys in devices.items():
+            ssk = resp.self_signing_keys.get(user_id)
+            for device_id, device_keys in devices.items():
                 try:
                     existing = existing_devices[device_id]
                 except KeyError:
                     existing = None
                     changed = True
-                self.log.trace(f"Validating device {keys} of {user_id}")
+                self.log.trace(f"Validating device {device_keys} of {user_id}")
                 try:
-                    new_device = await self._validate_device(user_id, device_id, keys, existing)
+                    new_device = await self._validate_device(
+                        user_id, device_id, device_keys, existing
+                    )
                 except DeviceValidationError as e:
                     self.log.warning(f"Failed to validate device {device_id} of {user_id}: {e}")
                 else:
                     if new_device:
                         new_devices[device_id] = new_device
+                        await self._store_device_self_signatures(
+                            device_keys, ssk.first_key if ssk else None
+                        )
             self.log.debug(
                 f"Storing new device list for {user_id} containing {len(new_devices)} devices"
             )
@@ -74,6 +85,50 @@ class DeviceListMachine(BaseOlmMachine):
             self.log.warning(f"Didn't get any keys for user {user_id}")
 
         return data
+
+    async def _store_device_self_signatures(
+        self, device_keys: DeviceKeys, self_signing_key: SigningKey | None
+    ) -> None:
+        device_desc = f"Device {device_keys.user_id}/{device_keys.device_id}"
+        try:
+            self_signatures = device_keys.signatures[device_keys.user_id].copy()
+        except KeyError:
+            self.log.warning(f"{device_desc} doesn't have any signatures from the user")
+            return
+        if len(device_keys.signatures) > 1:
+            self.log.warning(
+                f"{device_desc} has signatures from other users (%s)",
+                set(device_keys.signatures.keys()) - {device_keys.user_id},
+            )
+
+        device_self_sig = self_signatures.pop(
+            KeyID(EncryptionKeyAlgorithm.ED25519, device_keys.device_id)
+        )
+        target = CrossSigner(device_keys.user_id, device_keys.ed25519)
+        # This one is already validated by _validate_device
+        await self.crypto_store.put_signature(target, target, device_self_sig)
+
+        try:
+            cs_self_sig = self_signatures.pop(
+                KeyID(EncryptionKeyAlgorithm.ED25519, self_signing_key)
+            )
+        except KeyError:
+            self.log.warning(f"{device_desc} isn't cross-signed")
+        else:
+            is_valid_self_sig = verify_signature_json(
+                device_keys.serialize(), device_keys.user_id, self_signing_key, self_signing_key
+            )
+            if is_valid_self_sig:
+                signer = CrossSigner(device_keys.user_id, self_signing_key)
+                await self.crypto_store.put_signature(target, signer, cs_self_sig)
+            else:
+                self.log.warning(f"{device_desc} doesn't have a valid cross-signing signature")
+
+        if len(self_signatures) > 0:
+            self.log.warning(
+                f"{device_desc} has signatures from unexpected keys (%s)",
+                set(self_signatures.keys()),
+            )
 
     async def get_or_fetch_device(
         self, user_id: UserID, device_id: DeviceID
@@ -142,3 +197,44 @@ class DeviceListMachine(BaseOlmMachine):
             name=name,
             deleted=False,
         )
+
+    async def resolve_trust(self, device: DeviceIdentity) -> TrustState:
+        if device.trust in (TrustState.VERIFIED, TrustState.BLACKLISTED):
+            return device.trust
+        their_keys = await self.crypto_store.get_cross_signing_keys(device.user_id)
+        if len(their_keys) == 0 and device.user_id not in self._cs_fetch_attempted:
+            self.log.debug(f"Didn't find any cross-signing keys for {device.user_id}, fetching...")
+            async with self._fetch_keys_lock:
+                if device.user_id not in self._cs_fetch_attempted:
+                    self._cs_fetch_attempted.add(device.user_id)
+                    await self._fetch_keys([device.user_id])
+        try:
+            msk = their_keys[CrossSigningUsage.MASTER]
+            ssk = their_keys[CrossSigningUsage.SELF]
+        except KeyError as e:
+            self.log.error(f"Didn't find cross-signing key {e.args[0]} of {device.user_id}")
+            return TrustState.UNSET
+        ssk_signed = await self.crypto_store.is_key_signed_by(
+            target=CrossSigner(device.user_id, ssk.key),
+            signer=CrossSigner(device.user_id, msk.key),
+        )
+        if not ssk_signed:
+            self.log.warning(
+                f"Self-signing key of {device.user_id} is not signed by their master key"
+            )
+            return TrustState.UNSET
+        device_signed = await self.crypto_store.is_key_signed_by(
+            target=CrossSigner(device.user_id, device.signing_key),
+            signer=CrossSigner(device.user_id, ssk.key),
+        )
+        if device_signed:
+            if await self.is_user_trusted(device.user_id):
+                return TrustState.CROSS_SIGNED_TRUSTED
+            elif msk.key == msk.first:
+                return TrustState.CROSS_SIGNED_TOFU
+            return TrustState.CROSS_SIGNED_UNTRUSTED
+        return TrustState.UNSET
+
+    async def is_user_trusted(self, user_id: UserID) -> bool:
+        # TODO implement once own cross-signing key stuff is ready
+        return False

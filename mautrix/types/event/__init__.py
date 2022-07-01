@@ -19,6 +19,7 @@ from .encrypted import (
     EncryptedOlmEventContent,
     EncryptionAlgorithm,
     EncryptionKeyAlgorithm,
+    KeyID,
     OlmCiphertext,
     OlmMsgType,
 )

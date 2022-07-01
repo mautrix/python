@@ -26,6 +26,24 @@ class EncryptionKeyAlgorithm(ExtensibleEnum):
     SIGNED_CURVE25519: "EncryptionKeyAlgorithm" = "signed_curve25519"
 
 
+@dataclass(frozen=True)
+class KeyID(Serializable):
+    algorithm: EncryptionKeyAlgorithm
+    key_id: str
+
+    def serialize(self) -> JSON:
+        return str(self)
+
+    @classmethod
+    def deserialize(cls, raw: JSON) -> "KeyID":
+        assert isinstance(raw, str), "key IDs must be strings"
+        alg, key_id = raw.split(":", 1)
+        return cls(EncryptionKeyAlgorithm(alg), key_id)
+
+    def __str__(self) -> str:
+        return f"{self.algorithm.value}:{self.key_id}"
+
+
 class OlmMsgType(Serializable, IntEnum):
     PREKEY = 0
     MESSAGE = 1

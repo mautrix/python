@@ -8,8 +8,8 @@ from enum import IntEnum
 
 from attr import dataclass
 
-from .event import EncryptionAlgorithm, EncryptionKeyAlgorithm, ToDeviceEvent
-from .primitive import DeviceID, IdentityKey, SigningKey, UserID
+from .event import EncryptionAlgorithm, EncryptionKeyAlgorithm, KeyID, ToDeviceEvent
+from .primitive import DeviceID, IdentityKey, Signature, SigningKey, UserID
 from .util import ExtensibleEnum, SerializableAttrs, field
 
 
@@ -23,8 +23,8 @@ class DeviceKeys(SerializableAttrs):
     user_id: UserID
     device_id: DeviceID
     algorithms: List[EncryptionAlgorithm]
-    keys: Dict[str, str]
-    signatures: Dict[UserID, Dict[str, str]]
+    keys: Dict[KeyID, str]
+    signatures: Dict[UserID, Dict[KeyID, Signature]]
     unsigned: UnsignedDeviceInfo = None
 
     def __attrs_post_init__(self) -> None:
@@ -34,15 +34,36 @@ class DeviceKeys(SerializableAttrs):
     @property
     def ed25519(self) -> Optional[SigningKey]:
         try:
-            return SigningKey(self.keys[f"{EncryptionKeyAlgorithm.ED25519}:{self.device_id}"])
+            return SigningKey(self.keys[KeyID(EncryptionKeyAlgorithm.ED25519, self.device_id)])
         except KeyError:
             return None
 
     @property
     def curve25519(self) -> Optional[IdentityKey]:
         try:
-            return IdentityKey(self.keys[f"{EncryptionKeyAlgorithm.CURVE25519}:{self.device_id}"])
+            return IdentityKey(self.keys[KeyID(EncryptionKeyAlgorithm.CURVE25519, self.device_id)])
         except KeyError:
+            return None
+
+
+class CrossSigningUsage(ExtensibleEnum):
+    MASTER = "master"
+    SELF = "self_signing"
+    USER = "user_signing"
+
+
+@dataclass
+class CrossSigningKeys(SerializableAttrs):
+    user_id: UserID
+    usage: List[CrossSigningUsage]
+    keys: Dict[str, SigningKey]
+    signatures: Dict[UserID, Dict[KeyID, Signature]] = field(factory=lambda: {})
+
+    @property
+    def first_key(self) -> Optional[SigningKey]:
+        try:
+            return next(iter(self.keys.values()))
+        except StopIteration:
             return None
 
 
@@ -50,19 +71,26 @@ class DeviceKeys(SerializableAttrs):
 class QueryKeysResponse(SerializableAttrs):
     failures: Dict[str, Any]
     device_keys: Dict[UserID, Dict[DeviceID, DeviceKeys]]
+    master_keys: Dict[UserID, CrossSigningKeys]
+    self_signing_keys: Dict[UserID, CrossSigningKeys]
+    user_signing_keys: Dict[UserID, CrossSigningKeys]
 
 
 @dataclass
 class ClaimKeysResponse(SerializableAttrs):
     failures: Dict[str, Any]
-    one_time_keys: Dict[UserID, Dict[DeviceID, Dict[str, Any]]]
+    one_time_keys: Dict[UserID, Dict[DeviceID, Dict[KeyID, Any]]]
 
 
 class TrustState(IntEnum):
+    BLACKLISTED = -100
     UNSET = 0
-    VERIFIED = 1
-    BLACKLISTED = 2
-    IGNORED = 3
+    UNKNOWN_DEVICE = 10
+    FORWARDED = 20
+    CROSS_SIGNED_UNTRUSTED = 50
+    CROSS_SIGNED_TOFU = 100
+    CROSS_SIGNED_TRUSTED = 200
+    VERIFIED = 300
 
 
 @dataclass
@@ -89,12 +117,6 @@ class DecryptedOlmEvent(ToDeviceEvent, SerializableAttrs):
     recipient_keys: OlmEventKeys
     sender_device: Optional[DeviceID] = None
     sender_key: IdentityKey = field(hidden=True, default=None)
-
-
-class CrossSigningUsage(ExtensibleEnum):
-    MASTER = "master"
-    SELF = "self_signing"
-    USER = "user_signing"
 
 
 class TOFUSigningKey(NamedTuple):

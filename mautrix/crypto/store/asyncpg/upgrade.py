@@ -243,3 +243,10 @@ async def upgrade_v5(conn: Connection) -> None:
             PRIMARY KEY (signed_user_id, signed_key, signer_user_id, signer_key)
         )"""
     )
+
+
+@upgrade_table.register(description="Update trust state values")
+async def upgrade_v6(conn: Connection) -> None:
+    await conn.execute("UPDATE crypto_device SET trust=300 WHERE trust=1")  # verified
+    await conn.execute("UPDATE crypto_device SET trust=-100 WHERE trust=2")  # blacklisted
+    await conn.execute("UPDATE crypto_device SET trust=0 WHERE trust=3")  # ignored -> unset
