@@ -3,14 +3,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, NamedTuple, Optional
 from enum import IntEnum
 
 from attr import dataclass
 
 from .event import EncryptionAlgorithm, EncryptionKeyAlgorithm, ToDeviceEvent
 from .primitive import DeviceID, IdentityKey, SigningKey, UserID
-from .util import SerializableAttrs, field
+from .util import ExtensibleEnum, SerializableAttrs, field
 
 
 @dataclass
@@ -89,3 +89,31 @@ class DecryptedOlmEvent(ToDeviceEvent, SerializableAttrs):
     recipient_keys: OlmEventKeys
     sender_device: Optional[DeviceID] = None
     sender_key: IdentityKey = field(hidden=True, default=None)
+
+
+class CrossSigningUsage(ExtensibleEnum):
+    MASTER = "master"
+    SELF = "self_signing"
+    USER = "user_signing"
+
+
+class TOFUSigningKey(NamedTuple):
+    """
+    A tuple representing a single cross-signing key. The first value is the current key, and the
+    second value is the first seen key. If the values don't match, it means the key is not valid
+    for trust-on-first-use.
+    """
+
+    key: SigningKey
+    first: SigningKey
+
+
+class CrossSigner(NamedTuple):
+    """
+    A tuple containing a user ID and a signing key they own.
+
+    The key can either be a device-owned signing key, or one of the user's cross-signing keys.
+    """
+
+    user_id: UserID
+    key: SigningKey

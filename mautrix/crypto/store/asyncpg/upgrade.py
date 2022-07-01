@@ -16,7 +16,7 @@ upgrade_table = UpgradeTable(
 )
 
 
-@upgrade_table.register(description="Latest revision", upgrades_to=4)
+@upgrade_table.register(description="Latest revision", upgrades_to=5)
 async def upgrade_blank_to_v4(conn: Connection) -> None:
     await conn.execute(
         """CREATE TABLE IF NOT EXISTS crypto_account (
@@ -91,6 +91,25 @@ async def upgrade_blank_to_v4(conn: Connection) -> None:
             created_at    timestamp NOT NULL,
             last_used     timestamp NOT NULL,
             PRIMARY KEY (account_id, room_id)
+        )"""
+    )
+    await conn.execute(
+        """CREATE TABLE crypto_cross_signing_keys (
+            user_id TEXT,
+            usage   TEXT,
+            key     CHAR(43),
+            first_seen_key CHAR(43),
+            PRIMARY KEY (user_id, usage)
+        )"""
+    )
+    await conn.execute(
+        """CREATE TABLE crypto_cross_signing_signatures (
+            signed_user_id TEXT,
+            signed_key     TEXT,
+            signer_user_id TEXT,
+            signer_key     TEXT,
+            signature      TEXT,
+            PRIMARY KEY (signed_user_id, signed_key, signer_user_id, signer_key)
         )"""
     )
 
@@ -201,3 +220,26 @@ async def upgrade_v4(conn: Connection, scheme: Scheme) -> None:
         await conn.execute(
             "ALTER TABLE crypto_olm_session ALTER COLUMN last_encrypted SET NOT NULL"
         )
+
+
+@upgrade_table.register(description="Add cross-signing key and signature caches")
+async def upgrade_v5(conn: Connection) -> None:
+    await conn.execute(
+        """CREATE TABLE crypto_cross_signing_keys (
+            user_id TEXT,
+            usage   TEXT,
+            key     CHAR(43),
+            first_seen_key CHAR(43),
+            PRIMARY KEY (user_id, usage)
+        )"""
+    )
+    await conn.execute(
+        """CREATE TABLE crypto_cross_signing_signatures (
+            signed_user_id TEXT,
+            signed_key     TEXT,
+            signer_user_id TEXT,
+            signer_key     TEXT,
+            signature      TEXT,
+            PRIMARY KEY (signed_user_id, signed_key, signer_user_id, signer_key)
+        )"""
+    )

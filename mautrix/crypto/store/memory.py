@@ -7,13 +7,17 @@ from __future__ import annotations
 
 from mautrix.client.state_store import SyncStore
 from mautrix.types import (
+    CrossSigner,
+    CrossSigningUsage,
     DeviceID,
     DeviceIdentity,
     EventID,
     IdentityKey,
     RoomID,
     SessionID,
+    SigningKey,
     SyncToken,
+    TOFUSigningKey,
     UserID,
 )
 
@@ -31,6 +35,8 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
     _olm_sessions: dict[IdentityKey, list[Session]]
     _inbound_sessions: dict[tuple[RoomID, IdentityKey, SessionID], InboundGroupSession]
     _outbound_sessions: dict[RoomID, OutboundGroupSession]
+    _signatures: dict[CrossSigner, dict[CrossSigner, str]]
+    _cross_signing_keys: dict[UserID, dict[CrossSigningUsage, TOFUSigningKey]]
 
     def __init__(self, account_id: str, pickle_key: str) -> None:
         self.account_id = account_id
@@ -44,6 +50,8 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
         self._olm_sessions = {}
         self._inbound_sessions = {}
         self._outbound_sessions = {}
+        self._signatures = {}
+        self._cross_signing_keys = {}
 
     async def get_device_id(self) -> DeviceID | None:
         return self._device_id
@@ -157,3 +165,32 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
 
     async def filter_tracked_users(self, users: list[UserID]) -> list[UserID]:
         return [user_id for user_id in users if user_id in self._devices]
+
+    async def put_cross_signing_key(
+        self, user_id: UserID, usage: CrossSigningUsage, key: SigningKey
+    ) -> None:
+        try:
+            current = self._cross_signing_keys[user_id][usage]
+        except KeyError:
+            self._cross_signing_keys.setdefault(user_id, {})[usage] = TOFUSigningKey(
+                key=key, first=key
+            )
+        else:
+            current.key = key
+
+    async def get_cross_signing_keys(
+        self, user_id: UserID
+    ) -> dict[CrossSigningUsage, TOFUSigningKey]:
+        return self._cross_signing_keys.get(user_id, {})
+
+    async def put_signature(
+        self, target: CrossSigner, signer: CrossSigner, signature: str
+    ) -> None:
+        self._signatures.setdefault(signer, {})[target] = signature
+
+    async def is_key_signed_by(self, target: CrossSigner, signer: CrossSigner) -> bool:
+        return target in self._signatures.get(signer, {})
+
+    async def drop_signatures_by_key(self, signer: CrossSigner) -> int:
+        deleted = self._signatures.pop(signer, None)
+        return len(deleted)

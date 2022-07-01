@@ -5,9 +5,12 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
+from typing import NamedTuple
 from abc import ABC, abstractmethod
 
 from mautrix.types import (
+    CrossSigner,
+    CrossSigningUsage,
     DeviceID,
     DeviceIdentity,
     EventID,
@@ -15,6 +18,8 @@ from mautrix.types import (
     RoomEncryptionStateEventContent,
     RoomID,
     SessionID,
+    SigningKey,
+    TOFUSigningKey,
     UserID,
 )
 
@@ -363,4 +368,70 @@ class CryptoStore(ABC):
         Returns:
             A filtered version of the input list that only includes users who have had a previous
             call to :meth:`put_devices` (even if the call was with an empty dict).
+        """
+
+    @abstractmethod
+    async def put_cross_signing_key(
+        self, user_id: UserID, usage: CrossSigningUsage, key: SigningKey
+    ) -> None:
+        """
+        Store a single cross-signing key.
+
+        Args:
+            user_id: The user whose cross-signing key is being stored.
+            usage: The type of key being stored.
+            key: The key itself.
+        """
+
+    @abstractmethod
+    async def get_cross_signing_keys(
+        self, user_id: UserID
+    ) -> dict[CrossSigningUsage, TOFUSigningKey]:
+        """
+        Retrieve stored cross-signing keys for a specific user.
+
+        Args:
+            user_id: The user whose cross-signing keys to get.
+
+        Returns:
+            A map from the type of key to a tuple containing the current key and the key that was
+            seen first. If the keys are different, it should be treated as a local TOFU violation.
+        """
+
+    @abstractmethod
+    async def put_signature(
+        self, target: CrossSigner, signer: CrossSigner, signature: str
+    ) -> None:
+        """
+        Store a signature for a given key from a given key.
+
+        Args:
+            target: The user ID and key being signed.
+            signer: The user ID and key who are doing the signing.
+            signature: The signature.
+        """
+
+    @abstractmethod
+    async def is_key_signed_by(self, target: CrossSigner, signer: CrossSigner) -> bool:
+        """
+        Check if a given key is signed by the given signer.
+
+        Args:
+            target: The key to check.
+            signer: The signer who is expected to have signed the key.
+
+        Returns:
+            ``True`` if the database contains a signature for the key, ``False`` otherwise.
+        """
+
+    @abstractmethod
+    async def drop_signatures_by_key(self, signer: CrossSigner) -> int:
+        """
+        Delete signatures made by the given key.
+
+        Args:
+            signer: The key whose signatures to delete.
+
+        Returns:
+            The number of signatures deleted.
         """

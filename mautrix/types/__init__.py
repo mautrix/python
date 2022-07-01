@@ -16,11 +16,14 @@ from .auth import (
 )
 from .crypto import (
     ClaimKeysResponse,
+    CrossSigner,
+    CrossSigningUsage,
     DecryptedOlmEvent,
     DeviceIdentity,
     DeviceKeys,
     OlmEventKeys,
     QueryKeysResponse,
+    TOFUSigningKey,
     TrustState,
     UnsignedDeviceInfo,
 )

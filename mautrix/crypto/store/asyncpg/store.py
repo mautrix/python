@@ -11,13 +11,17 @@ from datetime import timedelta
 from mautrix.client.state_store import SyncStore
 from mautrix.client.state_store.asyncpg import PgStateStore
 from mautrix.types import (
+    CrossSigner,
+    CrossSigningUsage,
     DeviceID,
     DeviceIdentity,
     EventID,
     IdentityKey,
     RoomID,
     SessionID,
+    SigningKey,
     SyncToken,
+    TOFUSigningKey,
     TrustState,
     UserID,
 )
@@ -27,6 +31,11 @@ from mautrix.util.logging import TraceLogger
 from ... import InboundGroupSession, OlmAccount, OutboundGroupSession, Session
 from ..abstract import CryptoStore, StateStore
 from .upgrade import upgrade_table
+
+try:
+    from aiosqlite import Cursor
+except ImportError:
+    Cursor = None
 
 
 class PgCryptoStateStore(PgStateStore, StateStore):
@@ -522,3 +531,64 @@ class PgCryptoStore(CryptoStore, SyncStore):
                 f"SELECT user_id FROM crypto_tracked_user WHERE user_id IN ({params})", *users
             )
         return [row["user_id"] for row in rows]
+
+    async def put_cross_signing_key(
+        self, user_id: UserID, usage: CrossSigningUsage, key: SigningKey
+    ) -> None:
+        q = """
+        INSERT INTO crypto_cross_signing_keys (user_id, usage, key, first_seen_key)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (user_id, usage) DO UPDATE SET key=excluded.key
+        """
+        await self.db.execute(q, user_id, usage.value, key, key)
+
+    async def get_cross_signing_keys(
+        self, user_id: UserID
+    ) -> dict[CrossSigningUsage, TOFUSigningKey]:
+        q = "SELECT usage, key, first_seen_key FROM crypto_cross_signing_keys WHERE user_id=$1"
+        return {
+            CrossSigningUsage(row["usage"]): TOFUSigningKey(
+                key=SigningKey(row["key"]),
+                first=SigningKey(row["first_seen_key"]),
+            )
+            for row in await self.db.fetch(q, user_id)
+        }
+
+    async def put_signature(
+        self, target: CrossSigner, signer: CrossSigner, signature: str
+    ) -> None:
+        q = """
+        INSERT INTO crypto_cross_signing_signatures (
+            signed_user_id, signed_key, signer_user_id, signer_key, signature
+        ) VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (signed_user_id, signed_key, signer_user_id, signer_key)
+            DO UPDATE SET signature=excluded.signature
+        """
+        signed_user_id, signed_key = target
+        signer_user_id, signer_key = signer
+        await self.db.execute(q, signed_user_id, signed_key, signer_user_id, signer_key, signature)
+
+    async def is_key_signed_by(self, target: CrossSigner, signer: CrossSigner) -> bool:
+        q = """
+        SELECT EXISTS(
+            SELECT 1 FROM crypto_cross_signing_signatures
+            WHERE signed_user_id=$1 AND signed_key=$2 AND signer_user_id=$3 AND signer_key=$4
+        )
+        """
+        signed_user_id, signed_key = target
+        signer_user_id, signer_key = signer
+        return await self.db.fetchval(q, signed_user_id, signed_key, signer_user_id, signer_key)
+
+    async def drop_signatures_by_key(self, signer: CrossSigner) -> int:
+        signer_user_id, signer_key = signer
+        q = "DELETE FROM crypto_cross_signing_signatures WHERE signer_user_id=$1 AND signer_key=$2"
+        res = await self.db.execute(q, signer_user_id, signer_key)
+        if Cursor is not None and isinstance(res, Cursor):
+            return res.rowcount
+        elif (
+            isinstance(res, str)
+            and res.startswith("DELETE ")
+            and (intPart := res[len("DELETE ") :]).isdecimal()
+        ):
+            return int(intPart)
+        return -1
