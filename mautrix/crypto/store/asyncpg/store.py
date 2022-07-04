@@ -358,10 +358,10 @@ class PgCryptoStore(CryptoStore, SyncStore):
             await self.db.execute(q, self.account_id, *rooms)
 
     _validate_message_index_query = """
-    INSERT INTO crypto_message_index (sender_key, session_id, index, event_id, timestamp)
+    INSERT INTO crypto_message_index (sender_key, session_id, "index", event_id, timestamp)
     VALUES ($1, $2, $3, $4, $5)
     -- have to update something so that RETURNING * always returns the row
-    ON CONFLICT (sender_key, session_id, index) DO UPDATE SET sender_key=excluded.sender_key
+    ON CONFLICT (sender_key, session_id, "index") DO UPDATE SET sender_key=excluded.sender_key
     RETURNING *
     """
 
