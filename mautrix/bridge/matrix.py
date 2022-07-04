@@ -163,8 +163,8 @@ class BaseMatrixHandler:
     async def check_versions(self) -> None:
         if not self.versions.supports_at_least(self.minimum_spec_version):
             self.log.fatal(
-                "Server isn't advertising modern spec versions "
-                "(latest supported by server: %s, minimum required by bridge: %s)",
+                "The homeserver is outdated "
+                "(server supports Matrix %s, but the bridge requires at least %s)",
                 self.versions.latest_version,
                 self.minimum_spec_version,
             )
