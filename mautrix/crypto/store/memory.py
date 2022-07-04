@@ -188,11 +188,6 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
     ) -> None:
         self._signatures.setdefault(signer, {})[target] = signature
 
-    async def get_signatures_for_key_by(
-        self, target: CrossSigner, signer: UserID
-    ) -> dict[SigningKey, str]:
-        raise NotImplementedError()
-
     async def is_key_signed_by(self, target: CrossSigner, signer: CrossSigner) -> bool:
         return target in self._signatures.get(signer, {})
 

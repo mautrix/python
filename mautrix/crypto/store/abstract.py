@@ -412,21 +412,6 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
-    async def get_signatures_for_key_by(
-        self, target: CrossSigner, signer: UserID
-    ) -> dict[SigningKey, str]:
-        """
-        Get all signatures from a given user for a given key.
-
-        Args:
-            target: The key that is signed.
-            signer: The user whose signatures for the key to get.
-
-        Returns:
-            A map of the signing key (owned by the signer) to signature.
-        """
-
-    @abstractmethod
     async def is_key_signed_by(self, target: CrossSigner, signer: CrossSigner) -> bool:
         """
         Check if a given key is signed by the given signer.

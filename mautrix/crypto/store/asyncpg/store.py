@@ -580,19 +580,6 @@ class PgCryptoStore(CryptoStore, SyncStore):
                 f"for {signed_user_id}/{signed_key}"
             )
 
-    async def get_signatures_for_key_by(
-        self, target: CrossSigner, signer: UserID
-    ) -> dict[SigningKey, str]:
-        q = """
-        SELECT signer_key, signature FROM crypto_cross_signing_signatures
-        WHERE signed_user_id=$1 AND signed_key=$2 AND signer_user_id=$3
-        """
-        signed_user_id, signed_key = target
-        return {
-            SigningKey(row["signer_key"]): row["signature"]
-            for row in await self.db.fetch(q, signed_user_id, signed_key, signer)
-        }
-
     async def is_key_signed_by(self, target: CrossSigner, signer: CrossSigner) -> bool:
         q = """
         SELECT EXISTS(
