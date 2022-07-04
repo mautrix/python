@@ -46,7 +46,7 @@ class DuplicateMessageIndex(DecryptionError):
 
 class VerificationError(DecryptionError):
     def __init__(self) -> None:
-        super().__init__("Device keys in event and verified device info do not match")
+        super().__init__("Device keys in session and cached device info do not match")
 
 
 class DecryptedPayloadError(DecryptionError):

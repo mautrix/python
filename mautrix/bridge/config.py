@@ -104,9 +104,20 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
 
         copy("bridge.encryption.allow")
         copy("bridge.encryption.default")
-        copy("bridge.encryption.key_sharing.allow")
-        copy("bridge.encryption.key_sharing.require_cross_signing")
-        copy("bridge.encryption.key_sharing.require_verification")
+        copy("bridge.encryption.require")
+        copy("bridge.encryption.verification_levels.receive")
+        copy("bridge.encryption.verification_levels.send")
+        copy("bridge.encryption.verification_levels.share")
+        copy("bridge.encryption.allow_key_sharing")
+        if self.get("bridge.encryption.key_sharing_allow", False):
+            helper.base["bridge.encryption.allow_key_sharing"] = True
+            require_verif = self.get("bridge.encryption.key_sharing.require_verification", True)
+            require_cs = self.get("bridge.encryption.key_sharing.require_cross_signing", False)
+            if require_verif:
+                helper.base["bridge.encryption.verification_levels.share"] = "verified"
+            elif not require_cs:
+                helper.base["bridge.encryption.verification_levels.share"] = "unverified"
+            # else: default (cross-signed-tofu)
         copy("bridge.encryption.rotation.enable_custom")
         copy("bridge.encryption.rotation.milliseconds")
         copy("bridge.encryption.rotation.messages")

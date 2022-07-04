@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, ClassVar, Dict, List, NamedTuple, Optional
 from enum import IntEnum
 
 from attr import dataclass
@@ -56,13 +56,23 @@ class CrossSigningUsage(ExtensibleEnum):
 class CrossSigningKeys(SerializableAttrs):
     user_id: UserID
     usage: List[CrossSigningUsage]
-    keys: Dict[str, SigningKey]
+    keys: Dict[KeyID, SigningKey]
     signatures: Dict[UserID, Dict[KeyID, Signature]] = field(factory=lambda: {})
 
     @property
     def first_key(self) -> Optional[SigningKey]:
         try:
             return next(iter(self.keys.values()))
+        except StopIteration:
+            return None
+
+    @property
+    def first_ed25519_key(self) -> Optional[SigningKey]:
+        return self.first_key_with_algorithm(EncryptionKeyAlgorithm.ED25519)
+
+    def first_key_with_algorithm(self, alg: EncryptionKeyAlgorithm) -> Optional[SigningKey]:
+        try:
+            return next(key for key_id, key in self.keys.items() if key_id.algorithm == alg)
         except StopIteration:
             return None
 
@@ -84,13 +94,31 @@ class ClaimKeysResponse(SerializableAttrs):
 
 class TrustState(IntEnum):
     BLACKLISTED = -100
-    UNSET = 0
+    UNVERIFIED = 0
     UNKNOWN_DEVICE = 10
     FORWARDED = 20
     CROSS_SIGNED_UNTRUSTED = 50
     CROSS_SIGNED_TOFU = 100
     CROSS_SIGNED_TRUSTED = 200
     VERIFIED = 300
+
+    def __str__(self) -> str:
+        return _trust_state_to_name[self]
+
+    @classmethod
+    def parse(cls, val: str) -> "TrustState":
+        try:
+            return _name_to_trust_state[val]
+        except KeyError as e:
+            raise ValueError(f"Invalid trust state {val!r}") from e
+
+
+_trust_state_to_name: dict[TrustState, str] = {
+    val: val.name.lower().replace("_", "-") for val in TrustState
+}
+_name_to_trust_state: dict[str, TrustState] = {
+    value: key for key, value in _trust_state_to_name.items()
+}
 
 
 @dataclass

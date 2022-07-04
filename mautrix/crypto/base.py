@@ -42,8 +42,8 @@ class BaseOlmMachine:
 
     account: account.OlmAccount
 
-    allow_unverified_devices: bool
-    share_to_unverified_devices: bool
+    send_keys_min_trust: TrustState
+    share_keys_min_trust: TrustState
     allow_key_share: Callable[[crypto.DeviceIdentity, RequestedKeyInfo], Awaitable[bool]]
 
     # Futures that wait for responses to a key request

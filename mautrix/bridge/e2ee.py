@@ -58,6 +58,10 @@ class EncryptionManager:
     crypto_db: Database | None
     state_store: StateStore
 
+    min_send_trust: TrustState
+    min_share_trust: TrustState
+    min_receive_trust: TrustState
+
     bridge: br.Bridge
     az: AppService
     _id_prefix: str
@@ -102,6 +106,12 @@ class EncryptionManager:
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
         self.client.add_event_handler(InternalEventType.SYNC_STOPPED, self._exit_on_sync_fail)
         self.crypto.allow_key_share = self.allow_key_share
+        verification_levels = bridge.config["bridge.encryption.verification_levels"]
+        self.min_share_trust = TrustState.parse(verification_levels["share"])
+        self.min_send_trust = TrustState.parse(verification_levels["send"])
+        self.min_receive_trust = TrustState.parse(verification_levels["receive"])
+        self.crypto.share_keys_min_trust = self.min_share_trust
+        self.crypto.send_keys_min_trust = self.min_receive_trust
 
     async def _exit_on_sync_fail(self, data) -> None:
         if data["error"]:

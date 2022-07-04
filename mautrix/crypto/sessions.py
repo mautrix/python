@@ -97,7 +97,7 @@ class InboundGroupSession(olm.InboundGroupSession):
     room_id: RoomID
     signing_key: SigningKey
     sender_key: IdentityKey
-    forwarding_chain: List[str]
+    forwarding_chain: List[IdentityKey]
 
     def __init__(
         self,
@@ -105,7 +105,7 @@ class InboundGroupSession(olm.InboundGroupSession):
         signing_key: SigningKey,
         sender_key: IdentityKey,
         room_id: RoomID,
-        forwarding_chain: Optional[List[str]] = None,
+        forwarding_chain: Optional[List[IdentityKey]] = None,
     ) -> None:
         self.signing_key = signing_key
         self.sender_key = sender_key
@@ -124,7 +124,7 @@ class InboundGroupSession(olm.InboundGroupSession):
         signing_key: SigningKey,
         sender_key: IdentityKey,
         room_id: RoomID,
-        forwarding_chain: Optional[List[str]] = None,
+        forwarding_chain: Optional[List[IdentityKey]] = None,
     ) -> "InboundGroupSession":
         session = super().from_pickle(pickle, passphrase)
         session.signing_key = signing_key

@@ -67,8 +67,8 @@ class OlmMachine(
         self.state_store = state_store
         self.account = None
 
-        self.allow_unverified_devices = True
-        self.share_to_unverified_devices = False
+        self.send_keys_min_trust = TrustState.UNVERIFIED
+        self.share_keys_min_trust = TrustState.CROSS_SIGNED_TOFU
         self.allow_key_share = self.default_allow_key_share
 
         self._fetch_keys_lock = asyncio.Lock()

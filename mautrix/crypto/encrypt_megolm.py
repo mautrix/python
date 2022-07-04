@@ -315,7 +315,8 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
             session.users_ignored.add(key)
             return already_shared
 
-        if device.trust == TrustState.BLACKLISTED:
+        trust = await self.resolve_trust(device)
+        if trust == TrustState.BLACKLISTED:
             self.log.debug(
                 f"Not encrypting group session {session.id} for {device_id} "
                 f"of {user_id}: device is blacklisted"
@@ -329,10 +330,11 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
                 code=RoomKeyWithheldCode.BLACKLISTED,
                 reason="Device is blacklisted",
             )
-        elif not self.allow_unverified_devices and device.trust == TrustState.UNSET:
+        elif self.send_keys_min_trust > trust:
             self.log.debug(
                 f"Not encrypting group session {session.id} for {device_id} "
-                f"of {user_id}: device is not verified"
+                f"of {user_id}: device is not trusted "
+                f"(min: {self.send_keys_min_trust}, device: {trust})"
             )
             session.users_ignored.add(key)
             return RoomKeyWithheldEventContent(

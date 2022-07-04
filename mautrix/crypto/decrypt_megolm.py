@@ -23,10 +23,10 @@ from mautrix.types import (
     TrustState,
 )
 
-from .base import BaseOlmMachine
+from .device_lists import DeviceListMachine
 
 
-class MegolmDecryptionMachine(BaseOlmMachine):
+class MegolmDecryptionMachine(DeviceListMachine):
     async def decrypt_megolm_event(self, evt: EncryptedEvent) -> Event:
         """
         Decrypt an event that was encrypted using Megolm.
@@ -59,23 +59,47 @@ class MegolmDecryptionMachine(BaseOlmMachine):
         ):
             raise DuplicateMessageIndex()
 
-        verified = False
+        forwarded_keys = False
         if (
             evt.content.device_id == self.client.device_id
             and session.signing_key == self.account.signing_key
-            and evt.content.sender_key == self.account.identity_key
+            and session.sender_key == self.account.identity_key
+            and not session.forwarding_chain
         ):
-            verified = True
+            trust_level = TrustState.VERIFIED
         else:
-            device = await self.crypto_store.get_device(evt.sender, evt.content.device_id)
-            if device and device.trust == TrustState.VERIFIED and not session.forwarding_chain:
-                if (
+            device = await self.get_or_fetch_device_by_key(evt.sender, session.sender_key)
+            if not session.forwarding_chain or (
+                len(session.forwarding_chain) == 1
+                and session.forwarding_chain[0] == session.sender_key
+            ):
+                if not device:
+                    self.log.debug(
+                        f"Couldn't resolve trust level of session {session.id}: "
+                        f"sent by unknown device {evt.sender}/{session.sender_key}"
+                    )
+                    trust_level = TrustState.UNKNOWN_DEVICE
+                elif (
                     device.signing_key != session.signing_key
-                    or device.identity_key != evt.content.sender_key
+                    or device.identity_key != session.sender_key
                 ):
                     raise VerificationError()
-                verified = True
-            # else: TODO query device keys?
+                else:
+                    trust_level = await self.resolve_trust(device)
+            else:
+                forwarded_keys = True
+                last_chain_item = session.forwarding_chain[-1]
+                received_from = await self.crypto_store.find_device_by_key(
+                    evt.sender, last_chain_item
+                )
+                if received_from:
+                    trust_level = await self.resolve_trust(received_from)
+                else:
+                    self.log.debug(
+                        f"Couldn't resolve trust level of session {session.id}: "
+                        f"forwarding chain ends with unknown device {last_chain_item}"
+                    )
+                    trust_level = TrustState.FORWARDED
 
         try:
             data = json.loads(plaintext)
@@ -105,6 +129,8 @@ class MegolmDecryptionMachine(BaseOlmMachine):
         result.unsigned = evt.unsigned
         result.type = result.type.with_class(evt.type.t_class)
         result["mautrix"] = {
-            "verified": verified,
+            "trust_state": trust_level,
+            "forwarded_keys": forwarded_keys,
+            "was_encrypted": True,
         }
         return result
