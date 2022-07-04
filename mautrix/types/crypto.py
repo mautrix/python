@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, ClassVar, Dict, List, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple, Optional
 from enum import IntEnum
 
 from attr import dataclass
@@ -113,10 +113,10 @@ class TrustState(IntEnum):
             raise ValueError(f"Invalid trust state {val!r}") from e
 
 
-_trust_state_to_name: dict[TrustState, str] = {
+_trust_state_to_name: Dict[TrustState, str] = {
     val: val.name.lower().replace("_", "-") for val in TrustState
 }
-_name_to_trust_state: dict[str, TrustState] = {
+_name_to_trust_state: Dict[str, TrustState] = {
     value: key for key, value in _trust_state_to_name.items()
 }
 
