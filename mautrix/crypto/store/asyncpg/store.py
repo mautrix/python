@@ -247,16 +247,14 @@ class PgCryptoStore(CryptoStore, SyncStore):
         )
 
     async def get_group_session(
-        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
+        self, room_id: RoomID, session_id: SessionID
     ) -> InboundGroupSession | None:
-        row = await self.db.fetchrow(
-            "SELECT signing_key, session, forwarding_chains FROM crypto_megolm_inbound_session "
-            "WHERE room_id=$1 AND sender_key=$2 AND session_id=$3 AND account_id=$4",
-            room_id,
-            sender_key,
-            session_id,
-            self.account_id,
-        )
+        q = """
+        SELECT sender_key, signing_key, session, forwarding_chains
+        FROM crypto_megolm_inbound_session
+        WHERE room_id=$1 AND session_id=$2 AND account_id=$3
+        """
+        row = await self.db.fetchrow(q, room_id, session_id, self.account_id)
         if row is None:
             return None
         forwarding_chain = row["forwarding_chains"].split(",") if row["forwarding_chains"] else []
@@ -264,19 +262,16 @@ class PgCryptoStore(CryptoStore, SyncStore):
             row["session"],
             passphrase=self.pickle_key,
             signing_key=row["signing_key"],
-            sender_key=sender_key,
+            sender_key=row["sender_key"],
             room_id=room_id,
             forwarding_chain=forwarding_chain,
         )
 
-    async def has_group_session(
-        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
-    ) -> bool:
+    async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
         count = await self.db.fetchval(
             "SELECT COUNT(session) FROM crypto_megolm_inbound_session "
-            "WHERE room_id=$1 AND sender_key=$2 AND session_id=$3 AND account_id=$4",
+            "WHERE room_id=$1 AND session_id=$2 AND account_id=$3",
             room_id,
-            sender_key,
             session_id,
             self.account_id,
         )

@@ -794,7 +794,7 @@ class BaseMatrixHandler:
         )
         event_id = await self._send_crypto_status_error(evt, err, is_final=False, wait_for=wait)
         got_keys = await self.e2ee.crypto.wait_for_session(
-            evt.room_id, err.sender_key, err.session_id, timeout=wait
+            evt.room_id, err.session_id, timeout=wait
         )
         if got_keys:
             self.log.debug(

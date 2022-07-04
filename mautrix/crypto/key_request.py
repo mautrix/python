@@ -114,7 +114,7 @@ class KeyRequestingMachine(BaseOlmMachine):
 
     async def _receive_forwarded_room_key(self, evt: DecryptedOlmEvent) -> None:
         key: ForwardedRoomKeyEventContent = evt.content
-        if await self.crypto_store.has_group_session(key.room_id, key.sender_key, key.session_id):
+        if await self.crypto_store.has_group_session(key.room_id, key.session_id):
             self.log.debug(
                 f"Ignoring received session {key.session_id} from {evt.sender}/"
                 f"{evt.sender_device}, as crypto store says we have it already"

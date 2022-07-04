@@ -216,7 +216,7 @@ class EncryptionManager:
                 f" waiting {wait_session_timeout} seconds..."
             )
             got_keys = await self.crypto.wait_for_session(
-                evt.room_id, e.sender_key, e.session_id, timeout=wait_session_timeout
+                evt.room_id, e.session_id, timeout=wait_session_timeout
             )
             if got_keys:
                 self.log.debug(

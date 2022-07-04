@@ -33,7 +33,7 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
     _message_indices: dict[tuple[IdentityKey, SessionID, int], tuple[EventID, int]]
     _devices: dict[UserID, dict[DeviceID, DeviceIdentity]]
     _olm_sessions: dict[IdentityKey, list[Session]]
-    _inbound_sessions: dict[tuple[RoomID, IdentityKey, SessionID], InboundGroupSession]
+    _inbound_sessions: dict[tuple[RoomID, SessionID], InboundGroupSession]
     _outbound_sessions: dict[RoomID, OutboundGroupSession]
     _signatures: dict[CrossSigner, dict[CrossSigner, str]]
     _cross_signing_keys: dict[UserID, dict[CrossSigningUsage, TOFUSigningKey]]
@@ -103,17 +103,15 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
         session_id: SessionID,
         session: InboundGroupSession,
     ) -> None:
-        self._inbound_sessions[(room_id, sender_key, session_id)] = session
+        self._inbound_sessions[(room_id, session_id)] = session
 
     async def get_group_session(
-        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
+        self, room_id: RoomID, session_id: SessionID
     ) -> InboundGroupSession:
-        return self._inbound_sessions.get((room_id, sender_key, session_id))
+        return self._inbound_sessions.get((room_id, session_id))
 
-    async def has_group_session(
-        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID
-    ) -> bool:
-        return (room_id, sender_key, session_id) in self._inbound_sessions
+    async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
+        return (room_id, session_id) in self._inbound_sessions
 
     async def add_outbound_group_session(self, session: OutboundGroupSession) -> None:
         self._outbound_sessions[session.room_id] = session

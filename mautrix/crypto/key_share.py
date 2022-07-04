@@ -16,6 +16,7 @@ from mautrix.types import (
     RoomKeyRequestEventContent,
     RoomKeyWithheldCode,
     RoomKeyWithheldEventContent,
+    SessionID,
     ToDeviceEvent,
     TrustState,
 )
@@ -167,9 +168,7 @@ class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
         if not await self.allow_key_share(device, request):
             return
 
-        sess = await self.crypto_store.get_group_session(
-            request.room_id, request.sender_key, request.session_id
-        )
+        sess = await self.crypto_store.get_group_session(request.room_id, request.session_id)
         if sess is None:
             raise RejectKeyShare(
                 f"Didn't find group session {request.session_id} to forward to "
@@ -182,7 +181,7 @@ class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
         forward_content = ForwardedRoomKeyEventContent(
             algorithm=EncryptionAlgorithm.MEGOLM_V1,
             room_id=sess.room_id,
-            session_id=sess.id,
+            session_id=SessionID(sess.id),
             session_key=exported_key,
             sender_key=sess.sender_key,
             forwarding_key_chain=sess.forwarding_chain,

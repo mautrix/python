@@ -56,7 +56,7 @@ class BaseOlmMachine:
     _cs_fetch_attempted: set[UserID]
 
     async def wait_for_session(
-        self, room_id: RoomID, sender_key: IdentityKey, session_id: SessionID, timeout: float = 3
+        self, room_id: RoomID, session_id: SessionID, timeout: float = 3
     ) -> bool:
         try:
             fut = self._inbound_session_waiters[session_id]
@@ -66,7 +66,7 @@ class BaseOlmMachine:
         try:
             return await asyncio.wait_for(asyncio.shield(fut), timeout)
         except asyncio.TimeoutError:
-            return await self.crypto_store.has_group_session(room_id, sender_key, session_id)
+            return await self.crypto_store.has_group_session(room_id, session_id)
 
     def _mark_session_received(self, session_id: SessionID) -> None:
         try:

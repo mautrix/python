@@ -45,9 +45,7 @@ class MegolmDecryptionMachine(DeviceListMachine):
             raise DecryptionError("Unsupported event content class")
         elif evt.content.algorithm != EncryptionAlgorithm.MEGOLM_V1:
             raise DecryptionError("Unsupported event encryption algorithm")
-        session = await self.crypto_store.get_group_session(
-            evt.room_id, evt.content.sender_key, evt.content.session_id
-        )
+        session = await self.crypto_store.get_group_session(evt.room_id, evt.content.session_id)
         if session is None:
             # TODO check if olm session is wedged
             raise SessionNotFound(evt.content.session_id, evt.content.sender_key)
