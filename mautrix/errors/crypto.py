@@ -3,6 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 from mautrix.types import IdentityKey, SessionID
 
 from .base import MatrixError
@@ -31,7 +33,7 @@ class MatchingSessionDecryptionError(DecryptionError):
 
 
 class SessionNotFound(DecryptionError):
-    def __init__(self, session_id: SessionID, sender_key: IdentityKey) -> None:
+    def __init__(self, session_id: SessionID, sender_key: IdentityKey | None = None) -> None:
         super().__init__(
             f"Failed to decrypt megolm event: no session with given ID {session_id} found"
         )

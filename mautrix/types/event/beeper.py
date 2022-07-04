@@ -7,6 +7,7 @@ from typing import Optional
 
 from attr import dataclass
 
+from ..primitive import EventID
 from ..util import SerializableAttrs, SerializableEnum, field
 from .base import BaseRoomEvent
 from .message import RelatesTo
@@ -15,6 +16,7 @@ from .message import RelatesTo
 class MessageStatusReason(SerializableEnum):
     GENERIC_ERROR = "m.event_not_handled"
     UNSUPPORTED = "com.beeper.unsupported_event"
+    UNDECRYPTABLE = "com.beeper.undecryptable_event"
     TOO_OLD = "m.event_too_old"
     NETWORK_ERROR = "m.foreign_network_error"
     NO_PERMISSION = "m.no_permission"
@@ -41,6 +43,9 @@ class BeeperMessageStatusEventContent(SerializableAttrs):
     message: Optional[str] = None
     can_retry: Optional[bool] = None
     is_certain: Optional[bool] = None
+
+    still_working: Optional[bool] = None
+    last_retry: Optional[EventID] = None
 
 
 @dataclass
