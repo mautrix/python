@@ -20,6 +20,7 @@ from mautrix.types import (
     EncryptedMegolmEventContent,
     EncryptionAlgorithm,
     Event,
+    SessionID,
     TrustState,
 )
 
@@ -55,7 +56,7 @@ class MegolmDecryptionMachine(DeviceListMachine):
         except olm.OlmGroupSessionError as e:
             raise DecryptionError("Failed to decrypt megolm event") from e
         if not await self.crypto_store.validate_message_index(
-            evt.content.sender_key, evt.content.session_id, evt.event_id, index, evt.timestamp
+            session.sender_key, SessionID(session.id), evt.event_id, index, evt.timestamp
         ):
             raise DuplicateMessageIndex()
 

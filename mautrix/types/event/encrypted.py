@@ -3,14 +3,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, NewType, Optional, Union
+from typing import Annotated, Dict, NewType, Optional, Union
 from enum import IntEnum
+import warnings
 
 from attr import dataclass
-import attr
 
 from ..primitive import JSON, DeviceID, IdentityKey, SessionID
-from ..util import ExtensibleEnum, Obj, Serializable, SerializableAttrs, deserializer
+from ..util import ExtensibleEnum, Obj, Serializable, SerializableAttrs, deserializer, field
 from .base import BaseRoomEvent, BaseUnsigned
 from .message import RelatesTo
 
@@ -74,11 +74,36 @@ class EncryptedMegolmEventContent(SerializableAttrs):
     """The content of an m.room.encrypted event"""
 
     ciphertext: str
-    sender_key: IdentityKey
-    device_id: DeviceID
     session_id: SessionID
-    _relates_to: Optional[RelatesTo] = attr.ib(default=None, metadata={"json": "m.relates_to"})
     algorithm: EncryptionAlgorithm = EncryptionAlgorithm.MEGOLM_V1
+
+    _sender_key: Optional[IdentityKey] = field(default=None, json="sender_key")
+    _device_id: Optional[DeviceID] = field(default=None, json="device_id")
+    _relates_to: Optional[RelatesTo] = field(default=None, json="m.relates_to")
+
+    @property
+    def sender_key(self) -> Optional[IdentityKey]:
+        """
+        .. deprecated:: 0.17.0
+            Matrix v1.3 deprecated the device_id and sender_key fields in megolm events.
+        """
+        warnings.warn(
+            "The sender_key field in Megolm events was deprecated in Matrix 1.3",
+            DeprecationWarning,
+        )
+        return self._sender_key
+
+    @property
+    def device_id(self) -> Optional[DeviceID]:
+        """
+        .. deprecated:: 0.17.0
+            Matrix v1.3 deprecated the device_id and sender_key fields in megolm events.
+        """
+        warnings.warn(
+            "The sender_key field in Megolm events was deprecated in Matrix 1.3",
+            DeprecationWarning,
+        )
+        return self._device_id
 
     @property
     def relates_to(self) -> RelatesTo:
@@ -114,7 +139,7 @@ class EncryptedEvent(BaseRoomEvent, SerializableAttrs):
     """A m.room.encrypted event"""
 
     content: EncryptedEventContent
-    _unsigned: Optional[BaseUnsigned] = attr.ib(default=None, metadata={"json": "unsigned"})
+    _unsigned: Optional[BaseUnsigned] = field(default=None, json="unsigned")
 
     @property
     def unsigned(self) -> BaseUnsigned:

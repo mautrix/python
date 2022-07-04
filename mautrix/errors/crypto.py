@@ -5,6 +5,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
+import warnings
+
 from mautrix.types import IdentityKey, SessionID
 
 from .base import MatrixError
@@ -38,7 +40,19 @@ class SessionNotFound(DecryptionError):
             f"Failed to decrypt megolm event: no session with given ID {session_id} found"
         )
         self.session_id = session_id
-        self.sender_key = sender_key
+        self._sender_key = sender_key
+
+    @property
+    def sender_key(self) -> IdentityKey | None:
+        """
+        .. deprecated:: 0.17.0
+            Matrix v1.3 deprecated the device_id and sender_key fields in megolm events.
+        """
+        warnings.warn(
+            "The sender_key field in Megolm events was deprecated in Matrix 1.3",
+            DeprecationWarning,
+        )
+        return self._sender_key
 
 
 class DuplicateMessageIndex(DecryptionError):
