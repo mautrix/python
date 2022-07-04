@@ -145,7 +145,7 @@ class BaseMatrixHandler:
                 db_url=self.config["appservice.database"],
                 key_sharing_config=self.config["bridge.encryption.key_sharing"],
             )
-            self.require_e2ee = self.config["bridge.config.require"]
+            self.require_e2ee = self.config["bridge.encryption.require"]
 
         self.management_room_text = self.config.get(
             "bridge.management_room_text",
