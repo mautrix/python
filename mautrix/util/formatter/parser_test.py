@@ -8,7 +8,6 @@ import pytest
 from . import parse_html
 
 
-@pytest.mark.asyncio
 async def test_basic_markdown() -> None:
     tests = {
         "<b>test</b>": "**test**",
@@ -27,7 +26,6 @@ async def test_basic_markdown() -> None:
         assert await parse_html(html) == markdown_ish
 
 
-@pytest.mark.asyncio
 async def test_nested_markdown() -> None:
     input_html = """
 <h1>Hello, World!</h1>

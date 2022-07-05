@@ -3,7 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import AsyncContextManager, AsyncIterator, Callable, Dict, List
+from __future__ import annotations
+
+from typing import AsyncContextManager, AsyncIterator, Callable
 from contextlib import asynccontextmanager
 import json
 import os
@@ -83,7 +85,7 @@ async def store(request) -> AsyncIterator[StateStore]:
         yield state_store
 
 
-def read_state_file(request, file) -> Dict[RoomID, List[StateEvent]]:
+def read_state_file(request, file) -> dict[RoomID, list[StateEvent]]:
     path = pathlib.Path(request.node.fspath).with_name(file)
     with path.open() as fp:
         content = json.load(fp)
@@ -122,7 +124,6 @@ async def get_joined_members(request, store: StateStore) -> None:
         await store.set_members(room_id, parsed_members, only_membership=Membership.JOIN)
 
 
-@pytest.mark.asyncio
 async def test_basic(store: StateStore) -> None:
     room_id = RoomID("!foo:example.com")
     user_id = UserID("@tulir:example.com")
@@ -136,7 +137,6 @@ async def test_basic(store: StateStore) -> None:
     assert await store.is_encrypted(RoomID("!unknown-room:example.com")) is None
 
 
-@pytest.mark.asyncio
 async def test_basic_updated(request, store: StateStore) -> None:
     await store_room_state(request, store)
     test_group = RoomID("!telegram-group:example.com")
@@ -145,7 +145,6 @@ async def test_basic_updated(request, store: StateStore) -> None:
     assert not await store.is_encrypted(RoomID("!unencrypted-room:example.com"))
 
 
-@pytest.mark.asyncio
 async def test_updates(request, store: StateStore) -> None:
     await store_room_state(request, store)
     room_id = RoomID("!telegram-group:example.com")
