@@ -521,12 +521,13 @@ class BaseMatrixHandler:
 
         if wait_for:
             msg += f". The bridge will retry for {wait_for} seconds"
+        full_msg = f"\u26a0\ufe0f Your message was not bridged: {msg}."
+        if msg == "encryption is not supported":
+            full_msg = "🔒️ This bridge has not been configured to support encryption"
         event_id = None
         if self.config.get("bridge.delivery_error_reports", True):
             try:
-                content = TextMessageEventContent(
-                    msgtype=MessageType.NOTICE, body=f"\u26a0 Your message was not bridged: {msg}."
-                )
+                content = TextMessageEventContent(msgtype=MessageType.NOTICE, body=full_msg)
                 if edit:
                     content.set_edit(edit)
                 event_id = await self.az.intent.send_message(evt.room_id, content)
@@ -752,9 +753,12 @@ class BaseMatrixHandler:
 
     async def handle_encrypted(self, evt: EncryptedEvent) -> None:
         if not self.e2ee:
+            self.log.debug(
+                "Got encrypted message %s from %s, but encryption is not enabled",
+                evt.event_id,
+                evt.sender,
+            )
             await self._send_crypto_status_error(evt, "encryption is not supported")
-            # TODO replace this with code in _send_crypto_status_error?
-            await self.handle_encrypted_unsupported(evt)
             return
         try:
             decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=3)
@@ -766,16 +770,6 @@ class BaseMatrixHandler:
             await self._send_crypto_status_error(evt, e)
         else:
             await self._post_decrypt(decrypted)
-
-    async def handle_encrypted_unsupported(self, evt: EncryptedEvent) -> None:
-        self.log.debug(
-            "Got encrypted message %s from %s, but encryption is not enabled",
-            evt.event_id,
-            evt.sender,
-        )
-        await self.az.intent.send_notice(
-            evt.room_id, "🔒️ This bridge has not been configured to support encryption"
-        )
 
     async def _handle_encrypted_wait(
         self, evt: EncryptedEvent, err: SessionNotFound, wait: int
