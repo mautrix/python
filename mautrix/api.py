@@ -428,7 +428,7 @@ class HTTPAPI:
     def get_txn_id(self) -> str:
         """Get a new unique transaction ID."""
         self.txn_id += 1
-        return f"mautrix-python_R{self.txn_id}@T{int(time.time() * 1000)}"
+        return f"mautrix-python_{time.time_ns()}_{self.txn_id}"
 
     def get_download_url(
         self,
