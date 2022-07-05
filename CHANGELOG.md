@@ -1,3 +1,25 @@
+## v0.17.0 (2022-07-05)
+
+* **Breaking change *(bridge)*** Added options to check cross-signing status
+  for bridge users. This requires changes to the base config.
+  * New options include requiring cross-signed devices (with TOFU) for sending
+    and/or receiving messages, and an option to drop any unencrypted messages.
+* **Breaking change *(crypto)*** Removed `sender_key` parameter from
+  CryptoStore's `has_group_session` and `put_group_session`, and also
+  OlmMachine's `wait_for_session`.
+* **Breaking change *(crypto.store.memory)*** Updated the key of the
+  `_inbound_sessions` dict to be (room_id, session_id), removing the identity
+  key in the middle. This only affects custom stores based on the memory store.
+* *(crypto)* Added basic cross-signing validation code.
+* *(crypto)* Marked device_id and sender_key as deprecated in Megolm events
+  as per Matrix 1.3.
+* *(api)* Bumped request logs to `DEBUG` level.
+  * Also added new `sensitive` parameter to the `request` method to prevent
+    logging content in sensitive requests. The `login` method was updated to
+    mark the content as sensitive if a password or token is provided.
+* *(bridge.commands)* Switched the order of the user ID parameter in `set-pl`,
+  `set-avatar` and `set-displayname`.
+
 ## v0.16.11 (2022-06-28)
 
 * *(appservice)* Fixed the `extra_content` parameter in membership methods
