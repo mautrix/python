@@ -75,7 +75,7 @@ async def _get_mxid_param(
     needs_auth=False,
     name="set-avatar",
     help_section=SECTION_ADMIN,
-    help_args="<_mxc:// uri_> [_mxid_]",
+    help_args="[_mxid_] <_mxc:// uri_>",
     help_text="Set an avatar for a ghost user.",
 )
 async def set_ghost_avatar(evt: CommandEvent) -> EventID | None:
