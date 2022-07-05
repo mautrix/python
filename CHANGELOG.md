@@ -1,3 +1,9 @@
+## v0.17.1 (2022-07-05)
+
+* *(crypto)* Fixed Python 3.8/9 compatibility broken in v0.17.0.
+* *(crypto)* Added some tests for attachments and store code.
+* *(crypto)* Improved logging when device change validation fails.
+
 ## v0.17.0 (2022-07-05)
 
 * **Breaking change *(bridge)*** Added options to check cross-signing status
