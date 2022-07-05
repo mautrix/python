@@ -5,18 +5,18 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import AsyncGenerator, AsyncIterable, ClassVar, Literal, Mapping, Union
+from typing import AsyncGenerator, ClassVar, Literal, Mapping, Union
 from enum import Enum
 from json.decoder import JSONDecodeError
-from time import time
 from urllib.parse import quote as urllib_quote, urljoin as urllib_join
 import asyncio
 import inspect
 import json
 import logging
 import platform
+import time
 
-from aiohttp import ClientSession, __version__ as aiohttp_version
+from aiohttp import ClientResponse, ClientSession, __version__ as aiohttp_version
 from aiohttp.client_exceptions import ClientError, ContentTypeError
 from yarl import URL
 
@@ -239,7 +239,7 @@ class HTTPAPI:
         content: bytes | bytearray | str | AsyncBody,
         query_params: dict[str, str],
         headers: dict[str, str],
-    ) -> JSON:
+    ) -> tuple[JSON, ClientResponse]:
         request = self.session.request(
             str(method), url, data=content, params=query_params, headers=headers
         )
@@ -258,7 +258,7 @@ class HTTPAPI:
                     errcode=errcode,
                     message=message,
                 )
-            return await response.json()
+            return await response.json(), response
 
     def _log_request(
         self,
@@ -269,6 +269,7 @@ class HTTPAPI:
         query_params: dict[str, str],
         headers: dict[str, str],
         req_id: int,
+        sensitive: bool,
     ) -> None:
         if not self.log:
             return
@@ -277,24 +278,40 @@ class HTTPAPI:
         elif inspect.isasyncgen(content):
             size = headers.get("Content-Length", None)
             log_content = f"<{size} async bytes>" if size else f"<stream with unknown length>"
+        elif sensitive:
+            log_content = f"<{len(content)} sensitive bytes>"
         else:
             log_content = content
         as_user = query_params.get("user_id", None)
-        level = 1 if path == Path.v3.sync else 5
+        level = 5 if path == Path.v3.sync else 10
         self.log.log(
             level,
-            f"{method}#{req_id} /{path} {log_content}".strip(" "),
+            f"req #{req_id}: {method} /{path} {log_content}".strip(" "),
             extra={
                 "matrix_http_request": {
                     "req_id": req_id,
                     "method": str(method),
                     "path": str(path),
                     "content": (
-                        orig_content if isinstance(orig_content, (dict, list)) else log_content
+                        orig_content
+                        if isinstance(orig_content, (dict, list)) and not sensitive
+                        else log_content
                     ),
                     "user": as_user,
                 }
             },
+        )
+
+    def _log_request_done(
+        self, path: PathBuilder, req_id: int, duration: float, status: int
+    ) -> None:
+        level = 5 if path == Path.v3.sync else 10
+        duration_str = f"{duration * 1000:.1f}ms" if duration < 1 else f"{duration:.3f}s"
+        path_without_prefix = f"/{path}".replace("/_matrix/client", "")
+        self.log.log(
+            level,
+            f"req #{req_id} ({path_without_prefix}) completed in {duration_str} "
+            f"with status {status}",
         )
 
     def _full_path(self, path: PathBuilder | str) -> str:
@@ -316,6 +333,7 @@ class HTTPAPI:
         retry_count: int | None = None,
         metrics_method: str = "",
         min_iter_size: int = 25 * 1024 * 1024,
+        sensitive: bool = False,
     ) -> JSON:
         """
         Make a raw Matrix API request.
@@ -335,6 +353,7 @@ class HTTPAPI:
             min_iter_size: If the request body is larger than this value, it will be passed to
                            aiohttp as an async iterable to stop it from copying the whole thing
                            in memory.
+            sensitive: If True, the request content will not be logged.
 
         Returns:
             The parsed response JSON.
@@ -369,11 +388,18 @@ class HTTPAPI:
             headers["Content-Length"] = str(len(content))
         backoff = 4
         while True:
-            self._log_request(method, path, content, orig_content, query_params, headers, req_id)
+            self._log_request(
+                method, path, content, orig_content, query_params, headers, req_id, sensitive
+            )
             API_CALLS.labels(method=metrics_method).inc()
             req_content = _async_iter_bytes(content) if do_fake_iter else content
+            start = time.monotonic()
             try:
-                return await self._send(method, full_url, req_content, query_params, headers or {})
+                resp_data, resp = await self._send(
+                    method, full_url, req_content, query_params, headers or {}
+                )
+                self._log_request_done(path, req_id, time.monotonic() - start, resp.status)
+                return resp_data
             except MatrixRequestError as e:
                 API_CALLS_FAILED.labels(method=metrics_method).inc()
                 if retry_count > 0 and e.http_status in (502, 503, 504):
@@ -382,6 +408,7 @@ class HTTPAPI:
                         f"retrying in {backoff} seconds"
                     )
                 else:
+                    self._log_request_done(path, req_id, time.monotonic() - start, e.http_status)
                     raise
             except ClientError as e:
                 API_CALLS_FAILED.labels(method=metrics_method).inc()
@@ -401,7 +428,7 @@ class HTTPAPI:
     def get_txn_id(self) -> str:
         """Get a new unique transaction ID."""
         self.txn_id += 1
-        return f"mautrix-python_R{self.txn_id}@T{int(time() * 1000)}"
+        return f"mautrix-python_R{self.txn_id}@T{int(time.time() * 1000)}"
 
     def get_download_url(
         self,

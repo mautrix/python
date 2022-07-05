@@ -100,6 +100,7 @@ class ClientAuthenticationMethods(BaseClientAPI):
                 "identifier": identifier.serialize(),
                 **kwargs,
             },
+            sensitive="password" in kwargs or "token" in kwargs,
         )
         resp_data = LoginResponse.deserialize(resp)
         if store_access_token:
