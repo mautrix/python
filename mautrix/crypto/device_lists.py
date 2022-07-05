@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, Optional
+from __future__ import annotations
 
 from mautrix.errors import DeviceValidationError
 from mautrix.types import (
@@ -28,8 +28,8 @@ from .base import BaseOlmMachine, verify_signature_json
 
 class DeviceListMachine(BaseOlmMachine):
     async def _fetch_keys(
-        self, users: List[UserID], since: SyncToken = "", include_untracked: bool = False
-    ) -> Dict[UserID, Dict[DeviceID, DeviceIdentity]]:
+        self, users: list[UserID], since: SyncToken = "", include_untracked: bool = False
+    ) -> dict[UserID, dict[DeviceID, DeviceIdentity]]:
         if not include_untracked:
             users = await self.crypto_store.filter_tracked_users(users)
         if len(users) == 0:
@@ -211,7 +211,7 @@ class DeviceListMachine(BaseOlmMachine):
 
     async def get_or_fetch_device(
         self, user_id: UserID, device_id: DeviceID
-    ) -> Optional[DeviceIdentity]:
+    ) -> DeviceIdentity | None:
         device = await self.crypto_store.get_device(user_id, device_id)
         if device is not None:
             return device
@@ -223,7 +223,7 @@ class DeviceListMachine(BaseOlmMachine):
 
     async def get_or_fetch_device_by_key(
         self, user_id: UserID, identity_key: IdentityKey
-    ) -> Optional[DeviceIdentity]:
+    ) -> DeviceIdentity | None:
         device = await self.crypto_store.find_device_by_key(user_id, identity_key)
         if device is not None:
             return device
@@ -245,12 +245,16 @@ class DeviceListMachine(BaseOlmMachine):
         user_id: UserID,
         device_id: DeviceID,
         device_keys: DeviceKeys,
-        existing: Optional[DeviceIdentity] = None,
+        existing: DeviceIdentity | None = None,
     ) -> DeviceIdentity:
         if user_id != device_keys.user_id:
-            raise DeviceValidationError("mismatching user ID in parameter and keys object")
+            raise DeviceValidationError(
+                f"mismatching user ID (expected {user_id}, got {device_keys.user_id})"
+            )
         elif device_id != device_keys.device_id:
-            raise DeviceValidationError("mismatching device ID in parameter and keys object")
+            raise DeviceValidationError(
+                f"mismatching device ID (expected {device_id}, got {device_keys.device_id})"
+            )
 
         signing_key = device_keys.ed25519
         if not signing_key:
@@ -260,7 +264,10 @@ class DeviceListMachine(BaseOlmMachine):
             raise DeviceValidationError("didn't find curve25519 identity key")
 
         if existing and existing.signing_key != signing_key:
-            raise DeviceValidationError("received update for device with different signing key")
+            raise DeviceValidationError(
+                f"received update for device with different signing key "
+                f"(expected {existing.signing_key}, got {signing_key})"
+            )
 
         if not verify_signature_json(device_keys.serialize(), user_id, device_id, signing_key):
             raise DeviceValidationError("invalid signature on device keys")
