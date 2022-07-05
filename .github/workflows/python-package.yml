@@ -17,9 +17,12 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install libolm
+      run: sudo apt-get install libolm3
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        python -m pip install python-olm --extra-index-url https://gitlab.matrix.org/api/v4/projects/27/packages/pypi/simple
         python -m pip install .[test]
     - name: Test with pytest
       run: |
