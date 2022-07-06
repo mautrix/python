@@ -109,7 +109,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.encryption.verification_levels.send")
         copy("bridge.encryption.verification_levels.share")
         copy("bridge.encryption.allow_key_sharing")
-        if self.get("bridge.encryption.key_sharing_allow", False):
+        if self.get("bridge.encryption.key_sharing.allow", False):
             helper.base["bridge.encryption.allow_key_sharing"] = True
             require_verif = self.get("bridge.encryption.key_sharing.require_verification", True)
             require_cs = self.get("bridge.encryption.key_sharing.require_cross_signing", False)
