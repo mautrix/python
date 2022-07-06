@@ -1,3 +1,9 @@
+## v0.17.2 (2022-07-06)
+
+* *(api)* Updated request logging to log full URL instead of only path.
+* *(bridge)* Fixed migrating key sharing allow flag to new config format.
+* *(appservice)* Added `beeper_new_messages` flag for `batch_send` method.
+
 ## v0.17.1 (2022-07-05)
 
 * *(crypto)* Fixed Python 3.8/9 compatibility broken in v0.17.0.
