@@ -263,7 +263,7 @@ class HTTPAPI:
     def _log_request(
         self,
         method: Method,
-        path: PathBuilder,
+        url: URL,
         content: str | bytes | bytearray | AsyncBody,
         orig_content,
         query_params: dict[str, str],
@@ -283,15 +283,15 @@ class HTTPAPI:
         else:
             log_content = content
         as_user = query_params.get("user_id", None)
-        level = 5 if path == Path.v3.sync else 10
+        level = 5 if url.path.endswith("/v3/sync") else 10
         self.log.log(
             level,
-            f"req #{req_id}: {method} /{path} {log_content}".strip(" "),
+            f"req #{req_id}: {method} {url} {log_content}".strip(" "),
             extra={
                 "matrix_http_request": {
                     "req_id": req_id,
                     "method": str(method),
-                    "path": str(path),
+                    "url": str(url),
                     "content": (
                         orig_content
                         if isinstance(orig_content, (dict, list)) and not sensitive
@@ -387,9 +387,10 @@ class HTTPAPI:
         if do_fake_iter:
             headers["Content-Length"] = str(len(content))
         backoff = 4
+        log_url = full_url.with_query(query_params)
         while True:
             self._log_request(
-                method, path, content, orig_content, query_params, headers, req_id, sensitive
+                method, log_url, content, orig_content, query_params, headers, req_id, sensitive
             )
             API_CALLS.labels(method=metrics_method).inc()
             req_content = _async_iter_bytes(content) if do_fake_iter else content
