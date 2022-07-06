@@ -496,6 +496,7 @@ class IntentAPI(StoreUpdatingAPI):
         batch_id: BatchID | None = None,
         events: Iterable[BatchSendEvent],
         state_events_at_start: Iterable[BatchSendStateEvent] = (),
+        beeper_new_messages: bool = False,
     ) -> BatchSendResponse:
         """
         Send a batch of historical events into a room. See `MSC2716`_ for more info.
@@ -513,6 +514,8 @@ class IntentAPI(StoreUpdatingAPI):
             state_events_at_start: The state events to send at the start of the batch.
                                    These will be sent as outlier events, which means they won't be
                                    a part of the actual room state.
+            beeper_new_messages: Custom flag to tell the server that the messages can be sent to
+                                 the end of the room as normal messages instead of history.
 
         Returns:
             All the event IDs generated, plus a batch ID that can be passed back to this method.
@@ -521,6 +524,8 @@ class IntentAPI(StoreUpdatingAPI):
         query: JSON = {"prev_event_id": prev_event_id}
         if batch_id:
             query["batch_id"] = batch_id
+        if beeper_new_messages:
+            query["com.beeper.new_messages"] = "true"
         resp = await self.api.request(
             Method.POST,
             path,
