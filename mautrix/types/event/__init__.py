@@ -11,7 +11,12 @@ from .account_data import (
 )
 from .base import BaseEvent, BaseRoomEvent, BaseUnsigned, GenericEvent
 from .batch import BatchSendEvent, BatchSendStateEvent
-from .beeper import BeeperMessageStatusEvent, BeeperMessageStatusEventContent, MessageStatusReason
+from .beeper import (
+    BeeperMessageStatusEvent,
+    BeeperMessageStatusEventContent,
+    MessageStatus,
+    MessageStatusReason,
+)
 from .encrypted import (
     EncryptedEvent,
     EncryptedEventContent,

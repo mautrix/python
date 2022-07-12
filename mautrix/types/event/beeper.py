@@ -32,20 +32,35 @@ class MessageStatusReason(SerializableEnum):
         return MessageSendCheckpointStatus.PERM_FAILURE
 
 
-@dataclass
+class MessageStatus(SerializableEnum):
+    SUCCESS = "SUCCESS"
+    PENDING = "PENDNIG"
+    RETRIABLE = "FAIL_RETRIABLE"
+    FAIL = "FAIL_PERMANENT"
+
+
+@dataclass(kw_only=True)
 class BeeperMessageStatusEventContent(SerializableAttrs):
-    network: str
-    success: bool
     relates_to: RelatesTo = field(json="m.relates_to")
+    network: str = ""
+    status: Optional[MessageStatus] = None
 
     reason: Optional[MessageStatusReason] = None
     error: Optional[str] = None
     message: Optional[str] = None
+
+    success: Optional[bool] = None
+    still_working: Optional[bool] = None
     can_retry: Optional[bool] = None
     is_certain: Optional[bool] = None
 
-    still_working: Optional[bool] = None
     last_retry: Optional[EventID] = None
+
+    def fill_legacy_booleans(self) -> None:
+        self.success = self.status == MessageStatus.SUCCESS
+        if not self.success:
+            self.still_working = self.status == MessageStatus.PENDING
+            self.can_retry = self.status in (MessageStatus.PENDING, MessageStatus.RETRIABLE)
 
 
 @dataclass

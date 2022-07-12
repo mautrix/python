@@ -33,6 +33,7 @@ from mautrix.types import (
     MemberStateEventContent,
     MessageEvent,
     MessageEventContent,
+    MessageStatus,
     MessageStatusReason,
     MessageType,
     PresenceEvent,
@@ -91,6 +92,44 @@ except ImportError as e:
 EVENT_TIME = Histogram(
     "bridge_matrix_event", "Time spent processing Matrix events", ["event_type"]
 )
+
+
+class UnencryptedMessageError(DecryptionError):
+    def __init__(self) -> None:
+        super().__init__("unencrypted message")
+
+    @property
+    def human_message(self) -> str:
+        return "the message is not encrypted"
+
+
+class EncryptionUnsupportedError(DecryptionError):
+    def __init__(self) -> None:
+        super().__init__("encryption is not supported")
+
+    @property
+    def human_message(self) -> str:
+        return "the bridge is not configured to support encryption"
+
+
+class DeviceUntrustedError(DecryptionError):
+    def __init__(self, trust: TrustState) -> None:
+        explanation = {
+            TrustState.BLACKLISTED: "device is blacklisted",
+            TrustState.UNVERIFIED: "unverified",
+            TrustState.UNKNOWN_DEVICE: "device info not found",
+            TrustState.FORWARDED: "keys were forwarded from an unknown device",
+            TrustState.CROSS_SIGNED_UNTRUSTED: (
+                "cross-signing keys changed after setting up the bridge"
+            ),
+        }.get(trust)
+        base = "your device is not trusted"
+        self.message = f"{base} ({explanation})" if explanation else base
+        super().__init__(self.message)
+
+    @property
+    def human_message(self) -> str:
+        return self.message
 
 
 class BaseMatrixHandler:
@@ -506,23 +545,23 @@ class BaseMatrixHandler:
     async def _send_crypto_status_error(
         self,
         evt: Event,
-        err: Exception | str | None = None,
+        err: DecryptionError | None = None,
         retry_num: int = 0,
         is_final: bool = True,
         edit: EventID | None = None,
         wait_for: int | None = None,
     ) -> EventID | None:
         msg = str(err)
-        if isinstance(err, SessionNotFound):
-            msg = "the bridge hasn't received the decryption keys"
+        if isinstance(err, (SessionNotFound, UnencryptedMessageError)):
+            msg = err.human_message
         self._send_message_checkpoint(
             evt, MessageSendCheckpointStep.DECRYPTED, msg, permanent=is_final, retry_num=retry_num
         )
 
         if wait_for:
             msg += f". The bridge will retry for {wait_for} seconds"
-        full_msg = f"\u26a0\ufe0f Your message was not bridged: {msg}."
-        if msg == "encryption is not supported":
+        full_msg = f"\u26a0 Your message was not bridged: {msg}."
+        if isinstance(err, EncryptionUnsupportedError):
             full_msg = "🔒️ This bridge has not been configured to support encryption"
         event_id = None
         if self.config.get("bridge.delivery_error_reports", True):
@@ -544,12 +583,12 @@ class BaseMatrixHandler:
             status_content = BeeperMessageStatusEventContent(
                 network="",  # TODO set network properly
                 relates_to=RelatesTo(rel_type=RelationType.REFERENCE, event_id=evt.event_id),
-                success=False,
-                is_certain=True,
-                can_retry=True,
+                status=MessageStatus.RETRIABLE if is_final else MessageStatus.PENDING,
                 reason=MessageStatusReason.UNDECRYPTABLE,
                 error=msg,
+                message=err.human_message if err else None,
             )
+            status_content.fill_legacy_booleans()
             await self.az.intent.send_message_event(
                 evt.room_id, EventType.BEEPER_MESSAGE_STATUS, status_content
             )
@@ -564,7 +603,7 @@ class BaseMatrixHandler:
 
         if not was_encrypted and self.require_e2ee:
             self.log.warning(f"Dropping {event_id} from {user_id} as it's not encrypted!")
-            await self._send_crypto_status_error(evt, "unencrypted message", 0)
+            await self._send_crypto_status_error(evt, UnencryptedMessageError(), 0)
             return
 
         sender = await self.bridge.get_user(user_id)
@@ -714,19 +753,6 @@ class BaseMatrixHandler:
         except Exception:
             self.log.exception("Error handling manually received Matrix event")
 
-    @staticmethod
-    def _device_unverified_explanation(trust: TrustState) -> str:
-        explanation = {
-            TrustState.BLACKLISTED: "device is blacklisted",
-            TrustState.UNKNOWN_DEVICE: "device info not found",
-            TrustState.FORWARDED: "keys were forwarded from an unknown device",
-            TrustState.CROSS_SIGNED_UNTRUSTED: (
-                "cross-signing keys changed after setting up the bridge"
-            ),
-        }.get(trust)
-        base = "your device is not trusted"
-        return f"{base} ({explanation})" if explanation else base
-
     async def _post_decrypt(
         self, evt: Event, retry_num: int = 0, error_event_id: EventID | None = None
     ) -> None:
@@ -739,7 +765,7 @@ class BaseMatrixHandler:
             await self._send_crypto_status_error(
                 evt,
                 retry_num=retry_num,
-                err=self._device_unverified_explanation(trust_state),
+                err=DeviceUntrustedError(trust_state),
                 edit=error_event_id,
             )
             return
@@ -758,7 +784,7 @@ class BaseMatrixHandler:
                 evt.event_id,
                 evt.sender,
             )
-            await self._send_crypto_status_error(evt, "encryption is not supported")
+            await self._send_crypto_status_error(evt, EncryptionUnsupportedError())
             return
         try:
             decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=3)

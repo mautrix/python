@@ -27,7 +27,9 @@ class SessionShareError(CryptoError):
 
 
 class DecryptionError(CryptoError):
-    pass
+    @property
+    def human_message(self) -> str:
+        return "the bridge failed to decrypt the message"
 
 
 class MatchingSessionDecryptionError(DecryptionError):
@@ -41,6 +43,10 @@ class SessionNotFound(DecryptionError):
         )
         self.session_id = session_id
         self._sender_key = sender_key
+
+    @property
+    def human_message(self) -> str:
+        return "the bridge hasn't received the decryption keys"
 
     @property
     def sender_key(self) -> IdentityKey | None:
