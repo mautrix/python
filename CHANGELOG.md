@@ -1,3 +1,7 @@
+## v0.17.3 (2022-07-12)
+
+* *(types)* Updated `BeeperMessageStatusEventContent` fields.
+
 ## v0.17.2 (2022-07-06)
 
 * *(api)* Updated request logging to log full URL instead of only path.
