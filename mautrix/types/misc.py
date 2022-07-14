@@ -9,7 +9,7 @@ from enum import Enum
 from attr import dataclass
 import attr
 
-from .event import Event
+from .event import Event, StateEvent
 from .primitive import BatchID, ContentURI, EventID, RoomAlias, RoomID, SyncToken, UserID
 from .util import SerializableAttrs
 
@@ -105,6 +105,16 @@ class RoomDirectoryResponse(SerializableAttrs):
 PaginatedMessages = NamedTuple(
     "PaginatedMessages", start=SyncToken, end=SyncToken, events=List[Event]
 )
+
+
+@dataclass
+class EventContext(SerializableAttrs):
+    end: SyncToken
+    start: SyncToken
+    event: Event
+    events_after: List[Event]
+    events_before: List[Event]
+    state: List[StateEvent]
 
 
 @dataclass

@@ -16,6 +16,7 @@ from mautrix.types import (
     ContentURI,
     Event,
     EventContent,
+    EventContext,
     EventID,
     EventType,
     FilterID,
@@ -124,6 +125,48 @@ class EventMethods(BaseClientAPI):
             return Event.deserialize(content)
         except SerializerError as e:
             raise MatrixResponseError("Invalid event in response") from e
+
+    async def get_event_context(
+        self,
+        room_id: RoomID,
+        event_id: EventID,
+        limit: int | None = 10,
+        filter: RoomEventFilter | None = None,
+    ) -> EventContext:
+        """
+        Get a number of events that happened just before and after the specified event.
+        This allows clients to get the context surrounding an event, as well as get the state at
+        an event and paginate in either direction.
+
+        Args:
+            room_id: The room to get events from.
+            event_id: The event to get context around.
+            limit: The maximum number of events to return. The limit applies to the total number of
+                   events before and after the requested event. A limit of 0 means no other events
+                   are returned, while 2 means one event before and one after are returned.
+            filter: A JSON RoomEventFilter_ to filter returned events with.
+
+        Returns:
+            The event itself, up to ``limit/2`` events before and after the event, the room state
+            at the event, and pagination tokens to scroll up and down.
+
+        .. _RoomEventFilter:
+            https://spec.matrix.org/v1.1/client-server-api/#filtering
+        """
+        query_params = {}
+        if limit is not None:
+            query_params["limit"] = str(limit)
+        if filter is not None:
+            query_params["filter"] = (
+                filter.serialize() if isinstance(filter, Serializable) else filter
+            )
+        resp = await self.api.request(
+            Method.GET,
+            Path.v3.rooms[room_id].context[event_id],
+            query_params=query_params,
+            metrics_method="get_event_context",
+        )
+        return EventContext.deserialize(resp)
 
     async def get_state_event(
         self,
