@@ -102,6 +102,7 @@ class BridgeState(SerializableAttrs):
             not prev_state
             or prev_state.state_event != self.state_event
             or prev_state.error != self.error
+            or prev_state.info != self.info
         ):
             # If there's no previous state or the state was different, send this one.
             return False
