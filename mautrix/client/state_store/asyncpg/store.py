@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from mautrix.types import (
     Member,
@@ -14,6 +14,7 @@ from mautrix.types import (
     PowerLevelStateEventContent,
     RoomEncryptionStateEventContent,
     RoomID,
+    Serializable,
     UserID,
 )
 from mautrix.util.async_db import Database, Scheme
@@ -242,10 +243,12 @@ class PgStateStore(StateStore):
         return RoomEncryptionStateEventContent.parse_json(row["encryption"])
 
     async def set_encryption_info(
-        self, room_id: RoomID, content: RoomEncryptionStateEventContent
+        self, room_id: RoomID, content: RoomEncryptionStateEventContent | dict[str, Any]
     ) -> None:
         q = (
             "INSERT INTO mx_room_state (room_id, is_encrypted, encryption) VALUES ($1, true, $2) "
             "ON CONFLICT (room_id) DO UPDATE SET is_encrypted=true, encryption=$2"
         )
-        await self.db.execute(q, room_id, content.json())
+        await self.db.execute(
+            q, room_id, content.json() if isinstance(content, Serializable) else content
+        )

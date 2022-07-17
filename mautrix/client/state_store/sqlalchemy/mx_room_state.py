@@ -32,7 +32,7 @@ class SerializableType(types.TypeDecorator):
 
     def process_bind_param(self, value: Serializable, dialect) -> str | None:
         if value is not None:
-            return json.dumps(value.serialize())
+            return json.dumps(value.serialize() if isinstance(value, Serializable) else value)
         return None
 
     def process_result_value(self, value: str, dialect) -> Serializable | None:

@@ -187,6 +187,8 @@ class MemoryStateStore(StateStore):
         return self.encryption.get(room_id)
 
     async def set_encryption_info(
-        self, room_id: RoomID, content: RoomEncryptionStateEventContent
+        self, room_id: RoomID, content: RoomEncryptionStateEventContent | dict[str, Any]
     ) -> None:
+        if not isinstance(content, RoomEncryptionStateEventContent):
+            content = RoomEncryptionStateEventContent.deserialize(content)
         self.encryption[room_id] = content

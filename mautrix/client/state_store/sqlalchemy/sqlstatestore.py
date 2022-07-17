@@ -5,6 +5,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
+from typing import Any
+
 from mautrix.types import (
     Member,
     Membership,
@@ -174,7 +176,7 @@ class SQLStateStore(StateStore):
         return room.encryption
 
     async def set_encryption_info(
-        self, room_id: RoomID, content: RoomEncryptionStateEventContent
+        self, room_id: RoomID, content: RoomEncryptionStateEventContent | dict[str, Any]
     ) -> None:
         if not content:
             raise ValueError("content is empty")

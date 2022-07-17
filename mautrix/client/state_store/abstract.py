@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Awaitable
+from typing import Any, Awaitable
 from abc import ABC, abstractmethod
 
 from mautrix.types import (
@@ -135,7 +135,7 @@ class StateStore(ABC):
 
     @abstractmethod
     async def set_encryption_info(
-        self, room_id: RoomID, content: RoomEncryptionStateEventContent
+        self, room_id: RoomID, content: RoomEncryptionStateEventContent | dict[str, any]
     ) -> None:
         pass
 
