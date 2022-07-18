@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from typing import Any, NamedTuple
+import json
 
 from mautrix.types import (
     Member,
@@ -213,13 +214,13 @@ class PgStateStore(StateStore):
         return PowerLevelStateEventContent.parse_json(power_levels_json)
 
     async def set_power_levels(
-        self, room_id: RoomID, content: PowerLevelStateEventContent
+        self, room_id: RoomID, content: PowerLevelStateEventContent | dict[str, Any]
     ) -> None:
         await self.db.execute(
             "INSERT INTO mx_room_state (room_id, power_levels) VALUES ($1, $2) "
             "ON CONFLICT (room_id) DO UPDATE SET power_levels=$2",
             room_id,
-            content.json(),
+            json.dumps(content.serialize() if isinstance(content, Serializable) else content),
         )
 
     async def has_encryption_info_cached(self, room_id: RoomID) -> bool:
@@ -250,5 +251,7 @@ class PgStateStore(StateStore):
             "ON CONFLICT (room_id) DO UPDATE SET is_encrypted=true, encryption=$2"
         )
         await self.db.execute(
-            q, room_id, content.json() if isinstance(content, Serializable) else content
+            q,
+            room_id,
+            json.dumps(content.serialize() if isinstance(content, Serializable) else content),
         )
