@@ -12,6 +12,7 @@ from mautrix.api import Method, Path
 from mautrix.client import ClientAPI, StoreUpdatingAPI
 from mautrix.errors import (
     IntentError,
+    MAlreadyJoined,
     MatrixRequestError,
     MBadState,
     MForbidden,
@@ -243,7 +244,10 @@ class IntentAPI(StoreUpdatingAPI):
                     room_id, user_id, reason=reason, extra_content=extra_content
                 )
                 await self.state_store.invited(room_id, user_id)
+        except MAlreadyJoined as e:
+            await self.state_store.joined(room_id, user_id)
         except MatrixRequestError as e:
+            # TODO remove this once MSC3848 is released and minimum spec version is bumped
             if e.errcode == "M_FORBIDDEN" and "is already in the room" in e.message:
                 await self.state_store.joined(room_id, user_id)
             else:

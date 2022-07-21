@@ -245,11 +245,12 @@ class HTTPAPI:
         )
         async with request as response:
             if response.status < 200 or response.status >= 300:
-                errcode = message = None
+                errcode = unstable_errcode = message = None
                 try:
                     response_data = await response.json()
                     errcode = response_data["errcode"]
                     message = response_data["error"]
+                    unstable_errcode = response_data.get("org.matrix.unstable.errcode")
                 except (JSONDecodeError, ContentTypeError, KeyError):
                     pass
                 raise make_request_error(
@@ -257,6 +258,7 @@ class HTTPAPI:
                     text=await response.text(),
                     errcode=errcode,
                     message=message,
+                    unstable_errcode=unstable_errcode,
                 )
             return await response.json(), response
 

@@ -11,7 +11,13 @@ import asyncio
 from multidict import CIMultiDict
 
 from mautrix.api import Method, Path
-from mautrix.errors import MatrixRequestError, MatrixResponseError, MNotFound, MRoomInUse
+from mautrix.errors import (
+    MatrixRequestError,
+    MatrixResponseError,
+    MNotFound,
+    MNotJoined,
+    MRoomInUse,
+)
 from mautrix.types import (
     JSON,
     DirectoryPaginationToken,
@@ -478,7 +484,11 @@ class RoomMethods(EventMethods, BaseClientAPI):
                 if reason:
                     data["reason"] = reason
                 await self.api.request(Method.POST, Path.v3.rooms[room_id].leave, content=data)
+        except MNotJoined:
+            if raise_not_in_room:
+                raise
         except MatrixRequestError as e:
+            # TODO remove this once MSC3848 is released and minimum spec version is bumped
             if "not in room" not in e.message or raise_not_in_room:
                 raise
 

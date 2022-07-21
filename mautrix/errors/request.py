@@ -46,19 +46,23 @@ class MatrixStandardRequestError(MatrixRequestError):
 
 MxSRE = Type[MatrixStandardRequestError]
 ec_map: Dict[str, MxSRE] = {}
+uec_map: Dict[str, MxSRE] = {}
 
 
-def standard_error(code: str) -> Callable[[MxSRE], MxSRE]:
+def standard_error(code: str, unstable: Optional[str] = None) -> Callable[[MxSRE], MxSRE]:
     def decorator(cls: MxSRE) -> MxSRE:
         cls.errcode = code
         ec_map[code] = cls
+        if unstable:
+            cls.unstable_errcode = unstable
+            uec_map[unstable] = cls
         return cls
 
     return decorator
 
 
 def make_request_error(
-    http_status: int, text: str, errcode: str, message: str
+    http_status: int, text: str, errcode: str, message: str, unstable_errcode: Optional[str] = None
 ) -> MatrixRequestError:
     """
     Determine the correct exception class for the error code and create an instance of that class
@@ -70,6 +74,12 @@ def make_request_error(
         errcode: The errcode field in the response JSON.
         message: The error field in the response JSON.
     """
+    if unstable_errcode:
+        try:
+            ec_class = uec_map[unstable_errcode]
+            return ec_class(http_status, message)
+        except KeyError:
+            pass
     try:
         ec_class = ec_map[errcode]
         return ec_class(http_status, message)
@@ -77,12 +87,27 @@ def make_request_error(
         return MatrixUnknownRequestError(http_status, text, errcode, message)
 
 
-# Standard error codes from https://matrix.org/docs/spec/client_server/r0.4.0.html#api-standards
+# Standard error codes from https://spec.matrix.org/v1.3/client-server-api/#api-standards
 # Additionally some combining superclasses for some of the error codes
 
 
 @standard_error("M_FORBIDDEN")
 class MForbidden(MatrixStandardRequestError):
+    pass
+
+
+@standard_error("M_ALREADY_JOINED", unstable="ORG.MATRIX.MSC3848.ALREADY_JOINED")
+class MAlreadyJoined(MForbidden):
+    pass
+
+
+@standard_error("M_NOT_JOINED", unstable="ORG.MATRIX.MSC3848.NOT_JOINED")
+class MNotJoined(MForbidden):
+    pass
+
+
+@standard_error("M_INSUFFICIENT_POWER", unstable="ORG.MATRIX.MSC3848.INSUFFICIENT_POWER")
+class MInsufficientPower(MForbidden):
     pass
 
 
