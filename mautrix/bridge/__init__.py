@@ -5,6 +5,7 @@ from .custom_puppet import (
     AutologinError,
     CustomPuppetError,
     CustomPuppetMixin,
+    EncryptionKeysFound,
     HomeserverURLNotFound,
     InvalidAccessToken,
     OnlyLoginSelf,

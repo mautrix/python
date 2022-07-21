@@ -56,12 +56,24 @@ class InvalidAccessToken(CustomPuppetError):
 
 class OnlyLoginSelf(CustomPuppetError):
     def __init__(self):
-        super().__init__("You may only replace your puppet with your own Matrix account.")
+        super().__init__("You may only enable double puppeting with your own Matrix account.")
+
+
+class EncryptionKeysFound(CustomPuppetError):
+    def __init__(self):
+        super().__init__(
+            "The given access token is for a device that has encryption keys set up. "
+            "Please provide a fresh token, don't reuse one from another client."
+        )
 
 
 class HomeserverURLNotFound(CustomPuppetError):
     def __init__(self, domain: str):
-        super().__init__(f"Could not discover a valid homeserver URL for {domain}")
+        super().__init__(
+            f"Could not discover a valid homeserver URL for {domain}."
+            " Please ensure a client .well-known file is set up, or ask the bridge administrator "
+            "to add the homeserver URL to the bridge config."
+        )
 
 
 class OnlyLoginTrustedDomain(CustomPuppetError):
@@ -235,7 +247,7 @@ class CustomPuppetMixin(ABC):
         self.base_url = base_url
         self.intent = self._fresh_intent()
 
-        await self.start(start_sync_task=start_sync_task)
+        await self.start(start_sync_task=start_sync_task, check_e2ee_keys=True)
 
         try:
             del self.by_custom_mxid[prev_mxid]
@@ -255,7 +267,21 @@ class CustomPuppetMixin(ABC):
         except Exception:
             self.log.exception("Failed to initialize custom mxid")
 
-    async def start(self, retry_auto_login: bool = False, start_sync_task: bool = True) -> None:
+    async def _invalidate_double_puppet(self) -> None:
+        if self.custom_mxid and self.by_custom_mxid.get(self.custom_mxid) == self:
+            del self.by_custom_mxid[self.custom_mxid]
+        self.custom_mxid = None
+        self.access_token = None
+        self.next_batch = None
+        await self.save()
+        self.intent = self._fresh_intent()
+
+    async def start(
+        self,
+        retry_auto_login: bool = False,
+        start_sync_task: bool = True,
+        check_e2ee_keys: bool = False,
+    ) -> None:
         """Initialize the custom account this puppet uses. Should be called at startup to start
         the /sync task. Is called by :meth:`switch_mxid` automatically."""
         if not self.is_real_user:
@@ -271,17 +297,24 @@ class CustomPuppetMixin(ABC):
             self.log.warning(f"Got {e.errcode} while trying to initialize custom mxid")
             whoami = None
         if not whoami or whoami.user_id != self.custom_mxid:
-            if self.custom_mxid and self.by_custom_mxid.get(self.custom_mxid) == self:
-                del self.by_custom_mxid[self.custom_mxid]
             prev_custom_mxid = self.custom_mxid
-            self.custom_mxid = None
-            self.access_token = None
-            self.next_batch = None
-            await self.save()
-            self.intent = self._fresh_intent()
+            await self._invalidate_double_puppet()
             if whoami and whoami.user_id != prev_custom_mxid:
                 raise OnlyLoginSelf()
             raise InvalidAccessToken()
+        if check_e2ee_keys:
+            try:
+                devices = await self.intent.query_keys({whoami.user_id: [whoami.device_id]})
+                device_keys = devices.device_keys.get(whoami.user_id, {}).get(whoami.device_id)
+            except Exception:
+                self.log.warning(
+                    "Failed to query keys to check if double puppeting token was reused",
+                    exc_info=True,
+                )
+            else:
+                if device_keys and len(device_keys.keys) > 0:
+                    await self._invalidate_double_puppet()
+                    raise EncryptionKeysFound()
         if self.sync_with_custom_puppets and start_sync_task:
             if self._sync_task:
                 self._sync_task.cancel()
