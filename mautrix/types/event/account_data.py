@@ -28,7 +28,8 @@ DirectAccountDataEventContent = Dict[UserID, List[RoomID]]
 AccountDataEventContent = Union[RoomTagAccountDataEventContent, DirectAccountDataEventContent, Obj]
 account_data_event_content_map = {
     EventType.TAG: RoomTagAccountDataEventContent,
-    EventType.DIRECT: DirectAccountDataEventContent,
+    # m.direct doesn't really need deserializing
+    # EventType.DIRECT: DirectAccountDataEventContent,
 }
 
 
