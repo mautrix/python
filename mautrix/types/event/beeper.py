@@ -34,7 +34,7 @@ class MessageStatusReason(SerializableEnum):
 
 class MessageStatus(SerializableEnum):
     SUCCESS = "SUCCESS"
-    PENDING = "PENDNIG"
+    PENDING = "PENDING"
     RETRIABLE = "FAIL_RETRIABLE"
     FAIL = "FAIL_PERMANENT"
 
