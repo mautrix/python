@@ -56,7 +56,7 @@ class DeviceListMachine(BaseOlmMachine):
             )
             changed = False
             ssks = resp.self_signing_keys.get(user_id)
-            ssk = ssks.first_ed25519_key
+            ssk = ssks.first_ed25519_key if ssks else None
             for device_id, device_keys in devices.items():
                 try:
                     existing = existing_devices[device_id]
