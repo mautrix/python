@@ -1,3 +1,9 @@
+## v0.17.4 (2022-07-28)
+
+* *(bridge)* Reject reusing access tokens when enabling double puppeting
+* *(api)* Added EventContext to get events before/after an event
+* *(api)* Implemented new error codes from MSC3848
+
 ## v0.17.3 (2022-07-12)
 
 * *(types)* Updated `BeeperMessageStatusEventContent` fields.
