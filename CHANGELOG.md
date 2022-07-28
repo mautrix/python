@@ -1,3 +1,20 @@
+## v0.17.4 (unreleased)
+
+* *(bridge)* Started rejecting reusing access tokens when enabling double
+  puppeting. Reuse is detected by presence of encryption keys on the device.
+* *(client.api)* Added wrapper method for the `/context` API.
+* *(api, errors)* Implemented new error codes from [MSC3848].
+* *(types)* Disabled deserializing `m.direct` content (it didn't work and it
+  wasn't really necessary).
+* *(client.state_store)* Updated `set_encryption_info` to allow raw dicts.
+  This fixes the bug where sending a `m.room.encryption` event with a raw dict
+  as the content would throw an error from the state store.
+* *(crypto)* Fixed error when fetching keys for user with no cross-signing keys
+  (thanks to [@maltee1] in [#109]).
+
+[MSC3848]: https://github.com/matrix-org/matrix-spec-proposals/pull/3848
+[#109]: https://github.com/mautrix/python/pull/109
+
 ## v0.17.3 (2022-07-12)
 
 * *(types)* Updated `BeeperMessageStatusEventContent` fields.
