@@ -295,6 +295,7 @@ class BasePortal(ABC):
             "formatted_body": content["formatted_body"],
             "body": content.body,
             "message": content.body,
+            "distinguisher": self._get_distinguisher(sender.mxid),
         }
         content.body = Template(tpl).safe_substitute(tpl_args)
         if self.relay_formatted_body and "formatted_body" in content:
@@ -419,6 +420,26 @@ class BasePortal(ABC):
                 msg.start_timer()
                 await msg.update()
                 asyncio.create_task(self._disappear_event(msg))
+
+    @staticmethod
+    def hash_user_id(val: UserID) -> int:
+        """
+        A simple Matrix user ID hashing algorithm that matches what Element does.
+        Args:
+            val: the Matrix user ID.
+        Returns:
+            A 32-bit hash of the user ID.
+        """
+        out = 0
+        for char in val:
+            out = (out << 5) - out + ord(char)
+            # Emulate JS's 32-bit signed bitwise OR `hash |= 0`
+            out = (out & 2**31 - 1) - (out & 2**31)
+        return abs(out)
+
+    def _get_distinguisher(self, user_id: UserID) -> str:
+        ruds = self.get_config("relay_user_distinguishers") or []
+        return ruds[self.hash_user_id(user_id) % len(ruds)] if ruds else ""
 
     async def _send_message(
         self,
