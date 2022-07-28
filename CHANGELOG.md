@@ -1,4 +1,4 @@
-## v0.17.4 (unreleased)
+## v0.17.4 (2022-07-28)
 
 * *(bridge)* Started rejecting reusing access tokens when enabling double
   puppeting. Reuse is detected by presence of encryption keys on the device.
