@@ -250,7 +250,7 @@ class HTTPAPI:
                     response_data = await response.json()
                     errcode = response_data["errcode"]
                     message = response_data["error"]
-                    unstable_errcode = response_data.get("org.matrix.unstable.errcode")
+                    unstable_errcode = response_data.get("org.matrix.msc3848.unstable.errcode")
                 except (JSONDecodeError, ContentTypeError, KeyError):
                     pass
                 raise make_request_error(
