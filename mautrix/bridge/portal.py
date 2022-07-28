@@ -438,7 +438,7 @@ class BasePortal(ABC):
         return abs(out)
 
     def _get_distinguisher(self, user_id: UserID) -> str:
-        ruds = self.get_config("relay_user_distinguishers") or []
+        ruds = self.config["bridge.relay.user_distinguishers"] or []
         return ruds[self.hash_user_id(user_id) % len(ruds)] if ruds else ""
 
     async def _send_message(

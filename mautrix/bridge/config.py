@@ -123,7 +123,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.encryption.rotation.messages")
 
         copy("bridge.relay.enabled")
-        copy("bridge.relay.relay_user_distinguishers")
+        copy("bridge.relay.user_distinguishers")
         copy_dict("bridge.relay.message_formats", override_existing_map=False)
 
         copy("manhole.enabled")
