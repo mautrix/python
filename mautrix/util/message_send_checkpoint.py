@@ -66,16 +66,18 @@ class MessageSendCheckpoint(SerializableAttrs):
                     text = await resp.text()
                     text = text.replace("\n", "\\n")
                     log.warning(
-                        f"Unexpected status code {resp.status} sending checkpoints "
-                        f"for {self.event_id}: {text}"
+                        f"Unexpected status code {resp.status} sending checkpoint "
+                        f"for {self.event_id} ({self.step}/{self.status}): {text}"
                     )
                 else:
                     log.info(
-                        f"Successfully sent checkpoint for {self.event_id} (step: {self.step})"
+                        f"Successfully sent checkpoint for {self.event_id} "
+                        f"({self.step}/{self.status})"
                     )
         except Exception as e:
             log.warning(
-                f"Failed to send checkpoint for {self.event_id}: " f"{type(e).__name__}: {e}"
+                f"Failed to send checkpoint for {self.event_id} ({self.step}/{self.status}): "
+                f"{type(e).__name__}: {e}"
             )
 
 
