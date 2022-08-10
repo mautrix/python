@@ -622,8 +622,6 @@ class IntentAPI(StoreUpdatingAPI):
             await self._register()
         except MUserInUse:
             pass
-        except MatrixRequestError as e:
-            raise IntentError(f"Failed to register {self.mxid}", e)
         await self.state_store.registered(self.mxid)
 
     async def _ensure_has_power_level_for(
