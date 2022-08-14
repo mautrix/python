@@ -716,7 +716,7 @@ class BaseMatrixHandler:
 
     async def handle_receipt(self, evt: ReceiptEvent) -> None:
         for event_id, receipts in evt.content.items():
-            for user_id, data in receipts[ReceiptType.READ].items():
+            for user_id, data in receipts.get(ReceiptType.READ, {}).items():
                 user = await self.bridge.get_user(user_id, create=False)
                 if not user or not await user.is_logged_in():
                     continue
