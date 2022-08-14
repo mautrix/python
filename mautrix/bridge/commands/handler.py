@@ -158,6 +158,8 @@ class CommandEvent:
                 await self.main_intent.redact(self.room_id, self.event_id, reason=reason)
         except MForbidden as e:
             self.log.warning(f"Failed to redact command {self.command}: {e}")
+        except Exception:
+            self.log.warning(f"Failed to redact command {self.command}", exc_info=True)
 
     def reply(
         self, message: str, allow_html: bool = False, render_markdown: bool = True
