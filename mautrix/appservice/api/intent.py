@@ -251,7 +251,7 @@ class IntentAPI(StoreUpdatingAPI):
             if e.errcode == "M_FORBIDDEN" and "is already in the room" in e.message:
                 await self.state_store.joined(room_id, user_id)
             else:
-                raise IntentError(f"Failed to invite {user_id} to {room_id}", e)
+                raise
 
     async def kick_user(
         self,
