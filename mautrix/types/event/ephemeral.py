@@ -8,7 +8,7 @@ from typing import Dict, List, NewType, Union
 from attr import dataclass
 
 from ..primitive import JSON, EventID, RoomID, UserID
-from ..util import SerializableAttrs, SerializableEnum, deserializer
+from ..util import ExtensibleEnum, SerializableAttrs, SerializableEnum, deserializer
 from .base import BaseEvent, GenericEvent
 from .type import EventType
 
@@ -49,8 +49,9 @@ class SingleReceiptEventContent(SerializableAttrs):
     ts: int
 
 
-class ReceiptType(SerializableEnum):
+class ReceiptType(ExtensibleEnum):
     READ = "m.read"
+    READ_PRIVATE = "m.read.private"
 
 
 ReceiptEventContent = Dict[EventID, Dict[ReceiptType, Dict[UserID, SingleReceiptEventContent]]]
