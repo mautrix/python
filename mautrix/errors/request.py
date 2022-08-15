@@ -111,6 +111,11 @@ class MInsufficientPower(MForbidden):
     pass
 
 
+@standard_error("M_UNKNOWN_ENDPOINT")
+class MUnknownEndpoint(MatrixStandardRequestError):
+    pass
+
+
 @standard_error("M_USER_DEACTIVATED")
 class MUserDeactivated(MForbidden):
     pass
