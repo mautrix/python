@@ -22,8 +22,8 @@ class DeviceLists(SerializableAttrs):
 
 @dataclass
 class DeviceOTKCount(SerializableAttrs):
-    curve25519: int
-    signed_curve25519: int
+    signed_curve25519: int = 0
+    curve25519: int = 0
 
 
 class RoomCreatePreset(Enum):

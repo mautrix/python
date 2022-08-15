@@ -169,8 +169,11 @@ class AppServiceServerMixin:
             self._get_with_fallback(data, "device_lists", "org.matrix.msc3202")
         )
         otk_counts = {
-            user_id: DeviceOTKCount.deserialize(count)
-            for user_id, count in self._get_with_fallback(
+            user_id: {
+                device_id: DeviceOTKCount.deserialize(count)
+                for device_id, count in devices.items()
+            }
+            for user_id, devices in self._get_with_fallback(
                 data, "device_one_time_keys_count", "org.matrix.msc3202", default={}
             ).items()
         }
@@ -209,7 +212,7 @@ class AppServiceServerMixin:
         events: list[JSON],
         extra_data: JSON,
         ephemeral: list[JSON] | None = None,
-        device_otk_count: dict[UserID, DeviceOTKCount] | None = None,
+        device_otk_count: dict[UserID, dict[DeviceID, DeviceOTKCount]] | None = None,
         device_lists: DeviceLists | None = None,
     ) -> JSON:
         for raw_edu in ephemeral or []:
