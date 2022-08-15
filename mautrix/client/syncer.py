@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Type
+from typing import Any, Awaitable, Callable, Type, TypeVar
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from enum import Enum, Flag, auto
@@ -24,8 +24,10 @@ from mautrix.types import (
     EventType,
     Filter,
     FilterID,
+    GenericEvent,
     MessageEvent,
     PresenceState,
+    SerializerError,
     StateEvent,
     StrippedStateEvent,
     SyncToken,
@@ -38,6 +40,8 @@ from . import dispatcher
 from .state_store import MemorySyncStore, SyncStore
 
 EventHandler = Callable[[Event], Awaitable[None]]
+
+T = TypeVar("T", bound=Event)
 
 
 class SyncStream(Flag):
@@ -201,7 +205,7 @@ class Syncer(ABC):
         if len(handler_list) == 0 and event_type != EventType.ALL:
             del self.event_handlers[event_type]
 
-    def dispatch_event(self, event: Event, source: SyncStream) -> list[asyncio.Task]:
+    def dispatch_event(self, event: Event | None, source: SyncStream) -> list[asyncio.Task]:
         """
         Send the given event to all applicable event handlers.
 
@@ -209,6 +213,8 @@ class Syncer(ABC):
             event: The event to send.
             source: The sync stream the event was received in.
         """
+        if event is None:
+            return []
         if isinstance(event.content, BaseMessageEventContentFuncs):
             event.content.trim_reply_fallback()
         if getattr(event, "state_key", None) is not None:
@@ -264,6 +270,17 @@ class Syncer(ABC):
             event_type, custom_type or kwargs, include_global_handlers=False
         )
 
+    def _try_deserialize(self, type: Type[T], data: JSON) -> T | GenericEvent:
+        try:
+            return type.deserialize(data)
+        except SerializerError as e:
+            self.log.trace("Deserialization error traceback", exc_info=True)
+            self.log.warning(f"Failed to deserialize {data} into {type.__name__}: {e}")
+            try:
+                return GenericEvent.deserialize(data)
+            except SerializerError:
+                return None
+
     def handle_sync(self, data: JSON) -> list[asyncio.Task]:
         """
         Handle a /sync object.
@@ -286,21 +303,22 @@ class Syncer(ABC):
         tasks += self.dispatch_internal_event(
             InternalEventType.DEVICE_LISTS,
             custom_type=DeviceLists(
-                changed=device_lists.get("changed", []), left=device_lists.get("left", [])
+                changed=device_lists.get("changed", []),
+                left=device_lists.get("left", []),
             ),
         )
 
         for raw_event in data.get("account_data", {}).get("events", []):
             tasks += self.dispatch_event(
-                AccountDataEvent.deserialize(raw_event), source=SyncStream.ACCOUNT_DATA
+                self._try_deserialize(AccountDataEvent, raw_event), source=SyncStream.ACCOUNT_DATA
             )
         for raw_event in data.get("ephemeral", {}).get("events", []):
             tasks += self.dispatch_event(
-                EphemeralEvent.deserialize(raw_event), source=SyncStream.EPHEMERAL
+                self._try_deserialize(EphemeralEvent, raw_event), source=SyncStream.EPHEMERAL
             )
         for raw_event in data.get("to_device", {}).get("events", []):
             tasks += self.dispatch_event(
-                ToDeviceEvent.deserialize(raw_event), source=SyncStream.TO_DEVICE
+                self._try_deserialize(ToDeviceEvent, raw_event), source=SyncStream.TO_DEVICE
             )
 
         rooms = data.get("rooms", {})
@@ -308,14 +326,14 @@ class Syncer(ABC):
             for raw_event in room_data.get("state", {}).get("events", []):
                 raw_event["room_id"] = room_id
                 tasks += self.dispatch_event(
-                    StateEvent.deserialize(raw_event),
+                    self._try_deserialize(StateEvent, raw_event),
                     source=SyncStream.JOINED_ROOM | SyncStream.STATE,
                 )
 
             for raw_event in room_data.get("timeline", {}).get("events", []):
                 raw_event["room_id"] = room_id
                 tasks += self.dispatch_event(
-                    Event.deserialize(raw_event),
+                    self._try_deserialize(Event, raw_event),
                     source=SyncStream.JOINED_ROOM | SyncStream.TIMELINE,
                 )
         for room_id, room_data in rooms.get("invite", {}).items():
@@ -332,9 +350,9 @@ class Syncer(ABC):
             raw_invite.setdefault("event_id", None)
             raw_invite.setdefault("origin_server_ts", int(time.time() * 1000))
 
-            invite = StateEvent.deserialize(raw_invite)
+            invite = self._try_deserialize(StateEvent, raw_invite)
             invite.unsigned.invite_room_state = [
-                StrippedStateEvent.deserialize(raw_event)
+                self._try_deserialize(StrippedStateEvent, raw_event)
                 for raw_event in events
                 if raw_event != raw_invite
             ]
@@ -344,7 +362,7 @@ class Syncer(ABC):
                 if "state_key" in raw_event:
                     raw_event["room_id"] = room_id
                     tasks += self.dispatch_event(
-                        StateEvent.deserialize(raw_event),
+                        self._try_deserialize(StateEvent, raw_event),
                         source=SyncStream.LEFT_ROOM | SyncStream.TIMELINE,
                     )
         return tasks
