@@ -1,3 +1,9 @@
+## v0.17.5 (2022-08-15)
+
+* *(types)* Added `m.read.private` to receipt types.
+* *(appservice)* Stopped `ensure_registered` and `invite_user` raising
+  `IntentError`s (now they raise the original Matrix error instead).
+
 ## v0.17.4 (2022-07-28)
 
 * *(bridge)* Started rejecting reusing access tokens when enabling double
