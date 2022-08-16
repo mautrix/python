@@ -181,24 +181,25 @@ class CustomPuppetMixin(ABC):
                 base_url = cls.az.intent.api.base_url
             else:
                 raise AutologinError(f"No homeserver URL configured for {server}")
-        password = hmac.new(secret, mxid.encode("utf-8"), hashlib.sha512).hexdigest()
         url = base_url / str(Path.v3.login)
-        resp = await cls.az.http_session.post(
-            url,
-            data=json.dumps(
-                {
-                    "type": str(LoginType.PASSWORD),
-                    "initial_device_display_name": cls.login_device_name,
-                    "device_id": cls.login_device_name,
-                    "identifier": {
-                        "type": "m.id.user",
-                        "user": mxid,
-                    },
-                    "password": password,
-                }
-            ),
-            headers={"Content-Type": "application/json"},
-        )
+        headers = {"Content-Type": "application/json"}
+        login_req = {
+            "initial_device_display_name": cls.login_device_name,
+            "device_id": cls.login_device_name,
+            "identifier": {
+                "type": "m.id.user",
+                "user": mxid,
+            },
+        }
+        if secret == b"appservice":
+            login_req["type"] = str(LoginType.APPSERVICE)
+            headers["Authorization"] = f"Bearer {cls.az.as_token}"
+        else:
+            login_req["type"] = str(LoginType.PASSWORD)
+            login_req["password"] = hmac.new(
+                secret, mxid.encode("utf-8"), hashlib.sha512
+            ).hexdigest()
+        resp = await cls.az.http_session.post(url, data=json.dumps(login_req), headers=headers)
         data = await resp.json()
         try:
             return data["access_token"]
