@@ -1,3 +1,12 @@
+## v0.17.6 (2022-08-17)
+
+* *(bridge)* Added hidden option to use appservice login for double puppeting.
+* *(client)* Fixed sync handling throwing an error if event parsing failed.
+* *(errors)* Added `M_UNKNOWN_ENDPOINT` error code from [MSC3743]
+* *(appservice)* Updated [MSC3202] support to handle one time keys correctly.
+
+[MSC3743]: https://github.com/matrix-org/matrix-spec-proposals/pull/3743
+
 ## v0.17.5 (2022-08-15)
 
 * *(types)* Added `m.read.private` to receipt types.
