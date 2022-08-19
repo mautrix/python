@@ -260,8 +260,30 @@ class EncryptionManager:
         if not device_id:
             await self.crypto_store.put_device_id(self.client.device_id)
             self.log.debug(f"Logged in with new device ID {self.client.device_id}")
+        elif self.crypto.account.shared:
+            await self._verify_keys_are_on_server()
         _ = self.client.start(self._filter)
         self.log.info("End-to-bridge encryption support is enabled")
+
+    async def _verify_keys_are_on_server(self) -> None:
+        self.log.debug("Making sure keys are still on server")
+        try:
+            resp = await self.client.query_keys([self.client.mxid])
+        except Exception:
+            self.log.critical(
+                "Failed to query own keys to make sure device still exists", exc_info=True
+            )
+            sys.exit(33)
+        try:
+            own_keys = resp.device_keys[self.client.mxid][self.client.device_id]
+            if len(own_keys.keys) > 0:
+                return
+        except KeyError:
+            pass
+        self.log.critical("Existing device doesn't have keys on server, resetting crypto")
+        await self.crypto.crypto_store.delete()
+        await self.client.logout_all()
+        sys.exit(34)
 
     async def stop(self) -> None:
         self.client.stop()
