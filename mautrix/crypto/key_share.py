@@ -76,18 +76,12 @@ class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
                 code=RoomKeyWithheldCode.BLACKLISTED,
                 reason="You have been blacklisted by this device",
             )
-        elif device.trust == TrustState.VERIFIED:
-            self.log.debug(f"Accepting key request from verified device {device.device_id}")
-            return True
-        elif self.share_to_unverified_devices:
-            self.log.debug(
-                f"Accepting key request from unverified device {device.device_id}, "
-                f"as share_to_unverified_devices is True"
-            )
+        elif device.trust >= self.share_keys_min_trust:
+            self.log.debug(f"Accepting key request from trusted device {device.device_id}")
             return True
         else:
             raise RejectKeyShare(
-                f"Rejecting key request from unverified device {device.device_id}",
+                f"Rejecting key request from untrusted device {device.device_id}",
                 code=RoomKeyWithheldCode.UNVERIFIED,
                 reason="You have not been verified by this device",
             )

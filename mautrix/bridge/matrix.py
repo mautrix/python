@@ -182,7 +182,6 @@ class BaseMatrixHandler:
                 user_id_suffix=self.user_id_suffix,
                 homeserver_address=self.config["homeserver.address"],
                 db_url=self.config["appservice.database"],
-                key_sharing_config=self.config["bridge.encryption.key_sharing"],
             )
             self.require_e2ee = self.config["bridge.encryption.require"]
 

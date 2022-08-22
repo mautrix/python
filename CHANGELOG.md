@@ -1,3 +1,8 @@
+## v0.17.8 (unreleased)
+
+* *(crypto)* Fixed parsing `/keys/claim` responses with no `failures` field.
+* *(bridge)* Fixed parsing e2ee key sharing allow/minimum level config.
+
 ## v0.17.7 (2022-08-22)
 
 * *(util.async_db)* Added `init_commands` to run commands on each SQLite

@@ -61,6 +61,7 @@ class EncryptionManager:
     min_send_trust: TrustState
     min_share_trust: TrustState
     min_receive_trust: TrustState
+    key_sharing_enabled: bool
 
     bridge: br.Bridge
     az: AppService
@@ -76,7 +77,6 @@ class EncryptionManager:
         user_id_prefix: str,
         user_id_suffix: str,
         db_url: str,
-        key_sharing_config: dict[str, bool] = None,
     ) -> None:
         self.loop = bridge.loop or asyncio.get_event_loop()
         self.bridge = bridge
@@ -85,7 +85,6 @@ class EncryptionManager:
         self._id_prefix = user_id_prefix
         self._id_suffix = user_id_suffix
         self._share_session_events = {}
-        self.key_sharing_config = key_sharing_config or {}
         pickle_key = "mautrix.bridge.e2ee"
         self.crypto_db = Database.create(
             url=db_url,
@@ -112,6 +111,7 @@ class EncryptionManager:
         self.min_receive_trust = TrustState.parse(verification_levels["receive"])
         self.crypto.share_keys_min_trust = self.min_share_trust
         self.crypto.send_keys_min_trust = self.min_receive_trust
+        self.key_sharing_enabled = bridge.config["bridge.encryption.allow_key_sharing"]
 
     async def _exit_on_sync_fail(self, data) -> None:
         if data["error"]:
@@ -119,9 +119,7 @@ class EncryptionManager:
             sys.exit(32)
 
     async def allow_key_share(self, device: DeviceIdentity, request: RequestedKeyInfo) -> bool:
-        require_verification = self.key_sharing_config.get("require_verification", True)
-        allow = self.key_sharing_config.get("allow", False)
-        if not allow:
+        if not self.key_sharing_enabled:
             self.log.debug(
                 f"Key sharing not enabled, ignoring key request from "
                 f"{device.user_id}/{device.device_id}"
@@ -134,7 +132,7 @@ class EncryptionManager:
                 code=RoomKeyWithheldCode.BLACKLISTED,
                 reason="You have been blacklisted by this device",
             )
-        elif device.trust == TrustState.VERIFIED or not require_verification:
+        elif device.trust >= self.crypto.share_keys_min_trust:
             portal = await self.bridge.get_portal(request.room_id)
             if portal is None:
                 raise RejectKeyShare(
