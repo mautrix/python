@@ -59,8 +59,6 @@ class EncryptionManager:
     state_store: StateStore
 
     min_send_trust: TrustState
-    min_share_trust: TrustState
-    min_receive_trust: TrustState
     key_sharing_enabled: bool
 
     bridge: br.Bridge
@@ -106,11 +104,9 @@ class EncryptionManager:
         self.client.add_event_handler(InternalEventType.SYNC_STOPPED, self._exit_on_sync_fail)
         self.crypto.allow_key_share = self.allow_key_share
         verification_levels = bridge.config["bridge.encryption.verification_levels"]
-        self.min_share_trust = TrustState.parse(verification_levels["share"])
         self.min_send_trust = TrustState.parse(verification_levels["send"])
-        self.min_receive_trust = TrustState.parse(verification_levels["receive"])
-        self.crypto.share_keys_min_trust = self.min_share_trust
-        self.crypto.send_keys_min_trust = self.min_receive_trust
+        self.crypto.share_keys_min_trust = TrustState.parse(verification_levels["share"])
+        self.crypto.send_keys_min_trust = TrustState.parse(verification_levels["receive"])
         self.key_sharing_enabled = bridge.config["bridge.encryption.allow_key_sharing"]
 
     async def _exit_on_sync_fail(self, data) -> None:
