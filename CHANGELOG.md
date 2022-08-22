@@ -1,4 +1,4 @@
-## v0.17.8 (unreleased)
+## v0.17.8 (2022-08-22)
 
 * *(crypto)* Fixed parsing `/keys/claim` responses with no `failures` field.
 * *(bridge)* Fixed parsing e2ee key sharing allow/minimum level config.
