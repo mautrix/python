@@ -1,3 +1,10 @@
+## v0.17.7 (2022-08-22)
+
+* *(util.async_db)* Added `init_commands` to run commands on each SQLite
+  connection (e.g. to enable `PRAGMA`s). No-op on Postgres.
+* *(bridge)* Added check to make sure e2ee keys are intact on server.
+  If they aren't, the crypto database will be wiped and the bridge will stop.
+
 ## v0.17.6 (2022-08-17)
 
 * *(bridge)* Added hidden option to use appservice login for double puppeting.
