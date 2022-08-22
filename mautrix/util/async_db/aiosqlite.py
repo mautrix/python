@@ -84,6 +84,7 @@ class SQLiteDatabase(Database):
     _pool: asyncio.Queue[TxnConnection]
     _stopped: bool
     _conns: int
+    _init_commands: List[str]
 
     def __init__(
         self,
@@ -109,11 +110,18 @@ class SQLiteDatabase(Database):
         self._db_args.pop("max_size", None)
         self._stopped = False
         self._conns = 0
+        self._init_commands = self._db_args.pop("init_commands", [])
 
     async def start(self) -> None:
         self.log.debug(f"Connecting to {self.url}")
         for _ in range(self._pool.maxsize):
             conn = await TxnConnection(self._path, **self._db_args)
+            if self._init_commands:
+                cur = await conn.cursor()
+                for command in self._init_commands:
+                    self.log.debug("Executing command: %s", command)
+                    await cur.execute(command)
+                await conn.commit()
             conn.row_factory = sqlite3.Row
             self._pool.put_nowait(conn)
             self._conns += 1
