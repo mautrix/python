@@ -40,8 +40,10 @@ class PostgresDatabase(Database):
             self.scheme = Scheme.COCKROACH
             # Send postgres scheme to asyncpg
             url = url.with_scheme("postgres")
-        self._exit_on_ice = (db_args or {}).pop("meow_exit_on_ice", True)
-        db_args.pop("init_commands", None)
+        self._exit_on_ice = True
+        if db_args:
+            self._exit_on_ice = db_args.pop("meow_exit_on_ice", True)
+            db_args.pop("init_commands", None)
         super().__init__(
             url,
             db_args=db_args,
