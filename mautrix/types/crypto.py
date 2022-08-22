@@ -88,8 +88,8 @@ class QueryKeysResponse(SerializableAttrs):
 
 @dataclass
 class ClaimKeysResponse(SerializableAttrs):
-    failures: Dict[str, Any]
     one_time_keys: Dict[UserID, Dict[DeviceID, Dict[KeyID, Any]]]
+    failures: Dict[str, Any] = field(factory=lambda: {})
 
 
 class TrustState(IntEnum):
