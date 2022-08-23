@@ -144,6 +144,7 @@ class JoinRule(SerializableEnum):
     RESTRICTED = "restricted"
     INVITE = "invite"
     PRIVATE = "private"
+    KNOCK_RESTRICTED = "knock_restricted"
 
 
 class JoinRestrictionType(SerializableEnum):
