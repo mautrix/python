@@ -84,7 +84,7 @@ class SQLiteDatabase(Database):
     _pool: asyncio.Queue[TxnConnection]
     _stopped: bool
     _conns: int
-    _init_commands: List[str]
+    _init_commands: list[str]
 
     def __init__(
         self,
