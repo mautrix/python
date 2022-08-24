@@ -3,6 +3,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from typing import Optional
+
 from attr import dataclass
 
 from .primitive import ContentURI
@@ -59,3 +61,14 @@ class MXOpenGraph(SerializableAttrs):
     image: OpenGraphImage = field(default=None, flatten=True)
     video: OpenGraphVideo = field(default=None, flatten=True)
     audio: OpenGraphAudio = field(default=None, flatten=True)
+
+
+@dataclass
+class MediaCreateResponse(SerializableAttrs):
+    """
+    Matrix media create response including MSC3870
+    """
+
+    content_uri: ContentURI
+    unused_expired_at: Optional[int] = None
+    upload_url: Optional[str] = None

@@ -13,7 +13,13 @@ import time
 from mautrix import __optional_imports__
 from mautrix.api import MediaPath, Method
 from mautrix.errors import MatrixResponseError
-from mautrix.types import ContentURI, MediaRepoConfig, MXOpenGraph, SerializerError
+from mautrix.types import (
+    ContentURI,
+    MediaCreateResponse,
+    MediaRepoConfig,
+    MXOpenGraph,
+    SerializerError,
+)
 from mautrix.util.opt_prometheus import Histogram
 
 from ..base import BaseClientAPI
@@ -45,22 +51,16 @@ class MediaRepositoryMethods(BaseClientAPI):
     uploads of media.
     """
 
-    async def unstable_create_mxc(self) -> ContentURI:
+    async def unstable_create_mxc(self) -> MediaCreateResponse:
         """
         Create a media ID for uploading media to the homeserver. Requires the homeserver to have
         `MSC2246 <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ support.
 
         Returns:
-            The MXC URI that can be used to upload a file to later.
-
-        Raises:
-            MatrixResponseError: If the response does not contain a ``content_uri`` field.
+            MediaCreateResponse Containing the MXC URI that can be used to upload a file to later, as well as an optional upload URL
         """
         resp = await self.api.request(Method.POST, MediaPath.unstable["fi.mau.msc2246"].create)
-        try:
-            return resp["content_uri"]
-        except KeyError:
-            raise MatrixResponseError("`content_uri` not in response.")
+        return MediaCreateResponse.deserialize(resp)
 
     @contextmanager
     def _observe_upload_time(self, size: int | None, mxc: ContentURI | None = None) -> None:
@@ -121,19 +121,32 @@ class MediaRepositoryMethods(BaseClientAPI):
         if filename:
             query["filename"] = filename
 
+        upload_url = None
+
         if async_upload:
             if mxc:
                 raise ValueError("async_upload and mxc can't be provided simultaneously")
-            mxc = await self.unstable_create_mxc()
+            create_response = await self.unstable_create_mxc()
+            mxc = create_response.content_uri
+            upload_url = create_response.upload_url
 
         path = MediaPath.v3.upload
         method = Method.POST
         if mxc:
             server_name, media_id = self.api.parse_mxc_uri(mxc)
-            path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id]
-            method = Method.PUT
+            if upload_url is None:
+                path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id]
+                method = Method.PUT
+            else:
+                path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id].complete
 
-        task = self.api.request(method, path, content=data, headers=headers, query_params=query)
+        if upload_url is not None:
+            task = self._upload_to_url(upload_url, path, data)
+        else:
+            task = self.api.request(
+                method, path, content=data, headers=headers, query_params=query
+            )
+
         if async_upload:
 
             async def _try_upload():
@@ -265,3 +278,12 @@ class MediaRepositoryMethods(BaseClientAPI):
             return MediaRepoConfig.deserialize(content)
         except SerializerError as e:
             raise MatrixResponseError("Invalid MediaRepoConfig in response") from e
+
+    async def _upload_to_url(self, upload_url: str, post_upload_path: str, data: Any):
+        response = await self.api.session.request(Method.PUT.name, upload_url, data=data)
+        if not response.ok:
+            self.log.error(
+                f"non-ok http response from upload URL: PUT {upload_url} returned {response.status}"
+            )
+            raise Exception("non-ok http response from server")
+        await self.api.request(Method.POST, post_upload_path)

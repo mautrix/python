@@ -138,7 +138,14 @@ from .event import (
 )
 from .filter import EventFilter, Filter, RoomEventFilter, RoomFilter, StateFilter
 from .matrixuri import IdentifierType, MatrixURI, MatrixURIError, URIAction
-from .media import MediaRepoConfig, MXOpenGraph, OpenGraphAudio, OpenGraphImage, OpenGraphVideo
+from .media import (
+    MediaCreateResponse,
+    MediaRepoConfig,
+    MXOpenGraph,
+    OpenGraphAudio,
+    OpenGraphImage,
+    OpenGraphVideo,
+)
 from .misc import (
     BatchSendResponse,
     DeviceLists,
@@ -342,6 +349,7 @@ __all__ = [
     "OpenGraphAudio",
     "OpenGraphImage",
     "OpenGraphVideo",
+    "MediaCreateResponse",
     "BatchSendResponse",
     "DeviceLists",
     "DeviceOTKCount",
