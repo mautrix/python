@@ -168,7 +168,7 @@ class MediaRepositoryMethods(BaseClientAPI):
             The raw downloaded data.
         """
         url = self.api.get_download_url(url)
-        query_params: dict[str, Any] = {}
+        query_params: dict[str, Any] = {"allow_redirect": "true"}
         if max_stall_ms is not None:
             query_params["max_stall_ms"] = max_stall_ms
             query_params["fi.mau.msc2246.max_stall_ms"] = max_stall_ms
@@ -206,7 +206,7 @@ class MediaRepositoryMethods(BaseClientAPI):
             The raw downloaded data.
         """
         url = self.api.get_download_url(url, download_type="thumbnail")
-        query_params: dict[str, Any] = {}
+        query_params: dict[str, Any] = {"allow_redirect": "true"}
         if width is not None:
             query_params["width"] = width
         if height is not None:
