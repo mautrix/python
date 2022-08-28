@@ -106,6 +106,8 @@ class Bridge(Program, ABC):
             sys.exit(0)
 
     def prepare(self) -> None:
+        if self.config.env:
+            self.log.debug("Loaded config overrides from environment: %s", self.config.env.keys())
         super().prepare()
         self.prepare_db()
         self.prepare_appservice()
@@ -115,6 +117,8 @@ class Bridge(Program, ABC):
         self.config = self.config_class(
             self.args.config, self.args.registration, self.args.base_config
         )
+        if not self.config.env_prefix:
+            self.config.env_prefix = self.module.upper()
         if self.args.generate_registration:
             self.config._check_tokens = False
         self.load_and_update_config()

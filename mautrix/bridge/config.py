@@ -5,8 +5,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 from abc import ABC
+import json
+import os
 import re
 import secrets
 import time
@@ -21,15 +23,40 @@ from mautrix.util.config import (
 
 
 class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
+    env_prefix: str | None = None
     registration_path: str
     _registration: dict | None
     _check_tokens: bool
+    env: dict[str, Any]
 
     def __init__(self, path: str, registration_path: str, base_path: str) -> None:
         super().__init__(path, base_path)
         self.registration_path = registration_path
         self._registration = None
         self._check_tokens = True
+        self.env = {}
+        if self.env_prefix:
+            env_prefix = f"{self.env_prefix}_"
+            for key, value in os.environ.items():
+                if not key.startswith(env_prefix):
+                    continue
+                key = key.removeprefix(env_prefix)
+                if value.startswith("json::"):
+                    value = json.loads(value)
+                self.env[key] = value
+
+    def __getitem__(self, item: str) -> Any:
+        if self.env:
+            try:
+                sanitized_item = item.replace(".", "_").replace("[", "").replace("]", "").upper()
+                val = self.env[sanitized_item]
+            except KeyError:
+                pass
+            else:
+                if val.startswith("json::"):
+                    val = json.loads(val.removeprefix("json::"))
+                return val
+        return super().__getitem__(item)
 
     def save(self) -> None:
         super().save()
