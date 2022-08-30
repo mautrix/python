@@ -12,7 +12,7 @@ import time
 
 from mautrix import __optional_imports__
 from mautrix.api import MediaPath, Method
-from mautrix.errors import MatrixResponseError
+from mautrix.errors import MatrixResponseError, make_request_error
 from mautrix.types import (
     ContentURI,
     MediaCreateResponse,
@@ -280,10 +280,26 @@ class MediaRepositoryMethods(BaseClientAPI):
             raise MatrixResponseError("Invalid MediaRepoConfig in response") from e
 
     async def _upload_to_url(self, upload_url: str, post_upload_path: str, data: Any):
-        response = await self.api.session.request(Method.PUT.name, upload_url, data=data)
-        if not response.ok:
-            self.log.error(
-                f"non-ok http response from upload URL: PUT {upload_url} returned {response.status}"
+        retry_count = self.api.default_retry_count
+        backoff = 4
+        while True:
+            upload_response = await self.api.session.request(
+                Method.PUT.name, upload_url, data=data
             )
-            raise Exception("non-ok http response from server")
+            if not upload_response.ok:
+                if retry_count == 0:
+                    raise make_request_error(
+                        http_status=upload_response.status,
+                        text=await upload_response.text(),
+                    )
+                self.log.warning(
+                    f"non-ok http response from upload URL: PUT {upload_url} returned"
+                    f" {upload_response.status}, retrying in {backoff} seconds"
+                )
+                await asyncio.sleep(backoff)
+                backoff *= 2
+                retry_count = -1
+            else:
+                break
+
         await self.api.request(Method.POST, post_upload_path)
