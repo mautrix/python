@@ -199,10 +199,10 @@ class AppServiceServerMixin:
     def _fix_prev_content(raw_event: JSON) -> None:
         try:
             raw_event["unsigned"]["prev_content"]
-        except KeyError:
+        except (KeyError, TypeError):
             try:
                 raw_event.setdefault("unsigned", {})["prev_content"] = raw_event["prev_content"]
-            except KeyError:
+            except (KeyError, TypeError):
                 pass
 
     async def handle_transaction(
