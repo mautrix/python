@@ -197,13 +197,9 @@ class AppServiceServerMixin:
 
     @staticmethod
     def _fix_prev_content(raw_event: JSON) -> None:
-        try:
-            raw_event["unsigned"]["prev_content"]
-        except (KeyError, TypeError):
-            try:
-                raw_event.setdefault("unsigned", {})["prev_content"] = raw_event["prev_content"]
-            except (KeyError, TypeError):
-                pass
+        # MSC3442: `prev_content` should be under `unsigned`
+        if "prev_content" in raw_event:
+            raw_event.update({"unsigned": {"prev_content": raw_event["prev_content"]}})
 
     async def handle_transaction(
         self,
