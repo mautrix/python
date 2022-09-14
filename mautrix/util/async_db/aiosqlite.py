@@ -113,6 +113,10 @@ class SQLiteDatabase(Database):
         self._init_commands = self._db_args.pop("init_commands", [])
 
     async def start(self) -> None:
+        if self._conns:
+            raise RuntimeError("database pool has already been started")
+        elif self._stopped:
+            raise RuntimeError("database pool can't be restarted")
         self.log.debug(f"Connecting to {self.url}")
         for _ in range(self._pool.maxsize):
             conn = await TxnConnection(self._path, **self._db_args)

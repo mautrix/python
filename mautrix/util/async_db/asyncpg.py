@@ -61,6 +61,8 @@ class PostgresDatabase(Database):
 
     async def start(self) -> None:
         if not self._pool_override:
+            if self._pool:
+                raise RuntimeError("Database has already been started")
             self._db_args["loop"] = asyncio.get_running_loop()
             log_url = self.url
             if log_url.password:
