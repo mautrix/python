@@ -1,3 +1,27 @@
+## v0.18.0 (unreleased)
+
+* **Breaking change *(util.async_db)*** Added checks to prevent calling
+  `.start()` on a database multiple times.
+* *(appservice)* Fixed [MSC2409] support to read to-device events from the
+  correct field.
+* *(appservice)* Added support for automatically calling functions when a
+  transaction contains [MSC2409] to-device events or [MSC3202] encryption data.
+* *(bridge)* Added option to use [MSC2409] and [MSC3202] for end-to-bridge
+  encryption. However, this may not work with the Synapse implementation as it
+  hasn't been tested yet.
+* *(bridge)* Replaced `homeserver` -> `asmux` flag with more generic `software`
+  field.
+* *(bridge)* Added support for overriding parts of config with environment
+  variables.
+  * If the value starts with `json::`, it'll be parsed as JSON instead of using
+    as a raw string.
+* *(client.api)* Added support for [MSC3870] for both uploading and downloading
+  media.
+* *(types)* Added `knock_restricted` join rule to `JoinRule` enum.
+* *(crypto)* Added warning logs if claiming one-time keys for other users fails.
+
+[MSC3870]: https://github.com/matrix-org/matrix-spec-proposals/pull/3870
+
 ## v0.17.8 (2022-08-22)
 
 * *(crypto)* Fixed parsing `/keys/claim` responses with no `failures` field.
