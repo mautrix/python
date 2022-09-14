@@ -161,8 +161,11 @@ class AppServiceServerMixin:
     async def _http_handle_transaction(self, request: web.Request) -> web.Response:
         transaction_id, data = await self._read_transaction_header(request)
 
+        txn_content_log = []
         try:
             events = data.pop("events")
+            if events:
+                txn_content_log.append(f"{len(events)} PDUs")
         except KeyError:
             raise web.HTTPBadRequest(
                 content_type="application/json",
@@ -171,11 +174,12 @@ class AppServiceServerMixin:
                 ),
             )
 
-        ephemeral = (
-            self._get_with_fallback(data, "ephemeral", "de.sorunome.msc2409")
-            if self.ephemeral_events
-            else None
-        )
+        if self.ephemeral_events:
+            ephemeral = self._get_with_fallback(data, "ephemeral", "de.sorunome.msc2409")
+            if ephemeral:
+                txn_content_log.append(f"{len(ephemeral)} EDUs")
+        else:
+            ephemeral = None
         if self.encryption_events:
             to_device = self._get_with_fallback(data, "to_device", "de.sorunome.msc2409")
             device_lists = DeviceLists.deserialize(
@@ -190,10 +194,26 @@ class AppServiceServerMixin:
                     data, "device_one_time_keys_count", "org.matrix.msc3202", default={}
                 ).items()
             }
+            if to_device:
+                txn_content_log.append(f"{len(to_device)} to-device events")
+            if device_lists.changed:
+                txn_content_log.append(f"{len(device_lists.changed)} device list changes")
+            if otk_counts:
+                txn_content_log.append(
+                    f"{sum(len(vals) for vals in otk_counts.values())} OTK counts"
+                )
         else:
             otk_counts = {}
             device_lists = None
             to_device = None
+
+        if len(txn_content_log) > 2:
+            txn_content_log = [", ".join(txn_content_log[:-1]), txn_content_log[-1]]
+        if not txn_content_log:
+            txn_description = "nothing?"
+        else:
+            txn_description = " and ".join(txn_content_log)
+        self.log.debug(f"Handling transaction {transaction_id} with {txn_description}")
 
         try:
             output = await self.handle_transaction(

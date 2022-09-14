@@ -19,6 +19,9 @@ class DeviceLists(SerializableAttrs):
     changed: List[UserID] = attr.ib(factory=lambda: [])
     left: List[UserID] = attr.ib(factory=lambda: [])
 
+    def __bool__(self) -> bool:
+        return bool(self.changed or self.left)
+
 
 @dataclass
 class DeviceOTKCount(SerializableAttrs):
