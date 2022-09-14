@@ -11,7 +11,9 @@ import logging
 
 from mautrix import client as cli
 from mautrix.types import (
+    ASToDeviceEvent,
     DecryptedOlmEvent,
+    DeviceID,
     DeviceLists,
     DeviceOTKCount,
     EncryptionAlgorithm,
@@ -20,6 +22,7 @@ from mautrix.types import (
     StateEvent,
     ToDeviceEvent,
     TrustState,
+    UserID,
 )
 from mautrix.util.logging import TraceLogger
 
@@ -94,6 +97,30 @@ class OlmMachine(
         if self.account is None:
             self.account = OlmAccount()
             await self.crypto_store.put_account(self.account)
+
+    async def handle_as_otk_counts(
+        self, otk_counts: dict[UserID, dict[DeviceID, DeviceOTKCount]]
+    ) -> None:
+        for user_id, devices in otk_counts.items():
+            for device_id, count in devices.items():
+                if user_id == self.client.mxid and device_id == self.client.device_id:
+                    await self.handle_otk_count(count)
+                else:
+                    self.log.warning(f"Got OTK count for unknown device {user_id}/{device_id}")
+
+    async def handle_as_device_lists(self, device_lists: DeviceLists) -> None:
+        asyncio.create_task(self.handle_device_lists(device_lists))
+
+    async def handle_as_to_device_event(self, evt: ASToDeviceEvent) -> None:
+        if evt.to_user_id != self.client.mxid or evt.to_device_id != self.client.device_id:
+            self.log.warning(
+                f"Got to-device event for unknown device {evt.to_user_id}/{evt.to_device_id}"
+            )
+            return
+        if evt.type == EventType.TO_DEVICE_ENCRYPTED:
+            await self.handle_to_device_event(evt)
+        else:
+            self.log.debug(f"Got unknown to-device event {evt.type} from {evt.sender}")
 
     async def handle_otk_count(self, otk_count: DeviceOTKCount) -> None:
         """

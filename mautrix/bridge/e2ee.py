@@ -34,7 +34,7 @@ from mautrix.types import (
     StateFilter,
     TrustState,
 )
-from mautrix.util.async_db import Database, DatabaseException
+from mautrix.util.async_db import Database
 from mautrix.util.logging import TraceLogger
 
 from .. import bridge as br
@@ -60,6 +60,7 @@ class EncryptionManager:
 
     min_send_trust: TrustState
     key_sharing_enabled: bool
+    appservice_mode: bool
 
     bridge: br.Bridge
     az: AppService
@@ -108,6 +109,11 @@ class EncryptionManager:
         self.crypto.share_keys_min_trust = TrustState.parse(verification_levels["share"])
         self.crypto.send_keys_min_trust = TrustState.parse(verification_levels["receive"])
         self.key_sharing_enabled = bridge.config["bridge.encryption.allow_key_sharing"]
+        self.appservice_mode = bridge.config["bridge.encryption.appservice"]
+        if self.appservice_mode:
+            self.az.otk_handler = self.crypto.handle_as_otk_counts
+            self.az.device_list_handler = self.crypto.handle_as_device_lists
+            self.az.to_device_handler = self.crypto.handle_as_to_device_event
 
     async def _exit_on_sync_fail(self, data) -> None:
         if data["error"]:
@@ -256,8 +262,11 @@ class EncryptionManager:
             self.log.debug(f"Logged in with new device ID {self.client.device_id}")
         elif self.crypto.account.shared:
             await self._verify_keys_are_on_server()
-        _ = self.client.start(self._filter)
-        self.log.info("End-to-bridge encryption support is enabled")
+        if self.appservice_mode:
+            self.log.info("End-to-bridge encryption support is enabled (appservice mode)")
+        else:
+            _ = self.client.start(self._filter)
+            self.log.info("End-to-bridge encryption support is enabled (sync mode)")
 
     async def _verify_keys_are_on_server(self) -> None:
         self.log.debug("Making sure keys are still on server")

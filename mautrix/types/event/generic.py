@@ -23,7 +23,7 @@ from .message import MessageEvent, MessageEventContent
 from .reaction import ReactionEvent, ReactionEventContent
 from .redaction import RedactionEvent, RedactionEventContent
 from .state import StateEvent, StateEventContent
-from .to_device import ToDeviceEvent, ToDeviceEventContent
+from .to_device import ASToDeviceEvent, ToDeviceEvent, ToDeviceEventContent
 from .voip import CallEvent, CallEventContent, type_to_class as voip_types
 
 Event = NewType(
@@ -38,6 +38,7 @@ Event = NewType(
         PresenceEvent,
         EncryptedEvent,
         ToDeviceEvent,
+        ASToDeviceEvent,
         CallEvent,
         BeeperMessageStatusEvent,
         GenericEvent,

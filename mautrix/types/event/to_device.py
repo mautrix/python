@@ -110,3 +110,9 @@ class ToDeviceEvent(BaseEvent, SerializableAttrs):
         if not content_type:
             return Obj(**data)
         return content_type.deserialize(data)
+
+
+@dataclass
+class ASToDeviceEvent(ToDeviceEvent, SerializableAttrs):
+    to_user_id: UserID
+    to_device_id: DeviceID

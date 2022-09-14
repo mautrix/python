@@ -16,6 +16,7 @@ from aiohttp import web
 
 from mautrix.types import (
     JSON,
+    ASToDeviceEvent,
     DeviceID,
     DeviceLists,
     DeviceOTKCount,
@@ -35,17 +36,25 @@ class AppServiceServerMixin:
 
     hs_token: str
     ephemeral_events: bool
+    encryption_events: bool
 
     query_user: Callable[[UserID], JSON]
     query_alias: Callable[[RoomAlias], JSON]
 
     transactions: set[str]
     event_handlers: list[HandlerFunc]
+    to_device_handler: HandlerFunc | None
+    otk_handler: Callable[[dict[UserID, dict[DeviceID, DeviceOTKCount]]], Awaitable] | None
+    device_list_handler: Callable[[DeviceLists], Awaitable] | None
 
-    def __init__(self, ephemeral_events: bool = False) -> None:
+    def __init__(self, ephemeral_events: bool = False, encryption_events: bool = False) -> None:
         self.transactions = set()
         self.event_handlers = []
+        self.to_device_handler = None
+        self.otk_handler = None
+        self.device_list_handler = None
         self.ephemeral_events = ephemeral_events
+        self.encryption_events = encryption_events
 
         async def default_query_handler(_):
             return None
@@ -166,18 +175,24 @@ class AppServiceServerMixin:
             if self.ephemeral_events
             else None
         )
-        device_lists = DeviceLists.deserialize(
-            self._get_with_fallback(data, "device_lists", "org.matrix.msc3202")
-        )
-        otk_counts = {
-            user_id: {
-                device_id: DeviceOTKCount.deserialize(count)
-                for device_id, count in devices.items()
+        if self.encryption_events:
+            to_device = self._get_with_fallback(data, "to_device", "de.sorunome.msc2409")
+            device_lists = DeviceLists.deserialize(
+                self._get_with_fallback(data, "device_lists", "org.matrix.msc3202")
+            )
+            otk_counts = {
+                user_id: {
+                    device_id: DeviceOTKCount.deserialize(count)
+                    for device_id, count in devices.items()
+                }
+                for user_id, devices in self._get_with_fallback(
+                    data, "device_one_time_keys_count", "org.matrix.msc3202", default={}
+                ).items()
             }
-            for user_id, devices in self._get_with_fallback(
-                data, "device_one_time_keys_count", "org.matrix.msc3202", default={}
-            ).items()
-        }
+        else:
+            otk_counts = {}
+            device_lists = None
+            to_device = None
 
         try:
             output = await self.handle_transaction(
@@ -185,8 +200,9 @@ class AppServiceServerMixin:
                 events=events,
                 extra_data=data,
                 ephemeral=ephemeral,
+                to_device=to_device,
                 device_lists=device_lists,
-                device_otk_count=otk_counts,
+                otk_counts=otk_counts,
             )
         except Exception:
             self.log.exception("Exception in transaction handler")
@@ -213,9 +229,21 @@ class AppServiceServerMixin:
         events: list[JSON],
         extra_data: JSON,
         ephemeral: list[JSON] | None = None,
-        device_otk_count: dict[UserID, dict[DeviceID, DeviceOTKCount]] | None = None,
+        to_device: list[JSON] | None = None,
+        otk_counts: dict[UserID, dict[DeviceID, DeviceOTKCount]] | None = None,
         device_lists: DeviceLists | None = None,
     ) -> JSON:
+        for raw_td in to_device or []:
+            try:
+                td = ASToDeviceEvent.deserialize(raw_td)
+            except SerializerError:
+                self.log.exception("Failed to deserialize to-device event %s", raw_td)
+            else:
+                await self.to_device_handler(td)
+        if device_lists and self.device_list_handler:
+            await self.device_list_handler(device_lists)
+        if otk_counts and self.otk_handler:
+            await self.otk_handler(otk_counts)
         for raw_edu in ephemeral or []:
             try:
                 edu = EphemeralEvent.deserialize(raw_edu)

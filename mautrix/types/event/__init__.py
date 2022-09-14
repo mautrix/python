@@ -92,6 +92,7 @@ from .state import (
     StrippedStateEvent,
 )
 from .to_device import (
+    ASToDeviceEvent,
     ForwardedRoomKeyEventContent,
     KeyRequestAction,
     RequestedKeyInfo,

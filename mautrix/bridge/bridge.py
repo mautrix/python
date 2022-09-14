@@ -156,6 +156,7 @@ class Bridge(Program, ABC):
             tls_key=self.config.get("appservice.tls_key", None),
             bot_localpart=self.config["appservice.bot_username"],
             ephemeral_events=self.config["appservice.ephemeral_events"],
+            encryption_events=self.config["bridge.encryption.appservice"],
             default_ua=HTTPAPI.default_ua,
             default_http_retry_count=default_http_retry_count,
             log="mau.as",

@@ -132,6 +132,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.encryption.allow")
         copy("bridge.encryption.default")
         copy("bridge.encryption.require")
+        copy("bridge.encryption.appservice")
         copy("bridge.encryption.verification_levels.receive")
         copy("bridge.encryption.verification_levels.send")
         copy("bridge.encryption.verification_levels.share")
