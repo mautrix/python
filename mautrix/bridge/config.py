@@ -101,6 +101,10 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("homeserver.status_endpoint")
         copy("homeserver.message_send_checkpoint_endpoint")
         copy("homeserver.async_media")
+        if self.get("homeserver.asmux", False):
+            helper.base["homeserver.software"] = "asmux"
+        else:
+            copy("homeserver.software")
 
         copy("appservice.address")
         copy("appservice.hostname")
