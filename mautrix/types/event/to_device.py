@@ -17,7 +17,7 @@ from .encrypted import EncryptedOlmEventContent, EncryptionAlgorithm
 class RoomKeyWithheldCode(ExtensibleEnum):
     BLACKLISTED: "RoomKeyWithheldCode" = "m.blacklisted"
     UNVERIFIED: "RoomKeyWithheldCode" = "m.unverified"
-    UNAUTHORIZED: "RoomKeyWithheldCode" = "m.unauthorized"
+    UNAUTHORIZED: "RoomKeyWithheldCode" = "m.unauthorised"
     UNAVAILABLE: "RoomKeyWithheldCode" = "m.unavailable"
     NO_OLM_SESSION: "RoomKeyWithheldCode" = "m.no_olm"
 
