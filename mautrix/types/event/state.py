@@ -310,7 +310,9 @@ class StateEvent(BaseRoomEvent, SerializableAttrs):
             data.get("unsigned", {}).get("prev_content", {})["__mautrix_event_type"] = event_type
         except ValueError:
             return Obj(**data)
-        return super().deserialize(data)
+        evt = super().deserialize(data)
+        evt.type = event_type
+        return evt
 
     @staticmethod
     @deserializer(StateEventContent)

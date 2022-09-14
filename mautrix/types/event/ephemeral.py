@@ -70,13 +70,15 @@ EphemeralEvent = NewType("EphemeralEvent", Union[PresenceEvent, TypingEvent, Rec
 def deserialize_ephemeral_event(data: JSON) -> EphemeralEvent:
     event_type = EventType.find(data.get("type", None))
     if event_type == EventType.RECEIPT:
-        return ReceiptEvent.deserialize(data)
+        evt = ReceiptEvent.deserialize(data)
     elif event_type == EventType.TYPING:
-        return TypingEvent.deserialize(data)
+        evt = TypingEvent.deserialize(data)
     elif event_type == EventType.PRESENCE:
-        return PresenceEvent.deserialize(data)
+        evt = PresenceEvent.deserialize(data)
     else:
-        return GenericEvent.deserialize(data)
+        evt = GenericEvent.deserialize(data)
+    evt.type = event_type
+    return evt
 
 
 setattr(EphemeralEvent, "deserialize", deserialize_ephemeral_event)

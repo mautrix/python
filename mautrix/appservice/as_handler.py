@@ -22,6 +22,7 @@ from mautrix.types import (
     DeviceOTKCount,
     EphemeralEvent,
     Event,
+    EventType,
     RoomAlias,
     SerializerError,
     UserID,
@@ -250,7 +251,7 @@ class AppServiceServerMixin:
             except SerializerError:
                 self.log.exception("Failed to deserialize ephemeral event %s", raw_edu)
             else:
-                self.handle_matrix_event(edu)
+                self.handle_matrix_event(edu, ephemeral=True)
         for raw_event in events:
             try:
                 self._fix_prev_content(raw_event)
@@ -261,10 +262,13 @@ class AppServiceServerMixin:
                 self.handle_matrix_event(event)
         return {}
 
-    def handle_matrix_event(self, event: Event) -> None:
-        if event.type.is_state and event.state_key is None:
-            self.log.debug(f"Not sending {event.event_id} to handlers: expected state_key.")
-            return
+    def handle_matrix_event(self, event: Event, ephemeral: bool = False) -> None:
+        if ephemeral:
+            event.type = event.type.with_class(EventType.Class.EPHEMERAL)
+        elif getattr(event, "state_key", None) is not None:
+            event.type = event.type.with_class(EventType.Class.STATE)
+        else:
+            event.type = event.type.with_class(EventType.Class.MESSAGE)
 
         async def try_handle(handler_func: HandlerFunc):
             try:

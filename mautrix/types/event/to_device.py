@@ -100,7 +100,9 @@ class ToDeviceEvent(BaseEvent, SerializableAttrs):
             data.setdefault("content", {})["__mautrix_event_type"] = evt_type
         except ValueError:
             return Obj(**data)
-        return super().deserialize(data)
+        evt = super().deserialize(data)
+        evt.type = evt_type
+        return evt
 
     @staticmethod
     @deserializer(ToDeviceEventContent)
