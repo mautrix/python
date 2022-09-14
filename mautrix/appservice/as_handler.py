@@ -16,6 +16,7 @@ from aiohttp import web
 
 from mautrix.types import (
     JSON,
+    DeviceID,
     DeviceLists,
     DeviceOTKCount,
     EphemeralEvent,
