@@ -1,3 +1,8 @@
+## v0.18.1 (2022-09-15)
+
+* *(crypto)* Fixed error sharing megolm session if a single recipient device
+  has ran out of one-time keys.
+
 ## v0.18.0 (2022-09-15)
 
 * **Breaking change *(util.async_db)*** Added checks to prevent calling
