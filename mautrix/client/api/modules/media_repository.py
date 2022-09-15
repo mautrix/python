@@ -141,7 +141,7 @@ class MediaRepositoryMethods(BaseClientAPI):
                 path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id].complete
 
         if upload_url is not None:
-            task = self._upload_to_url(upload_url, path, data)
+            task = self._upload_to_url(upload_url, path, headers, data)
         else:
             task = self.api.request(
                 method, path, content=data, headers=headers, query_params=query
@@ -279,22 +279,29 @@ class MediaRepositoryMethods(BaseClientAPI):
         except SerializerError as e:
             raise MatrixResponseError("Invalid MediaRepoConfig in response") from e
 
-    async def _upload_to_url(self, upload_url: str, post_upload_path: str, data: Any):
+    async def _upload_to_url(
+        self,
+        upload_url: str,
+        post_upload_path: str,
+        headers: dict[str, str],
+        data: bytes | bytearray | AsyncIterable[bytes],
+    ) -> None:
         retry_count = self.api.default_retry_count
         backoff = 4
         while True:
-            upload_response = await self.api.session.request(
-                Method.PUT.name, upload_url, data=data
-            )
+            self.log.debug("Uploading media to external URL %s", upload_url)
+            upload_response = await self.api.session.put(upload_url, data=data, headers=headers)
             if not upload_response.ok:
                 if retry_count == 0:
                     raise make_request_error(
                         http_status=upload_response.status,
                         text=await upload_response.text(),
+                        errcode="COM.BEEPER.EXTERNAL_UPLOAD_ERROR",
+                        message=None,
                     )
                 self.log.warning(
-                    f"non-ok http response from upload URL: PUT {upload_url} returned"
-                    f" {upload_response.status}, retrying in {backoff} seconds"
+                    f"Uploading media to external URL {upload_url} failed with HTTP "
+                    f"{upload_response.status}, retrying in {backoff} seconds"
                 )
                 await asyncio.sleep(backoff)
                 backoff *= 2
