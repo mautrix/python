@@ -3,7 +3,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Callable, Dict, Optional, Type
+from __future__ import annotations
+
+from typing import Callable, Type
 
 from .base import MatrixError
 
@@ -12,25 +14,30 @@ class MatrixRequestError(MatrixError):
     """An error that was returned by the homeserver."""
 
     http_status: int
-    message: Optional[str]
+    message: str | None
     errcode: str
 
 
 class MatrixUnknownRequestError(MatrixRequestError):
     """An unknown error type returned by the homeserver."""
 
+    http_status: int
+    text: str
+    errcode: str | None
+    message: str | None
+
     def __init__(
         self,
         http_status: int = 0,
         text: str = "",
-        errcode: Optional[str] = None,
-        message: Optional[str] = None,
+        errcode: str | None = None,
+        message: str | None = None,
     ) -> None:
         super().__init__(f"{http_status}: {text}")
-        self.http_status: int = http_status
-        self.text: str = text
-        self.errcode: Optional[str] = errcode
-        self.message: Optional[str] = message
+        self.http_status = http_status
+        self.text = text
+        self.errcode = errcode
+        self.message = message
 
 
 class MatrixStandardRequestError(MatrixRequestError):
@@ -45,11 +52,11 @@ class MatrixStandardRequestError(MatrixRequestError):
 
 
 MxSRE = Type[MatrixStandardRequestError]
-ec_map: Dict[str, MxSRE] = {}
-uec_map: Dict[str, MxSRE] = {}
+ec_map: dict[str, MxSRE] = {}
+uec_map: dict[str, MxSRE] = {}
 
 
-def standard_error(code: str, unstable: Optional[str] = None) -> Callable[[MxSRE], MxSRE]:
+def standard_error(code: str, unstable: str | None = None) -> Callable[[MxSRE], MxSRE]:
     def decorator(cls: MxSRE) -> MxSRE:
         cls.errcode = code
         ec_map[code] = cls
@@ -62,7 +69,11 @@ def standard_error(code: str, unstable: Optional[str] = None) -> Callable[[MxSRE
 
 
 def make_request_error(
-    http_status: int, text: str, errcode: str, message: str, unstable_errcode: Optional[str] = None
+    http_status: int,
+    text: str,
+    errcode: str | None,
+    message: str | None,
+    unstable_errcode: str | None = None,
 ) -> MatrixRequestError:
     """
     Determine the correct exception class for the error code and create an instance of that class
@@ -73,6 +84,7 @@ def make_request_error(
         text: The raw response text.
         errcode: The errcode field in the response JSON.
         message: The error field in the response JSON.
+        unstable_errcode: The MSC3848 error code field in the response JSON.
     """
     if unstable_errcode:
         try:
