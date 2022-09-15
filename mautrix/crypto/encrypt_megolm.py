@@ -221,7 +221,10 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
 
         if missing_sessions:
             self.log.debug(f"Creating missing outbound sessions {missing_sessions}")
-            await self._create_outbound_sessions(missing_sessions)
+            try:
+                await self._create_outbound_sessions(missing_sessions)
+            except Exception:
+                self.log.exception("Failed to create missing outbound sessions")
 
         for user_id, devices in missing_sessions.items():
             for device_id, device in devices.items():
