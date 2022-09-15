@@ -1,4 +1,4 @@
-## v0.18.0 (unreleased)
+## v0.18.0 (2022-09-15)
 
 * **Breaking change *(util.async_db)*** Added checks to prevent calling
   `.start()` on a database multiple times.
