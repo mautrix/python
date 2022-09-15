@@ -258,7 +258,9 @@ class Syncer(ABC):
     ) -> None:
         kwargs["source"] = SyncStream.INTERNAL
         tasks = self.dispatch_manual_event(
-            event_type, custom_type or kwargs, include_global_handlers=False
+            event_type,
+            custom_type if custom_type is not None else kwargs,
+            include_global_handlers=False,
         )
         await asyncio.gather(*tasks)
 
@@ -267,7 +269,9 @@ class Syncer(ABC):
     ) -> list[asyncio.Task]:
         kwargs["source"] = SyncStream.INTERNAL
         return self.dispatch_manual_event(
-            event_type, custom_type or kwargs, include_global_handlers=False
+            event_type,
+            custom_type if custom_type is not None else kwargs,
+            include_global_handlers=False,
         )
 
     def _try_deserialize(self, type: Type[T], data: JSON) -> T | GenericEvent:
