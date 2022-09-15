@@ -29,12 +29,16 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
     _check_tokens: bool
     env: dict[str, Any]
 
-    def __init__(self, path: str, registration_path: str, base_path: str) -> None:
+    def __init__(
+        self, path: str, registration_path: str, base_path: str, env_prefix: str | None = None
+    ) -> None:
         super().__init__(path, base_path)
         self.registration_path = registration_path
         self._registration = None
         self._check_tokens = True
         self.env = {}
+        if not self.env_prefix:
+            self.env_prefix = env_prefix
         if self.env_prefix:
             env_prefix = f"{self.env_prefix}_"
             for key, value in os.environ.items():
