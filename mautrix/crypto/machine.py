@@ -119,6 +119,8 @@ class OlmMachine(
             return
         if evt.type == EventType.TO_DEVICE_ENCRYPTED:
             await self.handle_to_device_event(evt)
+        elif evt.type == EventType.ROOM_KEY_REQUEST:
+            await self.handle_room_key_request(evt)
         else:
             self.log.debug(f"Got unknown to-device event {evt.type} from {evt.sender}")
 
