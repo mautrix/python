@@ -228,6 +228,8 @@ class AppServiceServerMixin:
         except Exception:
             self.log.exception("Exception in transaction handler")
             output = None
+        finally:
+            self.log.debug(f"Finished handling transaction {transaction_id}")
 
         self.transactions.add(transaction_id)
 

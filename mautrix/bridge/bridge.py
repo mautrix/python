@@ -17,14 +17,7 @@ from mautrix.appservice import AppService, ASStateStore
 from mautrix.client.state_store.asyncpg import PgStateStore as PgClientStateStore
 from mautrix.errors import MExclusive, MUnknownToken
 from mautrix.types import RoomID, UserID
-from mautrix.util.async_db import (
-    Database,
-    DatabaseException,
-    DatabaseNotOwned,
-    ForeignTablesFound,
-    UnsupportedDatabaseVersion,
-    UpgradeTable,
-)
+from mautrix.util.async_db import Database, DatabaseException, UpgradeTable
 from mautrix.util.bridge_state import BridgeState, BridgeStateEvent, GlobalBridgeState
 from mautrix.util.program import Program
 
@@ -49,7 +42,7 @@ class Bridge(Program, ABC):
     matrix: br.BaseMatrixHandler
     repo_url: str
     markdown_version: str
-    manhole: br.manhole.ManholeState | None
+    manhole: br.commands.manhole.ManholeState | None
 
     def __init__(
         self,
