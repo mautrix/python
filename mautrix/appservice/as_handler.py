@@ -238,6 +238,11 @@ class AppServiceServerMixin:
     @staticmethod
     def _fix_prev_content(raw_event: JSON) -> None:
         try:
+            if raw_event["unsigned"] is None:
+                del raw_event["unsigned"]
+        except KeyError:
+            pass
+        try:
             raw_event["unsigned"]["prev_content"]
         except KeyError:
             try:
