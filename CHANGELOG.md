@@ -1,3 +1,10 @@
+## v0.18.2 (2022-09-24)
+
+* *(crypto)* Fixed handling key requests when using appservice-mode (MSC2409)
+  encryption.
+* *(appservice)* Added workaround for dumb servers that send `"unsigned": null`
+  in events.
+
 ## v0.18.1 (2022-09-15)
 
 * *(crypto)* Fixed error sharing megolm session if a single recipient device
