@@ -43,7 +43,7 @@ def log_duration(func: Decorated) -> Decorated:
     return wrapper
 
 
-async def handle_exception_noop() -> None:
+async def handle_exception_noop(_: Exception) -> None:
     pass
 
 
