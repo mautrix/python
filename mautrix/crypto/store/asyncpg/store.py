@@ -8,6 +8,8 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import timedelta
 
+from asyncpg import UniqueViolationError
+
 from mautrix.client.state_store import SyncStore
 from mautrix.client.state_store.asyncpg import PgStateStore
 from mautrix.types import (
@@ -33,12 +35,15 @@ from ..abstract import CryptoStore, StateStore
 from .upgrade import upgrade_table
 
 try:
-    from sqlite3 import sqlite_version_info as sqlite_version
+    from sqlite3 import IntegrityError, sqlite_version_info as sqlite_version
 
     from aiosqlite import Cursor
 except ImportError:
     Cursor = None
     sqlite_version = (0, 0, 0)
+
+    class IntegrityError(Exception):
+        pass
 
 
 class PgCryptoStateStore(PgStateStore, StateStore):
@@ -231,16 +236,19 @@ class PgCryptoStore(CryptoStore, SyncStore):
             session_id, sender_key, signing_key, room_id, session, forwarding_chains, account_id
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         """
-        await self.db.execute(
-            q,
-            session_id,
-            sender_key,
-            session.signing_key,
-            room_id,
-            pickle,
-            forwarding_chains,
-            self.account_id,
-        )
+        try:
+            await self.db.execute(
+                q,
+                session_id,
+                sender_key,
+                session.signing_key,
+                room_id,
+                pickle,
+                forwarding_chains,
+                self.account_id,
+            )
+        except (IntegrityError, UniqueViolationError):
+            self.log.exception(f"Failed to insert megolm session {session_id}")
 
     async def get_group_session(
         self, room_id: RoomID, session_id: SessionID
