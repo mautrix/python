@@ -61,6 +61,10 @@ ADD_VARIATION_TRANSLATION = str.maketrans(
 )
 SKIN_TONE_MODIFIERS = ("\U0001F3FB", "\U0001F3FC", "\U0001F3FD", "\U0001F3FE", "\U0001F3FF")
 SKIN_TONE_REPLACEMENTS = {f"{VARIATION_SELECTOR_16}{mod}": mod for mod in SKIN_TONE_MODIFIERS}
+VARIATION_SELECTOR_REPLACEMENTS = {
+    **SKIN_TONE_REPLACEMENTS,
+    "\U0001F408\ufe0f\u200d\u2b1b\ufe0f": "\U0001F408\u200d\u2b1b",
+}
 
 
 def add(val: str) -> str:
@@ -88,7 +92,7 @@ def add(val: str) -> str:
         The string with variation selectors added.
     """
     added = remove(val).translate(ADD_VARIATION_TRANSLATION)
-    for invalid_selector, replacement in SKIN_TONE_REPLACEMENTS.items():
+    for invalid_selector, replacement in VARIATION_SELECTOR_REPLACEMENTS.items():
         added = added.replace(invalid_selector, replacement)
     return added
 
