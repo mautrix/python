@@ -290,18 +290,23 @@ class MediaRepositoryMethods(BaseClientAPI):
         backoff = 4
         while True:
             self.log.debug("Uploading media to external URL %s", upload_url)
-            upload_response = await self.api.session.put(upload_url, data=data, headers=headers)
-            if not upload_response.ok:
+            upload_response = None
+            try:
+                upload_response = await self.api.session.put(
+                    upload_url, data=data, headers=headers
+                )
+                upload_response.raise_for_status()
+            except Exception as e:
                 if retry_count == 0:
                     raise make_request_error(
-                        http_status=upload_response.status,
-                        text=await upload_response.text(),
+                        http_status=upload_response.status if upload_response else -1,
+                        text=(await upload_response.text()) if upload_response else "",
                         errcode="COM.BEEPER.EXTERNAL_UPLOAD_ERROR",
                         message=None,
                     )
                 self.log.warning(
-                    f"Uploading media to external URL {upload_url} failed with HTTP "
-                    f"{upload_response.status}, retrying in {backoff} seconds"
+                    f"Uploading media to external URL {upload_url} failed: {e}, "
+                    f"retrying in {backoff} seconds",
                 )
                 await asyncio.sleep(backoff)
                 backoff *= 2
