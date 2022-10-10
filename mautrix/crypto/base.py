@@ -87,7 +87,10 @@ def verify_signature_json(
     data_copy.pop("unsigned", None)
     signatures = data_copy.pop("signatures")
     key_id = str(KeyID(EncryptionKeyAlgorithm.ED25519, key_name))
-    signature = signatures[user_id][key_id]
+    try:
+        signature = signatures[user_id][key_id]
+    except KeyError:
+        return False
     signed_data = canonical_json(data_copy)
     try:
         olm.ed25519_verify(key, signed_data, signature)
