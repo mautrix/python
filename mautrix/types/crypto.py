@@ -79,10 +79,10 @@ class CrossSigningKeys(SerializableAttrs):
 
 @dataclass
 class QueryKeysResponse(SerializableAttrs):
-    device_keys: Dict[UserID, Dict[DeviceID, DeviceKeys]]
-    master_keys: Dict[UserID, CrossSigningKeys]
-    self_signing_keys: Dict[UserID, CrossSigningKeys]
-    user_signing_keys: Dict[UserID, CrossSigningKeys]
+    device_keys: Dict[UserID, Dict[DeviceID, DeviceKeys]] = field(factory=lambda: {})
+    master_keys: Dict[UserID, CrossSigningKeys] = field(factory=lambda: {})
+    self_signing_keys: Dict[UserID, CrossSigningKeys] = field(factory=lambda: {})
+    user_signing_keys: Dict[UserID, CrossSigningKeys] = field(factory=lambda: {})
     failures: Dict[str, Any] = field(factory=lambda: {})
 
 
