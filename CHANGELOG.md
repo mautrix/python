@@ -1,3 +1,12 @@
+## v0.18.3 (2022-10-11)
+
+* *(util.async_db)* Fixed mistake in default no-op database error handler
+  causing the wrong exception to be raised.
+* *(crypto.store.asyncpg)* Updated `put_group_session` to catch unique key
+  errors and log instead of raising.
+* *(client.api)* Updated [MSC3870] support to catch and retry on all
+  connection errors instead of only non-200 status codes when uploading.
+
 ## v0.18.2 (2022-09-24)
 
 * *(crypto)* Fixed handling key requests when using appservice-mode (MSC2409)
