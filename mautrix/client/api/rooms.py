@@ -68,6 +68,8 @@ class RoomMethods(EventMethods, BaseClientAPI):
         room_version: str = None,
         creation_content: RoomCreateStateEventContent | dict[str, JSON] | None = None,
         power_level_override: PowerLevelStateEventContent | dict[str, JSON] | None = None,
+        beeper_auto_join_invites: bool = False,
+        custom_request_fields: dict[str, Any] | None = None,
     ) -> RoomID:
         """
         Create a new room with various configuration options.
@@ -111,6 +113,10 @@ class RoomMethods(EventMethods, BaseClientAPI):
             power_level_override: The power level content to override in the default power level
                 event. This object is applied on top of the generated ``m.room.power_levels`` event
                 content prior to it being sent to the room. Defaults to overriding nothing.
+            beeper_auto_join_invites: A Beeper-specific extension which auto-joins all members in
+                the invite array instead of sending invites.
+            custom_request_fields: Additional fields to put in the top-level /createRoom content.
+                Non-custom fields take precedence over fields here.
 
         Returns:
             The ID of the newly created room.
@@ -124,6 +130,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
         .. _m.room.member: https://spec.matrix.org/v1.1/client-server-api/#mroommember
         """
         content = {
+            **(custom_request_fields or {}),
             "visibility": visibility.value,
             "is_direct": is_direct,
             "preset": preset.value,
@@ -132,6 +139,8 @@ class RoomMethods(EventMethods, BaseClientAPI):
             content["room_alias_name"] = alias_localpart
         if invitees:
             content["invite"] = invitees
+            if beeper_auto_join_invites:
+                content["com.beeper.auto_join_invites"] = True
         if name:
             content["name"] = name
         if topic:
