@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 from abc import ABC, abstractmethod
+from enum import Enum
 import sys
 
 from aiohttp import web
@@ -30,6 +31,20 @@ except ImportError:
     uvloop = None
 
 
+class HomeserverSoftware(Enum):
+    STANDARD = "standard"
+    ASMUX = "asmux"
+    HUNGRY = "hungry"
+
+    @property
+    def is_hungry(self) -> bool:
+        return self == self.HUNGRY
+
+    @property
+    def is_asmux(self) -> bool:
+        return self == self.ASMUX
+
+
 class Bridge(Program, ABC):
     db: Database
     az: AppService
@@ -43,6 +58,7 @@ class Bridge(Program, ABC):
     repo_url: str
     markdown_version: str
     manhole: br.commands.manhole.ManholeState | None
+    homeserver_software: HomeserverSoftware
 
     def __init__(
         self,
@@ -104,6 +120,11 @@ class Bridge(Program, ABC):
                 "Loaded config overrides from environment: %s", list(self.config.env.keys())
             )
         super().prepare()
+        try:
+            self.homeserver_software = HomeserverSoftware(self.config["homeserver.software"])
+        except Exception:
+            self.log.fatal("Invalid value for homeserver.software in config")
+            sys.exit(11)
         self.prepare_db()
         self.prepare_appservice()
         self.prepare_bridge()

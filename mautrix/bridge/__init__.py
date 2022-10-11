@@ -1,5 +1,5 @@
 from ..util.async_getter_lock import async_getter_lock
-from .bridge import Bridge
+from .bridge import Bridge, HomeserverSoftware
 from .config import BaseBridgeConfig
 from .custom_puppet import (
     AutologinError,
@@ -21,6 +21,7 @@ from .user import BaseUser
 __all__ = [
     "async_getter_lock",
     "Bridge",
+    "HomeserverSoftware",
     "BaseBridgeConfig",
     "AutologinError",
     "CustomPuppetError",

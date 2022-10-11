@@ -128,7 +128,7 @@ class BaseUser(ABC):
         self.log.debug("Updating m.direct list on homeserver")
         replace = dms is None
         dms = dms or await self.get_direct_chats()
-        if self.bridge.config.get("homeserver.software", "standard") == "asmux":
+        if self.bridge.homeserver_software.is_asmux:
             # This uses a secret endpoint for atomically updating the DM list
             await puppet.intent.api.request(
                 Method.PUT if replace else Method.PATCH,

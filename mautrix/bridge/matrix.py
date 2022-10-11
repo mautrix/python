@@ -207,6 +207,14 @@ class BaseMatrixHandler:
                 self.minimum_spec_version,
             )
             sys.exit(18)
+        if self.bridge.homeserver_software.is_hungry and not self.versions.supports(
+            "com.beeper.hungry"
+        ):
+            self.log.fatal(
+                "The config claims the homeserver is hungryserv, "
+                "but the /versions response didn't confirm it"
+            )
+            sys.exit(18)
 
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")
