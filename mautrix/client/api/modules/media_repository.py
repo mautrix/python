@@ -141,7 +141,7 @@ class MediaRepositoryMethods(BaseClientAPI):
                 path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id].complete
 
         if upload_url is not None:
-            task = self._upload_to_url(upload_url, path, headers, data)
+            task = self._upload_to_url(upload_url, path, headers, data, post_upload_query=query)
         else:
             task = self.api.request(
                 method, path, content=data, headers=headers, query_params=query
@@ -285,6 +285,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         post_upload_path: str,
         headers: dict[str, str],
         data: bytes | bytearray | AsyncIterable[bytes],
+        post_upload_query: dict[str, str],
     ) -> None:
         retry_count = self.api.default_retry_count
         backoff = 4
@@ -314,4 +315,4 @@ class MediaRepositoryMethods(BaseClientAPI):
             else:
                 break
 
-        await self.api.request(Method.POST, post_upload_path)
+        await self.api.request(Method.POST, post_upload_path, query_params=post_upload_query)
