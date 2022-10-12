@@ -39,6 +39,8 @@ class SemiAbstractEntity(AbstractEntity, ABC):
         entity.offset += offset
         if entity.offset < 0:
             entity.length += entity.offset
+            if entity.length < 0:
+                return None
             entity.offset = 0
         elif entity.offset > max_length > -1:
             return None
