@@ -1,3 +1,14 @@
+## v0.18.4 (2022-10-13)
+
+* *(client.api)* Added option to pass custom data to `/createRoom` to enable
+  using custom fields and testing MSCs without changing the library.
+* *(client.api)* Updated [MSC3870] support to send file name in upload complete
+  call.
+* *(types)* Changed `set_edit` to clear reply metadata as edits can't change
+  the reply status.
+* *(util.formatter)* Fixed edge case causing negative entity lengths when
+  splitting entity strings.
+
 ## v0.18.3 (2022-10-11)
 
 * *(util.async_db)* Fixed mistake in default no-op database error handler
