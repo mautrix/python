@@ -119,6 +119,12 @@ class BaseMessageEventContentFuncs:
     def set_edit(self, edits: Union[EventID, "MessageEvent"]) -> None:
         self.relates_to.rel_type = RelationType.REPLACE
         self.relates_to.event_id = edits if isinstance(edits, str) else edits.event_id
+        # Library consumers may create message content by setting a reply first,
+        # then later marking it as an edit. As edits can't change the reply, just remove
+        # the reply metadata when marking as a reply.
+        if self.relates_to.in_reply_to:
+            self.relates_to.in_reply_to = None
+            self.relates_to.is_falling_back = None
 
     def serialize(self) -> JSON:
         data = SerializableAttrs.serialize(self)
