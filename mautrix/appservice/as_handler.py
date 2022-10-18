@@ -267,11 +267,20 @@ class AppServiceServerMixin:
             except SerializerError:
                 self.log.exception("Failed to deserialize to-device event %s", raw_td)
             else:
-                await self.to_device_handler(td)
+                try:
+                    await self.to_device_handler(td)
+                except:
+                    self.log.exception("Exception in Matrix to-device event handler")
         if device_lists and self.device_list_handler:
-            await self.device_list_handler(device_lists)
+            try:
+                await self.device_list_handler(device_lists)
+            except Exception:
+                self.log.exception("Exception in Matrix device list change handler")
         if otk_counts and self.otk_handler:
-            await self.otk_handler(otk_counts)
+            try:
+                await self.otk_handler(otk_counts)
+            except Exception:
+                self.log.exception("Exception in Matrix OTK count handler")
         for raw_edu in ephemeral or []:
             try:
                 edu = EphemeralEvent.deserialize(raw_edu)
@@ -304,6 +313,7 @@ class AppServiceServerMixin:
                 self.log.exception("Exception in Matrix event handler")
 
         for handler in self.event_handlers:
+            # TODO add option to handle events synchronously
             asyncio.create_task(try_handle(handler))
 
     def matrix_event_handler(self, func: HandlerFunc) -> HandlerFunc:
