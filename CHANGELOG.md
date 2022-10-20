@@ -1,3 +1,9 @@
+## v0.18.5 (2022-10-20)
+
+* *(appservice)* Added try blocks around [MSC3202] handler functions to log
+  errors instead of failing the entire transaction. This matches the behavior
+  of errors in normal appservice event handlers.
+
 ## v0.18.4 (2022-10-13)
 
 * *(client.api)* Added option to pass custom data to `/createRoom` to enable
