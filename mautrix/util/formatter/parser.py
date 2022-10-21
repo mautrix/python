@@ -106,6 +106,9 @@ class MatrixParser(Generic[T]):
         msg = await self.tag_aware_parse_node(node, ctx)
         return msg.format(self.e.BLOCKQUOTE)
 
+    async def hr_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
+        return self.fs("---")
+
     async def header_to_fstring(self, node: HTMLNode, ctx: RecursionContext) -> T:
         children = await self.node_to_fstrings(node, ctx)
         length = int(node.tag[1])
@@ -194,6 +197,8 @@ class MatrixParser(Generic[T]):
             return self.fs("")
         elif node.tag == "blockquote":
             return await self.blockquote_to_fstring(node, ctx)
+        elif node.tag == "hr":
+            return await self.hr_to_fstring(node, ctx)
         elif node.tag == "ol":
             return await self.list_to_fstring(node, ctx)
         elif node.tag == "ul":
