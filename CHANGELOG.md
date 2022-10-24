@@ -1,3 +1,8 @@
+## v0.18.6 (2022-10-24)
+
+* *(util.formatter)* Added conversion method for `<hr>` tag and defaulted to
+  converting back to `---`.
+
 ## v0.18.5 (2022-10-20)
 
 * *(appservice)* Added try blocks around [MSC3202] handler functions to log
