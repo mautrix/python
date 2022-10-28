@@ -36,8 +36,8 @@ class AppService(AppServiceServerMixin):
     domain: str
     id: str
     verify_ssl: bool
-    tls_cert: str
-    tls_key: str
+    tls_cert: str | None
+    tls_key: str | None
     as_token: str
     hs_token: str
     bot_mxid: UserID
@@ -59,6 +59,7 @@ class AppService(AppServiceServerMixin):
     runner: web.AppRunner | None
 
     _http_session: aiohttp.ClientSession | None
+    _intent: IntentAPI | None
 
     def __init__(
         self,
