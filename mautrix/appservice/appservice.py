@@ -56,7 +56,9 @@ class AppService(AppServiceServerMixin):
     loop: asyncio.AbstractEventLoop
     log: TraceLogger
     app: web.Application
-    runner: web.AppRunner
+    runner: web.AppRunner | None
+
+    _http_session: aiohttp.ClientSession | None
 
     def __init__(
         self,
@@ -178,10 +180,12 @@ class AppService(AppServiceServerMixin):
 
     async def stop(self) -> None:
         self.log.debug("Stopping appservice web server")
-        await self.runner.cleanup()
+        if self.runner:
+            await self.runner.cleanup()
         self._intent = None
-        await self._http_session.close()
-        self._http_session = None
+        if self._http_session:
+            await self._http_session.close()
+            self._http_session = None
         await self.state_store.close()
 
     async def _liveness_probe(self, _: web.Request) -> web.Response:
