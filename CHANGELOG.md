@@ -1,3 +1,5 @@
+## v0.18.7 (2022-11-08)
+
 ## v0.18.6 (2022-10-24)
 
 * *(util.formatter)* Added conversion method for `<hr>` tag and defaulted to
