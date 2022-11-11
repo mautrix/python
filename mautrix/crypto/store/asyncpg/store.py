@@ -70,6 +70,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
         self.db = db
         self.account_id = account_id
         self.pickle_key = pickle_key
+        self.log = db.log
 
         self._sync_token = None
         self._device_id = DeviceID("")
