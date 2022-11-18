@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Iterable
+from typing import Any, Awaitable, Callable
 import asyncio
 
 from multidict import CIMultiDict
@@ -64,7 +64,7 @@ class RoomMethods(EventMethods, BaseClientAPI):
         topic: str | None = None,
         is_direct: bool = False,
         invitees: list[UserID] | None = None,
-        initial_state: Iterable[StateEvent | StrippedStateEvent | dict[str, JSON]] | None = None,
+        initial_state: list[StateEvent | StrippedStateEvent | dict[str, JSON]] | None = None,
         room_version: str = None,
         creation_content: RoomCreateStateEventContent | dict[str, JSON] | None = None,
         power_level_override: PowerLevelStateEventContent | dict[str, JSON] | None = None,

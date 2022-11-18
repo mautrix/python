@@ -149,6 +149,28 @@ class StoreUpdatingAPI(ClientAPI):
             )
         return state
 
+    async def create_room(self, *args, **kwargs) -> RoomID:
+        room_id = await super().create_room(*args, **kwargs)
+        if self.state_store:
+            invitee_membership = Membership.INVITE
+            if kwargs.get("beeper_auto_join_invites"):
+                invitee_membership = Membership.JOIN
+            for user_id in kwargs.get("invitees", []):
+                await self.state_store.set_membership(room_id, user_id, invitee_membership)
+            for evt in kwargs.get("initial_state", []):
+                await self.state_store.update_state(
+                    StateEvent(
+                        type=EventType.find(evt["type"], t_class=EventType.Class.STATE),
+                        room_id=room_id,
+                        event_id=EventID("$fake-create-id"),
+                        sender=self.mxid,
+                        state_key=evt.get("state_key", ""),
+                        timestamp=0,
+                        content=evt["content"],
+                    )
+                )
+        return room_id
+
     async def send_state_event(
         self,
         room_id: RoomID,
