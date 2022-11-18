@@ -1,3 +1,11 @@
+## v0.18.8 (2022-11-18)
+
+* *(crypto.store.asyncpg)* Fixed bug causing `put_group_session` to fail when
+  trying to log unique key errors.
+* *(client)* Added wrapper for `create_room` to update the state store with
+  initial state and invites (applies to anything extending `StoreUpdatingAPI`,
+  such as the high-level `Client` and appservice `IntentAPI` classes).
+
 ## v0.18.7 (2022-11-08)
 
 ## v0.18.6 (2022-10-24)
