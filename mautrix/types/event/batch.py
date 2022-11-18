@@ -8,7 +8,7 @@ from typing import Any, Optional
 from attr import dataclass
 import attr
 
-from ..primitive import UserID, EventID
+from ..primitive import EventID, UserID
 from ..util import SerializableAttrs
 from .base import BaseEvent
 
