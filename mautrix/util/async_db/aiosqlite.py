@@ -110,7 +110,29 @@ class SQLiteDatabase(Database):
         self._db_args.pop("max_size", None)
         self._stopped = False
         self._conns = 0
-        self._init_commands = self._db_args.pop("init_commands", [])
+        self._init_commands = self._add_missing_pragmas(self._db_args.pop("init_commands", []))
+
+    @staticmethod
+    def _add_missing_pragmas(init_commands: list[str]) -> list[str]:
+        has_foreign_keys = False
+        has_journal_mode = False
+        has_busy_timeout = False
+        for cmd in init_commands:
+            if "PRAGMA" not in cmd:
+                continue
+            if "foreign_keys" in cmd:
+                has_foreign_keys = True
+            elif "journal_mode" in cmd:
+                has_journal_mode = True
+            elif "busy_timeout" in cmd:
+                has_busy_timeout = True
+        if not has_foreign_keys:
+            init_commands.append("PRAGMA foreign_keys = ON")
+        if not has_journal_mode:
+            init_commands.append("PRAGMA journal_mode = WAL")
+        if not has_busy_timeout:
+            init_commands.append("PRAGMA busy_timeout = 5000")
+        return init_commands
 
     async def start(self) -> None:
         if self._conns:
@@ -118,12 +140,13 @@ class SQLiteDatabase(Database):
         elif self._stopped:
             raise RuntimeError("database pool can't be restarted")
         self.log.debug(f"Connecting to {self.url}")
+        self.log.debug(f"Database connection init commands: {self._init_commands}")
         for _ in range(self._pool.maxsize):
             conn = await TxnConnection(self._path, **self._db_args)
             if self._init_commands:
                 cur = await conn.cursor()
                 for command in self._init_commands:
-                    self.log.debug("Executing command: %s", command)
+                    self.log.trace("Executing init command: %s", command)
                     await cur.execute(command)
                 await conn.commit()
             conn.row_factory = sqlite3.Row
