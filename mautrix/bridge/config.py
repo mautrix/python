@@ -76,6 +76,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
     def forbidden_defaults(self) -> list[ForbiddenDefault]:
         return [
             ForbiddenDefault("homeserver.address", "https://example.com"),
+            ForbiddenDefault("homeserver.address", "https://matrix.example.com"),
             ForbiddenDefault("homeserver.domain", "example.com"),
         ] + (
             [
