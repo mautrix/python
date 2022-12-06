@@ -258,7 +258,9 @@ class StrippedStateEvent(SerializableAttrs):
         try:
             event_type = EventType.find(data.get("type", None))
             data.get("content", {})["__mautrix_event_type"] = event_type
-            data.get("unsigned", {}).get("prev_content", {})["__mautrix_event_type"] = event_type
+            (data.get("unsigned") or {}).get("prev_content", {})[
+                "__mautrix_event_type"
+            ] = event_type
         except ValueError:
             pass
         return super().deserialize(data)
@@ -305,7 +307,10 @@ class StateEvent(BaseRoomEvent, SerializableAttrs):
         try:
             event_type = EventType.find(data.get("type"), t_class=EventType.Class.STATE)
             data.get("content", {})["__mautrix_event_type"] = event_type
-            if "prev_content" in data and "prev_content" not in data.get("unsigned", {}):
+            if "prev_content" in data and "prev_content" not in (data.get("unsigned") or {}):
+                # This if is a workaround for Conduit being extremely dumb
+                if data.get("unsigned", {}) is None:
+                    data["unsigned"] = {}
                 data.setdefault("unsigned", {})["prev_content"] = data["prev_content"]
             data.get("unsigned", {}).get("prev_content", {})["__mautrix_event_type"] = event_type
         except ValueError:
