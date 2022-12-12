@@ -14,6 +14,7 @@ from mautrix.types import (
     PowerLevelStateEventContent,
     RoomEncryptionStateEventContent,
     RoomID,
+    Serializable,
     UserID,
 )
 
@@ -47,15 +48,23 @@ class MemoryStateStore(StateStore):
         """
         return {
             "members": {
-                room_id: {user_id: member.serialize() for user_id, member in members.items()}
+                room_id: {
+                    user_id: member.serialize() if isinstance(member, Serializable) else member
+                    for user_id, member in members.items()
+                }
                 for room_id, members in self.members.items()
             },
             "full_member_list": self.full_member_list,
             "power_levels": {
-                room_id: content.serialize() for room_id, content in self.power_levels.items()
+                room_id: content.serialize() if isinstance(content, Serializable) else content
+                for room_id, content in self.power_levels.items()
             },
             "encryption": {
-                room_id: (content.serialize() if content is not None else None)
+                room_id: (
+                    (content.serialize() if isinstance(content, Serializable) else content)
+                    if content is not None
+                    else None
+                )
                 for room_id, content in self.encryption.items()
             },
         }
