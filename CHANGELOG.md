@@ -1,3 +1,17 @@
+## v0.18.9 (2022-12-14)
+
+* *(util.async_db)* Changed aiosqlite connector to force-enable foreign keys,
+  WAL mode and busy_timeout.
+  * The values can be changed by manually specifying the same PRAGMAs in the
+    `init_commands` db arg, e.g. `- PRAGMA foreign_keys = OFF`.
+* *(types)* Added workaround to `StateEvent.deserialize` to handle Conduit's
+  broken `unsigned` fields.
+* *(client.state_store)* Fixed `set_power_level` to allow raw dicts the same
+  way as `set_encryption_info` does (thanks to [@bramenn] in [#127]).
+
+[@bramenn]: https://github.com/bramenn
+[#127]: https://github.com/mautrix/python/pull/127
+
 ## v0.18.8 (2022-11-18)
 
 * *(crypto.store.asyncpg)* Fixed bug causing `put_group_session` to fail when
