@@ -170,8 +170,10 @@ class MemoryStateStore(StateStore):
         return self.power_levels.get(room_id)
 
     async def set_power_levels(
-        self, room_id: RoomID, content: PowerLevelStateEventContent
+        self, room_id: RoomID, content: PowerLevelStateEventContent | dict[str, Any]
     ) -> None:
+        if not isinstance(content, PowerLevelStateEventContent):
+            content = PowerLevelStateEventContent.deserialize(content)
         self.power_levels[room_id] = content
 
     async def has_encryption_info_cached(self, room_id: RoomID) -> bool:
