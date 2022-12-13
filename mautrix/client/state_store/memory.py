@@ -29,10 +29,10 @@ class SerializedStateStore(TypedDict):
 
 
 class MemoryStateStore(StateStore):
-    members: dict[RoomID, dict[UserID, Member]]
+    members: dict[RoomID, dict[UserID, Member | dict]]
     full_member_list: dict[RoomID, bool]
-    power_levels: dict[RoomID, PowerLevelStateEventContent]
-    encryption: dict[RoomID, RoomEncryptionStateEventContent | None]
+    power_levels: dict[RoomID, PowerLevelStateEventContent | dict]
+    encryption: dict[RoomID, RoomEncryptionStateEventContent | dict | None]
 
     def __init__(self) -> None:
         self.members = {}
