@@ -46,7 +46,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
                     continue
                 key = key.removeprefix(env_prefix)
                 if value.startswith("json::"):
-                    value = json.loads(value)
+                    value = json.loads(value.removeprefix("json::"))
                 self.env[key] = value
 
     def __getitem__(self, item: str) -> Any:
@@ -57,8 +57,6 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
             except KeyError:
                 pass
             else:
-                if val.startswith("json::"):
-                    val = json.loads(val.removeprefix("json::"))
                 return val
         return super().__getitem__(item)
 
