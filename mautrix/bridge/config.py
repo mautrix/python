@@ -53,11 +53,9 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         if self.env:
             try:
                 sanitized_item = item.replace(".", "_").replace("[", "").replace("]", "").upper()
-                val = self.env[sanitized_item]
+                return self.env[sanitized_item]
             except KeyError:
                 pass
-            else:
-                return val
         return super().__getitem__(item)
 
     def save(self) -> None:
