@@ -544,6 +544,12 @@ class IntentAPI(StoreUpdatingAPI):
         )
         return BatchSendResponse.deserialize(resp)
 
+    async def beeper_delete_room(self, room_id: RoomID) -> None:
+        versions = await self.versions()
+        if not versions.supports("com.beeper.room_yeeting"):
+            raise RuntimeError("Homeserver does not support yeeting rooms")
+        await self.api.request(Method.POST, Path.unstable["com.beeper.yeet"].rooms[room_id].delete)
+
     # endregion
     # region Ensure functions
 

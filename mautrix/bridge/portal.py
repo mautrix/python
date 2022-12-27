@@ -458,6 +458,16 @@ class BasePortal(ABC):
         message: str = "Cleaning room",
         puppets_only: bool = False,
     ) -> None:
+        if not puppets_only and cls.bridge.homeserver_software.is_hungry:
+            try:
+                await intent.beeper_delete_room(room_id)
+                return
+            except Exception:
+                cls.log.warning(
+                    f"Failed to delete {room_id} using hungryserv yeet endpoint, "
+                    f"falling back to normal method",
+                    exc_info=True,
+                )
         try:
             members = await intent.get_room_members(room_id)
         except MatrixError:
