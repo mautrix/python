@@ -472,23 +472,11 @@ class BaseMatrixHandler:
         )
 
     async def accept_bot_invite(self, room_id: RoomID, inviter: br.BaseUser) -> None:
-        tries = 0
-        while tries < 5:
-            try:
-                await self.az.intent.join_room(room_id)
-                break
-            except (IntentError, MatrixError):
-                tries += 1
-                wait_for_seconds = (tries + 1) * 10
-                if tries < 5:
-                    self.log.exception(
-                        f"Failed to join room {room_id} with bridge bot, "
-                        f"retrying in {wait_for_seconds} seconds..."
-                    )
-                    await asyncio.sleep(wait_for_seconds)
-                else:
-                    self.log.exception(f"Failed to join room {room_id}, giving up.")
-                    return
+        try:
+            await self.az.intent.join_room(room_id)
+        except Exception:
+            self.log.exception(f"Failed to join room {room_id} as bridge bot")
+            return
 
         if not await self.allow_command(inviter):
             await self.send_permission_error(room_id)
