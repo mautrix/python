@@ -13,7 +13,6 @@ from mautrix.types import EventID, RoomID, UserID
 
 class ASStateStore(ClientStateStore, ABC):
     _presence: Dict[UserID, str]
-    _typing: Dict[Tuple[RoomID, UserID], int]
     _read: Dict[Tuple[RoomID, UserID], EventID]
     _registered: Dict[UserID, bool]
 
@@ -21,7 +20,6 @@ class ASStateStore(ClientStateStore, ABC):
         self._registered = {}
         # Non-persistent storage
         self._presence = {}
-        self._typing = {}
         self._read = {}
 
     async def is_registered(self, user_id: UserID) -> bool:
@@ -69,22 +67,3 @@ class ASStateStore(ClientStateStore, ABC):
             return self._read[(room_id, user_id)]
         except KeyError:
             return None
-
-    def set_typing(
-        self, room_id: RoomID, user_id: UserID, is_typing: bool, timeout: int = 0
-    ) -> None:
-        if is_typing:
-            ts = int(round(time.time() * 1000))
-            self._typing[(room_id, user_id)] = ts + timeout
-        else:
-            try:
-                del self._typing[(room_id, user_id)]
-            except KeyError:
-                pass
-
-    def is_typing(self, room_id: RoomID, user_id: UserID) -> bool:
-        ts = int(round(time.time() * 1000))
-        try:
-            return self._typing[(room_id, user_id)] > ts
-        except KeyError:
-            return False

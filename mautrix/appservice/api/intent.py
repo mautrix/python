@@ -407,13 +407,17 @@ class IntentAPI(StoreUpdatingAPI):
         room_id: RoomID,
         is_typing: bool = True,
         timeout: int = 5000,
-        ignore_cache: bool = False,
     ) -> None:
+        """
+        Args:
+            room_id: The ID of the room in which the user is typing.
+            is_typing: Whether the user is typing.
+                .. deprecated:: 0.18.10
+                   Use ``timeout=0`` instead of setting this flag.
+            timeout: The length of time in seconds to mark this user as typing.
+        """
         await self.ensure_joined(room_id)
-        if not ignore_cache and is_typing == self.state_store.is_typing(room_id, self.mxid):
-            return
         await super().set_typing(room_id, timeout if is_typing else 0)
-        self.state_store.set_typing(room_id, self.mxid, is_typing, timeout)
 
     async def error_and_leave(
         self, room_id: RoomID, text: str | None = None, html: str | None = None
