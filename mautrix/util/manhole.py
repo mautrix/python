@@ -76,7 +76,13 @@ class StatefulCommandCompiler(codeop.CommandCompiler):
     def __init__(self) -> None:
         super().__init__()
         self.compiler = functools.partial(
-            compile, optimize=1, flags=ast.PyCF_ONLY_AST | codeop.PyCF_DONT_IMPLY_DEDENT
+            compile,
+            optimize=1,
+            flags=(
+                ast.PyCF_ONLY_AST
+                | codeop.PyCF_DONT_IMPLY_DEDENT
+                | codeop.PyCF_ALLOW_INCOMPLETE_INPUT
+            ),
         )
         self.buf = BytesIO()
 
