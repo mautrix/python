@@ -1,3 +1,12 @@
+## unreleased
+
+* *(bridge)* Removed accidentally nested reply loop when accepting invites as
+  the bridge bot.
+* *(bridge)* Fixed decoding JSON values in config override env vars.
+* *(appservice)* Removed typing status from state store.
+  * Additionally, the `is_typing` boolean in `set_typing` is now deprecated,
+    and `timeout=0` should be used instead to match the `ClientAPI` behavior.
+
 ## v0.18.9 (2022-12-14)
 
 * *(util.async_db)* Changed aiosqlite connector to force-enable foreign keys,
