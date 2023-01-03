@@ -462,6 +462,9 @@ class BasePortal(ABC):
             try:
                 await intent.beeper_delete_room(room_id)
                 return
+            except MNotFound as err:
+                cls.log.debug(f"Hungryserv yeet returned {err}, assuming the room is already gone")
+                return
             except Exception:
                 cls.log.warning(
                     f"Failed to delete {room_id} using hungryserv yeet endpoint, "
