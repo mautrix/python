@@ -49,18 +49,7 @@ class BeeperMessageStatusEventContent(SerializableAttrs):
     error: Optional[str] = None
     message: Optional[str] = None
 
-    success: Optional[bool] = None
-    still_working: Optional[bool] = None
-    can_retry: Optional[bool] = None
-    is_certain: Optional[bool] = None
-
     last_retry: Optional[EventID] = None
-
-    def fill_legacy_booleans(self) -> None:
-        self.success = self.status == MessageStatus.SUCCESS
-        if not self.success:
-            self.still_working = self.status == MessageStatus.PENDING
-            self.can_retry = self.status in (MessageStatus.PENDING, MessageStatus.RETRIABLE)
 
 
 @dataclass
