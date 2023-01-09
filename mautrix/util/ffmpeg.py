@@ -5,9 +5,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Any, Iterable
 from pathlib import Path
 import asyncio
+import json
+import logging
 import mimetypes
 import os
 import shutil
@@ -34,7 +36,89 @@ class NotInstalledError(ConverterError):
 
 
 ffmpeg_path = _abswhich("ffmpeg")
-ffmpeg_default_params = ("-hide_banner", "-loglevel", "warning")
+ffmpeg_default_params = ("-hide_banner", "-loglevel", "warning", "-y")
+
+ffprobe_path = _abswhich("ffprobe")
+ffprobe_default_params = (
+    "-loglevel",
+    "quiet",
+    "-print_format",
+    "json",
+    "-show_optional_fields",
+    "1",
+    "-show_format",
+    "-show_streams",
+)
+
+
+async def probe_path(
+    input_file: os.PathLike[str] | str,
+    logger: logging.Logger | None = None,
+) -> Any:
+    """
+    Probes a media file on the disk using ffprobe.
+
+    Args:
+        input_file: The full path to the file.
+
+    Returns:
+        A Python object containing the parsed JSON response from ffprobe
+
+    Raises:
+        ConverterError: if ffprobe returns a non-zero exit code.
+    """
+    if ffprobe_path is None:
+        raise NotInstalledError()
+
+    input_file = Path(input_file)
+    proc = await asyncio.create_subprocess_exec(
+        ffprobe_path,
+        *ffprobe_default_params,
+        str(input_file),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        stdin=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        err_text = stderr.decode("utf-8") if stderr else f"unknown ({proc.returncode})"
+        raise ConverterError(f"ffprobe error: {err_text}")
+    elif stderr and logger:
+        logger.warn(f"ffprobe warning: {stderr.decode('utf-8')}")
+    return json.loads(stdout)
+
+
+async def probe_bytes(
+    data: bytes,
+    input_mime: str | None = None,
+    logger: logging.Logger | None = None,
+) -> Any:
+    """
+    Probe media file data using ffprobe.
+
+    Args:
+        data: The bytes of the file to probe.
+        input_mime: The mime type of the input data. If not specified, will be guessed using magic.
+
+    Returns:
+        A Python object containing the parsed JSON response from ffprobe
+
+    Raises:
+        ConverterError: if ffprobe returns a non-zero exit code.
+    """
+    if ffprobe_path is None:
+        raise NotInstalledError()
+
+    if input_mime is None:
+        if magic is None:
+            raise ValueError("input_mime was not specified and magic is not installed")
+        input_mime = magic.mimetype(data)
+    input_extension = mimetypes.guess_extension(input_mime)
+    with tempfile.TemporaryDirectory(prefix="mautrix_ffmpeg_") as tmpdir:
+        input_file = Path(tmpdir) / f"data{input_extension}"
+        with open(input_file, "wb") as file:
+            file.write(data)
+        return await probe_path(input_file=input_file, logger=logger)
 
 
 async def convert_path(
@@ -44,6 +128,7 @@ async def convert_path(
     output_args: Iterable[str] | None = None,
     remove_input: bool = False,
     output_path_override: os.PathLike[str] | str | None = None,
+    logger: logging.Logger | None = None,
 ) -> Path | bytes:
     """
     Convert a media file on the disk using ffmpeg.
@@ -76,6 +161,10 @@ async def convert_path(
     else:
         input_file = Path(input_file)
         output_file = input_file.parent / f"{input_file.stem}{output_extension}"
+    if input_file == output_file:
+        output_file = Path(output_file)
+        output_file = output_file.parent / f"{output_file.stem}-new{output_extension}"
+
     proc = await asyncio.create_subprocess_exec(
         ffmpeg_path,
         *ffmpeg_default_params,
@@ -92,9 +181,8 @@ async def convert_path(
     if proc.returncode != 0:
         err_text = stderr.decode("utf-8") if stderr else f"unknown ({proc.returncode})"
         raise ConverterError(f"ffmpeg error: {err_text}")
-    elif stderr:
-        # TODO log warnings?
-        pass
+    elif stderr and logger:
+        logger.warn(f"ffmpeg warning: {stderr.decode('utf-8')}")
     if remove_input and isinstance(input_file, Path):
         input_file.unlink(missing_ok=True)
     return stdout if output_file == "-" else output_file
@@ -106,6 +194,7 @@ async def convert_bytes(
     input_args: Iterable[str] | None = None,
     output_args: Iterable[str] | None = None,
     input_mime: str | None = None,
+    logger: logging.Logger | None = None,
 ) -> bytes:
     """
     Convert media file data using ffmpeg.
@@ -140,6 +229,7 @@ async def convert_bytes(
             output_extension=output_extension,
             input_args=input_args,
             output_args=output_args,
+            logger=logger,
         )
         with open(output_file, "rb") as file:
             return file.read()
@@ -152,4 +242,6 @@ __all__ = [
     "NotInstalledError",
     "convert_bytes",
     "convert_path",
+    "probe_bytes",
+    "probe_path",
 ]
