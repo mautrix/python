@@ -5,15 +5,15 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Iterable, Any
+from typing import Any, Iterable
 from pathlib import Path
 import asyncio
+import json
+import logging
 import mimetypes
 import os
 import shutil
 import tempfile
-import json
-import logging
 
 try:
     from . import magic
@@ -39,7 +39,16 @@ ffmpeg_path = _abswhich("ffmpeg")
 ffmpeg_default_params = ("-hide_banner", "-loglevel", "warning", "-y")
 
 ffprobe_path = _abswhich("ffprobe")
-ffprobe_default_params = ("-loglevel", "quiet", "-print_format", "json", "-show_optional_fields", "1", "-show_format", "-show_streams")
+ffprobe_default_params = (
+    "-loglevel",
+    "quiet",
+    "-print_format",
+    "json",
+    "-show_optional_fields",
+    "1",
+    "-show_format",
+    "-show_streams",
+)
 
 
 async def probe_path(
