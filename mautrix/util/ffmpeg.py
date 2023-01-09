@@ -55,7 +55,6 @@ async def probe_path(
     input_file: os.PathLike[str] | str,
     logger: logging.Logger | None = None,
 ) -> Any:
-
     """
     Probes a media file on the disk using ffprobe.
 
