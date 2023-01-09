@@ -1,5 +1,7 @@
-## unreleased
+## v0.18.10 (2023-01-09)
 
+* *(util.ffmpeg)* Added functions to run ffprobe on a media file, useful for
+  determining whether a media file requires transcoding.
 * *(bridge)* Removed accidentally nested reply loop when accepting invites as
   the bridge bot.
 * *(bridge)* Fixed decoding JSON values in config override env vars.
