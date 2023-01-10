@@ -248,7 +248,9 @@ class IntentAPI(StoreUpdatingAPI):
             await self.state_store.joined(room_id, user_id)
         except MatrixRequestError as e:
             # TODO remove this once MSC3848 is released and minimum spec version is bumped
-            if e.errcode == "M_FORBIDDEN" and "is already in the room" in e.message:
+            if e.errcode == "M_FORBIDDEN" and (
+                "already in the room" in e.message or "is already joined to room" in e.message
+            ):
                 await self.state_store.joined(room_id, user_id)
             else:
                 raise
