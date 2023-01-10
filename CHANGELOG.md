@@ -1,11 +1,13 @@
-## unreleased
+## v0.19.0 (2023-01-10)
 
+* **Breaking change *(appservice)*** Removed typing status from state store.
+* **Breaking change *(appservice)*** Removed `is_typing` parameter from
+  `IntentAPI.set_typing` to make the signature match `ClientAPI.set_typing`.
+  `timeout=0` is equivalent to the old `is_typing=False`.
+* **Breaking change *(types)*** Removed legacy fields in Beeper MSS events.
 * *(bridge)* Removed accidentally nested reply loop when accepting invites as
   the bridge bot.
 * *(bridge)* Fixed decoding JSON values in config override env vars.
-* *(appservice)* Removed typing status from state store.
-  * Additionally, the `is_typing` boolean in `set_typing` is now deprecated,
-    and `timeout=0` should be used instead to match the `ClientAPI` behavior.
 
 ## v0.18.9 (2022-12-14)
 
