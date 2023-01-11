@@ -20,7 +20,7 @@ from mautrix.types import (
     MXOpenGraph,
     SerializerError,
 )
-from mautrix.util.async_iter_bytes import async_iter_bytes
+from mautrix.util.async_body import async_iter_bytes
 from mautrix.util.opt_prometheus import Histogram
 
 from ..base import BaseClientAPI

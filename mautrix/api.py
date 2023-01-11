@@ -22,7 +22,7 @@ from yarl import URL
 
 from mautrix import __optional_imports__, __version__ as mautrix_version
 from mautrix.errors import MatrixConnectionError, MatrixRequestError, make_request_error
-from mautrix.util.async_iter_bytes import AsyncBody, async_iter_bytes
+from mautrix.util.async_body import AsyncBody, async_iter_bytes
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Counter
 
