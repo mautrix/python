@@ -20,6 +20,7 @@ from mautrix.types import (
     MXOpenGraph,
     SerializerError,
 )
+from mautrix.util.async_iter_bytes import async_iter_bytes
 from mautrix.util.opt_prometheus import Histogram
 
 from ..base import BaseClientAPI
@@ -286,15 +287,20 @@ class MediaRepositoryMethods(BaseClientAPI):
         headers: dict[str, str],
         data: bytes | bytearray | AsyncIterable[bytes],
         post_upload_query: dict[str, str],
+        min_iter_size: int = 25 * 1024 * 1024,
     ) -> None:
         retry_count = self.api.default_retry_count
         backoff = 4
+        do_fake_iter = data and hasattr(data, "__len__") and len(data) > min_iter_size
+        if do_fake_iter:
+            headers["Content-Length"] = str(len(data))
         while True:
             self.log.debug("Uploading media to external URL %s", upload_url)
             upload_response = None
             try:
+                req_data = async_iter_bytes(data) if do_fake_iter else data
                 upload_response = await self.api.session.put(
-                    upload_url, data=data, headers=headers
+                    upload_url, data=req_data, headers=headers
                 )
                 upload_response.raise_for_status()
             except Exception as e:

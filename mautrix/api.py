@@ -22,6 +22,7 @@ from yarl import URL
 
 from mautrix import __optional_imports__, __version__ as mautrix_version
 from mautrix.errors import MatrixConnectionError, MatrixRequestError, make_request_error
+from mautrix.util.async_iter_bytes import AsyncBody, async_iter_bytes
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Counter
 
@@ -155,19 +156,12 @@ Examples:
 """
 
 _req_id = 0
-AsyncBody = AsyncGenerator[Union[bytes, bytearray, memoryview], None]
 
 
 def _next_global_req_id() -> int:
     global _req_id
     _req_id += 1
     return _req_id
-
-
-async def _async_iter_bytes(data: bytearray | bytes, chunk_size: int = 1024**2) -> AsyncBody:
-    with memoryview(data) as mv:
-        for i in range(0, len(data), chunk_size):
-            yield mv[i : i + chunk_size]
 
 
 class HTTPAPI:
@@ -395,7 +389,7 @@ class HTTPAPI:
                 method, log_url, content, orig_content, query_params, headers, req_id, sensitive
             )
             API_CALLS.labels(method=metrics_method).inc()
-            req_content = _async_iter_bytes(content) if do_fake_iter else content
+            req_content = async_iter_bytes(content) if do_fake_iter else content
             start = time.monotonic()
             try:
                 resp_data, resp = await self._send(
