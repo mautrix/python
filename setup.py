@@ -28,7 +28,7 @@ setuptools.setup(
     ],
     extras_require={
         "detect_mimetype": ["python-magic>=0.4.15,<0.5"],
-        "lint": ["black==22.1.0", "isort"],
+        "lint": ["black~=22.1", "isort"],
         "test": ["pytest", "pytest-asyncio", *test_dependencies],
         "encryption": encryption_dependencies,
     },
@@ -45,6 +45,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
 
     package_data={
