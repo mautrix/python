@@ -1,3 +1,14 @@
+## v0.19.1 (2023-01-11)
+
+* Marked Python 3.11 as supported. Python 3.8 support will likely be dropped in
+  the coming months.
+* *(client.api)* Added request payload memory optimization to MSC3870 URL uploads.
+  * aiohttp will duplicate the entire request body if it's raw bytes, which
+    wastes a lot of memory. The optimization is passing an iterator instead of
+    raw bytes, so aiohttp won't accidentally duplicate the whole thing.
+  * The main `HTTPAPI` has had the optimization for a while, but uploading to
+    URL calls aiohttp manually.
+
 ## v0.19.0 (2023-01-10)
 
 * **Breaking change *(appservice)*** Removed typing status from state store.
