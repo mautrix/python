@@ -290,7 +290,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         min_iter_size: int = 25 * 1024 * 1024,
     ) -> None:
         retry_count = self.api.default_retry_count
-        backoff = 4
+        backoff = 2
         do_fake_iter = data and hasattr(data, "__len__") and len(data) > min_iter_size
         if do_fake_iter:
             headers["Content-Length"] = str(len(data))
