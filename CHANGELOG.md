@@ -1,4 +1,4 @@
-## v0.19.2 (unreleased)
+## v0.19.2 (2023-01-14)
 
 * *(util.async_body)* Added utility for reading aiohttp response into a bytearray
   (so that the output is mutable, e.g. for decrypting or encrypting media).
