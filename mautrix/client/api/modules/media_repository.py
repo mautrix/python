@@ -304,7 +304,7 @@ class MediaRepositoryMethods(BaseClientAPI):
                 )
                 upload_response.raise_for_status()
             except Exception as e:
-                if retry_count == 0:
+                if retry_count <= 0:
                     raise make_request_error(
                         http_status=upload_response.status if upload_response else -1,
                         text=(await upload_response.text()) if upload_response else "",
@@ -317,7 +317,7 @@ class MediaRepositoryMethods(BaseClientAPI):
                 )
                 await asyncio.sleep(backoff)
                 backoff *= 2
-                retry_count = -1
+                retry_count -= 1
             else:
                 break
 
