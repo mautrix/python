@@ -1,3 +1,10 @@
+## v0.19.2 (unreleased)
+
+* *(util.async_body)* Added utility for reading aiohttp response into a bytearray
+  (so that the output is mutable, e.g. for decrypting or encrypting media).
+* *(client.api)* Fixed retry loop for MSC3870 URL uploads not exiting properly
+  after too many errors.
+
 ## v0.19.1 (2023-01-11)
 
 * Marked Python 3.11 as supported. Python 3.8 support will likely be dropped in
