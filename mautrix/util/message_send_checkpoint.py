@@ -29,6 +29,7 @@ class MessageSendCheckpointStatus(SerializableEnum):
     PERM_FAILURE = "PERM_FAILURE"
     UNSUPPORTED = "UNSUPPORTED"
     TIMEOUT = "TIMEOUT"
+    DELIVERY_FAILED = "DELIVERY_FAILED"
 
 
 class MessageSendCheckpointReportedBy(SerializableEnum):
