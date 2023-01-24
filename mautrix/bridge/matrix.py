@@ -583,7 +583,6 @@ class BaseMatrixHandler:
                 error=msg,
                 message=err.human_message if err else None,
             )
-            status_content.fill_legacy_booleans()
             await self.az.intent.send_message_event(
                 evt.room_id, EventType.BEEPER_MESSAGE_STATUS, status_content
             )
@@ -784,7 +783,7 @@ class BaseMatrixHandler:
         try:
             decrypted = await self.e2ee.decrypt(evt, wait_session_timeout=3)
         except SessionNotFound as e:
-            await self._handle_encrypted_wait(evt, e, wait=6)
+            await self._handle_encrypted_wait(evt, e, wait=22)
         except DecryptionError as e:
             self.log.warning(f"Failed to decrypt {evt.event_id}: {e}")
             self.log.trace("%s decryption traceback:", evt.event_id, exc_info=True)
