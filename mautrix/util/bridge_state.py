@@ -62,8 +62,8 @@ ok_ish_states = (
 class BridgeState(SerializableAttrs):
     human_readable_errors: ClassVar[Dict[Optional[str], str]] = {}
     default_source: ClassVar[str] = "bridge"
-    default_error_ttl: ClassVar[int] = 60
-    default_ok_ttl: ClassVar[int] = 240
+    default_error_ttl: ClassVar[int] = 3600
+    default_ok_ttl: ClassVar[int] = 21600
 
     state_event: BridgeStateEvent
     user_id: Optional[UserID] = None
@@ -106,8 +106,8 @@ class BridgeState(SerializableAttrs):
         ):
             # If there's no previous state or the state was different, send this one.
             return False
-        # If there's more than ⅘ of the previous pong's time-to-live left, drop this one
-        return prev_state.timestamp + (prev_state.ttl / 5) > self.timestamp
+        # If the previous state is recent, drop this one
+        return prev_state.timestamp + prev_state.ttl > self.timestamp
 
     async def send(self, url: str, token: str, log: logging.Logger, log_sent: bool = True) -> bool:
         if not url:
