@@ -1,6 +1,6 @@
 python-magic
 ruamel.yaml
-SQLAlchemy
+SQLAlchemy<2
 commonmark
 lxml
 asyncpg

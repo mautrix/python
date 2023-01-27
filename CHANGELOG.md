@@ -1,3 +1,7 @@
+## v0.19.3 (2023-01-27)
+
+* *(bridge)* Bumped default timeouts for decrypting incoming messages.
+
 ## v0.19.2 (2023-01-14)
 
 * *(util.async_body)* Added utility for reading aiohttp response into a bytearray
