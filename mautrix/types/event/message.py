@@ -112,6 +112,12 @@ class BaseMessageEventContentFuncs:
         self.relates_to.event_id = (
             thread_parent if isinstance(thread_parent, str) else thread_parent.event_id
         )
+        if isinstance(thread_parent, MessageEvent) and isinstance(
+            thread_parent.content, BaseMessageEventContentFuncs
+        ):
+            self.relates_to.event_id = (
+                thread_parent.content.get_thread_parent() or self.relates_to.event_id
+            )
         if not disable_reply_fallback:
             self.set_reply(last_event_in_thread or thread_parent, **kwargs)
             self.relates_to.is_falling_back = True
