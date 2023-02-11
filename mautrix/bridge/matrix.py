@@ -56,7 +56,7 @@ from mautrix.types import (
     Version,
     VersionsResponse,
 )
-from mautrix.util import markdown
+from mautrix.util import background_task, markdown
 from mautrix.util.logging import TraceLogger
 from mautrix.util.message_send_checkpoint import (
     CHECKPOINT_TYPES,
@@ -382,7 +382,7 @@ class BaseMatrixHandler:
             members = await intent.get_room_members(room_id)
         except MatrixError:
             self.log.exception(f"Failed to get state after joining {room_id} as {intent.mxid}")
-            asyncio.create_task(intent.leave_room(room_id, reason="Internal error"))
+            background_task.create(intent.leave_room(room_id, reason="Internal error"))
             return
         if create_evt.type == RoomType.SPACE:
             await self.handle_puppet_space_invite(room_id, puppet, invited_by, evt)
@@ -798,7 +798,7 @@ class BaseMatrixHandler:
             f"Couldn't find session {err.session_id} trying to decrypt {evt.event_id},"
             " waiting even longer"
         )
-        asyncio.create_task(
+        background_task.create(
             self.e2ee.crypto.request_room_key(
                 evt.room_id,
                 evt.content.sender_key,
@@ -875,7 +875,7 @@ class BaseMatrixHandler:
             info=str(err) if err else None,
             retry_num=retry_num,
         )
-        asyncio.create_task(checkpoint.send(endpoint, self.az.as_token, self.log))
+        background_task.create(checkpoint.send(endpoint, self.az.as_token, self.log))
 
     allowed_event_classes: tuple[type, ...] = (
         MessageEvent,

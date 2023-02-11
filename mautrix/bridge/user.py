@@ -16,6 +16,7 @@ from mautrix.api import Method, Path
 from mautrix.appservice import AppService
 from mautrix.errors import MNotFound
 from mautrix.types import EventID, EventType, Membership, MessageType, RoomID, UserID
+from mautrix.util import background_task
 from mautrix.util.bridge_state import BridgeState, BridgeStateEvent
 from mautrix.util.logging import TraceLogger
 from mautrix.util.message_send_checkpoint import (
@@ -244,7 +245,7 @@ class BaseUser(ABC):
         """
         if not self.bridge.config["homeserver.message_send_checkpoint_endpoint"]:
             return WrappedTask(task=None)
-        task = asyncio.create_task(
+        task = background_task.create(
             MessageSendCheckpoint(
                 event_id=event_id,
                 room_id=room_id,

@@ -20,6 +20,7 @@ from mautrix.types import (
     MXOpenGraph,
     SerializerError,
 )
+from mautrix.util import background_task
 from mautrix.util.async_body import async_iter_bytes
 from mautrix.util.opt_prometheus import Histogram
 
@@ -157,7 +158,7 @@ class MediaRepositoryMethods(BaseClientAPI):
                 except Exception as e:
                     self.log.error(f"Failed to upload {mxc}: {type(e).__name__}: {e}")
 
-            asyncio.create_task(_try_upload())
+            background_task.create(_try_upload())
             return mxc
         else:
             with self._observe_upload_time(size):

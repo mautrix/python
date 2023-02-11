@@ -41,6 +41,7 @@ from mautrix.types import (
     SyncToken,
     UserID,
 )
+from mautrix.util import background_task
 
 from .. import bridge as br
 
@@ -409,7 +410,7 @@ class CustomPuppetMixin(ABC):
 
         # Deserialize and handle all events
         for event in chain(ephemeral_events, presence_events):
-            asyncio.create_task(self.mx.try_handle_sync_event(Event.deserialize(event)))
+            background_task.create(self.mx.try_handle_sync_event(Event.deserialize(event)))
 
     async def _try_sync(self) -> None:
         try:

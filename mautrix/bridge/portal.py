@@ -30,6 +30,7 @@ from mautrix.types import (
     TextMessageEventContent,
     UserID,
 )
+from mautrix.util import background_task
 from mautrix.util.logging import TraceLogger
 from mautrix.util.simple_lock import SimpleLock
 
@@ -402,7 +403,7 @@ class BasePortal(ABC):
         for msg in msgs:
             portal = await cls.bridge.get_portal(msg.room_id)
             if portal and portal.mxid:
-                asyncio.create_task(portal._disappear_event(msg))
+                background_task.create(portal._disappear_event(msg))
             else:
                 await msg.delete()
 
@@ -418,7 +419,7 @@ class BasePortal(ABC):
             for msg in msgs:
                 msg.start_timer()
                 await msg.update()
-                asyncio.create_task(self._disappear_event(msg))
+                background_task.create(self._disappear_event(msg))
 
     async def _send_message(
         self,
@@ -431,7 +432,7 @@ class BasePortal(ABC):
             event_type, content = await self.matrix.e2ee.encrypt(self.mxid, event_type, content)
         event_id = await intent.send_message_event(self.mxid, event_type, content, **kwargs)
         if intent.api.is_real_user:
-            asyncio.create_task(intent.mark_read(self.mxid, event_id))
+            background_task.create(intent.mark_read(self.mxid, event_id))
         return event_id
 
     @property

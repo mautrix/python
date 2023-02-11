@@ -8,6 +8,7 @@ __all__ = [
     # File modules
     "async_body",
     "async_getter_lock",
+    "background_task",
     "bridge_state",
     "color_log",
     "ffmpeg",

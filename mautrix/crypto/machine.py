@@ -24,6 +24,7 @@ from mautrix.types import (
     TrustState,
     UserID,
 )
+from mautrix.util import background_task
 from mautrix.util.logging import TraceLogger
 
 from .account import OlmAccount
@@ -109,7 +110,7 @@ class OlmMachine(
                     self.log.warning(f"Got OTK count for unknown device {user_id}/{device_id}")
 
     async def handle_as_device_lists(self, device_lists: DeviceLists) -> None:
-        asyncio.create_task(self.handle_device_lists(device_lists))
+        background_task.create(self.handle_device_lists(device_lists))
 
     async def handle_as_to_device_event(self, evt: ASToDeviceEvent) -> None:
         if evt.to_user_id != self.client.mxid or evt.to_device_id != self.client.device_id:

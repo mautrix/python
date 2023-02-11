@@ -27,6 +27,7 @@ from mautrix.types import (
     SerializerError,
     UserID,
 )
+from mautrix.util import background_task
 
 HandlerFunc = Callable[[Event], Awaitable]
 
@@ -314,7 +315,7 @@ class AppServiceServerMixin:
 
         for handler in self.event_handlers:
             # TODO add option to handle events synchronously
-            asyncio.create_task(try_handle(handler))
+            background_task.create(try_handle(handler))
 
     def matrix_event_handler(self, func: HandlerFunc) -> HandlerFunc:
         self.event_handlers.append(func)
