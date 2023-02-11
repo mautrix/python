@@ -57,7 +57,7 @@ jobs:
     - uses: psf/black@stable
       with:
         src: "./mautrix"
-        version: "22.12.0"
+        version: "23.1.0"
     - name: pre-commit
       run: |
         pip install pre-commit
