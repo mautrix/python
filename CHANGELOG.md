@@ -1,3 +1,12 @@
+## v0.19.4 (2023-02-12)
+
+* *(types)* Changed `set_thread_parent` to inherit the existing thread parent
+  if a `MessageEvent` is passed, as starting threads from a message in a thread
+  is not allowed.
+* *(util.background_task)* Added new utility for creating background tasks
+  safely, by ensuring that the task is not garbage collected before finishing
+  and logging uncaught exceptions immediately.
+
 ## v0.19.3 (2023-01-27)
 
 * *(bridge)* Bumped default timeouts for decrypting incoming messages.
