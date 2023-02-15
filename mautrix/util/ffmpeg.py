@@ -84,7 +84,7 @@ async def probe_path(
         err_text = stderr.decode("utf-8") if stderr else f"unknown ({proc.returncode})"
         raise ConverterError(f"ffprobe error: {err_text}")
     elif stderr and logger:
-        logger.warn(f"ffprobe warning: {stderr.decode('utf-8')}")
+        logger.warning(f"ffprobe warning: {stderr.decode('utf-8')}")
     return json.loads(stdout)
 
 
@@ -182,7 +182,7 @@ async def convert_path(
         err_text = stderr.decode("utf-8") if stderr else f"unknown ({proc.returncode})"
         raise ConverterError(f"ffmpeg error: {err_text}")
     elif stderr and logger:
-        logger.warn(f"ffmpeg warning: {stderr.decode('utf-8')}")
+        logger.warning(f"ffmpeg warning: {stderr.decode('utf-8')}")
     if remove_input and isinstance(input_file, Path):
         input_file.unlink(missing_ok=True)
     return stdout if output_file == "-" else output_file
