@@ -42,6 +42,7 @@ class ProxyHandler:
 
         api_url = str(URL(self.api_url).update_query({"reason": reason} if reason else {}))
 
+        # NOTE: using urllib.request to intentionally block the whole bridge until the proxy change applied
         request = urllib.request.Request(api_url, method="GET")
         self.log.debug("Requesting proxy from: %s", api_url)
 
