@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
+from collections import defaultdict
 import asyncio
 import logging
 import sys
@@ -143,6 +144,7 @@ class BaseMatrixHandler:
     media_config: MediaRepoConfig
     versions: VersionsResponse
     minimum_spec_version: Version = SpecVersions.V11
+    room_locks: dict[str, asyncio.Lock]
 
     user_id_prefix: str
     user_id_suffix: str
@@ -159,6 +161,7 @@ class BaseMatrixHandler:
         self.media_config = MediaRepoConfig(upload_size=50 * 1024 * 1024)
         self.versions = VersionsResponse.deserialize({"versions": ["v1.3"]})
         self.az.matrix_event_handler(self.int_handle_event)
+        self.room_locks = defaultdict(asyncio.Lock)
 
         self.e2ee = None
         self.require_e2ee = False
@@ -400,19 +403,20 @@ class BaseMatrixHandler:
             await intent.leave_room(room_id, reason="You're not allowed to invite this ghost.")
             return
 
-        portal = await self.bridge.get_portal(room_id)
-        if portal:
-            try:
-                await portal.handle_matrix_invite(invited_by, puppet)
-            except br.RejectMatrixInvite as e:
-                await intent.leave_room(room_id, reason=e.message)
-            except br.IgnoreMatrixInvite:
-                pass
+        async with self.room_locks[room_id]:
+            portal = await self.bridge.get_portal(room_id)
+            if portal:
+                try:
+                    await portal.handle_matrix_invite(invited_by, puppet)
+                except br.RejectMatrixInvite as e:
+                    await intent.leave_room(room_id, reason=e.message)
+                except br.IgnoreMatrixInvite:
+                    pass
+                else:
+                    await intent.join_room(room_id)
+                return
             else:
-                await intent.join_room(room_id)
-            return
-        else:
-            await self.handle_puppet_nonportal_invite(room_id, puppet, invited_by, evt)
+                await self.handle_puppet_nonportal_invite(room_id, puppet, invited_by, evt)
 
     async def handle_invite(
         self, room_id: RoomID, user_id: UserID, invited_by: br.BaseUser, evt: StateEvent
