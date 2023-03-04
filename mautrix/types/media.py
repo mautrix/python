@@ -20,7 +20,7 @@ class MediaRepoConfig(SerializableAttrs):
         https://spec.matrix.org/v1.2/client-server-api/#get_matrixmediav3config
     """
 
-    upload_size: int = field(json="m.upload.size")
+    upload_size: int = field(default=50 * 1024 * 1024, json="m.upload.size")
 
 
 @dataclass
