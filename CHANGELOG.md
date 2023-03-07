@@ -1,3 +1,13 @@
+## v0.19.5 (2023-03-07)
+
+* *(util.proxy)* Added utility for dynamic proxies (from mautrix-instagram/facebook).
+* *(types)* Added default value for `upload_size` in `MediaRepoConfig` as the
+  field is optional in the spec.
+* *(bridge)* Changed ghost invite handling to only process one per room at a time
+  (thanks to [@maltee1] in [#132]).
+
+[#132]: https://github.com/mautrix/python/pull/132
+
 ## v0.19.4 (2023-02-12)
 
 * *(types)* Changed `set_thread_parent` to inherit the existing thread parent
