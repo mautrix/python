@@ -90,6 +90,7 @@ async def proxy_with_retry(
     proxy_handler: ProxyHandler,
     on_proxy_change: Callable[[], Awaitable[None]],
     max_retries: int = 10,
+    min_wait_seconds: int = 60,
 ) -> T:
     errors = 0
 
@@ -100,7 +101,7 @@ async def proxy_with_retry(
             errors += 1
             if errors > max_retries:
                 raise
-            wait = min(errors * 10, 60)
+            wait = min(errors * 10, min_wait_seconds)
             logger.warning(
                 "%s while trying to %s, retrying in %d seconds",
                 e.__class__.__name__,
