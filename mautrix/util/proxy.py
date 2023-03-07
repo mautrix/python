@@ -91,13 +91,14 @@ async def proxy_with_retry(
     on_proxy_change: Callable[[], Awaitable[None]],
     max_retries: int = 10,
     min_wait_seconds: int = 60,
+    retryable_exceptions: Iterable[Exception] = RETRYABLE_PROXY_EXCEPTIONS,
 ) -> T:
     errors = 0
 
     while True:
         try:
             return await func()
-        except RETRYABLE_PROXY_EXCEPTIONS as e:
+        except retryable_exceptions as e:
             errors += 1
             if errors > max_retries:
                 raise
