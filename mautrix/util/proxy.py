@@ -92,6 +92,7 @@ async def proxy_with_retry(
     max_retries: int = 10,
     min_wait_seconds: int = 0,
     max_wait_seconds: int = 60,
+    multiply_wait_seconds: int = 10,
     retryable_exceptions: tuple[Exception] = RETRYABLE_PROXY_EXCEPTIONS,
 ) -> T:
     errors = 0
@@ -103,7 +104,7 @@ async def proxy_with_retry(
             errors += 1
             if errors > max_retries:
                 raise
-            wait = errors * 10
+            wait = errors * multiply_wait_seconds
             wait = max(wait, min_wait_seconds)
             wait = min(wait, max_wait_seconds)
             logger.warning(
