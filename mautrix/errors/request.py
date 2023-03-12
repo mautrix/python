@@ -179,7 +179,9 @@ class MNotFound(MatrixStandardRequestError):
 
 @standard_error("M_LIMIT_EXCEEDED")
 class MLimitExceeded(MatrixStandardRequestError):
-    pass
+    def __init__(self, retry_after_ms: int | None = None, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.retry_after_ms: int | None = retry_after_ms
 
 
 @standard_error("M_UNKNOWN")

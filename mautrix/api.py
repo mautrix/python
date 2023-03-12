@@ -21,7 +21,12 @@ from aiohttp.client_exceptions import ClientError, ContentTypeError
 from yarl import URL
 
 from mautrix import __optional_imports__, __version__ as mautrix_version
-from mautrix.errors import MatrixConnectionError, MatrixRequestError, make_request_error
+from mautrix.errors import (
+    MatrixConnectionError,
+    MatrixRequestError,
+    MLimitExceeded,
+    make_request_error,
+)
 from mautrix.util.async_body import AsyncBody, async_iter_bytes
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Counter
@@ -398,6 +403,23 @@ class HTTPAPI:
                 )
                 self._log_request_done(path, req_id, time.monotonic() - start, resp.status)
                 return resp_data
+            except MLimitExceeded as e:
+                API_CALLS_FAILED.labels(method=metrics_method).inc()
+                if retry_count > 0:
+                    retry = e.retry_after_ms
+                    if retry is None:
+                        retry = backoff
+                        backoff *= 2
+                    else:
+                        retry /= 1000
+                    self.log.info(
+                        f"Request #{req_id} failed with {e.errcode}, "
+                        f"retrying in {retry} seconds"
+                    )
+                    await asyncio.sleep(retry)
+                else:
+                    self._log_request_done(path, req_id, time.monotonic() - start, e.http_status)
+                    raise
             except MatrixRequestError as e:
                 API_CALLS_FAILED.labels(method=metrics_method).inc()
                 if retry_count > 0 and e.http_status in (502, 503, 504):
@@ -405,6 +427,8 @@ class HTTPAPI:
                         f"Request #{req_id} failed with HTTP {e.http_status}, "
                         f"retrying in {backoff} seconds"
                     )
+                    await asyncio.sleep(backoff)
+                    backoff *= 2
                 else:
                     self._log_request_done(path, req_id, time.monotonic() - start, e.http_status)
                     raise
@@ -414,13 +438,13 @@ class HTTPAPI:
                     self.log.warning(
                         f"Request #{req_id} failed with {e}, retrying in {backoff} seconds"
                     )
+                    await asyncio.sleep(backoff)
+                    backoff *= 2
                 else:
                     raise MatrixConnectionError(str(e)) from e
             except Exception:
                 API_CALLS_FAILED.labels(method=metrics_method).inc()
                 raise
-            await asyncio.sleep(backoff)
-            backoff *= 2
             retry_count -= 1
 
     def get_txn_id(self) -> str:
