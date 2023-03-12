@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Callable, Type
+from typing import Callable, Type, TypeVar
 
 from .base import MatrixError
 
@@ -45,7 +45,7 @@ class MatrixStandardRequestError(MatrixRequestError):
 
     errcode: str = None
 
-    def __init__(self, http_status: int, message: str = "") -> None:
+    def __init__(self, http_status: int, message: str = "", **kwargs) -> None:
         super().__init__(message)
         self.http_status: int = http_status
         self.message: str = message
@@ -55,9 +55,11 @@ MxSRE = Type[MatrixStandardRequestError]
 ec_map: dict[str, MxSRE] = {}
 uec_map: dict[str, MxSRE] = {}
 
+T = TypeVar("T", bound=MxSRE)
 
-def standard_error(code: str, unstable: str | None = None) -> Callable[[MxSRE], MxSRE]:
-    def decorator(cls: MxSRE) -> MxSRE:
+
+def standard_error(code: str, unstable: str | None = None) -> Callable[[T], T]:
+    def decorator(cls: T) -> T:
         cls.errcode = code
         ec_map[code] = cls
         if unstable:
@@ -71,6 +73,7 @@ def standard_error(code: str, unstable: str | None = None) -> Callable[[MxSRE], 
 def make_request_error(
     http_status: int,
     text: str,
+    data: dict | None,
     errcode: str | None,
     message: str | None,
     unstable_errcode: str | None = None,
@@ -82,6 +85,7 @@ def make_request_error(
     Args:
         http_status: The HTTP status code.
         text: The raw response text.
+        data: The response JSON.
         errcode: The errcode field in the response JSON.
         message: The error field in the response JSON.
         unstable_errcode: The MSC3848 error code field in the response JSON.
@@ -94,7 +98,10 @@ def make_request_error(
             pass
     try:
         ec_class = ec_map[errcode]
-        return ec_class(http_status, message)
+        data = data if data else {}
+        data["http_status"] = http_status
+        data["message"] = message
+        return ec_class(**data)
     except KeyError:
         return MatrixUnknownRequestError(http_status, text, errcode, message)
 

@@ -239,7 +239,7 @@ class HTTPAPI:
         )
         async with request as response:
             if response.status < 200 or response.status >= 300:
-                errcode = unstable_errcode = message = None
+                response_data = errcode = unstable_errcode = message = None
                 try:
                     response_data = await response.json()
                     errcode = response_data["errcode"]
@@ -250,6 +250,7 @@ class HTTPAPI:
                 raise make_request_error(
                     http_status=response.status,
                     text=await response.text(),
+                    data=response_data,
                     errcode=errcode,
                     message=message,
                     unstable_errcode=unstable_errcode,
