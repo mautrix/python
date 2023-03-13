@@ -171,9 +171,11 @@ class OlmMachine(
         }
         if prev == cur or ignored_changes.get(prev) == cur:
             return
+        src = getattr(evt, "source", None)
         self.log.debug(
             f"Got membership state event in {evt.room_id} changing {evt.state_key} from "
-            f"{prev} to {cur}, invalidating group session"
+            f"{prev} to {cur} (event ID: {evt.event_id}, sync source: {src}), "
+            "invalidating group session"
         )
         await self.crypto_store.remove_outbound_group_session(evt.room_id)
 
