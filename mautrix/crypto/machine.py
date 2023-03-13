@@ -184,7 +184,7 @@ class OlmMachine(
         self.log.debug(
             f"Got membership state event in {evt.room_id} changing {evt.state_key} from "
             f"{prev} to {cur} (event ID: {evt.event_id}, sync source: {src}, "
-            f"cached: {prev_cache.membership}), invalidating group session"
+            f"cached: {prev_cache.membership if prev_cache else None}), invalidating group session"
         )
         await self.crypto_store.remove_outbound_group_session(evt.room_id)
 
