@@ -76,7 +76,7 @@ class KeySharingMachine(OlmEncryptionMachine, DeviceListMachine):
                 code=RoomKeyWithheldCode.BLACKLISTED,
                 reason="You have been blacklisted by this device",
             )
-        elif device.trust >= self.share_keys_min_trust:
+        elif await self.resolve_trust(device) >= self.share_keys_min_trust:
             self.log.debug(f"Accepting key request from trusted device {device.device_id}")
             return True
         else:
