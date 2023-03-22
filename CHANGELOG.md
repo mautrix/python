@@ -1,3 +1,8 @@
+## v0.19.7 (2023-03-22)
+
+* *(bridge, crypto)* Fixed key sharing trust checker not resolving cross-signing
+  signatures when minimum trust level is set to cross-signed.
+
 ## v0.19.6 (2023-03-13)
 
 * *(crypto)* Added cache checks to prevent invalidating group session when the
