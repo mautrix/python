@@ -132,9 +132,9 @@ class EncryptionManager:
                 f"Rejecting key request from blacklisted device "
                 f"{device.user_id}/{device.device_id}",
                 code=RoomKeyWithheldCode.BLACKLISTED,
-                reason="You have been blacklisted by this device",
+                reason="Your device has been blacklisted by the bridge",
             )
-        elif device.trust >= self.crypto.share_keys_min_trust:
+        elif await self.crypto.resolve_trust(device) >= self.crypto.share_keys_min_trust:
             portal = await self.bridge.get_portal(request.room_id)
             if portal is None:
                 raise RejectKeyShare(
@@ -161,7 +161,7 @@ class EncryptionManager:
                 f"Rejecting key request from unverified device "
                 f"{device.user_id}/{device.device_id}",
                 code=RoomKeyWithheldCode.UNVERIFIED,
-                reason="You have not been verified by this device",
+                reason="Your device is not trusted by the bridge",
             )
 
     def _ignore_user(self, user_id: str) -> bool:
