@@ -289,9 +289,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
 
     async def add_outbound_group_session(self, session: OutboundGroupSession) -> None:
         pickle = session.pickle(self.pickle_key)
-        max_age = session.max_age
-        if self.db.scheme == Scheme.SQLITE:
-            max_age = max_age.total_seconds()
+        max_age = int(session.max_age.total_seconds() * 1000)
         q = """
         INSERT INTO crypto_megolm_outbound_session (
             room_id, session_id, session, shared, max_messages, message_count,
@@ -341,9 +339,6 @@ class PgCryptoStore(CryptoStore, SyncStore):
         row = await self.db.fetchrow(q, room_id, self.account_id)
         if row is None:
             return None
-        max_age = row["max_age"]
-        if self.db.scheme == Scheme.SQLITE:
-            max_age = timedelta(seconds=max_age)
         return OutboundGroupSession.from_pickle(
             row["session"],
             passphrase=self.pickle_key,
@@ -351,7 +346,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
             shared=row["shared"],
             max_messages=row["max_messages"],
             message_count=row["message_count"],
-            max_age=max_age,
+            max_age=timedelta(milliseconds=row["max_age"]),
             use_time=row["last_used"],
             creation_time=row["created_at"],
         )

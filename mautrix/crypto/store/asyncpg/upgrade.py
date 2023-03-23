@@ -80,7 +80,6 @@ async def upgrade_blank_to_latest(conn: Connection) -> None:
             PRIMARY KEY (account_id, session_id)
         )"""
     )
-    # TODO chnge max_age to BIGINT
     await conn.execute(
         """CREATE TABLE IF NOT EXISTS crypto_megolm_outbound_session (
             account_id    TEXT,
@@ -90,7 +89,7 @@ async def upgrade_blank_to_latest(conn: Connection) -> None:
             shared        BOOLEAN   NOT NULL,
             max_messages  INTEGER   NOT NULL,
             message_count INTEGER   NOT NULL,
-            max_age       INTERVAL  NOT NULL,
+            max_age       BIGINT    NOT NULL,
             created_at    timestamp NOT NULL,
             last_used     timestamp NOT NULL,
             PRIMARY KEY (account_id, room_id)
@@ -167,7 +166,7 @@ async def upgrade_v2(conn: Connection, scheme: Scheme) -> None:
                 shared        BOOLEAN      NOT NULL,
                 max_messages  INTEGER      NOT NULL,
                 message_count INTEGER      NOT NULL,
-                max_age       INTERVAL     NOT NULL,
+                max_age       BIGINT       NOT NULL,
                 created_at    timestamp    NOT NULL,
                 last_used     timestamp    NOT NULL,
                 PRIMARY KEY (account_id, room_id)
@@ -298,6 +297,11 @@ async def upgrade_v8_postgres(conn: Connection) -> None:
         "ALTER TABLE crypto_cross_signing_signatures ALTER COLUMN signature SET NOT NULL"
     )
 
+    await conn.execute(
+        "ALTER TABLE crypto_megolm_outbound_session ALTER COLUMN max_age TYPE BIGINT "
+        "USING (EXTRACT(EPOCH from max_age)*1000)::int"
+    )
+
 
 async def upgrade_v8_sqlite(conn: Connection) -> None:
     await conn.execute("PRAGMA foreign_keys = OFF")
@@ -350,6 +354,8 @@ async def upgrade_v8_sqlite(conn: Connection) -> None:
         await conn.execute(
             "ALTER TABLE new_crypto_megolm_inbound_session RENAME TO crypto_megolm_inbound_session"
         )
+
+        await conn.execute("UPDATE crypto_megolm_outbound_session SET max_age=max_age*1000")
 
         await conn.execute(
             """CREATE TABLE new_crypto_cross_signing_keys (
