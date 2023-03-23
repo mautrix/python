@@ -267,6 +267,17 @@ async def upgrade_v9(conn: Connection, scheme: Scheme) -> None:
         await upgrade_v9_sqlite(conn)
 
 
+# These two are never used because the previous one jumps from 6 to 9.
+@upgrade_table.register
+async def upgrade_noop_7_to_8(_: Connection) -> None:
+    pass
+
+
+@upgrade_table.register
+async def upgrade_noop_8_to_9(_: Connection) -> None:
+    pass
+
+
 async def upgrade_v9_postgres(conn: Connection) -> None:
     await conn.execute("UPDATE crypto_account SET device_id='' WHERE device_id IS NULL")
     await conn.execute("ALTER TABLE crypto_account ALTER COLUMN device_id SET NOT NULL")
