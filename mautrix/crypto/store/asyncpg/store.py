@@ -12,6 +12,7 @@ from asyncpg import UniqueViolationError
 
 from mautrix.client.state_store import SyncStore
 from mautrix.client.state_store.asyncpg import PgStateStore
+from mautrix.errors import GroupSessionWithheldError
 from mautrix.types import (
     CrossSigner,
     CrossSigningUsage,
@@ -117,7 +118,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
         await self.db.execute(
             q,
             self.account_id,
-            self._device_id,
+            self._device_id or "",
             account.shared,
             self._sync_token or "",
             pickle,
@@ -236,6 +237,10 @@ class PgCryptoStore(CryptoStore, SyncStore):
         INSERT INTO crypto_megolm_inbound_session (
             session_id, sender_key, signing_key, room_id, session, forwarding_chains, account_id
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (session_id, account_id) DO UPDATE
+        SET withheld_code=NULL, withheld_reason=NULL, sender_key=excluded.sender_key,
+            signing_key=excluded.signing_key, room_id=excluded.room_id, session=excluded.session,
+            forwarding_chains=excluded.forwarding_chains
         """
         try:
             await self.db.execute(
@@ -255,13 +260,15 @@ class PgCryptoStore(CryptoStore, SyncStore):
         self, room_id: RoomID, session_id: SessionID
     ) -> InboundGroupSession | None:
         q = """
-        SELECT sender_key, signing_key, session, forwarding_chains
+        SELECT sender_key, signing_key, session, forwarding_chains, withheld_code
         FROM crypto_megolm_inbound_session
         WHERE room_id=$1 AND session_id=$2 AND account_id=$3
         """
         row = await self.db.fetchrow(q, room_id, session_id, self.account_id)
         if row is None:
             return None
+        if row["withheld_code"] is not None:
+            raise GroupSessionWithheldError(session_id, row["withheld_code"])
         forwarding_chain = row["forwarding_chains"].split(",") if row["forwarding_chains"] else []
         return InboundGroupSession.from_pickle(
             row["session"],
@@ -275,7 +282,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
     async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
         q = """
         SELECT COUNT(session) FROM crypto_megolm_inbound_session
-        WHERE room_id=$1 AND session_id=$2 AND account_id=$3
+        WHERE room_id=$1 AND session_id=$2 AND account_id=$3 AND session IS NOT NULL
         """
         count = await self.db.fetchval(q, room_id, session_id, self.account_id)
         return count > 0
