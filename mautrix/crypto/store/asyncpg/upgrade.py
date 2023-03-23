@@ -257,17 +257,17 @@ async def upgrade_v6(conn: Connection) -> None:
 
 
 @upgrade_table.register(
-    description="Synchronize schema with mautrix-go", upgrades_to=8, transaction=False
+    description="Synchronize schema with mautrix-go", upgrades_to=9, transaction=False
 )
-async def upgrade_v8(conn: Connection, scheme: Scheme) -> None:
+async def upgrade_v9(conn: Connection, scheme: Scheme) -> None:
     if scheme == Scheme.POSTGRES:
         async with conn.transaction():
-            await upgrade_v8_postgres(conn)
+            await upgrade_v9_postgres(conn)
     else:
-        await upgrade_v8_sqlite(conn)
+        await upgrade_v9_sqlite(conn)
 
 
-async def upgrade_v8_postgres(conn: Connection) -> None:
+async def upgrade_v9_postgres(conn: Connection) -> None:
     await conn.execute("UPDATE crypto_account SET device_id='' WHERE device_id IS NULL")
     await conn.execute("ALTER TABLE crypto_account ALTER COLUMN device_id SET NOT NULL")
 
@@ -303,7 +303,7 @@ async def upgrade_v8_postgres(conn: Connection) -> None:
     )
 
 
-async def upgrade_v8_sqlite(conn: Connection) -> None:
+async def upgrade_v9_sqlite(conn: Connection) -> None:
     await conn.execute("PRAGMA foreign_keys = OFF")
     async with conn.transaction():
         await conn.execute(
