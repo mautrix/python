@@ -18,6 +18,7 @@ from mautrix.types import (
     DeviceOTKCount,
     EncryptionAlgorithm,
     EventType,
+    Member,
     Membership,
     StateEvent,
     ToDeviceEvent,
@@ -171,9 +172,19 @@ class OlmMachine(
         }
         if prev == cur or ignored_changes.get(prev) == cur:
             return
+        src = getattr(evt, "source", None)
+        prev_cache = evt.unsigned.get("mautrix_prev_membership")
+        if isinstance(prev_cache, Member) and prev_cache.membership == cur:
+            self.log.debug(
+                f"Got duplicate membership state event in {evt.room_id} changing {evt.state_key} "
+                f"from {prev} to {cur}, cached state was {prev_cache} (event ID: {evt.event_id}, "
+                f"sync source: {src})"
+            )
+            return
         self.log.debug(
             f"Got membership state event in {evt.room_id} changing {evt.state_key} from "
-            f"{prev} to {cur}, invalidating group session"
+            f"{prev} to {cur} (event ID: {evt.event_id}, sync source: {src}, "
+            f"cached: {prev_cache.membership if prev_cache else None}), invalidating group session"
         )
         await self.crypto_store.remove_outbound_group_session(evt.room_id)
 

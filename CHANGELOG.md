@@ -1,3 +1,15 @@
+## v0.19.7 (2023-03-22)
+
+* *(bridge, crypto)* Fixed key sharing trust checker not resolving cross-signing
+  signatures when minimum trust level is set to cross-signed.
+
+## v0.19.6 (2023-03-13)
+
+* *(crypto)* Added cache checks to prevent invalidating group session when the
+  server sends a duplicate member event in /sync.
+* *(util.proxy)* Fixed `min_wait_seconds` behavior and added `max_wait_seconds`
+  and `multiply_wait_seconds` to `proxy_with_retry`.
+
 ## v0.19.5 (2023-03-07)
 
 * *(util.proxy)* Added utility for dynamic proxies (from mautrix-instagram/facebook).
