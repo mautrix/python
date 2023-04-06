@@ -272,6 +272,17 @@ class BaseMatrixHandler:
             except Exception:
                 self.log.exception("Failed to set bot avatar")
 
+        if self.bridge.homeserver_software.is_hungry:
+            self.log.debug("Setting contact info on the appservice bot")
+            await self.az.intent.beeper_update_profile(
+                {
+                    "com.beeper.bridge.service": self.bridge.get_beeper_service_name(),
+                    "com.beeper.bridge.network": self.bridge.get_beeper_network_name(),
+                    "com.beeper.bridge.is_bridge_bot": True,
+                    "com.beeper.bridge.is_bot": True,
+                }
+            )
+
     async def init_encryption(self) -> None:
         if self.e2ee:
             await self.e2ee.start()

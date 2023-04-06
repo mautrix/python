@@ -315,6 +315,16 @@ class Bridge(Program, ABC):
     async def count_logged_in_users(self) -> int:
         return 0
 
+    @staticmethod
+    @abstractmethod
+    def get_beeper_service_name() -> str:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_beeper_network_name() -> str:
+        pass
+
     async def manhole_global_namespace(self, user_id: UserID) -> dict[str, Any]:
         own_user = await self.get_user(user_id, create=False)
         try:
