@@ -16,7 +16,7 @@ upgrade_table = UpgradeTable(
 )
 
 
-@upgrade_table.register(description="Latest revision", upgrades_to=8)
+@upgrade_table.register(description="Latest revision", upgrades_to=9)
 async def upgrade_blank_to_latest(conn: Connection) -> None:
     await conn.execute(
         """CREATE TABLE IF NOT EXISTS crypto_account (
