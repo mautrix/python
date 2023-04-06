@@ -6,6 +6,7 @@ from .crypto import (
     DeviceValidationError,
     DuplicateMessageIndex,
     EncryptionError,
+    GroupSessionWithheldError,
     MatchingSessionDecryptionError,
     MismatchingRoomError,
     SessionNotFound,

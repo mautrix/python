@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Tulir Asokan
+# Copyright (c) 2023 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,15 +16,15 @@ upgrade_table = UpgradeTable(
 )
 
 
-@upgrade_table.register(description="Latest revision", upgrades_to=6)
-async def upgrade_blank_to_v4(conn: Connection) -> None:
+@upgrade_table.register(description="Latest revision", upgrades_to=9)
+async def upgrade_blank_to_latest(conn: Connection) -> None:
     await conn.execute(
         """CREATE TABLE IF NOT EXISTS crypto_account (
-            account_id TEXT PRIMARY KEY,
-            device_id  TEXT,
-            shared     BOOLEAN      NOT NULL,
-            sync_token TEXT         NOT NULL,
-            account    bytea        NOT NULL
+            account_id TEXT    PRIMARY KEY,
+            device_id  TEXT    NOT NULL,
+            shared     BOOLEAN NOT NULL,
+            sync_token TEXT    NOT NULL,
+            account    bytea   NOT NULL
         )"""
     )
     await conn.execute(
@@ -68,13 +68,15 @@ async def upgrade_blank_to_v4(conn: Connection) -> None:
     )
     await conn.execute(
         """CREATE TABLE IF NOT EXISTS crypto_megolm_inbound_session (
-            account_id   TEXT,
-            session_id   CHAR(43),
-            sender_key   CHAR(43)  NOT NULL,
-            signing_key  CHAR(43)  NOT NULL,
-            room_id      TEXT      NOT NULL,
-            session      bytea     NOT NULL,
-            forwarding_chains TEXT NOT NULL,
+            account_id        TEXT,
+            session_id        CHAR(43),
+            sender_key        CHAR(43)  NOT NULL,
+            signing_key       CHAR(43),
+            room_id           TEXT      NOT NULL,
+            session           bytea,
+            forwarding_chains TEXT,
+            withheld_code     TEXT,
+            withheld_reason   TEXT,
             PRIMARY KEY (account_id, session_id)
         )"""
     )
@@ -87,7 +89,7 @@ async def upgrade_blank_to_v4(conn: Connection) -> None:
             shared        BOOLEAN   NOT NULL,
             max_messages  INTEGER   NOT NULL,
             message_count INTEGER   NOT NULL,
-            max_age       INTERVAL  NOT NULL,
+            max_age       BIGINT    NOT NULL,
             created_at    timestamp NOT NULL,
             last_used     timestamp NOT NULL,
             PRIMARY KEY (account_id, room_id)
@@ -97,8 +99,10 @@ async def upgrade_blank_to_v4(conn: Connection) -> None:
         """CREATE TABLE crypto_cross_signing_keys (
             user_id TEXT,
             usage   TEXT,
-            key     CHAR(43),
-            first_seen_key CHAR(43),
+            key     CHAR(43) NOT NULL,
+
+            first_seen_key CHAR(43) NOT NULL,
+
             PRIMARY KEY (user_id, usage)
         )"""
     )
@@ -108,7 +112,7 @@ async def upgrade_blank_to_v4(conn: Connection) -> None:
             signed_key     TEXT,
             signer_user_id TEXT,
             signer_key     TEXT,
-            signature      TEXT,
+            signature      CHAR(88) NOT NULL,
             PRIMARY KEY (signed_user_id, signed_key, signer_user_id, signer_key)
         )"""
     )
@@ -162,7 +166,7 @@ async def upgrade_v2(conn: Connection, scheme: Scheme) -> None:
                 shared        BOOLEAN      NOT NULL,
                 max_messages  INTEGER      NOT NULL,
                 message_count INTEGER      NOT NULL,
-                max_age       INTERVAL     NOT NULL,
+                max_age       BIGINT       NOT NULL,
                 created_at    timestamp    NOT NULL,
                 last_used     timestamp    NOT NULL,
                 PRIMARY KEY (account_id, room_id)
@@ -250,3 +254,169 @@ async def upgrade_v6(conn: Connection) -> None:
     await conn.execute("UPDATE crypto_device SET trust=300 WHERE trust=1")  # verified
     await conn.execute("UPDATE crypto_device SET trust=-100 WHERE trust=2")  # blacklisted
     await conn.execute("UPDATE crypto_device SET trust=0 WHERE trust=3")  # ignored -> unset
+
+
+@upgrade_table.register(
+    description="Synchronize schema with mautrix-go", upgrades_to=9, transaction=False
+)
+async def upgrade_v9(conn: Connection, scheme: Scheme) -> None:
+    if scheme == Scheme.POSTGRES:
+        async with conn.transaction():
+            await upgrade_v9_postgres(conn)
+    else:
+        await upgrade_v9_sqlite(conn)
+
+
+# These two are never used because the previous one jumps from 6 to 9.
+@upgrade_table.register
+async def upgrade_noop_7_to_8(_: Connection) -> None:
+    pass
+
+
+@upgrade_table.register
+async def upgrade_noop_8_to_9(_: Connection) -> None:
+    pass
+
+
+async def upgrade_v9_postgres(conn: Connection) -> None:
+    await conn.execute("UPDATE crypto_account SET device_id='' WHERE device_id IS NULL")
+    await conn.execute("ALTER TABLE crypto_account ALTER COLUMN device_id SET NOT NULL")
+
+    await conn.execute(
+        "ALTER TABLE crypto_megolm_inbound_session ALTER COLUMN signing_key DROP NOT NULL"
+    )
+    await conn.execute(
+        "ALTER TABLE crypto_megolm_inbound_session ALTER COLUMN session DROP NOT NULL"
+    )
+    await conn.execute(
+        "ALTER TABLE crypto_megolm_inbound_session ALTER COLUMN forwarding_chains DROP NOT NULL"
+    )
+    await conn.execute("ALTER TABLE crypto_megolm_inbound_session ADD COLUMN withheld_code TEXT")
+    await conn.execute("ALTER TABLE crypto_megolm_inbound_session ADD COLUMN withheld_reason TEXT")
+
+    await conn.execute("DELETE FROM crypto_cross_signing_keys WHERE key IS NULL")
+    await conn.execute(
+        "UPDATE crypto_cross_signing_keys SET first_seen_key=key WHERE first_seen_key IS NULL"
+    )
+    await conn.execute("ALTER TABLE crypto_cross_signing_keys ALTER COLUMN key SET NOT NULL")
+    await conn.execute(
+        "ALTER TABLE crypto_cross_signing_keys ALTER COLUMN first_seen_key SET NOT NULL"
+    )
+
+    await conn.execute("DELETE FROM crypto_cross_signing_signatures WHERE signature IS NULL")
+    await conn.execute(
+        "ALTER TABLE crypto_cross_signing_signatures ALTER COLUMN signature SET NOT NULL"
+    )
+
+    await conn.execute(
+        "ALTER TABLE crypto_megolm_outbound_session ALTER COLUMN max_age TYPE BIGINT "
+        "USING (EXTRACT(EPOCH from max_age)*1000)::int"
+    )
+
+
+async def upgrade_v9_sqlite(conn: Connection) -> None:
+    await conn.execute("PRAGMA foreign_keys = OFF")
+    async with conn.transaction():
+        await conn.execute(
+            """CREATE TABLE new_crypto_account (
+                account_id TEXT    PRIMARY KEY,
+                device_id  TEXT    NOT NULL,
+                shared     BOOLEAN NOT NULL,
+                sync_token TEXT    NOT NULL,
+                account    bytea   NOT NULL
+            )"""
+        )
+        await conn.execute(
+            """
+            INSERT INTO new_crypto_account (account_id, device_id, shared, sync_token, account)
+            SELECT account_id, COALESCE(device_id, ''), shared, sync_token, account
+            FROM crypto_account
+            """
+        )
+        await conn.execute("DROP TABLE crypto_account")
+        await conn.execute("ALTER TABLE new_crypto_account RENAME TO crypto_account")
+
+        await conn.execute(
+            """CREATE TABLE new_crypto_megolm_inbound_session (
+                account_id        TEXT,
+                session_id        CHAR(43),
+                sender_key        CHAR(43)  NOT NULL,
+                signing_key       CHAR(43),
+                room_id           TEXT      NOT NULL,
+                session           bytea,
+                forwarding_chains TEXT,
+                withheld_code     TEXT,
+                withheld_reason   TEXT,
+                PRIMARY KEY (account_id, session_id)
+            )"""
+        )
+        await conn.execute(
+            """
+            INSERT INTO new_crypto_megolm_inbound_session (
+                account_id, session_id, sender_key, signing_key, room_id, session,
+                forwarding_chains
+            )
+            SELECT account_id, session_id, sender_key, signing_key, room_id, session,
+                   forwarding_chains
+            FROM crypto_megolm_inbound_session
+            """
+        )
+        await conn.execute("DROP TABLE crypto_megolm_inbound_session")
+        await conn.execute(
+            "ALTER TABLE new_crypto_megolm_inbound_session RENAME TO crypto_megolm_inbound_session"
+        )
+
+        await conn.execute("UPDATE crypto_megolm_outbound_session SET max_age=max_age*1000")
+
+        await conn.execute(
+            """CREATE TABLE new_crypto_cross_signing_keys (
+                user_id TEXT,
+                usage   TEXT,
+                key     CHAR(43) NOT NULL,
+
+                first_seen_key CHAR(43) NOT NULL,
+
+                PRIMARY KEY (user_id, usage)
+            )"""
+        )
+        await conn.execute(
+            """
+            INSERT INTO new_crypto_cross_signing_keys (user_id, usage, key, first_seen_key)
+            SELECT user_id, usage, key, COALESCE(first_seen_key, key)
+            FROM crypto_cross_signing_keys
+            WHERE key IS NOT NULL
+            """
+        )
+        await conn.execute("DROP TABLE crypto_cross_signing_keys")
+        await conn.execute(
+            "ALTER TABLE new_crypto_cross_signing_keys RENAME TO crypto_cross_signing_keys"
+        )
+
+        await conn.execute(
+            """CREATE TABLE new_crypto_cross_signing_signatures (
+                signed_user_id TEXT,
+                signed_key     TEXT,
+                signer_user_id TEXT,
+                signer_key     TEXT,
+                signature      CHAR(88) NOT NULL,
+                PRIMARY KEY (signed_user_id, signed_key, signer_user_id, signer_key)
+            )"""
+        )
+        await conn.execute(
+            """
+            INSERT INTO new_crypto_cross_signing_signatures (
+                signed_user_id, signed_key, signer_user_id, signer_key, signature
+            )
+            SELECT signed_user_id, signed_key, signer_user_id, signer_key, signature
+            FROM crypto_cross_signing_signatures
+            WHERE signature IS NOT NULL
+            """
+        )
+        await conn.execute("DROP TABLE crypto_cross_signing_signatures")
+        await conn.execute(
+            "ALTER TABLE new_crypto_cross_signing_signatures "
+            "RENAME TO crypto_cross_signing_signatures"
+        )
+
+        await conn.execute("PRAGMA foreign_key_check")
+    await conn.execute("PRAGMA foreign_keys = ON")
