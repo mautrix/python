@@ -59,6 +59,8 @@ class Bridge(Program, ABC):
     markdown_version: str
     manhole: br.commands.manhole.ManholeState | None
     homeserver_software: HomeserverSoftware
+    beeper_network_name: str | None = None
+    beeper_service_name: str | None = None
 
     def __init__(
         self,
@@ -314,16 +316,6 @@ class Bridge(Program, ABC):
     @abstractmethod
     async def count_logged_in_users(self) -> int:
         return 0
-
-    @staticmethod
-    @abstractmethod
-    def get_beeper_service_name() -> str:
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def get_beeper_network_name() -> str:
-        pass
 
     async def manhole_global_namespace(self, user_id: UserID) -> dict[str, Any]:
         own_user = await self.get_user(user_id, create=False)
