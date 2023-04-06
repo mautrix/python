@@ -1,3 +1,8 @@
+## v0.19.8 (2023-04-06)
+
+* *(crypto)* Updated crypto store schema to match mautrix-go.
+* *(types)* Fixed `set_thread_parent` adding reply fallbacks to the message body.
+
 ## v0.19.7 (2023-03-22)
 
 * *(bridge, crypto)* Fixed key sharing trust checker not resolving cross-signing
