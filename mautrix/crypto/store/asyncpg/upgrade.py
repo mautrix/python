@@ -310,7 +310,7 @@ async def upgrade_v9_postgres(conn: Connection) -> None:
 
     await conn.execute(
         "ALTER TABLE crypto_megolm_outbound_session ALTER COLUMN max_age TYPE BIGINT "
-        "USING (EXTRACT(EPOCH from max_age)*1000)::int"
+        "USING (EXTRACT(EPOCH from max_age)*1000)::bigint"
     )
 
 
