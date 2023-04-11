@@ -115,6 +115,13 @@ class EncryptionManager:
             self.az.device_list_handler = self.crypto.handle_as_device_lists
             self.az.to_device_handler = self.crypto.handle_as_to_device_event
 
+        delete_config = bridge.config["bridge.encryption.delete_keys"]
+        self.delete_outbound_keys_on_ack = delete_config["delete_outbound_on_ack"]
+        self.delete_previous_keys_on_receive = delete_config["delete_prev_on_new_session"]
+        self.ratchet_keys_on_decrypt = delete_config["ratchet_on_decrypt"]
+        self.delete_fully_used_keys_on_decrypt = delete_config["delete_fully_used_on_decrypt"]
+        self.delete_keys_on_device_delete = delete_config["delete_on_device_delete"]
+
     async def _exit_on_sync_fail(self, data) -> None:
         if data["error"]:
             self.log.critical("Exiting due to crypto sync error")

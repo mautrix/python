@@ -16,7 +16,7 @@ upgrade_table = UpgradeTable(
 )
 
 
-@upgrade_table.register(description="Latest revision", upgrades_to=9)
+@upgrade_table.register(description="Latest revision", upgrades_to=10)
 async def upgrade_blank_to_latest(conn: Connection) -> None:
     await conn.execute(
         """CREATE TABLE IF NOT EXISTS crypto_account (
@@ -77,6 +77,11 @@ async def upgrade_blank_to_latest(conn: Connection) -> None:
             forwarding_chains TEXT,
             withheld_code     TEXT,
             withheld_reason   TEXT,
+            ratchet_safety    jsonb,
+            received_at       timestamp,
+            max_age           BIGINT,
+            max_messages      INTEGER,
+            is_scheduled      BOOLEAN NOT NULL DEFAULT false,
             PRIMARY KEY (account_id, session_id)
         )"""
     )
@@ -420,3 +425,19 @@ async def upgrade_v9_sqlite(conn: Connection) -> None:
 
         await conn.execute("PRAGMA foreign_key_check")
     await conn.execute("PRAGMA foreign_keys = ON")
+
+
+@upgrade_table.register(
+    description="Add metadata for detecting when megolm sessions are safe to delete"
+)
+async def upgrade_v10(conn: Connection) -> None:
+    await conn.execute("ALTER TABLE crypto_megolm_inbound_session ADD COLUMN ratchet_safety jsonb")
+    await conn.execute(
+        "ALTER TABLE crypto_megolm_inbound_session ADD COLUMN received_at timestamp"
+    )
+    await conn.execute("ALTER TABLE crypto_megolm_inbound_session ADD COLUMN max_age BIGINT")
+    await conn.execute("ALTER TABLE crypto_megolm_inbound_session ADD COLUMN max_messages INTEGER")
+    await conn.execute(
+        "ALTER TABLE crypto_megolm_inbound_session "
+        "ADD COLUMN is_scheduled BOOLEAN NOT NULL DEFAULT false"
+    )

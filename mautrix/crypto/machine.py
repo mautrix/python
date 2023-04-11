@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from typing import Optional
+from datetime import timedelta
 import asyncio
 import logging
 
@@ -76,7 +77,14 @@ class OlmMachine(
         self.share_keys_min_trust = TrustState.CROSS_SIGNED_TOFU
         self.allow_key_share = self.default_allow_key_share
 
+        self.delete_outbound_keys_on_ack = False
+        self.delete_previous_keys_on_receive = False
+        self.ratchet_keys_on_decrypt = False
+        self.delete_fully_used_keys_on_decrypt = False
+        self.delete_keys_on_device_delete = False
+
         self._fetch_keys_lock = asyncio.Lock()
+        self._megolm_decrypt_lock = asyncio.Lock()
         self._key_request_waiters = {}
         self._inbound_session_waiters = {}
         self._prev_unwedge = {}
@@ -88,6 +96,7 @@ class OlmMachine(
         self.client.add_event_handler(cli.InternalEventType.DEVICE_LISTS, self.handle_device_lists)
         self.client.add_event_handler(EventType.TO_DEVICE_ENCRYPTED, self.handle_to_device_event)
         self.client.add_event_handler(EventType.ROOM_KEY_REQUEST, self.handle_room_key_request)
+        self.client.add_event_handler(EventType.BEEPER_ROOM_KEY_ACK, self.handle_beep_room_key_ack)
         # self.client.add_event_handler(EventType.ROOM_KEY_WITHHELD, self.handle_room_key_withheld)
         # self.client.add_event_handler(EventType.ORG_MATRIX_ROOM_KEY_WITHHELD,
         #                               self.handle_room_key_withheld)
@@ -123,6 +132,8 @@ class OlmMachine(
             await self.handle_to_device_event(evt)
         elif evt.type == EventType.ROOM_KEY_REQUEST:
             await self.handle_room_key_request(evt)
+        elif evt.type == EventType.BEEPER_ROOM_KEY_ACK:
+            await self.handle_beep_room_key_ack(evt)
         else:
             self.log.debug(f"Got unknown to-device event {evt.type} from {evt.sender}")
 
@@ -210,13 +221,44 @@ class OlmMachine(
         #      for the case where evt.Keys.Ed25519 is none?
         if evt.content.algorithm != EncryptionAlgorithm.MEGOLM_V1 or not evt.keys.ed25519:
             return
+        if not evt.content.beeper_max_messages or not evt.content.beeper_max_age_ms:
+            encryption_info = await self.state_store.get_encryption_info(evt.content.room_id)
+            if encryption_info:
+                if not evt.content.beeper_max_age_ms:
+                    evt.content.beeper_max_age_ms = encryption_info.rotation_period_ms
+                if not evt.content.beeper_max_messages:
+                    evt.content.beeper_max_messages = encryption_info.rotation_period_msgs
+        if self.delete_previous_keys_on_receive:
+            removed_ids = await self.crypto_store.redact_group_sessions(
+                evt.content.room_id, evt.content.sender_key, reason="received new key from device"
+            )
+            self.log.info(f"Redacted previous megolm sessions: {removed_ids}")
         await self._create_group_session(
             evt.sender_key,
             evt.keys.ed25519,
             evt.content.room_id,
             evt.content.session_id,
             evt.content.session_key,
+            max_age=evt.content.beeper_max_age_ms,
+            max_messages=evt.content.beeper_max_messages,
+            is_scheduled=evt.content.beeper_is_scheduled,
         )
+
+    async def handle_beep_room_key_ack(self, evt: ToDeviceEvent) -> None:
+        sess = await self.crypto_store.get_group_session(
+            evt.content.room_id, evt.content.session_id
+        )
+        if (
+            sess.sender_key == self.account.identity_key
+            and self.delete_outbound_keys_on_ack
+            and evt.content.first_message_index == 0
+        ):
+            self.log.debug("Redacting inbound copy of outbound group session after ack")
+            await self.crypto_store.redact_group_session(
+                evt.content.room_id, evt.content.session_id, reason="outbound session acked"
+            )
+        else:
+            self.log.debug(f"Received room key ack for {sess.id}")
 
     async def share_keys(self, current_otk_count: int) -> None:
         """

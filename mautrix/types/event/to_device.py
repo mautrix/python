@@ -9,8 +9,9 @@ from attr import dataclass
 import attr
 
 from ..primitive import JSON, DeviceID, IdentityKey, RoomID, SessionID, SigningKey, UserID
-from ..util import ExtensibleEnum, Obj, SerializableAttrs, deserializer
+from ..util import ExtensibleEnum, Obj, SerializableAttrs, deserializer, field
 from .base import BaseEvent, EventType
+from .beeper import BeeperRoomKeyAckEventContent
 from .encrypted import EncryptedOlmEventContent, EncryptionAlgorithm
 
 
@@ -20,6 +21,8 @@ class RoomKeyWithheldCode(ExtensibleEnum):
     UNAUTHORIZED: "RoomKeyWithheldCode" = "m.unauthorised"
     UNAVAILABLE: "RoomKeyWithheldCode" = "m.unavailable"
     NO_OLM_SESSION: "RoomKeyWithheldCode" = "m.no_olm"
+
+    BEEPER_REDACTED: "RoomKeyWithheldCode" = "com.beeper.redacted"
 
 
 @dataclass
@@ -38,6 +41,10 @@ class RoomKeyEventContent(SerializableAttrs):
     room_id: RoomID
     session_id: SessionID
     session_key: str
+
+    beeper_max_age_ms: Optional[int] = field(json="com.beeper.max_age_ms", default=None)
+    beeper_max_messages: Optional[int] = field(json="com.beeper.max_messages", default=None)
+    beeper_is_scheduled: Optional[bool] = field(json="com.beeper.is_scheduled", default=False)
 
 
 class KeyRequestAction(ExtensibleEnum):
@@ -75,6 +82,7 @@ ToDeviceEventContent = Union[
     RoomKeyEventContent,
     RoomKeyRequestEventContent,
     ForwardedRoomKeyEventContent,
+    BeeperRoomKeyAckEventContent,
 ]
 to_device_event_content_map = {
     EventType.TO_DEVICE_ENCRYPTED: EncryptedOlmEventContent,
@@ -82,10 +90,8 @@ to_device_event_content_map = {
     EventType.ROOM_KEY_REQUEST: RoomKeyRequestEventContent,
     EventType.ROOM_KEY: RoomKeyEventContent,
     EventType.FORWARDED_ROOM_KEY: ForwardedRoomKeyEventContent,
+    EventType.BEEPER_ROOM_KEY_ACK: BeeperRoomKeyAckEventContent,
 }
-
-
-# TODO remaining account data event types
 
 
 @dataclass

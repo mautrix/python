@@ -46,6 +46,12 @@ class BaseOlmMachine:
     share_keys_min_trust: TrustState
     allow_key_share: Callable[[crypto.DeviceIdentity, RequestedKeyInfo], Awaitable[bool]]
 
+    delete_outbound_keys_on_ack: bool
+    delete_previous_keys_on_receive: bool
+    ratchet_keys_on_decrypt: bool
+    delete_fully_used_keys_on_decrypt: bool
+    delete_keys_on_device_delete: bool
+
     # Futures that wait for responses to a key request
     _key_request_waiters: dict[SessionID, asyncio.Future]
     # Futures that wait for a session to be received (either normally or through a key request)
@@ -53,6 +59,7 @@ class BaseOlmMachine:
 
     _prev_unwedge: dict[IdentityKey, float]
     _fetch_keys_lock: asyncio.Lock
+    _megolm_decrypt_lock: asyncio.Lock
     _cs_fetch_attempted: set[UserID]
 
     async def wait_for_session(

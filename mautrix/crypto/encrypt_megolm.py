@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Any, Dict, List, Tuple, Union
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 import asyncio
 import json
 import time
@@ -173,21 +173,6 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
             session = await self._new_outbound_group_session(room_id)
         self.log.debug(f"Sharing group session {session.id} for room {room_id} with {users}")
 
-        encryption_info = await self.state_store.get_encryption_info(room_id)
-        if encryption_info:
-            if encryption_info.algorithm != EncryptionAlgorithm.MEGOLM_V1:
-                raise SessionShareError("Room encryption algorithm is not supported")
-            session.max_messages = encryption_info.rotation_period_msgs or session.max_messages
-            session.max_age = (
-                timedelta(milliseconds=encryption_info.rotation_period_ms)
-                if encryption_info.rotation_period_ms
-                else session.max_age
-            )
-            self.log.debug(
-                "Got stored encryption state event and configured session to rotate "
-                f"after {session.max_messages} messages or {session.max_age}"
-            )
-
         olm_sessions: DeviceMap = defaultdict(lambda: {})
         withhold_key_msgs = defaultdict(lambda: {})
         missing_sessions: Dict[UserID, Dict[DeviceID, DeviceIdentity]] = defaultdict(lambda: {})
@@ -253,12 +238,31 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
 
     async def _new_outbound_group_session(self, room_id: RoomID) -> OutboundGroupSession:
         session = OutboundGroupSession(room_id)
+
+        encryption_info = await self.state_store.get_encryption_info(room_id)
+        if encryption_info:
+            if encryption_info.algorithm != EncryptionAlgorithm.MEGOLM_V1:
+                raise SessionShareError("Room encryption algorithm is not supported")
+            session.max_messages = encryption_info.rotation_period_msgs or session.max_messages
+            session.max_age = (
+                timedelta(milliseconds=encryption_info.rotation_period_ms)
+                if encryption_info.rotation_period_ms
+                else session.max_age
+            )
+            self.log.debug(
+                "Got stored encryption state event and configured session to rotate "
+                f"after {session.max_messages} messages or {session.max_age}"
+            )
+
         await self._create_group_session(
             self.account.identity_key,
             self.account.signing_key,
             room_id,
             SessionID(session.id),
             session.session_key,
+            max_messages=session.max_messages,
+            max_age=session.max_age,
+            is_scheduled=False,
         )
         return session
 
@@ -286,6 +290,9 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
         room_id: RoomID,
         session_id: SessionID,
         session_key: str,
+        max_age: Union[timedelta, int],
+        max_messages: int,
+        is_scheduled: bool = False,
     ) -> None:
         start = time.monotonic()
         session = InboundGroupSession(
@@ -293,6 +300,10 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
             signing_key=signing_key,
             sender_key=sender_key,
             room_id=room_id,
+            received_at=datetime.utcnow(),
+            max_age=max_age,
+            max_messages=max_messages,
+            is_scheduled=is_scheduled,
         )
         olm_duration = time.monotonic() - start
         if olm_duration > 5:
