@@ -68,7 +68,7 @@ class RoomKeyRequestEventContent(SerializableAttrs):
     body: Optional[RequestedKeyInfo] = None
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ForwardedRoomKeyEventContent(RoomKeyEventContent, SerializableAttrs):
     sender_key: IdentityKey
     signing_key: SigningKey = attr.ib(metadata={"json": "sender_claimed_ed25519_key"})
