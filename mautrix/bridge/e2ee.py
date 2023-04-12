@@ -103,6 +103,7 @@ class EncryptionManager:
             sync_store=self.crypto_store,
             log=self.log.getChild("client"),
             default_retry_count=default_http_retry_count,
+            state_store=self.bridge.state_store,
         )
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
         self.client.add_event_handler(InternalEventType.SYNC_STOPPED, self._exit_on_sync_fail)
@@ -125,6 +126,7 @@ class EncryptionManager:
         self.crypto.delete_fully_used_keys_on_decrypt = delete_cfg["delete_fully_used_on_decrypt"]
         self.crypto.delete_keys_on_device_delete = delete_cfg["delete_on_device_delete"]
         self.periodically_delete_expired_keys = delete_cfg["periodically_delete_expired"]
+        self._key_delete_task = None
 
     async def _exit_on_sync_fail(self, data) -> None:
         if data["error"]:

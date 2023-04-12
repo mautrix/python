@@ -230,7 +230,7 @@ class OlmMachine(
                     evt.content.beeper_max_messages = encryption_info.rotation_period_msgs
         if self.delete_previous_keys_on_receive:
             removed_ids = await self.crypto_store.redact_group_sessions(
-                evt.content.room_id, evt.content.sender_key, reason="received new key from device"
+                evt.content.room_id, evt.sender_key, reason="received new key from device"
             )
             self.log.info(f"Redacted previous megolm sessions: {removed_ids}")
         await self._create_group_session(

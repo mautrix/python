@@ -255,7 +255,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
                 room_id,
                 pickle,
                 forwarding_chains,
-                session.ratchet_safety,
+                session.ratchet_safety.json(),
                 session.received_at,
                 int(session.max_age.total_seconds() * 1000),
                 session.max_messages,
