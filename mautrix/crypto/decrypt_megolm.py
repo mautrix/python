@@ -166,7 +166,7 @@ class MegolmDecryptionMachine(DeviceListMachine):
                 else:
                     break
             sess.ratchet_safety.missed_indices = sess.ratchet_safety.missed_indices[i + 1 :]
-        ratchet_target_index = expected_message_index
+        ratchet_target_index = sess.ratchet_safety.next_index
         if len(sess.ratchet_safety.missed_indices) > 0:
             ratchet_target_index = min(sess.ratchet_safety.missed_indices)
         self.log.debug(
