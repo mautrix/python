@@ -228,7 +228,7 @@ class OlmMachine(
                     evt.content.beeper_max_age_ms = encryption_info.rotation_period_ms
                 if not evt.content.beeper_max_messages:
                     evt.content.beeper_max_messages = encryption_info.rotation_period_msgs
-        if self.delete_previous_keys_on_receive:
+        if self.delete_previous_keys_on_receive and not evt.content.beeper_is_scheduled:
             removed_ids = await self.crypto_store.redact_group_sessions(
                 evt.content.room_id, evt.sender_key, reason="received new key from device"
             )
