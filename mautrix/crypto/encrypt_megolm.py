@@ -313,7 +313,10 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
             session_id = session.id
         await self.crypto_store.put_group_session(room_id, sender_key, session_id, session)
         self._mark_session_received(session_id)
-        self.log.debug(f"Created inbound group session {room_id}/{sender_key}/{session_id}")
+        self.log.debug(
+            f"Created inbound group session {room_id}/{sender_key}/{session_id} "
+            f"(max {max_age} / {max_messages} messages, {is_scheduled=})"
+        )
 
     async def _find_olm_sessions(
         self,
