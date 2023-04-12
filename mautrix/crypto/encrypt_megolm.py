@@ -254,16 +254,17 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
                 f"after {session.max_messages} messages or {session.max_age}"
             )
 
-        await self._create_group_session(
-            self.account.identity_key,
-            self.account.signing_key,
-            room_id,
-            SessionID(session.id),
-            session.session_key,
-            max_messages=session.max_messages,
-            max_age=session.max_age,
-            is_scheduled=False,
-        )
+        if not self.dont_store_outbound_keys:
+            await self._create_group_session(
+                self.account.identity_key,
+                self.account.signing_key,
+                room_id,
+                SessionID(session.id),
+                session.session_key,
+                max_messages=session.max_messages,
+                max_age=session.max_age,
+                is_scheduled=False,
+            )
         return session
 
     async def _encrypt_and_share_group_session(

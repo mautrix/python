@@ -139,6 +139,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.encryption.require")
         copy("bridge.encryption.appservice")
         copy("bridge.encryption.delete_keys.delete_outbound_on_ack")
+        copy("bridge.encryption.delete_keys.dont_store_outbound")
         copy("bridge.encryption.delete_keys.ratchet_on_decrypt")
         copy("bridge.encryption.delete_keys.delete_fully_used_on_decrypt")
         copy("bridge.encryption.delete_keys.delete_prev_on_new_session")

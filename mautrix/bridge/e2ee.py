@@ -121,6 +121,7 @@ class EncryptionManager:
 
         delete_cfg = bridge.config["bridge.encryption.delete_keys"]
         self.crypto.delete_outbound_keys_on_ack = delete_cfg["delete_outbound_on_ack"]
+        self.crypto.dont_store_outbound_keys = delete_cfg["dont_store_outbound"]
         self.crypto.delete_previous_keys_on_receive = delete_cfg["delete_prev_on_new_session"]
         self.crypto.ratchet_keys_on_decrypt = delete_cfg["ratchet_on_decrypt"]
         self.crypto.delete_fully_used_keys_on_decrypt = delete_cfg["delete_fully_used_on_decrypt"]

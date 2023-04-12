@@ -78,6 +78,7 @@ class OlmMachine(
         self.allow_key_share = self.default_allow_key_share
 
         self.delete_outbound_keys_on_ack = False
+        self.dont_store_outbound_keys = False
         self.delete_previous_keys_on_receive = False
         self.ratchet_keys_on_decrypt = False
         self.delete_fully_used_keys_on_decrypt = False

@@ -47,6 +47,7 @@ class BaseOlmMachine:
     allow_key_share: Callable[[crypto.DeviceIdentity, RequestedKeyInfo], Awaitable[bool]]
 
     delete_outbound_keys_on_ack: bool
+    dont_store_outbound_keys: bool
     delete_previous_keys_on_receive: bool
     ratchet_keys_on_decrypt: bool
     delete_fully_used_keys_on_decrypt: bool
