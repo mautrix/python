@@ -7,7 +7,7 @@ from typing import Optional
 
 from attr import dataclass
 
-from ..primitive import EventID
+from ..primitive import EventID, RoomID, SessionID
 from ..util import SerializableAttrs, SerializableEnum, field
 from .base import BaseRoomEvent
 from .message import RelatesTo
@@ -55,3 +55,10 @@ class BeeperMessageStatusEventContent(SerializableAttrs):
 @dataclass
 class BeeperMessageStatusEvent(BaseRoomEvent, SerializableAttrs):
     content: BeeperMessageStatusEventContent
+
+
+@dataclass
+class BeeperRoomKeyAckEventContent(SerializableAttrs):
+    room_id: RoomID
+    session_id: SessionID
+    first_message_index: int

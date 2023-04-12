@@ -21,6 +21,7 @@ from mautrix.types import (
     EventID,
     IdentityKey,
     RoomID,
+    RoomKeyWithheldCode,
     SessionID,
     SigningKey,
     SyncToken,
@@ -31,7 +32,7 @@ from mautrix.types import (
 from mautrix.util.async_db import Database, Scheme
 from mautrix.util.logging import TraceLogger
 
-from ... import InboundGroupSession, OlmAccount, OutboundGroupSession, Session
+from ... import InboundGroupSession, OlmAccount, OutboundGroupSession, RatchetSafety, Session
 from ..abstract import CryptoStore, StateStore
 from .upgrade import upgrade_table
 
@@ -235,12 +236,15 @@ class PgCryptoStore(CryptoStore, SyncStore):
         forwarding_chains = ",".join(session.forwarding_chain)
         q = """
         INSERT INTO crypto_megolm_inbound_session (
-            session_id, sender_key, signing_key, room_id, session, forwarding_chains, account_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            session_id, sender_key, signing_key, room_id, session, forwarding_chains,
+            ratchet_safety, received_at, max_age, max_messages, is_scheduled, account_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         ON CONFLICT (session_id, account_id) DO UPDATE
         SET withheld_code=NULL, withheld_reason=NULL, sender_key=excluded.sender_key,
             signing_key=excluded.signing_key, room_id=excluded.room_id, session=excluded.session,
-            forwarding_chains=excluded.forwarding_chains
+            forwarding_chains=excluded.forwarding_chains, ratchet_safety=excluded.ratchet_safety,
+            received_at=excluded.received_at, max_age=excluded.max_age,
+            max_messages=excluded.max_messages, is_scheduled=excluded.is_scheduled
         """
         try:
             await self.db.execute(
@@ -251,6 +255,11 @@ class PgCryptoStore(CryptoStore, SyncStore):
                 room_id,
                 pickle,
                 forwarding_chains,
+                session.ratchet_safety.json(),
+                session.received_at,
+                int(session.max_age.total_seconds() * 1000),
+                session.max_messages,
+                session.is_scheduled,
                 self.account_id,
             )
         except (IntegrityError, UniqueViolationError):
@@ -260,7 +269,9 @@ class PgCryptoStore(CryptoStore, SyncStore):
         self, room_id: RoomID, session_id: SessionID
     ) -> InboundGroupSession | None:
         q = """
-        SELECT sender_key, signing_key, session, forwarding_chains, withheld_code
+        SELECT
+            sender_key, signing_key, session, forwarding_chains, withheld_code,
+            ratchet_safety, received_at, max_age, max_messages, is_scheduled
         FROM crypto_megolm_inbound_session
         WHERE room_id=$1 AND session_id=$2 AND account_id=$3
         """
@@ -277,7 +288,78 @@ class PgCryptoStore(CryptoStore, SyncStore):
             sender_key=row["sender_key"],
             room_id=room_id,
             forwarding_chain=forwarding_chain,
+            ratchet_safety=RatchetSafety.parse_json(row["ratchet_safety"] or "{}"),
+            received_at=row["received_at"],
+            max_age=timedelta(milliseconds=row["max_age"]) if row["max_age"] else None,
+            max_messages=row["max_messages"],
+            is_scheduled=row["is_scheduled"],
         )
+
+    async def redact_group_session(
+        self, room_id: RoomID, session_id: SessionID, reason: str
+    ) -> None:
+        q = """
+        UPDATE crypto_megolm_inbound_session
+        SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+        WHERE session_id=$3 AND account_id=$4 AND session IS NOT NULL
+        """
+        await self.db.execute(
+            q,
+            RoomKeyWithheldCode.BEEPER_REDACTED.value,
+            f"Session redacted: {reason}",
+            session_id,
+            self.account_id,
+        )
+
+    async def redact_group_sessions(
+        self, room_id: RoomID, sender_key: IdentityKey, reason: str
+    ) -> list[SessionID]:
+        if not room_id and not sender_key:
+            raise ValueError("Either room_id or sender_key must be provided")
+        q = """
+        UPDATE crypto_megolm_inbound_session
+        SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+        WHERE (room_id=$3 OR $3='') AND (sender_key=$4 OR $4='') AND session IS NOT NULL AND account_id=$5 AND is_scheduled=false
+        RETURNING session_id
+        """
+        rows = await self.db.fetch(
+            q,
+            RoomKeyWithheldCode.BEEPER_REDACTED.value,
+            f"Session redacted: {reason}",
+            room_id,
+            sender_key,
+            self.account_id,
+        )
+        return [row["session_id"] for row in rows]
+
+    async def redact_expired_group_sessions(self) -> list[SessionID]:
+        if self.db.scheme == Scheme.SQLITE:
+            q = """
+            UPDATE crypto_megolm_inbound_session
+            SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+            WHERE account_id=$3 AND session IS NOT NULL AND is_scheduled=false
+              AND received_at IS NOT NULL and max_age IS NOT NULL
+              AND unixepoch(received_at) + (2 * max_age / 1000) < unixepoch(date('now'))
+            RETURNING session_id
+            """
+        elif self.db.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
+            q = """
+            UPDATE crypto_megolm_inbound_session
+            SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+            WHERE account_id=$3 AND session IS NOT NULL AND is_scheduled=false
+              AND received_at IS NOT NULL and max_age IS NOT NULL
+              AND received_at + 2 * (max_age * interval '1 millisecond') < now()
+            RETURNING session_id
+            """
+        else:
+            raise RuntimeError(f"Unsupported dialect {self.db.scheme}")
+        rows = await self.db.fetch(
+            q,
+            RoomKeyWithheldCode.BEEPER_REDACTED.value,
+            f"Session redacted: expired",
+            self.account_id,
+        )
+        return [row["session_id"] for row in rows]
 
     async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
         q = """

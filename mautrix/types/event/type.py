@@ -216,6 +216,7 @@ _standard_types = {
         "m.room_key_request": "ROOM_KEY_REQUEST",
         "m.forwarded_room_key": "FORWARDED_ROOM_KEY",
         "m.dummy": "TO_DEVICE_DUMMY",
+        "com.beeper.room_key.ack": "BEEPER_ROOM_KEY_ACK",
     },
     EventType.Class.UNKNOWN: {
         "__ALL__": "ALL",  # This is not a real event type

@@ -13,7 +13,7 @@ from mautrix import __optional_imports__
 from mautrix.appservice import AppService
 from mautrix.client import Client, InternalEventType, SyncStore
 from mautrix.crypto import CryptoStore, OlmMachine, PgCryptoStore, RejectKeyShare, StateStore
-from mautrix.errors import EncryptionError, SessionNotFound
+from mautrix.errors import EncryptionError, MForbidden, MNotFound, SessionNotFound
 from mautrix.types import (
     JSON,
     DeviceIdentity,
@@ -34,6 +34,7 @@ from mautrix.types import (
     StateFilter,
     TrustState,
 )
+from mautrix.util import background_task
 from mautrix.util.async_db import Database
 from mautrix.util.logging import TraceLogger
 
@@ -61,6 +62,7 @@ class EncryptionManager:
     min_send_trust: TrustState
     key_sharing_enabled: bool
     appservice_mode: bool
+    periodically_delete_expired_keys: bool
 
     bridge: br.Bridge
     az: AppService
@@ -68,6 +70,7 @@ class EncryptionManager:
     _id_suffix: str
 
     _share_session_events: dict[RoomID, asyncio.Event]
+    _key_delete_task: asyncio.Task | None
 
     def __init__(
         self,
@@ -100,6 +103,7 @@ class EncryptionManager:
             sync_store=self.crypto_store,
             log=self.log.getChild("client"),
             default_retry_count=default_http_retry_count,
+            state_store=self.bridge.state_store,
         )
         self.crypto = OlmMachine(self.client, self.crypto_store, self.state_store)
         self.client.add_event_handler(InternalEventType.SYNC_STOPPED, self._exit_on_sync_fail)
@@ -114,6 +118,16 @@ class EncryptionManager:
             self.az.otk_handler = self.crypto.handle_as_otk_counts
             self.az.device_list_handler = self.crypto.handle_as_device_lists
             self.az.to_device_handler = self.crypto.handle_as_to_device_event
+
+        delete_cfg = bridge.config["bridge.encryption.delete_keys"]
+        self.crypto.delete_outbound_keys_on_ack = delete_cfg["delete_outbound_on_ack"]
+        self.crypto.dont_store_outbound_keys = delete_cfg["dont_store_outbound"]
+        self.crypto.delete_previous_keys_on_receive = delete_cfg["delete_prev_on_new_session"]
+        self.crypto.ratchet_keys_on_decrypt = delete_cfg["ratchet_on_decrypt"]
+        self.crypto.delete_fully_used_keys_on_decrypt = delete_cfg["delete_fully_used_on_decrypt"]
+        self.crypto.delete_keys_on_device_delete = delete_cfg["delete_on_device_delete"]
+        self.periodically_delete_expired_keys = delete_cfg["periodically_delete_expired"]
+        self._key_delete_task = None
 
     async def _exit_on_sync_fail(self, data) -> None:
         if data["error"]:
@@ -267,6 +281,37 @@ class EncryptionManager:
         else:
             _ = self.client.start(self._filter)
             self.log.info("End-to-bridge encryption support is enabled (sync mode)")
+        if self.periodically_delete_expired_keys:
+            self._key_delete_task = background_task.create(self._periodically_delete_keys())
+        background_task.create(self._resync_encryption_info())
+
+    async def _resync_encryption_info(self) -> None:
+        rows = await self.crypto_db.fetch(
+            """SELECT room_id FROM mx_room_state WHERE encryption='{"resync":true}'"""
+        )
+        room_ids = [row["room_id"] for row in rows]
+        if not room_ids:
+            return
+        self.log.debug(f"Resyncing encryption state event in rooms: {room_ids}")
+        for room_id in room_ids:
+            try:
+                evt = await self.client.get_state_event(room_id, EventType.ROOM_ENCRYPTION)
+            except (MNotFound, MForbidden) as e:
+                self.log.debug(f"Failed to get encryption state in {room_id}: {e}")
+                q = """
+                    UPDATE mx_room_state SET encryption=NULL
+                    WHERE room_id=$1 AND encryption='{"resync":true}'
+                """
+                await self.crypto_db.execute(q, room_id)
+            else:
+                self.log.debug(f"Resynced encryption state in {room_id}: {evt}")
+                q = """
+                    UPDATE crypto_megolm_inbound_session SET max_age=$1, max_messages=$2
+                    WHERE room_id=$3 AND max_age IS NULL and max_messages IS NULL
+                """
+                await self.crypto_db.execute(
+                    q, evt.rotation_period_ms, evt.rotation_period_msgs, room_id
+                )
 
     async def _verify_keys_are_on_server(self) -> None:
         self.log.debug("Making sure keys are still on server")
@@ -289,6 +334,9 @@ class EncryptionManager:
         sys.exit(34)
 
     async def stop(self) -> None:
+        if self._key_delete_task:
+            self._key_delete_task.cancel()
+            self._key_delete_task = None
         self.client.stop()
         await self.crypto_store.close()
         if self.crypto_db:
@@ -308,3 +356,12 @@ class EncryptionManager:
                 ephemeral=RoomEventFilter(not_types=[all_events]),
             ),
         )
+
+    async def _periodically_delete_keys(self) -> None:
+        while True:
+            deleted = await self.crypto_store.redact_expired_group_sessions()
+            if deleted:
+                self.log.info(f"Deleted expired megolm sessions: {deleted}")
+            else:
+                self.log.debug("No expired megolm sessions found")
+            await asyncio.sleep(24 * 60 * 60)

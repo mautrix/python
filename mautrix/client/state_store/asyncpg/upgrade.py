@@ -14,8 +14,8 @@ upgrade_table = UpgradeTable(
 )
 
 
-@upgrade_table.register(description="Latest revision", upgrades_to=2)
-async def upgrade_blank_to_v2(conn: Connection, scheme: Scheme) -> None:
+@upgrade_table.register(description="Latest revision", upgrades_to=3)
+async def upgrade_blank_to_v3(conn: Connection, scheme: Scheme) -> None:
     await conn.execute(
         """CREATE TABLE mx_room_state (
             room_id              TEXT PRIMARY KEY,
@@ -54,3 +54,18 @@ async def upgrade_v2(conn: Connection, scheme: Scheme) -> None:
     await conn.execute("ALTER TABLE mx_user_profile ALTER COLUMN user_id TYPE TEXT")
     await conn.execute("ALTER TABLE mx_user_profile ALTER COLUMN displayname TYPE TEXT")
     await conn.execute("ALTER TABLE mx_user_profile ALTER COLUMN avatar_url TYPE TEXT")
+
+
+@upgrade_table.register(description="Mark rooms that need crypto state event resynced")
+async def upgrade_v3(conn: Connection) -> None:
+    if await conn.table_exists("portal"):
+        await conn.execute(
+            """
+            INSERT INTO mx_room_state (room_id, encryption)
+            SELECT portal.mxid, '{"resync":true}' FROM portal
+                WHERE portal.encrypted=true AND portal.mxid IS NOT NULL
+            ON CONFLICT (room_id) DO UPDATE
+                SET encryption=excluded.encryption
+                WHERE mx_room_state.encryption IS NULL
+            """
+        )
