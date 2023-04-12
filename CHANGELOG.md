@@ -1,3 +1,8 @@
+## v0.19.9 (2023-04-12)
+
+* *(crypto)* Fixed bug in crypto store migration when using outbound sessions
+  with max age higher than usual.
+
 ## v0.19.8 (2023-04-06)
 
 * *(crypto)* Updated crypto store schema to match mautrix-go.
