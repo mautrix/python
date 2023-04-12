@@ -13,7 +13,7 @@ from mautrix import __optional_imports__
 from mautrix.appservice import AppService
 from mautrix.client import Client, InternalEventType, SyncStore
 from mautrix.crypto import CryptoStore, OlmMachine, PgCryptoStore, RejectKeyShare, StateStore
-from mautrix.errors import EncryptionError, SessionNotFound
+from mautrix.errors import EncryptionError, MForbidden, MNotFound, SessionNotFound
 from mautrix.types import (
     JSON,
     DeviceIdentity,
@@ -280,6 +280,35 @@ class EncryptionManager:
             self.log.info("End-to-bridge encryption support is enabled (sync mode)")
         if self.periodically_delete_expired_keys:
             self._key_delete_task = background_task.create(self._periodically_delete_keys())
+        background_task.create(self._resync_encryption_info())
+
+    async def _resync_encryption_info(self) -> None:
+        rows = await self.crypto_db.fetch(
+            """SELECT room_id FROM mx_room_state WHERE encryption='{"resync":true}'"""
+        )
+        room_ids = [row["room_id"] for row in rows]
+        if not room_ids:
+            return
+        self.log.debug(f"Resyncing encryption state event in rooms: {room_ids}")
+        for room_id in room_ids:
+            try:
+                evt = await self.client.get_state_event(room_id, EventType.ROOM_ENCRYPTION)
+            except (MNotFound, MForbidden) as e:
+                self.log.debug(f"Failed to get encryption state in {room_id}: {e}")
+                q = """
+                    UPDATE mx_room_state SET encryption=NULL
+                    WHERE room_id=$1 AND encryption='{"resync":true}'
+                """
+                await self.crypto_db.execute(q, room_id)
+            else:
+                self.log.debug(f"Resynced encryption state in {room_id}: {evt}")
+                q = """
+                    UPDATE crypto_megolm_inbound_session SET max_age=$1, max_messages=$2
+                    WHERE room_id=$3 AND max_age IS NULL and max_messages IS NULL
+                """
+                await self.crypto_db.execute(
+                    q, evt.rotation_period_ms, evt.rotation_period_msgs, room_id
+                )
 
     async def _verify_keys_are_on_server(self) -> None:
         self.log.debug("Making sure keys are still on server")
