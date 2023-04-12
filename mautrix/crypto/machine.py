@@ -6,11 +6,11 @@
 from __future__ import annotations
 
 from typing import Optional
-from datetime import timedelta
 import asyncio
 import logging
 
 from mautrix import client as cli
+from mautrix.errors import GroupSessionWithheldError
 from mautrix.types import (
     ASToDeviceEvent,
     DecryptedOlmEvent,
@@ -246,9 +246,19 @@ class OlmMachine(
         )
 
     async def handle_beep_room_key_ack(self, evt: ToDeviceEvent) -> None:
-        sess = await self.crypto_store.get_group_session(
-            evt.content.room_id, evt.content.session_id
-        )
+        try:
+            sess = await self.crypto_store.get_group_session(
+                evt.content.room_id, evt.content.session_id
+            )
+        except GroupSessionWithheldError:
+            self.log.debug(
+                f"Ignoring room key ack for session {evt.content.session_id}"
+                " that was already redacted"
+            )
+            return
+        if not sess:
+            self.log.debug(f"Ignoring room key ack for unknown session {evt.content.session_id}")
+            return
         if (
             sess.sender_key == self.account.identity_key
             and self.delete_outbound_keys_on_ack
