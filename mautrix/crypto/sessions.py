@@ -100,6 +100,7 @@ class Session(olm.Session):
 class RatchetSafety(SerializableAttrs):
     next_index: int = 0
     missed_indices: List[int] = field(factory=lambda: [])
+    lost_indices: List[int] = field(factory=lambda: [])
 
 
 class InboundGroupSession(olm.InboundGroupSession):

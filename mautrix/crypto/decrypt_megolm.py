@@ -152,9 +152,26 @@ class MegolmDecryptionMachine(DeviceListMachine):
                 sess.ratchet_safety.missed_indices.remove(index)
             except ValueError:
                 did_modify = False
+        # Use presence of received_at as a sign that this is a recent megolm session,
+        # and therefore it's safe to drop missed indices entirely.
+        if (
+            sess.received_at
+            and sess.ratchet_safety.missed_indices
+            and sess.ratchet_safety.missed_indices[0] < expected_message_index - 10
+        ):
+            i = 0
+            for i, lost_index in enumerate(sess.ratchet_safety.missed_indices):
+                if lost_index < expected_message_index - 10:
+                    sess.ratchet_safety.lost_indices.append(lost_index)
+                else:
+                    break
+            sess.ratchet_safety.missed_indices = sess.ratchet_safety.missed_indices[i + 1 :]
         ratchet_target_index = expected_message_index
         if len(sess.ratchet_safety.missed_indices) > 0:
             ratchet_target_index = min(sess.ratchet_safety.missed_indices)
+        self.log.debug(
+            f"Ratchet safety info for {sess.id}: {sess.ratchet_safety}, {ratchet_target_index=}"
+        )
         sess_id = SessionID(sess.id)
         if (
             sess.max_messages
@@ -162,11 +179,13 @@ class MegolmDecryptionMachine(DeviceListMachine):
             and not sess.ratchet_safety.missed_indices
             and self.delete_fully_used_keys_on_decrypt
         ):
+            self.log.info(f"Deleting fully used session {sess.id}")
             await self.crypto_store.redact_group_session(
                 sess.room_id, sess_id, reason="maximum messages reached"
             )
             return
         elif sess.first_known_index < ratchet_target_index and self.ratchet_keys_on_decrypt:
+            self.log.info(f"Ratcheting session {sess.id} to {ratchet_target_index}")
             sess = sess.ratchet_to(ratchet_target_index)
         elif not did_modify:
             return
