@@ -257,7 +257,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
                 forwarding_chains,
                 session.ratchet_safety.json(),
                 session.received_at,
-                int(session.max_age.total_seconds() * 1000),
+                int(session.max_age.total_seconds() * 1000) if session.max_age else None,
                 session.max_messages,
                 session.is_scheduled,
                 self.account_id,
