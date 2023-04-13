@@ -1,3 +1,8 @@
+## v0.19.10 (2023-04-13)
+
+* *(crypto, bridge)* Added options to automatically ratchet/delete megolm
+  sessions to minimize access to old messages.
+
 ## v0.19.9 (2023-04-12)
 
 * *(crypto)* Fixed bug in crypto store migration when using outbound sessions
