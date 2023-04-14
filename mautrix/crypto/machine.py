@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Tulir Asokan
+# Copyright (c) 2023 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -223,12 +223,7 @@ class OlmMachine(
         if evt.content.algorithm != EncryptionAlgorithm.MEGOLM_V1 or not evt.keys.ed25519:
             return
         if not evt.content.beeper_max_messages or not evt.content.beeper_max_age_ms:
-            encryption_info = await self.state_store.get_encryption_info(evt.content.room_id)
-            if encryption_info:
-                if not evt.content.beeper_max_age_ms:
-                    evt.content.beeper_max_age_ms = encryption_info.rotation_period_ms
-                if not evt.content.beeper_max_messages:
-                    evt.content.beeper_max_messages = encryption_info.rotation_period_msgs
+            await self._fill_encryption_info(evt.content)
         if self.delete_previous_keys_on_receive and not evt.content.beeper_is_scheduled:
             removed_ids = await self.crypto_store.redact_group_sessions(
                 evt.content.room_id, evt.sender_key, reason="received new key from device"

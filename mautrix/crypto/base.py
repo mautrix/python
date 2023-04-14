@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Tulir Asokan
+# Copyright (c) 2023 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,13 +12,17 @@ import json
 
 import olm
 
+from mautrix.errors import MForbidden, MNotFound
 from mautrix.types import (
     DeviceID,
     EncryptionKeyAlgorithm,
+    EventType,
     IdentityKey,
     KeyID,
     RequestedKeyInfo,
+    RoomEncryptionStateEventContent,
     RoomID,
+    RoomKeyEventContent,
     SessionID,
     SigningKey,
     TrustState,
@@ -81,6 +85,34 @@ class BaseOlmMachine:
             self._inbound_session_waiters.pop(session_id).set_result(True)
         except KeyError:
             return
+
+    async def _fill_encryption_info(self, evt: RoomKeyEventContent) -> None:
+        encryption_info = await self.state_store.get_encryption_info(evt.room_id)
+        if not encryption_info:
+            self.log.warning(
+                f"Encryption info for {evt.room_id} not found in state store, fetching from server"
+            )
+            try:
+                encryption_info = await self.client.get_state_event(
+                    evt.room_id, EventType.ROOM_ENCRYPTION
+                )
+            except (MNotFound, MForbidden) as e:
+                self.log.warning(
+                    f"Failed to get encryption info for {evt.room_id} from server: {e},"
+                    " using defaults"
+                )
+                encryption_info = RoomEncryptionStateEventContent()
+            if not encryption_info:
+                self.log.warning(
+                    f"Didn't find encryption info for {evt.room_id} on server either,"
+                    " using defaults"
+                )
+                encryption_info = RoomEncryptionStateEventContent()
+
+        if not evt.beeper_max_age_ms:
+            evt.beeper_max_age_ms = encryption_info.rotation_period_ms
+        if not evt.beeper_max_messages:
+            evt.beeper_max_messages = encryption_info.rotation_period_msgs
 
 
 canonical_json = functools.partial(

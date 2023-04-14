@@ -1,10 +1,9 @@
-# Copyright (c) 2022 Tulir Asokan
+# Copyright (c) 2023 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import Dict, List, Optional, Union
-from datetime import timedelta
 import asyncio
 import uuid
 
@@ -122,12 +121,7 @@ class KeyRequestingMachine(BaseOlmMachine):
             )
             return
         if not key.beeper_max_messages or not key.beeper_max_age_ms:
-            encryption_info = await self.state_store.get_encryption_info(key.room_id)
-            if encryption_info:
-                if not key.beeper_max_age_ms:
-                    key.beeper_max_age_ms = encryption_info.rotation_period_ms
-                if not key.beeper_max_messages:
-                    key.beeper_max_messages = encryption_info.rotation_period_msgs
+            await self._fill_encryption_info(key)
         key.forwarding_key_chain.append(evt.sender_key)
         sess = InboundGroupSession.import_session(
             key.session_key,
