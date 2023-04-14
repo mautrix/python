@@ -1,3 +1,11 @@
+## v0.19.11 (2023-04-14)
+
+* *(crypto)* Fixed bug in previous release which caused errors if the `max_age`
+  of a megolm session was not known.
+* *(crypto)* Changed key receiving handler to fetch encryption config from
+  server if it's not cached locally (to find `max_age` and `max_messages` more
+  reliably).
+
 ## v0.19.10 (2023-04-13)
 
 * *(crypto, bridge)* Added options to automatically ratchet/delete megolm
