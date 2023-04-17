@@ -119,15 +119,17 @@ class EncryptionManager:
             self.az.device_list_handler = self.crypto.handle_as_device_lists
             self.az.to_device_handler = self.crypto.handle_as_to_device_event
 
-        delete_cfg = bridge.config["bridge.encryption.delete_keys"]
-        self.crypto.delete_outbound_keys_on_ack = delete_cfg["delete_outbound_on_ack"]
-        self.crypto.dont_store_outbound_keys = delete_cfg["dont_store_outbound"]
-        self.crypto.delete_previous_keys_on_receive = delete_cfg["delete_prev_on_new_session"]
-        self.crypto.ratchet_keys_on_decrypt = delete_cfg["ratchet_on_decrypt"]
-        self.crypto.delete_fully_used_keys_on_decrypt = delete_cfg["delete_fully_used_on_decrypt"]
-        self.crypto.delete_keys_on_device_delete = delete_cfg["delete_on_device_delete"]
-        self.periodically_delete_expired_keys = delete_cfg["periodically_delete_expired"]
+        self.periodically_delete_expired_keys = False
         self._key_delete_task = None
+        del_cfg = bridge.config["bridge.encryption.delete_keys"]
+        if del_cfg:
+            self.crypto.delete_outbound_keys_on_ack = del_cfg["delete_outbound_on_ack"]
+            self.crypto.dont_store_outbound_keys = del_cfg["dont_store_outbound"]
+            self.crypto.delete_previous_keys_on_receive = del_cfg["delete_prev_on_new_session"]
+            self.crypto.ratchet_keys_on_decrypt = del_cfg["ratchet_on_decrypt"]
+            self.crypto.delete_fully_used_keys_on_decrypt = del_cfg["delete_fully_used_on_decrypt"]
+            self.crypto.delete_keys_on_device_delete = del_cfg["delete_on_device_delete"]
+            self.periodically_delete_expired_keys = del_cfg["periodically_delete_expired"]
 
     async def _exit_on_sync_fail(self, data) -> None:
         if data["error"]:
