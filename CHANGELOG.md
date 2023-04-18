@@ -1,3 +1,7 @@
+## v0.19.12 (2023-04-18)
+
+* *(bridge)* Fixed backwards-compatibility with new key deletion config options.
+
 ## v0.19.11 (2023-04-14)
 
 * *(crypto)* Fixed bug in previous release which caused errors if the `max_age`
