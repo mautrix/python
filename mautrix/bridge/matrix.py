@@ -279,7 +279,6 @@ class BaseMatrixHandler:
                     "com.beeper.bridge.service": self.bridge.beeper_service_name,
                     "com.beeper.bridge.network": self.bridge.beeper_network_name,
                     "com.beeper.bridge.is_bridge_bot": True,
-                    "com.beeper.bridge.is_bot": True,
                 }
             )
 
