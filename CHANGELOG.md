@@ -1,3 +1,7 @@
+## v0.19.13 (2023-04-24)
+
+* *(crypto)* Fixed bug with redacting megolm sessions when device is deleted.
+
 ## v0.19.12 (2023-04-18)
 
 * *(bridge)* Fixed backwards-compatibility with new key deletion config options.

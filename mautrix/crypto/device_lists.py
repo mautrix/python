@@ -82,7 +82,7 @@ class DeviceListMachine(BaseOlmMachine):
 
             if changed or len(new_devices) != len(existing_devices):
                 if self.delete_keys_on_device_delete:
-                    for device_id in new_devices.keys() - existing_devices.keys():
+                    for device_id in existing_devices.keys() - new_devices.keys():
                         device = existing_devices[device_id]
                         removed_ids = await self.crypto_store.redact_group_sessions(
                             room_id=None, sender_key=device.identity_key, reason="device removed"
