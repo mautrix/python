@@ -75,6 +75,8 @@ class AppServiceServerMixin:
         )
         app.router.add_route("GET", "/_matrix/app/v1/rooms/{alias}", self._http_query_alias)
         app.router.add_route("GET", "/_matrix/app/v1/users/{user_id}", self._http_query_user)
+        app.router.add_route("POST", "/_matrix/app/v1/ping", self._http_ping)
+        app.router.add_route("POST", "/_matrix/app/unstable/fi.mau.msc2659/ping", self._http_ping)
 
     def _check_token(self, request: web.Request) -> bool:
         try:
@@ -127,6 +129,23 @@ class AppServiceServerMixin:
         if not response:
             return web.json_response({}, status=404)
         return web.json_response(response)
+
+    async def _http_ping(self, request: web.Request) -> web.Response:
+        if not self._check_token(request):
+            raise web.HTTPUnauthorized(
+                content_type="application/json",
+                text=json.dumps({"error": "Invalid auth token", "errcode": "M_UNKNOWN_TOKEN"}),
+            )
+        try:
+            body = await request.json()
+        except JSONDecodeError:
+            raise web.HTTPBadRequest(
+                content_type="application/json",
+                text=json.dumps({"error": "Body is not JSON", "errcode": "M_NOT_JSON"}),
+            )
+        txn_id = body.get("transaction_id")
+        self.log.info(f"Received ping from homeserver with transaction ID {txn_id}")
+        return web.json_response({})
 
     @staticmethod
     def _get_with_fallback(

@@ -246,6 +246,9 @@ class Bridge(Program, ABC):
                 "correct, and do they match the values in the registration?"
             )
             sys.exit(16)
+        except Exception:
+            self.log.critical("Failed to check connection to homeserver", exc_info=True)
+            sys.exit(16)
 
         await self.matrix.init_encryption()
         self.add_startup_actions(self.matrix.init_as_bot())

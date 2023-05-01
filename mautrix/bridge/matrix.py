@@ -222,33 +222,47 @@ class BaseMatrixHandler:
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")
         errors = 0
-        tried_to_register = False
         while True:
             try:
                 self.versions = await self.az.intent.versions()
-                await self.check_versions()
-                await self.az.intent.whoami()
                 break
-            except (MUnknownToken, MExclusive):
-                # These are probably not going to resolve themselves by waiting
-                raise
-            except MForbidden:
-                if not tried_to_register:
-                    self.log.debug(
-                        "Whoami endpoint returned M_FORBIDDEN, "
-                        "trying to register bridge bot before retrying..."
-                    )
-                    await self.az.intent.ensure_registered()
-                    tried_to_register = True
-                else:
-                    raise
             except Exception:
                 errors += 1
                 if errors <= 6:
                     self.log.exception("Connection to homeserver failed, retrying in 10 seconds")
                     await asyncio.sleep(10)
+                    continue
                 else:
                     raise
+        await self.check_versions()
+        try:
+            await self.az.intent.whoami()
+        except (MUnknownToken, MExclusive):
+            raise
+        except MForbidden:
+            self.log.debug(
+                "Whoami endpoint returned M_FORBIDDEN, "
+                "trying to register bridge bot before retrying..."
+            )
+            await self.az.intent.ensure_registered()
+            await self.az.intent.whoami()
+        if self.versions.supports("fi.mau.msc2659"):
+            try:
+                txn_id = self.az.intent.api.get_txn_id()
+                duration = await self.az.ping_self(txn_id)
+                self.log.debug(
+                    "Homeserver->bridge connection works, "
+                    f"roundtrip time is {duration} ms (txn ID: {txn_id})"
+                )
+            except Exception:
+                self.log.exception(
+                    "Error checking homeserver -> bridge connection, retrying in 10 seconds"
+                )
+                sys.exit(16)
+        else:
+            self.log.debug(
+                "Homeserver does not support checking status of homeserver -> bridge connection"
+            )
         try:
             self.media_config = await self.az.intent.get_media_repo_config()
         except Exception:
