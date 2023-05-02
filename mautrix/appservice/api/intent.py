@@ -493,10 +493,10 @@ class IntentAPI(StoreUpdatingAPI):
     async def appservice_ping(self, appservice_id: str, txn_id: str | None = None) -> int:
         resp = await self.api.request(
             Method.POST,
-            Path.unstable["fi.mau.msc2659"].appservice[appservice_id].ping,
+            Path.v1.appservice[appservice_id].ping,
             content={"transaction_id": txn_id} if txn_id is not None else {},
         )
-        return resp.get("duration_ms") or resp.get("duration") or -1
+        return resp.get("duration_ms") or -1
 
     async def batch_send(
         self,

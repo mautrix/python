@@ -246,7 +246,7 @@ class BaseMatrixHandler:
             )
             await self.az.intent.ensure_registered()
             await self.az.intent.whoami()
-        if self.versions.supports("fi.mau.msc2659"):
+        if self.versions.supports("fi.mau.msc2659.stable"):
             try:
                 txn_id = self.az.intent.api.get_txn_id()
                 duration = await self.az.ping_self(txn_id)
