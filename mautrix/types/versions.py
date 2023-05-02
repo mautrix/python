@@ -70,6 +70,9 @@ class SpecVersions:
     V11 = Version.deserialize("v1.1")
     V12 = Version.deserialize("v1.2")
     V13 = Version.deserialize("v1.3")
+    V14 = Version.deserialize("v1.4")
+    V15 = Version.deserialize("v1.5")
+    V16 = Version.deserialize("v1.6")
 
 
 @dataclass
