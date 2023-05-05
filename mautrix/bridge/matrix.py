@@ -221,19 +221,13 @@ class BaseMatrixHandler:
 
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")
-        errors = 0
         while True:
             try:
                 self.versions = await self.az.intent.versions()
                 break
             except Exception:
-                errors += 1
-                if errors <= 6:
-                    self.log.exception("Connection to homeserver failed, retrying in 10 seconds")
-                    await asyncio.sleep(10)
-                    continue
-                else:
-                    raise
+                self.log.exception("Connection to homeserver failed, retrying in 10 seconds")
+                await asyncio.sleep(10)
         await self.check_versions()
         try:
             await self.az.intent.whoami()
