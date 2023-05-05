@@ -262,8 +262,11 @@ class Bridge(Program, ABC):
 
     async def system_exit(self) -> None:
         if hasattr(self, "db") and isinstance(self.db, Database):
-            self.log.trace("Stopping database due to SystemExit")
+            self.log.debug("Stopping database due to SystemExit")
             await self.db.stop()
+            self.log.debug("Database stopped")
+        elif getattr(self, "db", None):
+            self.log.trace("Database not started at SystemExit")
 
     async def stop(self) -> None:
         if self.manhole:
