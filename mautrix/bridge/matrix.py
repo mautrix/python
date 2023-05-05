@@ -249,9 +249,7 @@ class BaseMatrixHandler:
                     f"roundtrip time is {duration} ms (txn ID: {txn_id})"
                 )
             except Exception:
-                self.log.exception(
-                    "Error checking homeserver -> bridge connection, retrying in 10 seconds"
-                )
+                self.log.exception("Error checking homeserver -> bridge connection")
                 sys.exit(16)
         else:
             self.log.debug(
