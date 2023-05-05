@@ -557,6 +557,28 @@ class BaseMatrixHandler:
             text = text[len(prefix) + 1 :].lstrip()
         return is_command, text
 
+    async def _send_mss(
+        self,
+        evt: Event,
+        status: MessageStatus,
+        reason: MessageStatusReason | None = None,
+        error: str | None = None,
+        message: str | None = None,
+    ) -> None:
+        if not self.config.get("bridge.message_status_events", False):
+            return
+        status_content = BeeperMessageStatusEventContent(
+            network="",  # TODO set network properly
+            relates_to=RelatesTo(rel_type=RelationType.REFERENCE, event_id=evt.event_id),
+            status=status,
+            reason=reason,
+            error=error,
+            message=message,
+        )
+        await self.az.intent.send_message_event(
+            evt.room_id, EventType.BEEPER_MESSAGE_STATUS, status_content
+        )
+
     async def _send_crypto_status_error(
         self,
         evt: Event,
@@ -594,18 +616,13 @@ class BaseMatrixHandler:
                     "it by default on the bridge (bridge -> encryption -> default)."
                 )
 
-        if self.config.get("bridge.message_status_events", False):
-            status_content = BeeperMessageStatusEventContent(
-                network="",  # TODO set network properly
-                relates_to=RelatesTo(rel_type=RelationType.REFERENCE, event_id=evt.event_id),
-                status=MessageStatus.RETRIABLE if is_final else MessageStatus.PENDING,
-                reason=MessageStatusReason.UNDECRYPTABLE,
-                error=msg,
-                message=err.human_message if err else None,
-            )
-            await self.az.intent.send_message_event(
-                evt.room_id, EventType.BEEPER_MESSAGE_STATUS, status_content
-            )
+        await self._send_mss(
+            evt,
+            status=MessageStatus.RETRIABLE if is_final else MessageStatus.PENDING,
+            reason=MessageStatusReason.UNDECRYPTABLE,
+            error=msg,
+            message=err.human_message if err else None,
+        )
 
         return event_id
 
@@ -697,6 +714,13 @@ class BaseMatrixHandler:
             except Exception as e:
                 self.log.debug(f"Error handling command {command} from {sender}: {e}")
                 self._send_message_checkpoint(evt, MessageSendCheckpointStep.COMMAND, e)
+                await self._send_mss(
+                    evt,
+                    status=MessageStatus.FAIL,
+                    reason=MessageStatusReason.GENERIC_ERROR,
+                    error="",
+                    message="Command execution failed",
+                )
             else:
                 await MessageSendCheckpoint(
                     event_id=event_id,
@@ -712,6 +736,7 @@ class BaseMatrixHandler:
                     self.az.as_token,
                     self.log,
                 )
+                await self._send_mss(evt, status=MessageStatus.SUCCESS)
         else:
             self.log.debug(
                 f"Ignoring event {event_id} from {sender.mxid}:"
@@ -719,6 +744,13 @@ class BaseMatrixHandler:
             )
             self._send_message_checkpoint(
                 evt, MessageSendCheckpointStep.COMMAND, "not a command and not a portal room"
+            )
+            await self._send_mss(
+                evt,
+                status=MessageStatus.FAIL,
+                reason=MessageStatusReason.UNSUPPORTED,
+                error="Unknown room",
+                message="Unknown room",
             )
 
     async def _is_direct_chat(self, room_id: RoomID) -> tuple[bool, bool]:
