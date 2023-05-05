@@ -231,8 +231,6 @@ class BaseMatrixHandler:
         await self.check_versions()
         try:
             await self.az.intent.whoami()
-        except (MUnknownToken, MExclusive):
-            raise
         except MForbidden:
             self.log.debug(
                 "Whoami endpoint returned M_FORBIDDEN, "
