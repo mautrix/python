@@ -51,10 +51,9 @@ class ProxyHandler:
                 response = json.loads(f.read().decode())
         except Exception:
             self.log.exception("Failed to retrieve proxy from API")
+            return self.current_proxy_url
         else:
             return response["proxy_url"]
-
-        return None
 
     def update_proxy_url(self, reason: str | None = None) -> bool:
         old_proxy = self.current_proxy_url
