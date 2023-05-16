@@ -1,3 +1,10 @@
+## v0.19.14 (2023-05-16)
+
+* *(bridge)* Implemented appservice pinging using MSC2659.
+* *(bridge)* Started reusing aiosqlite connection pool for crypto db.
+  * This fixes the crypto pool getting stuck if the bridge exits unexpectedly
+    (the default pool is closed automatically at any type of exit).
+
 ## v0.19.13 (2023-04-24)
 
 * *(crypto)* Fixed bug with redacting megolm sessions when device is deleted.
