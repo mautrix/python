@@ -85,9 +85,11 @@ class AppServiceServerMixin:
             try:
                 token = request.headers["Authorization"].removeprefix("Bearer ")
             except (KeyError, AttributeError):
+                self.log.trace("No access_token nor Authorization header in request")
                 return False
 
         if token != self.hs_token:
+            self.log.trace(f"Incorrect hs_token in request ({token!r} != {self.hs_token!r})")
             return False
 
         return True
