@@ -41,13 +41,6 @@ from mautrix.util.logging import TraceLogger
 from .. import bridge as br
 from .crypto_state_store import PgCryptoStateStore
 
-try:
-    from mautrix.client.state_store.sqlalchemy import UserProfile
-except ImportError:
-    if __optional_imports__:
-        raise
-    UserProfile = None
-
 
 class EncryptionManager:
     loop: asyncio.AbstractEventLoop

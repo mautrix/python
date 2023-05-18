@@ -13,5 +13,4 @@ Implementations
 
    In-memory<memory>
    Async database (asyncpg/aiosqlite)<asyncpg>
-   Legacy database (SQLAlchemy)<sqlalchemy>
    Flat file<file>

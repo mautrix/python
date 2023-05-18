@@ -16,7 +16,6 @@ import time
 
 import asyncpg
 import pytest
-import sqlalchemy as sql
 
 from mautrix.types import EncryptionAlgorithm, Member, Membership, RoomID, StateEvent, UserID
 from mautrix.util.async_db import Database
@@ -24,7 +23,6 @@ from mautrix.util.db import Base
 
 from .. import MemoryStateStore, StateStore
 from ..asyncpg import PgStateStore
-from ..sqlalchemy import RoomState, SQLStateStore, UserProfile
 
 
 @asynccontextmanager
@@ -63,22 +61,11 @@ async def async_sqlite_store() -> AsyncIterator[PgStateStore]:
 
 
 @asynccontextmanager
-async def alchemy_store() -> AsyncIterator[SQLStateStore]:
-    db = sql.create_engine("sqlite:///:memory:")
-    Base.metadata.bind = db
-    for table in (RoomState, UserProfile):
-        table.bind(db)
-    Base.metadata.create_all()
-    yield SQLStateStore()
-    db.dispose()
-
-
-@asynccontextmanager
 async def memory_store() -> AsyncIterator[MemoryStateStore]:
     yield MemoryStateStore()
 
 
-@pytest.fixture(params=[async_postgres_store, async_sqlite_store, alchemy_store, memory_store])
+@pytest.fixture(params=[async_postgres_store, async_sqlite_store, memory_store])
 async def store(request) -> AsyncIterator[StateStore]:
     param: Callable[[], AsyncContextManager[StateStore]] = request.param
     async with param() as state_store:

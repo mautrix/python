@@ -1,1 +1,1 @@
-__all__ = ["asyncpg", "sqlalchemy"]
+__all__ = ["asyncpg"]
