@@ -4,6 +4,7 @@ from typing import Awaitable, Callable, TypeVar
 import asyncio
 import json
 import logging
+import time
 import urllib.request
 
 from aiohttp import ClientConnectionError
@@ -93,8 +94,10 @@ async def proxy_with_retry(
     max_wait_seconds: int = 60,
     multiply_wait_seconds: int = 10,
     retryable_exceptions: tuple[Exception] = RETRYABLE_PROXY_EXCEPTIONS,
+    reset_after_seconds: int | None = None,
 ) -> T:
     errors = 0
+    last_error = 0
 
     while True:
         try:
@@ -116,3 +119,11 @@ async def proxy_with_retry(
                 f"{e.__class__.__name__} while trying to {name}"
             ):
                 await on_proxy_change()
+
+            # If sufficient time has passed since the previous error, reset the
+            # error count. Useful for long running tasks with rare failures.
+            if reset_after_seconds is not None:
+                now = time.time()
+                if now - last_error > reset_after_seconds:
+                    errors = 0
+                last_error = now
