@@ -340,6 +340,13 @@ class Syncer(ABC):
                     self._try_deserialize(Event, raw_event),
                     source=SyncStream.JOINED_ROOM | SyncStream.TIMELINE,
                 )
+
+            for raw_event in room_data.get("ephemeral", {}).get("events", []):
+                raw_event["room_id"] = room_id
+                tasks += self.dispatch_event(
+                    self._try_deserialize(EphemeralEvent, raw_event),
+                    source=SyncStream.JOINED_ROOM | SyncStream.EPHEMERAL,
+                )
         for room_id, room_data in rooms.get("invite", {}).items():
             events: list[dict[str, JSON]] = room_data.get("invite_state", {}).get("events", [])
             for raw_event in events:
