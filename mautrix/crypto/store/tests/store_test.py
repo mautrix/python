@@ -50,7 +50,7 @@ async def async_postgres_store() -> AsyncIterator[PgCryptoStore]:
 @asynccontextmanager
 async def async_sqlite_store() -> AsyncIterator[PgCryptoStore]:
     db = Database.create(
-        "sqlite:///:memory:", upgrade_table=PgCryptoStore.upgrade_table, db_args={"min_size": 1}
+        "sqlite::memory:", upgrade_table=PgCryptoStore.upgrade_table, db_args={"min_size": 1}
     )
     store = PgCryptoStore("", "test", db)
     await db.start()

@@ -51,7 +51,7 @@ async def async_postgres_store() -> AsyncIterator[PgStateStore]:
 @asynccontextmanager
 async def async_sqlite_store() -> AsyncIterator[PgStateStore]:
     db = Database.create(
-        "sqlite:///:memory:", upgrade_table=PgStateStore.upgrade_table, db_args={"min_size": 1}
+        "sqlite::memory:", upgrade_table=PgStateStore.upgrade_table, db_args={"min_size": 1}
     )
     store = PgStateStore(db)
     await db.start()
