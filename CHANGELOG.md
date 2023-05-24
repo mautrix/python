@@ -1,3 +1,7 @@
+## v0.19.15 (2023-05-24)
+
+* *(client)* Fixed dispatching room ephemeral events (i.e. typing notifications) in syncer.
+
 ## v0.19.14 (2023-05-16)
 
 * *(bridge)* Implemented appservice pinging using MSC2659.
