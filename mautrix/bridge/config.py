@@ -115,7 +115,12 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("appservice.tls_cert")
         copy("appservice.tls_key")
 
-        copy("appservice.database")
+        if "appservice.database" in self and self["appservice.database"].startswith("sqlite:///"):
+            helper.base["appservice.database"] = self["appservice.database"].replace(
+                "sqlite:///", "sqlite:"
+            )
+        else:
+            copy("appservice.database")
         copy("appservice.database_opts")
 
         copy("appservice.id")

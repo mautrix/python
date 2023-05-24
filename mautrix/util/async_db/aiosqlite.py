@@ -106,8 +106,6 @@ class SQLiteDatabase(Database):
         )
         self._parent = None
         self._path = url.path
-        if self._path.startswith("/"):
-            self._path = self._path[1:]
         self._pool = asyncio.Queue(self._db_args.pop("min_size", 1))
         self._db_args.pop("max_size", None)
         self._stopped = False
