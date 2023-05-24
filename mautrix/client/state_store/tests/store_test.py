@@ -19,7 +19,6 @@ import pytest
 
 from mautrix.types import EncryptionAlgorithm, Member, Membership, RoomID, StateEvent, UserID
 from mautrix.util.async_db import Database
-from mautrix.util.db import Base
 
 from .. import MemoryStateStore, StateStore
 from ..asyncpg import PgStateStore
