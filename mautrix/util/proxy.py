@@ -124,6 +124,6 @@ async def proxy_with_retry(
             # error count. Useful for long running tasks with rare failures.
             if reset_after_seconds is not None:
                 now = time.time()
-                if now - last_error > reset_after_seconds:
+                if last_error and now - last_error > reset_after_seconds:
                     errors = 0
                 last_error = now
