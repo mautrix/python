@@ -7,14 +7,40 @@ from __future__ import annotations
 
 import functools
 
-import magic
-
 try:
-    _from_buffer = functools.partial(magic.from_buffer, mime=True)
-    _from_filename = functools.partial(magic.from_file, mime=True)
-except AttributeError:
-    _from_buffer = lambda data: magic.detect_from_content(data).mime_type
-    _from_filename = lambda file: magic.detect_from_filename(file).mime_type
+    from puremagic.main import PureMagicWithConfidence as _PureMagicResult
+    import puremagic
+
+    _blacklist = {".koz"}
+
+    def _cleanup_result(results: list[_PureMagicResult]) -> str:
+        for res in results:
+            if not res.mime_type or res.extension in _blacklist:
+                continue
+            return res.mime_type
+        return "application/octet-stream"
+
+    def _from_buffer(data: bytes) -> str:
+        try:
+            return _cleanup_result(puremagic.magic_string(data))
+        except puremagic.PureError:
+            return "application/octet-stream"
+
+    def _from_filename(filename: str) -> str:
+        try:
+            return _cleanup_result(puremagic.magic_file(filename))
+        except puremagic.PureError:
+            return "application/octet-stream"
+
+except ImportError:
+    import magic
+
+    try:
+        _from_buffer = functools.partial(magic.from_buffer, mime=True)
+        _from_filename = functools.partial(magic.from_file, mime=True)
+    except AttributeError:
+        _from_buffer = lambda data: magic.detect_from_content(data).mime_type
+        _from_filename = lambda file: magic.detect_from_filename(file).mime_type
 
 
 def mimetype(data: bytes | bytearray | str) -> str:
