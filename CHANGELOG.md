@@ -1,3 +1,14 @@
+## v0.20.0 (unreleased)
+
+* **Breaking change *(.state_store)*** Removed legacy SQLAlchemy state store
+  implementations.
+* **Mildly breaking change *(util.async_db)*** Changed `SQLiteDatabase` to not
+  remove prefix slashes from database paths.
+  * Library users should use `sqlite:path.db` instead of `sqlite:///path.db`
+    for relative paths, and `sqlite:/path.db` instead of `sqlite:////path.db`
+    for absolute paths.
+  * Bridge configs do this migration automatically.
+
 ## v0.19.15 (2023-05-24)
 
 * *(client)* Fixed dispatching room ephemeral events (i.e. typing notifications) in syncer.
