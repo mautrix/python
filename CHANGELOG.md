@@ -1,5 +1,6 @@
 ## v0.20.0 (unreleased)
 
+* Dropped Python 3.8 support.
 * **Breaking change *(.state_store)*** Removed legacy SQLAlchemy state store
   implementations.
 * **Mildly breaking change *(util.async_db)*** Changed `SQLiteDatabase` to not
@@ -8,6 +9,10 @@
     for relative paths, and `sqlite:/path.db` instead of `sqlite:////path.db`
     for absolute paths.
   * Bridge configs do this migration automatically.
+
+## v0.19.16 (2023-05-26)
+
+* *(appservice)* Fixed Python 3.8 compatibility.
 
 ## v0.19.15 (2023-05-24)
 

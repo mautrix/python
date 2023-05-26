@@ -33,7 +33,7 @@ setuptools.setup(
         "encryption": encryption_dependencies,
     },
     tests_require=test_dependencies,
-    python_requires="~=3.8",
+    python_requires="~=3.9",
 
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -42,7 +42,6 @@ setuptools.setup(
         "Framework :: AsyncIO",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
