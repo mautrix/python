@@ -83,7 +83,9 @@ class AppServiceServerMixin:
             token = request.rel_url.query["access_token"]
         except KeyError:
             try:
-                token = request.headers["Authorization"].removeprefix("Bearer ")
+                token = request.headers["Authorization"]
+                if token.startswith("Bearer "):
+                    token = token[len("Bearer "):]
             except (KeyError, AttributeError):
                 self.log.trace("No access_token nor Authorization header in request")
                 return False
