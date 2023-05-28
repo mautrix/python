@@ -71,4 +71,4 @@ class MediaCreateResponse(SerializableAttrs):
 
     content_uri: ContentURI
     unused_expired_at: Optional[int] = None
-    upload_url: Optional[str] = None
+    unstable_upload_url: Optional[str] = field(default=None, json="com.beeper.msc3870.upload_url")
