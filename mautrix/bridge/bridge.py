@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 from abc import ABC, abstractmethod
 from enum import Enum
+import asyncio
 import sys
 
 from aiohttp import web
@@ -258,7 +259,8 @@ class Bridge(Program, ABC):
         status_endpoint = self.config["homeserver.status_endpoint"]
         if status_endpoint and await self.count_logged_in_users() == 0:
             state = BridgeState(state_event=BridgeStateEvent.UNCONFIGURED).fill()
-            await state.send(status_endpoint, self.az.as_token, self.log)
+            while not await state.send(status_endpoint, self.az.as_token, self.log):
+                await asyncio.sleep(5)
 
     async def system_exit(self) -> None:
         if hasattr(self, "db") and isinstance(self.db, Database):
