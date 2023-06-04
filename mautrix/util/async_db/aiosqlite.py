@@ -9,6 +9,7 @@ from typing import Any, AsyncContextManager
 from contextlib import asynccontextmanager
 import asyncio
 import logging
+import os
 import re
 import sqlite3
 
@@ -148,6 +149,11 @@ class SQLiteDatabase(Database):
             raise RuntimeError("database pool can't be restarted")
         self.log.debug(f"Connecting to {self.url}")
         self.log.debug(f"Database connection init commands: {self._init_commands}")
+        if os.path.exists(self._path):
+            if not os.access(self._path, os.W_OK):
+                self.log.warning("Database file doesn't seem writable")
+        elif not os.access(os.path.dirname(os.path.abspath(self._path)), os.W_OK):
+            self.log.warning("Database file doesn't exist and directory doesn't seem writable")
         for _ in range(self._pool.maxsize):
             conn = await TxnConnection(self._path, **self._db_args)
             if self._init_commands:
