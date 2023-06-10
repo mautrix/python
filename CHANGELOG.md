@@ -9,6 +9,9 @@
     for relative paths, and `sqlite:/path.db` instead of `sqlite:////path.db`
     for absolute paths.
   * Bridge configs do this migration automatically.
+* *(client)* Stabilized support for asynchronous uploads.
+  * `unstable_create_msc` was renamed to `create_mxc`, and the `max_stall_ms`
+    parameters for downloading were renamed to `timeout_ms`..
 
 ## v0.19.16 (2023-05-26)
 
