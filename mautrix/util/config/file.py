@@ -50,7 +50,7 @@ class BaseFileConfig(BaseConfig, ABC):
     def save(self) -> None:
         try:
             tf = tempfile.NamedTemporaryFile(
-                mode="w", delete=False, suffix=".yaml", dir=os.path.dirname(self.path)
+                mode="w", delete=False, suffix=".yaml"
             )
         except OSError as e:
             log.warning(f"Failed to create tempfile to write updated config to disk: {e}")
