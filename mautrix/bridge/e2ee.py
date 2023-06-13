@@ -123,6 +123,9 @@ class EncryptionManager:
             self.crypto.delete_fully_used_keys_on_decrypt = del_cfg["delete_fully_used_on_decrypt"]
             self.crypto.delete_keys_on_device_delete = del_cfg["delete_on_device_delete"]
             self.periodically_delete_expired_keys = del_cfg["periodically_delete_expired"]
+        self.crypto.disable_device_change_key_rotation = bridge.config[
+            "bridge.encryption.rotation.disable_device_change_key_rotation"
+        ]
 
     async def _exit_on_sync_fail(self, data) -> None:
         if data["error"]:

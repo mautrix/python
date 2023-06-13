@@ -244,6 +244,8 @@ class DeviceListMachine(BaseOlmMachine):
         return None
 
     async def on_devices_changed(self, user_id: UserID) -> None:
+        if self.disable_device_change_key_rotation:
+            return
         shared_rooms = await self.state_store.find_shared_rooms(user_id)
         self.log.debug(
             f"Devices of {user_id} changed, invalidating group session in {shared_rooms}"

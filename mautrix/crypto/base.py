@@ -56,6 +56,7 @@ class BaseOlmMachine:
     ratchet_keys_on_decrypt: bool
     delete_fully_used_keys_on_decrypt: bool
     delete_keys_on_device_delete: bool
+    disable_device_change_key_rotation: bool
 
     # Futures that wait for responses to a key request
     _key_request_waiters: dict[SessionID, asyncio.Future]

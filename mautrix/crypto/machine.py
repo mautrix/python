@@ -83,6 +83,7 @@ class OlmMachine(
         self.ratchet_keys_on_decrypt = False
         self.delete_fully_used_keys_on_decrypt = False
         self.delete_keys_on_device_delete = False
+        self.disable_device_change_key_rotation = False
 
         self._fetch_keys_lock = asyncio.Lock()
         self._megolm_decrypt_lock = asyncio.Lock()

@@ -166,6 +166,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.encryption.rotation.enable_custom")
         copy("bridge.encryption.rotation.milliseconds")
         copy("bridge.encryption.rotation.messages")
+        copy("bridge.encryption.rotation.disable_device_change_key_rotation")
 
         copy("bridge.relay.enabled")
         copy_dict("bridge.relay.message_formats", override_existing_map=False)
