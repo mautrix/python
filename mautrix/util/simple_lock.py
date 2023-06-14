@@ -47,7 +47,7 @@ class SimpleLock:
         return not self.noop_mode and not self._event.is_set()
 
     async def wait(self, task: str | None = None) -> None:
-        if not self.noop_mode and not self._event.is_set():
+        if self.locked:
             if self.log and self.message:
                 self.log.debug(self.message, task)
             await self._event.wait()
