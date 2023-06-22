@@ -238,6 +238,16 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
+    async def redact_outdated_group_sessions(self) -> list[SessionID]:
+        """
+        Remove all Megolm group sessions which lack the metadata to determine when they should
+        expire.
+
+        Returns:
+            The list of session IDs that were deleted.
+        """
+
+    @abstractmethod
     async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
         """
         Check whether or not a specific inbound Megolm session is in the store. This is used before

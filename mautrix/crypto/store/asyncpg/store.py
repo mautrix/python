@@ -362,6 +362,21 @@ class PgCryptoStore(CryptoStore, SyncStore):
         )
         return [row["session_id"] for row in rows]
 
+    async def redact_outdated_group_sessions(self) -> list[SessionID]:
+        q = """
+        UPDATE crypto_megolm_inbound_session
+        SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+        WHERE account_id=$3 AND session IS NOT NULL AND received_at IS NULL
+        RETURNING session_id
+        """
+        rows = await self.db.fetch(
+            q,
+            RoomKeyWithheldCode.BEEPER_REDACTED.value,
+            f"Session redacted: outdated",
+            self.account_id,
+        )
+        return [row["session_id"] for row in rows]
+
     async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
         q = """
         SELECT COUNT(session) FROM crypto_megolm_inbound_session
