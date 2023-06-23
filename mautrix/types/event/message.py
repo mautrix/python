@@ -350,14 +350,12 @@ class TextMessageEventContent(BaseMessageEventContent, SerializableAttrs):
             setattr(self, "__reply_fallback_trimmed", True)
 
     def _trim_reply_fallback_text(self) -> None:
-        if not self.body.startswith("> ") or "\n" not in self.body:
+        if not self.body.startswith("> <") or "\n" not in self.body:
             return
         lines = self.body.split("\n")
         while len(lines) > 0 and lines[0].startswith("> "):
             lines.pop(0)
-        # Pop extra newline at end of fallback
-        lines.pop(0)
-        self.body = "\n".join(lines)
+        self.body = "\n".join(lines).strip()
 
     def _trim_reply_fallback_html(self) -> None:
         if self.formatted_body and self.format == Format.HTML:
