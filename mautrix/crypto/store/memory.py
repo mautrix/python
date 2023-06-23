@@ -134,6 +134,9 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
     async def redact_expired_group_sessions(self) -> list[SessionID]:
         raise NotImplementedError()
 
+    async def redact_outdated_group_sessions(self) -> list[SessionID]:
+        raise NotImplementedError()
+
     async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
         return (room_id, session_id) in self._inbound_sessions
 

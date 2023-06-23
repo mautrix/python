@@ -56,6 +56,7 @@ class EncryptionManager:
     key_sharing_enabled: bool
     appservice_mode: bool
     periodically_delete_expired_keys: bool
+    delete_outdated_inbound: bool
 
     bridge: br.Bridge
     az: AppService
@@ -113,6 +114,7 @@ class EncryptionManager:
             self.az.to_device_handler = self.crypto.handle_as_to_device_event
 
         self.periodically_delete_expired_keys = False
+        self.delete_outdated_inbound = False
         self._key_delete_task = None
         del_cfg = bridge.config["bridge.encryption.delete_keys"]
         if del_cfg:
@@ -123,6 +125,7 @@ class EncryptionManager:
             self.crypto.delete_fully_used_keys_on_decrypt = del_cfg["delete_fully_used_on_decrypt"]
             self.crypto.delete_keys_on_device_delete = del_cfg["delete_on_device_delete"]
             self.periodically_delete_expired_keys = del_cfg["periodically_delete_expired"]
+            self.delete_outdated_inbound = del_cfg["delete_outdated_inbound"]
         self.crypto.disable_device_change_key_rotation = bridge.config[
             "bridge.encryption.rotation.disable_device_change_key_rotation"
         ]
@@ -279,6 +282,12 @@ class EncryptionManager:
         else:
             _ = self.client.start(self._filter)
             self.log.info("End-to-bridge encryption support is enabled (sync mode)")
+        if self.delete_outdated_inbound:
+            deleted = await self.crypto_store.redact_outdated_group_sessions()
+            if len(deleted) > 0:
+                self.log.debug(
+                    f"Deleted {len(deleted)} inbound keys which lacked expiration metadata"
+                )
         if self.periodically_delete_expired_keys:
             self._key_delete_task = background_task.create(self._periodically_delete_keys())
         background_task.create(self._resync_encryption_info())

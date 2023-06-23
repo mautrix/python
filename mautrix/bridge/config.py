@@ -150,6 +150,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.encryption.delete_keys.delete_prev_on_new_session")
         copy("bridge.encryption.delete_keys.delete_on_device_delete")
         copy("bridge.encryption.delete_keys.periodically_delete_expired")
+        copy("bridge.encryption.delete_keys.delete_outdated_inbound")
         copy("bridge.encryption.verification_levels.receive")
         copy("bridge.encryption.verification_levels.send")
         copy("bridge.encryption.verification_levels.share")
