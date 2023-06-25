@@ -1,4 +1,4 @@
-## v0.20.0 (unreleased)
+## v0.20.0 (2023-06-25)
 
 * Dropped Python 3.8 support.
 * **Breaking change *(.state_store)*** Removed legacy SQLAlchemy state store
@@ -11,10 +11,15 @@
   * Bridge configs do this migration automatically.
 * *(util.async_db)* Added warning log if using SQLite database path that isn't
   writable.
+* *(util.program)* Fixed `manual_stop` not working if it's called during startup.
 * *(client)* Stabilized support for asynchronous uploads.
   * `unstable_create_msc` was renamed to `create_mxc`, and the `max_stall_ms`
-    parameters for downloading were renamed to `timeout_ms`..
+    parameters for downloading were renamed to `timeout_ms`.
 * *(crypto)* Added option to not rotate keys when devices change.
+* *(crypto)* Added option to remove all keys that were received before the
+  automatic ratcheting was implemented (in v0.19.10).
+* *(types)* Improved reply fallback removal to have a smaller chance of false
+  positives for messages that don't use reply fallbacks.
 
 ## v0.19.16 (2023-05-26)
 
