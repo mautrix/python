@@ -214,6 +214,7 @@ class Program:
         signal.signal(signal.SIGINT, signal.default_int_handler)
         signal.signal(signal.SIGTERM, signal.default_int_handler)
 
+        self._stop_task = self.loop.create_future()
         exit_code = 0
         try:
             self.log.debug("Running startup actions...")
@@ -224,7 +225,6 @@ class Program:
                 f"Startup actions complete in {round(end_ts - start_ts, 2)} seconds, "
                 "now running forever"
             )
-            self._stop_task = self.loop.create_future()
             exit_code = self.loop.run_until_complete(self._stop_task)
             self.log.debug("manual_stop() called, stopping...")
         except KeyboardInterrupt:
