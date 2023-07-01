@@ -1,3 +1,9 @@
+## unreleased
+
+* *(util.program)* Removed `--base-config` flag in bridges, as there are no
+  valid use cases (package data should always work) and it's easy to cause
+  issues by pointing the flag at the wrong file.
+
 ## v0.20.0 (2023-06-25)
 
 * Dropped Python 3.8 support.
