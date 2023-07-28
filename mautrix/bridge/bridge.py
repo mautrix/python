@@ -136,7 +136,7 @@ class Bridge(Program, ABC):
         self.config = self.config_class(
             self.args.config,
             self.args.registration,
-            self.args.base_config,
+            self.base_config_path,
             env_prefix=self.module.upper(),
         )
         if self.args.generate_registration:
