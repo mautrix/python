@@ -17,8 +17,8 @@ import logging
 from aiohttp import ClientConnectionError
 from yarl import URL
 
-from mautrix.api import Path
 from mautrix.appservice import AppService, IntentAPI
+from mautrix.client import ClientAPI
 from mautrix.errors import (
     IntentError,
     MatrixError,
@@ -33,6 +33,7 @@ from mautrix.types import (
     Filter,
     FilterID,
     LoginType,
+    MatrixUserIdentifier,
     PresenceState,
     RoomEventFilter,
     RoomFilter,
@@ -182,31 +183,32 @@ class CustomPuppetMixin(ABC):
                 base_url = cls.az.intent.api.base_url
             else:
                 raise AutologinError(f"No homeserver URL configured for {server}")
-        url = base_url / str(Path.v3.login)
-        headers = {"Content-Type": "application/json"}
-        login_req = {
-            "initial_device_display_name": cls.login_device_name,
-            "device_id": cls.login_device_name,
-            "identifier": {
-                "type": "m.id.user",
-                "user": mxid,
-            },
-        }
+        client = ClientAPI(base_url=base_url)
+        login_args = {}
         if secret == b"appservice":
-            login_req["type"] = str(LoginType.APPSERVICE)
-            headers["Authorization"] = f"Bearer {cls.az.as_token}"
+            login_type = LoginType.APPSERVICE
+            client.api.token = cls.az.as_token
         else:
-            login_req["type"] = str(LoginType.PASSWORD)
-            login_req["password"] = hmac.new(
-                secret, mxid.encode("utf-8"), hashlib.sha512
-            ).hexdigest()
-        resp = await cls.az.http_session.post(url, data=json.dumps(login_req), headers=headers)
-        data = await resp.json()
-        try:
-            return data["access_token"]
-        except KeyError:
-            error_msg = data.get("error", data.get("errcode", f"HTTP {resp.status}"))
-            raise AutologinError(f"Didn't get an access token: {error_msg}") from None
+            flows = await client.get_login_flows()
+            flow = flows.get_first_of_type(LoginType.DEVTURE_SHARED_SECRET, LoginType.PASSWORD)
+            if not flow:
+                raise AutologinError("No supported shared secret auth login flows")
+            login_type = flow.type
+            token = hmac.new(secret, mxid.encode("utf-8"), hashlib.sha512).hexdigest()
+            if login_type == LoginType.DEVTURE_SHARED_SECRET:
+                login_args["token"] = token
+            elif login_type == LoginType.PASSWORD:
+                login_args["password"] = token
+        resp = await client.login(
+            identifier=MatrixUserIdentifier(user=mxid),
+            device_id=cls.login_device_name,
+            initial_device_display_name=cls.login_device_name,
+            login_type=login_type,
+            **login_args,
+            store_access_token=False,
+            update_hs_url=False,
+        )
+        return resp.access_token
 
     async def switch_mxid(
         self, access_token: str | None, mxid: UserID | None, start_sync_task: bool = True
