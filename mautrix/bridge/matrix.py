@@ -620,7 +620,7 @@ class BaseMatrixHandler:
             evt,
             status=MessageStatus.RETRIABLE if is_final else MessageStatus.PENDING,
             reason=MessageStatusReason.UNDECRYPTABLE,
-            error=msg,
+            error=str(err),
             message=err.human_message if err else None,
         )
 
