@@ -369,6 +369,66 @@ class EventMethods(BaseClientAPI):
         except SerializerError as e:
             raise MatrixResponseError("Invalid events in response") from e
 
+    async def get_event_relations(
+        self,
+        room_id: RoomID,
+        event_id: EventType,
+        rel_type: RelationType | None = None,
+        direction: PaginationDirection | None = None,
+        from_token: SyncToken | None = None,
+        to_token: SyncToken | None = None,
+        limit: int | None = None,
+    ) -> PaginatedMessages:
+        """
+        Get a list of the child events for a given parent event. Pagination parameters are used to
+        paginate history in the room.
+        Because replies do not use rel_type, they will not be accessible via this API.
+
+        See also: `API reference <https://spec.matrix.org/v1.7/client-server-api/#get_matrixclientv1roomsroomidrelationseventid>`__
+
+        Args:
+            room_id: The ID of the room containing the parent event.
+            event_id: The ID of the parent event whose child events are to be returned.
+            rel_type: The relationship type to search for.
+            direction: The direction to return events from.
+            from_token: The token to start returning events from. This token can be obtained from a
+                ``next_batch`` token returned from a previous call or the `sync endpoint`_, or the
+                ``start`` token returned by the `messages endpoint`.
+                If omitted, results start at the most recent topological event.
+                When paginating, the ``from_token`` should be “after” the ``to_token`` in terms of
+                topological ordering, because it is only possible to paginate “backwards”.
+            to_token: The token to stop returning events at.
+            limit: The maximum number of events to return. Defaults to 5.
+
+        Returns:
+
+        .. _sync endpoint:
+            https://spec.matrix.org/v1.3/client-server-api/#get_matrixclientv3sync
+        """
+        query_params = {
+            "from": from_token,
+            "dir": direction.value if direction else None,
+            "to": to_token,
+            "limit": str(limit) if limit else None,
+        }
+
+        content = await self.api.request(
+            Method.GET,
+            Path.v1.rooms[room_id].relations[event_id][rel_type],
+            query_params=query_params,
+            metrics_method="getRelations",
+        )
+        try:
+            return PaginatedMessages(
+                content.get("prev_batch"),
+                content.get("next_batch"),
+                [Event.deserialize(event) for event in content["chunk"]],
+            )
+        except KeyError:
+            raise MatrixResponseError("`content` not in response.")
+        except SerializerError as e:
+            raise MatrixResponseError("Invalid events in response") from e
+
     # endregion
     # region 7.6 Sending events to a room
     # API reference: https://spec.matrix.org/v1.1/client-server-api/#sending-events-to-a-room
