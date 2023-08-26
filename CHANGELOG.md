@@ -3,6 +3,11 @@
 * *(util.program)* Removed `--base-config` flag in bridges, as there are no
   valid use cases (package data should always work) and it's easy to cause
   issues by pointing the flag at the wrong file.
+* *(bridge)* Added support for the `com.devture.shared_secret_auth` login type
+  for automatic double puppeting.
+* *(bridge)* Dropped support for syncing with double puppets. MSC2409 is now
+  the only way to receive ephemeral events.
+* *(bridge)* Added support for double puppeting with arbitrary `as_token`s.
 
 ## v0.20.0 (2023-06-25)
 
