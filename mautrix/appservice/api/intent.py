@@ -144,7 +144,11 @@ class IntentAPI(StoreUpdatingAPI):
             setattr(self, method.__name__, wrapper)
 
     def user(
-        self, user_id: UserID, token: str | None = None, base_url: str | None = None
+        self,
+        user_id: UserID,
+        token: str | None = None,
+        base_url: str | None = None,
+        as_token: bool = False,
     ) -> IntentAPI:
         """
         Get the intent API for a specific user.
@@ -162,10 +166,10 @@ class IntentAPI(StoreUpdatingAPI):
             The IntentAPI for the given user.
         """
         if not self.bot:
-            return self.api.intent(user_id, token, base_url)
+            return self.api.intent(user_id, token, base_url, real_user_as_token=as_token)
         else:
             self.log.warning("Called IntentAPI#user() of child intent object.")
-            return self.bot.api.intent(user_id, token, base_url)
+            return self.bot.api.intent(user_id, token, base_url, real_user_as_token=as_token)
 
     # region User actions
 

@@ -152,6 +152,19 @@ class CustomPuppetMixin(ABC):
         return bool(self.custom_mxid and self.access_token)
 
     def _fresh_intent(self) -> IntentAPI:
+        if self.access_token == "appservice-config" and self.custom_mxid:
+            _, server = self.az.intent.parse_user_id(self.custom_mxid)
+            try:
+                secret = self.login_shared_secret_map[server]
+            except KeyError:
+                raise AutologinError(f"No shared secret configured for {server}")
+            self.log.debug(f"Using as_token for double puppeting {self.custom_mxid}")
+            return self.az.intent.user(
+                self.custom_mxid,
+                secret.decode("utf-8").removeprefix("as_token:"),
+                self.base_url,
+                as_token=True,
+            )
         return (
             self.az.intent.user(self.custom_mxid, self.access_token, self.base_url)
             if self.is_real_user
@@ -172,6 +185,8 @@ class CustomPuppetMixin(ABC):
             secret = cls.login_shared_secret_map[server]
         except KeyError:
             raise AutologinError(f"No shared secret configured for {server}")
+        if secret.startswith(b"as_token:"):
+            return "appservice-config"
         try:
             base_url = cls.homeserver_url_map[server]
         except KeyError:
@@ -220,7 +235,8 @@ class CustomPuppetMixin(ABC):
         """
         if access_token == "auto":
             access_token = await self._login_with_shared_secret(mxid)
-            self.log.debug(f"Logged in for {mxid} using shared secret")
+            if access_token != "appservice-config":
+                self.log.debug(f"Logged in for {mxid} using shared secret")
 
         if mxid is not None:
             _, mxid_domain = self.az.intent.parse_user_id(mxid)
