@@ -5,16 +5,12 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Awaitable, Iterator
 from abc import ABC, abstractmethod
-from itertools import chain
 import asyncio
 import hashlib
 import hmac
-import json
 import logging
 
-from aiohttp import ClientConnectionError
 from yarl import URL
 
 from mautrix.appservice import AppService, IntentAPI
@@ -26,23 +22,7 @@ from mautrix.errors import (
     MatrixRequestError,
     WellKnownError,
 )
-from mautrix.types import (
-    Event,
-    EventFilter,
-    EventType,
-    Filter,
-    FilterID,
-    LoginType,
-    MatrixUserIdentifier,
-    PresenceState,
-    RoomEventFilter,
-    RoomFilter,
-    RoomID,
-    StateFilter,
-    SyncToken,
-    UserID,
-)
-from mautrix.util import background_task
+from mautrix.types import LoginType, MatrixUserIdentifier, RoomID, UserID
 
 from .. import bridge as br
 
