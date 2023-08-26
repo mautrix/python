@@ -116,7 +116,6 @@ class CustomPuppetMixin(ABC):
         intent: The primary IntentAPI.
     """
 
-    sync_with_custom_puppets: bool = True
     allow_discover_url: bool = False
     homeserver_url_map: dict[str, URL] = {}
     only_handle_own_synced_events: bool = True
@@ -135,11 +134,8 @@ class CustomPuppetMixin(ABC):
     custom_mxid: UserID | None
     access_token: str | None
     base_url: URL | None
-    next_batch: SyncToken | None
 
     intent: IntentAPI
-
-    _sync_task: asyncio.Task | None = None
 
     @abstractmethod
     async def save(self) -> None:
@@ -221,7 +217,6 @@ class CustomPuppetMixin(ABC):
                           the appservice-owned ID.
             mxid: The expected Matrix user ID of the custom account, or ``None`` when
                   ``access_token`` is None.
-            start_sync_task: Whether or not syncing should be started after logging in.
         """
         if access_token == "auto":
             access_token = await self._login_with_shared_secret(mxid)
@@ -251,7 +246,7 @@ class CustomPuppetMixin(ABC):
         self.base_url = base_url
         self.intent = self._fresh_intent()
 
-        await self.start(start_sync_task=start_sync_task, check_e2ee_keys=True)
+        await self.start(check_e2ee_keys=True)
 
         try:
             del self.by_custom_mxid[prev_mxid]
@@ -276,7 +271,6 @@ class CustomPuppetMixin(ABC):
             del self.by_custom_mxid[self.custom_mxid]
         self.custom_mxid = None
         self.access_token = None
-        self.next_batch = None
         await self.save()
         self.intent = self._fresh_intent()
 
@@ -296,7 +290,7 @@ class CustomPuppetMixin(ABC):
         except MatrixInvalidToken as e:
             if retry_auto_login and self.custom_mxid and self.can_auto_login(self.custom_mxid):
                 self.log.debug(f"Got {e.errcode} while trying to initialize custom mxid")
-                await self.switch_mxid("auto", self.custom_mxid, start_sync_task=start_sync_task)
+                await self.switch_mxid("auto", self.custom_mxid)
                 return
             self.log.warning(f"Got {e.errcode} while trying to initialize custom mxid")
             whoami = None
@@ -319,19 +313,14 @@ class CustomPuppetMixin(ABC):
                 if device_keys and len(device_keys.keys) > 0:
                     await self._invalidate_double_puppet()
                     raise EncryptionKeysFound()
-        if self.sync_with_custom_puppets and start_sync_task:
-            if self._sync_task:
-                self._sync_task.cancel()
-            self.log.info(f"Initialized custom mxid: {whoami.user_id}. Starting sync task")
-            self._sync_task = asyncio.create_task(self._try_sync())
-        else:
-            self.log.info(f"Initialized custom mxid: {whoami.user_id}. Not starting sync task")
+        self.log.info(f"Initialized custom mxid: {whoami.user_id}")
 
     def stop(self) -> None:
-        """Cancel the sync task."""
-        if self._sync_task:
-            self._sync_task.cancel()
-            self._sync_task = None
+        """
+        No-op
+
+        .. deprecated:: 0.20.1
+        """
 
     async def default_puppet_should_leave_room(self, room_id: RoomID) -> bool:
         """
@@ -354,112 +343,3 @@ class CustomPuppetMixin(ABC):
                     await self.intent.ensure_joined(room_id)
             except (IntentError, MatrixRequestError):
                 pass
-
-    def _create_sync_filter(self) -> Awaitable[FilterID]:
-        all_events = EventType.find("*")
-        return self.intent.create_filter(
-            Filter(
-                account_data=EventFilter(types=[all_events]),
-                presence=EventFilter(
-                    types=[EventType.PRESENCE],
-                    senders=[self.custom_mxid] if self.only_handle_own_synced_events else None,
-                ),
-                room=RoomFilter(
-                    include_leave=False,
-                    state=StateFilter(not_types=[all_events]),
-                    timeline=RoomEventFilter(not_types=[all_events]),
-                    account_data=RoomEventFilter(not_types=[all_events]),
-                    ephemeral=RoomEventFilter(
-                        types=[
-                            EventType.TYPING,
-                            EventType.RECEIPT,
-                        ]
-                    ),
-                ),
-            )
-        )
-
-    def _filter_events(self, room_id: RoomID, events: list[dict]) -> Iterator[Event]:
-        for event in events:
-            event["room_id"] = room_id
-            if self.only_handle_own_synced_events:
-                # We only want events about the custom puppet user, but we can't use
-                # filters for typing and read receipt events.
-                evt_type = EventType.find(event.get("type", None))
-                event.setdefault("content", {})
-                if evt_type == EventType.TYPING:
-                    is_typing = self.custom_mxid in event["content"].get("user_ids", [])
-                    event["content"]["user_ids"] = [self.custom_mxid] if is_typing else []
-                elif evt_type == EventType.RECEIPT:
-                    try:
-                        event_id, receipt = event["content"].popitem()
-                        data = receipt["m.read"][self.custom_mxid]
-                        event["content"] = {event_id: {"m.read": {self.custom_mxid: data}}}
-                    except KeyError:
-                        continue
-            yield event
-
-    def _handle_sync(self, sync_resp: dict) -> None:
-        # Get events from rooms -> join -> [room_id] -> ephemeral -> events (array)
-        ephemeral_events = (
-            event
-            for room_id, data in sync_resp.get("rooms", {}).get("join", {}).items()
-            for event in self._filter_events(room_id, data.get("ephemeral", {}).get("events", []))
-        )
-
-        # Get events from presence -> events (array)
-        presence_events = sync_resp.get("presence", {}).get("events", [])
-
-        # Deserialize and handle all events
-        for event in chain(ephemeral_events, presence_events):
-            background_task.create(self.mx.try_handle_sync_event(Event.deserialize(event)))
-
-    async def _try_sync(self) -> None:
-        try:
-            await self._sync()
-        except asyncio.CancelledError:
-            self.log.info(f"Syncing for {self.custom_mxid} cancelled")
-        except Exception:
-            self.log.critical(f"Fatal error syncing {self.custom_mxid}", exc_info=True)
-
-    async def _sync(self) -> None:
-        if not self.is_real_user:
-            self.log.warning("Called sync() for non-custom puppet.")
-            return
-        custom_mxid: UserID = self.custom_mxid
-        access_token_at_start: str = self.access_token
-        errors: int = 0
-        filter_id: FilterID = await self._create_sync_filter()
-        self.log.debug(f"Starting syncer for {custom_mxid} with sync filter {filter_id}.")
-        while access_token_at_start == self.access_token:
-            try:
-                cur_batch = self.next_batch
-                sync_resp = await self.intent.sync(
-                    filter_id=filter_id, since=cur_batch, set_presence=PresenceState.OFFLINE
-                )
-                try:
-                    self.next_batch = sync_resp.get("next_batch", None)
-                except Exception:
-                    self.log.warning("Failed to store next batch", exc_info=True)
-                errors = 0
-                if cur_batch is not None:
-                    self._handle_sync(sync_resp)
-            except MatrixInvalidToken:
-                # TODO when not using syncing, we should still check this occasionally and relogin
-                self.log.warning(f"Access token for {custom_mxid} got invalidated, restarting...")
-                await self.start(retry_auto_login=True, start_sync_task=False)
-                if self.is_real_user:
-                    self.log.info("Successfully relogined custom puppet, continuing sync")
-                    filter_id = await self._create_sync_filter()
-                    access_token_at_start = self.access_token
-                else:
-                    self.log.warning("Something went wrong during relogin")
-                    raise
-            except (MatrixError, ClientConnectionError, asyncio.TimeoutError) as e:
-                errors += 1
-                wait = min(errors, 11) ** 2
-                self.log.warning(
-                    f"Syncer for {custom_mxid} errored: {e}. Waiting for {wait} seconds..."
-                )
-                await asyncio.sleep(wait)
-        self.log.debug(f"Syncer for custom puppet {custom_mxid} stopped.")
