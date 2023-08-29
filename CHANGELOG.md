@@ -1,4 +1,4 @@
-## unreleased
+## v0.20.1 (2023-08-29)
 
 * *(util.program)* Removed `--base-config` flag in bridges, as there are no
   valid use cases (package data should always work) and it's easy to cause
