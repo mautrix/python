@@ -134,7 +134,7 @@ class SQLiteDatabase(Database):
             init_commands.append("PRAGMA foreign_keys = ON")
         if not has_journal_mode:
             init_commands.append("PRAGMA journal_mode = WAL")
-        if not has_synchronous:
+        if not has_synchronous and "PRAGMA journal_mode = WAL" in init_commands:
             init_commands.append("PRAGMA synchronous = NORMAL")
         if not has_busy_timeout:
             init_commands.append("PRAGMA busy_timeout = 5000")
