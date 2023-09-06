@@ -86,7 +86,6 @@ class AppServiceServerMixin:
         app.router.add_route("GET", "/_matrix/app/v1/rooms/{alias}", self._http_query_alias)
         app.router.add_route("GET", "/_matrix/app/v1/users/{user_id}", self._http_query_user)
         app.router.add_route("POST", "/_matrix/app/v1/ping", self._http_ping)
-        app.router.add_route("POST", "/_matrix/app/unstable/fi.mau.msc2659/ping", self._http_ping)
 
     def _check_token(self, request: web.Request) -> bool:
         try:
@@ -301,7 +300,7 @@ class AppServiceServerMixin:
             else:
                 try:
                     await self.to_device_handler(td)
-                except:
+                except Exception:
                     self.log.exception("Exception in Matrix to-device event handler")
         if device_lists and self.device_list_handler:
             try:
