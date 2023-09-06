@@ -66,6 +66,8 @@ class BaseOlmMachine:
     _prev_unwedge: dict[IdentityKey, float]
     _fetch_keys_lock: asyncio.Lock
     _megolm_decrypt_lock: asyncio.Lock
+    _share_keys_lock: asyncio.Lock
+    _last_key_share: float
     _cs_fetch_attempted: set[UserID]
 
     async def wait_for_session(

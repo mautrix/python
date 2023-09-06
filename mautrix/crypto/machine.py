@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Optional
 import asyncio
 import logging
+import time
 
 from mautrix import client as cli
 from mautrix.errors import GroupSessionWithheldError
@@ -18,6 +19,7 @@ from mautrix.types import (
     DeviceLists,
     DeviceOTKCount,
     EncryptionAlgorithm,
+    EncryptionKeyAlgorithm,
     EventType,
     Member,
     Membership,
@@ -87,6 +89,8 @@ class OlmMachine(
 
         self._fetch_keys_lock = asyncio.Lock()
         self._megolm_decrypt_lock = asyncio.Lock()
+        self._share_keys_lock = asyncio.Lock()
+        self._last_key_share = time.monotonic() - 60
         self._key_request_waiters = {}
         self._inbound_session_waiters = {}
         self._prev_unwedge = {}
@@ -267,14 +271,29 @@ class OlmMachine(
         else:
             self.log.debug(f"Received room key ack for {sess.id}")
 
-    async def share_keys(self, current_otk_count: int) -> None:
+    async def share_keys(self, current_otk_count: int | None = None) -> None:
         """
         Share any keys that need to be shared. This is automatically called from
         :meth:`handle_otk_count`, so you should not need to call this yourself.
 
         Args:
             current_otk_count: The current number of signed curve25519 keys present on the server.
+                If omitted, the count will be fetched from the server.
         """
+        async with self._share_keys_lock:
+            await self._share_keys(current_otk_count)
+
+    async def _share_keys(self, current_otk_count: int | None) -> None:
+        if current_otk_count is None or (
+            # If the last key share was recent and the new count is very low, re-check the count
+            # from the server to avoid any race conditions.
+            self._last_key_share + 60 > time.monotonic()
+            and current_otk_count < 10
+        ):
+            self.log.debug("Checking OTK count on server")
+            current_otk_count = (await self.client.upload_keys()).get(
+                EncryptionKeyAlgorithm.SIGNED_CURVE25519
+            )
         device_keys = (
             self.account.get_device_keys(self.client.mxid, self.client.device_id)
             if not self.account.shared
@@ -289,7 +308,8 @@ class OlmMachine(
         if device_keys:
             self.log.debug("Going to upload initial account keys")
         self.log.debug(f"Uploading {len(one_time_keys)} one-time keys")
-        await self.client.upload_keys(one_time_keys=one_time_keys, device_keys=device_keys)
+        resp = await self.client.upload_keys(one_time_keys=one_time_keys, device_keys=device_keys)
         self.account.shared = True
+        self._last_key_share = time.monotonic()
         await self.crypto_store.put_account(self.account)
-        self.log.debug("Shared keys and saved account")
+        self.log.debug(f"Shared keys and saved account, new keys: {resp}")
