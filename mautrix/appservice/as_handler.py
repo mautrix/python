@@ -48,7 +48,17 @@ class AppServiceServerMixin:
     otk_handler: Callable[[dict[UserID, dict[DeviceID, DeviceOTKCount]]], Awaitable] | None
     device_list_handler: Callable[[DeviceLists], Awaitable] | None
 
-    def __init__(self, ephemeral_events: bool = False, encryption_events: bool = False) -> None:
+    def __init__(
+        self,
+        ephemeral_events: bool = False,
+        encryption_events: bool = False,
+        log: logging.Logger | None = None,
+        hs_token: str | None = None,
+    ) -> None:
+        if log is not None:
+            self.log = log
+        if hs_token is not None:
+            self.hs_token = hs_token
         self.transactions = set()
         self.event_handlers = []
         self.to_device_handler = None
