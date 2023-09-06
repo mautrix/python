@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Tulir Asokan
+# Copyright (c) 2023 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any, Awaitable, Callable
 from json import JSONDecodeError
-import asyncio
 import json
 import logging
 
@@ -33,12 +32,12 @@ HandlerFunc = Callable[[Event], Awaitable]
 
 
 class AppServiceServerMixin:
-    loop: asyncio.AbstractEventLoop
     log: logging.Logger
 
     hs_token: str
     ephemeral_events: bool
     encryption_events: bool
+    synchronous_handlers: bool
 
     query_user: Callable[[UserID], JSON]
     query_alias: Callable[[RoomAlias], JSON]
@@ -57,6 +56,7 @@ class AppServiceServerMixin:
         self.device_list_handler = None
         self.ephemeral_events = ephemeral_events
         self.encryption_events = encryption_events
+        self.synchronous_handlers = False
 
         async def default_query_handler(_):
             return None
@@ -309,7 +309,7 @@ class AppServiceServerMixin:
             except SerializerError:
                 self.log.exception("Failed to deserialize ephemeral event %s", raw_edu)
             else:
-                self.handle_matrix_event(edu, ephemeral=True)
+                await self.handle_matrix_event(edu, ephemeral=True)
         for raw_event in events:
             try:
                 self._fix_prev_content(raw_event)
@@ -317,10 +317,10 @@ class AppServiceServerMixin:
             except SerializerError:
                 self.log.exception("Failed to deserialize event %s", raw_event)
             else:
-                self.handle_matrix_event(event)
+                await self.handle_matrix_event(event)
         return {}
 
-    def handle_matrix_event(self, event: Event, ephemeral: bool = False) -> None:
+    async def handle_matrix_event(self, event: Event, ephemeral: bool = False) -> None:
         if ephemeral:
             event.type = event.type.with_class(EventType.Class.EPHEMERAL)
         elif getattr(event, "state_key", None) is not None:
@@ -334,9 +334,12 @@ class AppServiceServerMixin:
             except Exception:
                 self.log.exception("Exception in Matrix event handler")
 
-        for handler in self.event_handlers:
-            # TODO add option to handle events synchronously
-            background_task.create(try_handle(handler))
+        if self.synchronous_handlers:
+            for handler in self.event_handlers:
+                await handler(event)
+        else:
+            for handler in self.event_handlers:
+                background_task.create(try_handle(handler))
 
     def matrix_event_handler(self, func: HandlerFunc) -> HandlerFunc:
         self.event_handlers.append(func)
