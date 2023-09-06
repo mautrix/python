@@ -1,3 +1,12 @@
+## v0.20.2 (unreleased)
+
+* *(crypto)* Changed `OlmMachine.share_keys` to make the OTK count parameter
+  optional. When omitted, the count is fetched from the server.
+* *(appservice)* Added option to run appservice transaction event handlers
+  synchronously.
+* *(appservice)* Added `log` and `hs_token` parameters to `AppServiceServerMixin`
+  to allow using it as a standalone class without extending.
+
 ## v0.20.1 (2023-08-29)
 
 * *(util.program)* Removed `--base-config` flag in bridges, as there are no
