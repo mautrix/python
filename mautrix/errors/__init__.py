@@ -73,6 +73,7 @@ __all__ = [
     "DeviceValidationError",
     "DuplicateMessageIndex",
     "EncryptionError",
+    "GroupSessionWithheldError",
     "MatchingSessionDecryptionError",
     "MismatchingRoomError",
     "SessionNotFound",
