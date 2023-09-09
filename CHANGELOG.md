@@ -1,4 +1,4 @@
-## v0.20.2 (unreleased)
+## v0.20.2 (2023-09-09)
 
 * *(crypto)* Changed `OlmMachine.share_keys` to make the OTK count parameter
   optional. When omitted, the count is fetched from the server.
@@ -6,6 +6,8 @@
   synchronously.
 * *(appservice)* Added `log` and `hs_token` parameters to `AppServiceServerMixin`
   to allow using it as a standalone class without extending.
+* *(api)* Added support for setting appservice `user_id` and `device_id` query
+  parameters manually without using `AppServiceAPI`.
 
 ## v0.20.1 (2023-08-29)
 
