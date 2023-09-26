@@ -5,10 +5,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, AsyncContextManager
 from contextlib import asynccontextmanager
 import asyncio
 import logging
+import os
 import re
 import sqlite3
 
@@ -81,6 +82,7 @@ class TxnConnection(aiosqlite.Connection):
 
 class SQLiteDatabase(Database):
     scheme = Scheme.SQLITE
+    _parent: SQLiteDatabase | None
     _pool: asyncio.Queue[TxnConnection]
     _stopped: bool
     _conns: int
@@ -103,9 +105,8 @@ class SQLiteDatabase(Database):
             owner_name=owner_name,
             ignore_foreign_tables=ignore_foreign_tables,
         )
+        self._parent = None
         self._path = url.path
-        if self._path.startswith("/"):
-            self._path = self._path[1:]
         self._pool = asyncio.Queue(self._db_args.pop("min_size", 1))
         self._db_args.pop("max_size", None)
         self._stopped = False
@@ -134,13 +135,25 @@ class SQLiteDatabase(Database):
             init_commands.append("PRAGMA busy_timeout = 5000")
         return init_commands
 
+    def override_pool(self, db: Database) -> None:
+        assert isinstance(db, SQLiteDatabase)
+        self._parent = db
+
     async def start(self) -> None:
+        if self._parent:
+            await super().start()
+            return
         if self._conns:
             raise RuntimeError("database pool has already been started")
         elif self._stopped:
             raise RuntimeError("database pool can't be restarted")
         self.log.debug(f"Connecting to {self.url}")
         self.log.debug(f"Database connection init commands: {self._init_commands}")
+        if os.path.exists(self._path):
+            if not os.access(self._path, os.W_OK):
+                self.log.warning("Database file doesn't seem writable")
+        elif not os.access(os.path.dirname(os.path.abspath(self._path)), os.W_OK):
+            self.log.warning("Database file doesn't exist and directory doesn't seem writable")
         for _ in range(self._pool.maxsize):
             conn = await TxnConnection(self._path, **self._db_args)
             if self._init_commands:
@@ -155,14 +168,21 @@ class SQLiteDatabase(Database):
         await super().start()
 
     async def stop(self) -> None:
+        if self._parent:
+            return
         self._stopped = True
         while self._conns > 0:
             conn = await self._pool.get()
             self._conns -= 1
             await conn.close()
 
+    def acquire(self) -> AsyncContextManager[LoggingConnection]:
+        if self._parent:
+            return self._parent.acquire()
+        return self._acquire()
+
     @asynccontextmanager
-    async def acquire(self) -> LoggingConnection:
+    async def _acquire(self) -> LoggingConnection:
         if self._stopped:
             raise RuntimeError("database pool has been stopped")
         conn = await self._pool.get()

@@ -81,6 +81,16 @@ class DeviceListMachine(BaseOlmMachine):
             data[user_id] = new_devices
 
             if changed or len(new_devices) != len(existing_devices):
+                if self.delete_keys_on_device_delete:
+                    for device_id in existing_devices.keys() - new_devices.keys():
+                        device = existing_devices[device_id]
+                        removed_ids = await self.crypto_store.redact_group_sessions(
+                            room_id=None, sender_key=device.identity_key, reason="device removed"
+                        )
+                        self.log.info(
+                            "Redacted megolm sessions sent by removed device "
+                            f"{device.user_id}/{device.device_id}: {removed_ids}"
+                        )
                 await self.on_devices_changed(user_id)
 
         for user_id in missing_users:
@@ -234,6 +244,8 @@ class DeviceListMachine(BaseOlmMachine):
         return None
 
     async def on_devices_changed(self, user_id: UserID) -> None:
+        if self.disable_device_change_key_rotation:
+            return
         shared_rooms = await self.state_store.find_shared_rooms(user_id)
         self.log.debug(
             f"Devices of {user_id} changed, invalidating group session in {shared_rooms}"

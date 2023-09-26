@@ -46,22 +46,19 @@ class MediaRepositoryMethods(BaseClientAPI):
     downloading content from the media repository and for getting URL previews without leaking
     client IPs.
 
-    See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#id112>`__
-
-    There are also methods for supporting `MSC2246
-    <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ which allows asynchronous
-    uploads of media.
+    See also: `API reference <https://spec.matrix.org/v1.7/client-server-api/#content-repository>`__
     """
 
-    async def unstable_create_mxc(self) -> MediaCreateResponse:
+    async def create_mxc(self) -> MediaCreateResponse:
         """
-        Create a media ID for uploading media to the homeserver. Requires the homeserver to have
-        `MSC2246 <https://github.com/matrix-org/matrix-spec-proposals/pull/2246>`__ support.
+        Create a media ID for uploading media to the homeserver.
+
+        See also: `API reference <https://spec.matrix.org/unstable/client-server-api/#post_matrixmediav1create>`__
 
         Returns:
-            MediaCreateResponse Containing the MXC URI that can be used to upload a file to later, as well as an optional upload URL
+            MediaCreateResponse Containing the MXC URI that can be used to upload a file to later
         """
-        resp = await self.api.request(Method.POST, MediaPath.unstable["fi.mau.msc2246"].create)
+        resp = await self.api.request(Method.POST, MediaPath.v1.create)
         return MediaCreateResponse.deserialize(resp)
 
     @contextmanager
@@ -87,21 +84,18 @@ class MediaRepositoryMethods(BaseClientAPI):
         """
         Upload a file to the content repository.
 
-        See also: `API reference <https://spec.matrix.org/v1.2/client-server-api/#post_matrixmediav3upload>`__
+        See also: `API reference <https://spec.matrix.org/v1.7/client-server-api/#post_matrixmediav3upload>`__
 
         Args:
             data: The data to upload.
             mime_type: The MIME type to send with the upload request.
             filename: The filename to send with the upload request.
             size: The file size to send with the upload request.
-            mxc: An existing MXC URI which doesn't have content yet to upload into. Requires the
-                homeserver to have MSC2246_ support.
-            async_upload: Should the media be uploaded in the background (using MSC2246_)?
-                If ``True``, this will create a MXC URI, start uploading in the background and then
-                immediately return the created URI. This is mutually exclusive with manually
-                passing the ``mxc`` parameter.
-
-        .. _MSC2246: https://github.com/matrix-org/matrix-spec-proposals/pull/2246
+            mxc: An existing MXC URI which doesn't have content yet to upload into.
+            async_upload: Should the media be uploaded in the background?
+                If ``True``, this will create a MXC URI using :meth:`create_mxc`, start uploading
+                in the background, and then immediately return the created URI. This is mutually
+                exclusive with manually passing the ``mxc`` parameter.
 
         Returns:
             The MXC URI to the uploaded file.
@@ -128,19 +122,21 @@ class MediaRepositoryMethods(BaseClientAPI):
         if async_upload:
             if mxc:
                 raise ValueError("async_upload and mxc can't be provided simultaneously")
-            create_response = await self.unstable_create_mxc()
+            create_response = await self.create_mxc()
             mxc = create_response.content_uri
-            upload_url = create_response.upload_url
+            upload_url = create_response.unstable_upload_url
 
         path = MediaPath.v3.upload
         method = Method.POST
         if mxc:
             server_name, media_id = self.api.parse_mxc_uri(mxc)
             if upload_url is None:
-                path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id]
+                path = MediaPath.v3.upload[server_name][media_id]
                 method = Method.PUT
             else:
-                path = MediaPath.unstable["fi.mau.msc2246"].upload[server_name][media_id].complete
+                path = (
+                    MediaPath.unstable["com.beeper.msc3870"].upload[server_name][media_id].complete
+                )
 
         if upload_url is not None:
             task = self._upload_to_url(upload_url, path, headers, data, post_upload_query=query)
@@ -168,25 +164,24 @@ class MediaRepositoryMethods(BaseClientAPI):
             except KeyError:
                 raise MatrixResponseError("`content_uri` not in response.")
 
-    async def download_media(self, url: ContentURI, max_stall_ms: int | None = None) -> bytes:
+    async def download_media(self, url: ContentURI, timeout_ms: int | None = None) -> bytes:
         """
         Download a file from the content repository.
 
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-download-servername-mediaid>`__
+        See also: `API reference <https://spec.matrix.org/v1.7/client-server-api/#get_matrixmediav3downloadservernamemediaid>`__
 
         Args:
             url: The MXC URI to download.
-            max_stall_ms: The maximum number of milliseconds that the client is willing to wait to
-                start receiving data. Used for MSC2246 Asynchronous Uploads.
+            timeout_ms: The maximum number of milliseconds that the client is willing to wait to
+                start receiving data. Used for asynchronous uploads.
 
         Returns:
             The raw downloaded data.
         """
         url = self.api.get_download_url(url)
         query_params: dict[str, Any] = {"allow_redirect": "true"}
-        if max_stall_ms is not None:
-            query_params["max_stall_ms"] = max_stall_ms
-            query_params["fi.mau.msc2246.max_stall_ms"] = max_stall_ms
+        if timeout_ms is not None:
+            query_params["timeout_ms"] = timeout_ms
         async with self.api.session.get(url, params=query_params) as response:
             return await response.read()
 
@@ -197,12 +192,12 @@ class MediaRepositoryMethods(BaseClientAPI):
         height: int | None = None,
         resize_method: Literal["crop", "scale"] = None,
         allow_remote: bool = True,
-        max_stall_ms: int | None = None,
+        timeout_ms: int | None = None,
     ):
         """
         Download a thumbnail for a file in the content repository.
 
-        See also: `API reference <https://matrix.org/docs/spec/client_server/r0.4.0.html#get-matrix-media-r0-thumbnail-servername-mediaid>`__
+        See also: `API reference <https://spec.matrix.org/v1.7/client-server-api/#get_matrixmediav3thumbnailservernamemediaid>`__
 
         Args:
             url: The MXC URI to download.
@@ -214,8 +209,8 @@ class MediaRepositoryMethods(BaseClientAPI):
             allow_remote: Indicates to the server that it should not attempt to fetch the media if
                 it is deemed remote. This is to prevent routing loops where the server contacts
                 itself.
-            max_stall_ms: The maximum number of milliseconds that the client is willing to wait to
-                start receiving data. Used for MSC2246 Asynchronous Uploads.
+            timeout_ms: The maximum number of milliseconds that the client is willing to wait to
+                start receiving data. Used for asynchronous Uploads.
 
         Returns:
             The raw downloaded data.
@@ -230,9 +225,8 @@ class MediaRepositoryMethods(BaseClientAPI):
             query_params["method"] = resize_method
         if allow_remote is not None:
             query_params["allow_remote"] = allow_remote
-        if max_stall_ms is not None:
-            query_params["max_stall_ms"] = max_stall_ms
-            query_params["fi.mau.msc2246.max_stall_ms"] = max_stall_ms
+        if timeout_ms is not None:
+            query_params["timeout_ms"] = timeout_ms
         async with self.api.session.get(url, params=query_params) as response:
             return await response.read()
 

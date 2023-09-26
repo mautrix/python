@@ -198,6 +198,56 @@ class CryptoStore(ABC):
         """
 
     @abstractmethod
+    async def redact_group_session(
+        self, room_id: RoomID, session_id: SessionID, reason: str
+    ) -> None:
+        """
+        Remove the keys for a specific Megolm group session.
+
+        Args:
+            room_id: The room where the session is.
+            session_id: The session ID to remove.
+            reason: The reason the session is being removed.
+        """
+
+    @abstractmethod
+    async def redact_group_sessions(
+        self, room_id: RoomID | None, sender_key: IdentityKey | None, reason: str
+    ) -> list[SessionID]:
+        """
+        Remove the keys for multiple Megolm group sessions,
+        based on the room ID and/or sender device.
+
+        Args:
+            room_id: The room ID to delete keys from.
+            sender_key: The Olm identity key of the device to delete keys from.
+            reason: The reason why the keys are being deleted.
+
+        Returns:
+            The list of session IDs that were deleted.
+        """
+
+    @abstractmethod
+    async def redact_expired_group_sessions(self) -> list[SessionID]:
+        """
+        Remove all Megolm group sessions where at least twice the maximum age has passed since
+        receiving the keys.
+
+        Returns:
+            The list of session IDs that were deleted.
+        """
+
+    @abstractmethod
+    async def redact_outdated_group_sessions(self) -> list[SessionID]:
+        """
+        Remove all Megolm group sessions which lack the metadata to determine when they should
+        expire.
+
+        Returns:
+            The list of session IDs that were deleted.
+        """
+
+    @abstractmethod
     async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
         """
         Check whether or not a specific inbound Megolm session is in the store. This is used before

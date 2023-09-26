@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Tulir Asokan
+# Copyright (c) 2023 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,13 +12,17 @@ import json
 
 import olm
 
+from mautrix.errors import MForbidden, MNotFound
 from mautrix.types import (
     DeviceID,
     EncryptionKeyAlgorithm,
+    EventType,
     IdentityKey,
     KeyID,
     RequestedKeyInfo,
+    RoomEncryptionStateEventContent,
     RoomID,
+    RoomKeyEventContent,
     SessionID,
     SigningKey,
     TrustState,
@@ -46,6 +50,14 @@ class BaseOlmMachine:
     share_keys_min_trust: TrustState
     allow_key_share: Callable[[crypto.DeviceIdentity, RequestedKeyInfo], Awaitable[bool]]
 
+    delete_outbound_keys_on_ack: bool
+    dont_store_outbound_keys: bool
+    delete_previous_keys_on_receive: bool
+    ratchet_keys_on_decrypt: bool
+    delete_fully_used_keys_on_decrypt: bool
+    delete_keys_on_device_delete: bool
+    disable_device_change_key_rotation: bool
+
     # Futures that wait for responses to a key request
     _key_request_waiters: dict[SessionID, asyncio.Future]
     # Futures that wait for a session to be received (either normally or through a key request)
@@ -53,6 +65,9 @@ class BaseOlmMachine:
 
     _prev_unwedge: dict[IdentityKey, float]
     _fetch_keys_lock: asyncio.Lock
+    _megolm_decrypt_lock: asyncio.Lock
+    _share_keys_lock: asyncio.Lock
+    _last_key_share: float
     _cs_fetch_attempted: set[UserID]
 
     async def wait_for_session(
@@ -73,6 +88,34 @@ class BaseOlmMachine:
             self._inbound_session_waiters.pop(session_id).set_result(True)
         except KeyError:
             return
+
+    async def _fill_encryption_info(self, evt: RoomKeyEventContent) -> None:
+        encryption_info = await self.state_store.get_encryption_info(evt.room_id)
+        if not encryption_info:
+            self.log.warning(
+                f"Encryption info for {evt.room_id} not found in state store, fetching from server"
+            )
+            try:
+                encryption_info = await self.client.get_state_event(
+                    evt.room_id, EventType.ROOM_ENCRYPTION
+                )
+            except (MNotFound, MForbidden) as e:
+                self.log.warning(
+                    f"Failed to get encryption info for {evt.room_id} from server: {e},"
+                    " using defaults"
+                )
+                encryption_info = RoomEncryptionStateEventContent()
+            if not encryption_info:
+                self.log.warning(
+                    f"Didn't find encryption info for {evt.room_id} on server either,"
+                    " using defaults"
+                )
+                encryption_info = RoomEncryptionStateEventContent()
+
+        if not evt.beeper_max_age_ms:
+            evt.beeper_max_age_ms = encryption_info.rotation_period_ms
+        if not evt.beeper_max_messages:
+            evt.beeper_max_messages = encryption_info.rotation_period_msgs
 
 
 canonical_json = functools.partial(

@@ -115,7 +115,12 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("appservice.tls_cert")
         copy("appservice.tls_key")
 
-        copy("appservice.database")
+        if "appservice.database" in self and self["appservice.database"].startswith("sqlite:///"):
+            helper.base["appservice.database"] = self["appservice.database"].replace(
+                "sqlite:///", "sqlite:"
+            )
+        else:
+            copy("appservice.database")
         copy("appservice.database_opts")
 
         copy("appservice.id")
@@ -138,6 +143,14 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.encryption.default")
         copy("bridge.encryption.require")
         copy("bridge.encryption.appservice")
+        copy("bridge.encryption.delete_keys.delete_outbound_on_ack")
+        copy("bridge.encryption.delete_keys.dont_store_outbound")
+        copy("bridge.encryption.delete_keys.ratchet_on_decrypt")
+        copy("bridge.encryption.delete_keys.delete_fully_used_on_decrypt")
+        copy("bridge.encryption.delete_keys.delete_prev_on_new_session")
+        copy("bridge.encryption.delete_keys.delete_on_device_delete")
+        copy("bridge.encryption.delete_keys.periodically_delete_expired")
+        copy("bridge.encryption.delete_keys.delete_outdated_inbound")
         copy("bridge.encryption.verification_levels.receive")
         copy("bridge.encryption.verification_levels.send")
         copy("bridge.encryption.verification_levels.share")
@@ -154,6 +167,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.encryption.rotation.enable_custom")
         copy("bridge.encryption.rotation.milliseconds")
         copy("bridge.encryption.rotation.messages")
+        copy("bridge.encryption.rotation.disable_device_change_key_rotation")
 
         copy("bridge.relay.enabled")
         copy_dict("bridge.relay.message_formats", override_existing_map=False)

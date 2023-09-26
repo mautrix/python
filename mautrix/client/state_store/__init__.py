@@ -10,5 +10,4 @@ __all__ = [
     "MemorySyncStore",
     "SyncStore",
     "asyncpg",
-    "sqlalchemy",
 ]

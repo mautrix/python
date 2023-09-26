@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Tulir Asokan
+# Copyright (c) 2023 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -120,9 +120,18 @@ class KeyRequestingMachine(BaseOlmMachine):
                 f"{evt.sender_device}, as crypto store says we have it already"
             )
             return
+        if not key.beeper_max_messages or not key.beeper_max_age_ms:
+            await self._fill_encryption_info(key)
         key.forwarding_key_chain.append(evt.sender_key)
         sess = InboundGroupSession.import_session(
-            key.session_key, key.signing_key, key.sender_key, key.room_id, key.forwarding_key_chain
+            key.session_key,
+            key.signing_key,
+            key.sender_key,
+            key.room_id,
+            key.forwarding_key_chain,
+            max_age=key.beeper_max_age_ms,
+            max_messages=key.beeper_max_messages,
+            is_scheduled=key.beeper_is_scheduled,
         )
         if key.session_id != sess.id:
             self.log.warning(

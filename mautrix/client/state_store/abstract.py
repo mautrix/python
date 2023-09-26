@@ -143,6 +143,9 @@ class StateStore(ABC):
         if evt.type == EventType.ROOM_POWER_LEVELS:
             await self.set_power_levels(evt.room_id, evt.content)
         elif evt.type == EventType.ROOM_MEMBER:
+            evt.unsigned["mautrix_prev_membership"] = await self.get_member(
+                evt.room_id, UserID(evt.state_key)
+            )
             await self.set_member(evt.room_id, UserID(evt.state_key), evt.content)
         elif evt.type == EventType.ROOM_ENCRYPTION:
             await self.set_encryption_info(evt.room_id, evt.content)

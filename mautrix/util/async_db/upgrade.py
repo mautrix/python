@@ -21,7 +21,7 @@ Upgrade = Callable[[LoggingConnection, Scheme], Awaitable[Optional[int]]]
 UpgradeWithoutScheme = Callable[[LoggingConnection], Awaitable[Optional[int]]]
 
 
-async def noop_upgrade(_: LoggingConnection) -> None:
+async def noop_upgrade(_: LoggingConnection, _2: Scheme) -> None:
     pass
 
 
@@ -178,6 +178,6 @@ def _find_upgrade_table(fn: Upgrade) -> UpgradeTable:
 
 def register_upgrade(index: int = -1, description: str = "") -> Callable[[Upgrade], Upgrade]:
     def actually_register(fn: Upgrade) -> Upgrade:
-        return _find_upgrade_table(fn).register(index, description, fn)
+        return _find_upgrade_table(fn).register(fn, index=index, description=description)
 
     return actually_register

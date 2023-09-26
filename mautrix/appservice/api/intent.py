@@ -71,7 +71,8 @@ ENSURE_REGISTERED_METHODS = (
     ClientAPI.search_users,
     ClientAPI.set_displayname,
     ClientAPI.set_avatar_url,
-    ClientAPI.unstable_create_mxc,
+    ClientAPI.beeper_update_profile,
+    ClientAPI.create_mxc,
     ClientAPI.upload_media,
     ClientAPI.send_receipt,
     ClientAPI.set_fully_read_marker,
@@ -143,7 +144,11 @@ class IntentAPI(StoreUpdatingAPI):
             setattr(self, method.__name__, wrapper)
 
     def user(
-        self, user_id: UserID, token: str | None = None, base_url: str | None = None
+        self,
+        user_id: UserID,
+        token: str | None = None,
+        base_url: str | None = None,
+        as_token: bool = False,
     ) -> IntentAPI:
         """
         Get the intent API for a specific user.
@@ -161,10 +166,10 @@ class IntentAPI(StoreUpdatingAPI):
             The IntentAPI for the given user.
         """
         if not self.bot:
-            return self.api.intent(user_id, token, base_url)
+            return self.api.intent(user_id, token, base_url, real_user_as_token=as_token)
         else:
             self.log.warning("Called IntentAPI#user() of child intent object.")
-            return self.bot.api.intent(user_id, token, base_url)
+            return self.bot.api.intent(user_id, token, base_url, real_user_as_token=as_token)
 
     # region User actions
 
@@ -488,6 +493,14 @@ class IntentAPI(StoreUpdatingAPI):
                 extra_content=extra_content,
             )
             self.state_store.set_read(room_id, self.mxid, event_id)
+
+    async def appservice_ping(self, appservice_id: str, txn_id: str | None = None) -> int:
+        resp = await self.api.request(
+            Method.POST,
+            Path.v1.appservice[appservice_id].ping,
+            content={"transaction_id": txn_id} if txn_id is not None else {},
+        )
+        return resp.get("duration_ms") or -1
 
     async def batch_send(
         self,

@@ -28,29 +28,6 @@ class BaseCryptoStateStore(StateStore, ABC):
         return portal.encrypted if portal else False
 
 
-try:
-    from mautrix.client.state_store.sqlalchemy import RoomState, UserProfile
-
-    class SQLCryptoStateStore(BaseCryptoStateStore):
-        @staticmethod
-        async def find_shared_rooms(user_id: UserID) -> list[RoomID]:
-            return [profile.room_id for profile in UserProfile.find_rooms_with_user(user_id)]
-
-        @staticmethod
-        async def get_encryption_info(room_id: RoomID) -> RoomEncryptionStateEventContent | None:
-            state = RoomState.get(room_id)
-            if not state:
-                return None
-            return state.encryption
-
-except ImportError:
-    if __optional_imports__:
-        raise
-    UserProfile = None
-    RoomState = None
-    SQLCryptoStateStore = None
-
-
 class PgCryptoStateStore(BaseCryptoStateStore):
     db: Database
 

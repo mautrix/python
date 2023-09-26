@@ -110,6 +110,33 @@ class MemoryCryptoStore(CryptoStore, SyncStore):
     ) -> InboundGroupSession:
         return self._inbound_sessions.get((room_id, session_id))
 
+    async def redact_group_session(
+        self, room_id: RoomID, session_id: SessionID, reason: str
+    ) -> None:
+        self._inbound_sessions.pop((room_id, session_id), None)
+
+    async def redact_group_sessions(
+        self, room_id: RoomID, sender_key: IdentityKey, reason: str
+    ) -> list[SessionID]:
+        if not room_id and not sender_key:
+            raise ValueError("Either room_id or sender_key must be provided")
+        deleted = []
+        keys = list(self._inbound_sessions.keys())
+        for key in keys:
+            item = self._inbound_sessions[key]
+            if (not room_id or item.room_id == room_id) and (
+                not sender_key or item.sender_key == sender_key
+            ):
+                deleted.append(SessionID(item.id))
+                del self._inbound_sessions[key]
+        return deleted
+
+    async def redact_expired_group_sessions(self) -> list[SessionID]:
+        raise NotImplementedError()
+
+    async def redact_outdated_group_sessions(self) -> list[SessionID]:
+        raise NotImplementedError()
+
     async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
         return (room_id, session_id) in self._inbound_sessions
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 from abc import ABC, abstractmethod
 from enum import Enum
+import asyncio
 import sys
 
 from aiohttp import web
@@ -59,6 +60,8 @@ class Bridge(Program, ABC):
     markdown_version: str
     manhole: br.commands.manhole.ManholeState | None
     homeserver_software: HomeserverSoftware
+    beeper_network_name: str | None = None
+    beeper_service_name: str | None = None
 
     def __init__(
         self,
@@ -133,7 +136,7 @@ class Bridge(Program, ABC):
         self.config = self.config_class(
             self.args.config,
             self.args.registration,
-            self.args.base_config,
+            self.base_config_path,
             env_prefix=self.module.upper(),
         )
         if self.args.generate_registration:
@@ -244,6 +247,9 @@ class Bridge(Program, ABC):
                 "correct, and do they match the values in the registration?"
             )
             sys.exit(16)
+        except Exception:
+            self.log.critical("Failed to check connection to homeserver", exc_info=True)
+            sys.exit(16)
 
         await self.matrix.init_encryption()
         self.add_startup_actions(self.matrix.init_as_bot())
@@ -253,12 +259,16 @@ class Bridge(Program, ABC):
         status_endpoint = self.config["homeserver.status_endpoint"]
         if status_endpoint and await self.count_logged_in_users() == 0:
             state = BridgeState(state_event=BridgeStateEvent.UNCONFIGURED).fill()
-            await state.send(status_endpoint, self.az.as_token, self.log)
+            while not await state.send(status_endpoint, self.az.as_token, self.log):
+                await asyncio.sleep(5)
 
     async def system_exit(self) -> None:
         if hasattr(self, "db") and isinstance(self.db, Database):
-            self.log.trace("Stopping database due to SystemExit")
+            self.log.debug("Stopping database due to SystemExit")
             await self.db.stop()
+            self.log.debug("Database stopped")
+        elif getattr(self, "db", None):
+            self.log.trace("Database not started at SystemExit")
 
     async def stop(self) -> None:
         if self.manhole:

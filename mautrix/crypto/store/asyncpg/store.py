@@ -12,6 +12,7 @@ from asyncpg import UniqueViolationError
 
 from mautrix.client.state_store import SyncStore
 from mautrix.client.state_store.asyncpg import PgStateStore
+from mautrix.errors import GroupSessionWithheldError
 from mautrix.types import (
     CrossSigner,
     CrossSigningUsage,
@@ -20,6 +21,7 @@ from mautrix.types import (
     EventID,
     IdentityKey,
     RoomID,
+    RoomKeyWithheldCode,
     SessionID,
     SigningKey,
     SyncToken,
@@ -30,7 +32,7 @@ from mautrix.types import (
 from mautrix.util.async_db import Database, Scheme
 from mautrix.util.logging import TraceLogger
 
-from ... import InboundGroupSession, OlmAccount, OutboundGroupSession, Session
+from ... import InboundGroupSession, OlmAccount, OutboundGroupSession, RatchetSafety, Session
 from ..abstract import CryptoStore, StateStore
 from .upgrade import upgrade_table
 
@@ -117,7 +119,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
         await self.db.execute(
             q,
             self.account_id,
-            self._device_id,
+            self._device_id or "",
             account.shared,
             self._sync_token or "",
             pickle,
@@ -234,8 +236,15 @@ class PgCryptoStore(CryptoStore, SyncStore):
         forwarding_chains = ",".join(session.forwarding_chain)
         q = """
         INSERT INTO crypto_megolm_inbound_session (
-            session_id, sender_key, signing_key, room_id, session, forwarding_chains, account_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            session_id, sender_key, signing_key, room_id, session, forwarding_chains,
+            ratchet_safety, received_at, max_age, max_messages, is_scheduled, account_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ON CONFLICT (session_id, account_id) DO UPDATE
+        SET withheld_code=NULL, withheld_reason=NULL, sender_key=excluded.sender_key,
+            signing_key=excluded.signing_key, room_id=excluded.room_id, session=excluded.session,
+            forwarding_chains=excluded.forwarding_chains, ratchet_safety=excluded.ratchet_safety,
+            received_at=excluded.received_at, max_age=excluded.max_age,
+            max_messages=excluded.max_messages, is_scheduled=excluded.is_scheduled
         """
         try:
             await self.db.execute(
@@ -246,6 +255,11 @@ class PgCryptoStore(CryptoStore, SyncStore):
                 room_id,
                 pickle,
                 forwarding_chains,
+                session.ratchet_safety.json(),
+                session.received_at,
+                int(session.max_age.total_seconds() * 1000) if session.max_age else None,
+                session.max_messages,
+                session.is_scheduled,
                 self.account_id,
             )
         except (IntegrityError, UniqueViolationError):
@@ -255,13 +269,17 @@ class PgCryptoStore(CryptoStore, SyncStore):
         self, room_id: RoomID, session_id: SessionID
     ) -> InboundGroupSession | None:
         q = """
-        SELECT sender_key, signing_key, session, forwarding_chains
+        SELECT
+            sender_key, signing_key, session, forwarding_chains, withheld_code,
+            ratchet_safety, received_at, max_age, max_messages, is_scheduled
         FROM crypto_megolm_inbound_session
         WHERE room_id=$1 AND session_id=$2 AND account_id=$3
         """
         row = await self.db.fetchrow(q, room_id, session_id, self.account_id)
         if row is None:
             return None
+        if row["withheld_code"] is not None:
+            raise GroupSessionWithheldError(session_id, row["withheld_code"])
         forwarding_chain = row["forwarding_chains"].split(",") if row["forwarding_chains"] else []
         return InboundGroupSession.from_pickle(
             row["session"],
@@ -270,21 +288,106 @@ class PgCryptoStore(CryptoStore, SyncStore):
             sender_key=row["sender_key"],
             room_id=room_id,
             forwarding_chain=forwarding_chain,
+            ratchet_safety=RatchetSafety.parse_json(row["ratchet_safety"] or "{}"),
+            received_at=row["received_at"],
+            max_age=timedelta(milliseconds=row["max_age"]) if row["max_age"] else None,
+            max_messages=row["max_messages"],
+            is_scheduled=row["is_scheduled"],
         )
+
+    async def redact_group_session(
+        self, room_id: RoomID, session_id: SessionID, reason: str
+    ) -> None:
+        q = """
+        UPDATE crypto_megolm_inbound_session
+        SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+        WHERE session_id=$3 AND account_id=$4 AND session IS NOT NULL
+        """
+        await self.db.execute(
+            q,
+            RoomKeyWithheldCode.BEEPER_REDACTED.value,
+            f"Session redacted: {reason}",
+            session_id,
+            self.account_id,
+        )
+
+    async def redact_group_sessions(
+        self, room_id: RoomID, sender_key: IdentityKey, reason: str
+    ) -> list[SessionID]:
+        if not room_id and not sender_key:
+            raise ValueError("Either room_id or sender_key must be provided")
+        q = """
+        UPDATE crypto_megolm_inbound_session
+        SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+        WHERE (room_id=$3 OR $3='') AND (sender_key=$4 OR $4='') AND account_id=$5
+          AND session IS NOT NULL AND is_scheduled=false AND received_at IS NOT NULL
+        RETURNING session_id
+        """
+        rows = await self.db.fetch(
+            q,
+            RoomKeyWithheldCode.BEEPER_REDACTED.value,
+            f"Session redacted: {reason}",
+            room_id,
+            sender_key,
+            self.account_id,
+        )
+        return [row["session_id"] for row in rows]
+
+    async def redact_expired_group_sessions(self) -> list[SessionID]:
+        if self.db.scheme == Scheme.SQLITE:
+            q = """
+            UPDATE crypto_megolm_inbound_session
+            SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+            WHERE account_id=$3 AND session IS NOT NULL AND is_scheduled=false
+              AND received_at IS NOT NULL and max_age IS NOT NULL
+              AND unixepoch(received_at) + (2 * max_age / 1000) < unixepoch(date('now'))
+            RETURNING session_id
+            """
+        elif self.db.scheme in (Scheme.POSTGRES, Scheme.COCKROACH):
+            q = """
+            UPDATE crypto_megolm_inbound_session
+            SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+            WHERE account_id=$3 AND session IS NOT NULL AND is_scheduled=false
+              AND received_at IS NOT NULL and max_age IS NOT NULL
+              AND received_at + 2 * (max_age * interval '1 millisecond') < now()
+            RETURNING session_id
+            """
+        else:
+            raise RuntimeError(f"Unsupported dialect {self.db.scheme}")
+        rows = await self.db.fetch(
+            q,
+            RoomKeyWithheldCode.BEEPER_REDACTED.value,
+            f"Session redacted: expired",
+            self.account_id,
+        )
+        return [row["session_id"] for row in rows]
+
+    async def redact_outdated_group_sessions(self) -> list[SessionID]:
+        q = """
+        UPDATE crypto_megolm_inbound_session
+        SET withheld_code=$1, withheld_reason=$2, session=NULL, forwarding_chains=NULL
+        WHERE account_id=$3 AND session IS NOT NULL AND received_at IS NULL
+        RETURNING session_id
+        """
+        rows = await self.db.fetch(
+            q,
+            RoomKeyWithheldCode.BEEPER_REDACTED.value,
+            f"Session redacted: outdated",
+            self.account_id,
+        )
+        return [row["session_id"] for row in rows]
 
     async def has_group_session(self, room_id: RoomID, session_id: SessionID) -> bool:
         q = """
         SELECT COUNT(session) FROM crypto_megolm_inbound_session
-        WHERE room_id=$1 AND session_id=$2 AND account_id=$3
+        WHERE room_id=$1 AND session_id=$2 AND account_id=$3 AND session IS NOT NULL
         """
         count = await self.db.fetchval(q, room_id, session_id, self.account_id)
         return count > 0
 
     async def add_outbound_group_session(self, session: OutboundGroupSession) -> None:
         pickle = session.pickle(self.pickle_key)
-        max_age = session.max_age
-        if self.db.scheme == Scheme.SQLITE:
-            max_age = max_age.total_seconds()
+        max_age = int(session.max_age.total_seconds() * 1000)
         q = """
         INSERT INTO crypto_megolm_outbound_session (
             room_id, session_id, session, shared, max_messages, message_count,
@@ -334,9 +437,6 @@ class PgCryptoStore(CryptoStore, SyncStore):
         row = await self.db.fetchrow(q, room_id, self.account_id)
         if row is None:
             return None
-        max_age = row["max_age"]
-        if self.db.scheme == Scheme.SQLITE:
-            max_age = timedelta(seconds=max_age)
         return OutboundGroupSession.from_pickle(
             row["session"],
             passphrase=self.pickle_key,
@@ -344,7 +444,7 @@ class PgCryptoStore(CryptoStore, SyncStore):
             shared=row["shared"],
             max_messages=row["max_messages"],
             message_count=row["message_count"],
-            max_age=max_age,
+            max_age=timedelta(milliseconds=row["max_age"]),
             use_time=row["last_used"],
             creation_time=row["created_at"],
         )

@@ -50,7 +50,7 @@ class MiscModuleMethods(BaseClientAPI):
 
         Args:
             room_id: The ID of the room in which the user is typing.
-            timeout: The length of time in seconds to mark this user as typing.
+            timeout: The length of time in milliseconds to mark this user as typing.
         """
         if timeout > 0:
             content = {"typing": True, "timeout": timeout}

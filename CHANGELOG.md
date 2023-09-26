@@ -1,3 +1,116 @@
+## v0.20.2 (2023-09-09)
+
+* *(crypto)* Changed `OlmMachine.share_keys` to make the OTK count parameter
+  optional. When omitted, the count is fetched from the server.
+* *(appservice)* Added option to run appservice transaction event handlers
+  synchronously.
+* *(appservice)* Added `log` and `hs_token` parameters to `AppServiceServerMixin`
+  to allow using it as a standalone class without extending.
+* *(api)* Added support for setting appservice `user_id` and `device_id` query
+  parameters manually without using `AppServiceAPI`.
+
+## v0.20.1 (2023-08-29)
+
+* *(util.program)* Removed `--base-config` flag in bridges, as there are no
+  valid use cases (package data should always work) and it's easy to cause
+  issues by pointing the flag at the wrong file.
+* *(bridge)* Added support for the `com.devture.shared_secret_auth` login type
+  for automatic double puppeting.
+* *(bridge)* Dropped support for syncing with double puppets. MSC2409 is now
+  the only way to receive ephemeral events.
+* *(bridge)* Added support for double puppeting with arbitrary `as_token`s.
+
+## v0.20.0 (2023-06-25)
+
+* Dropped Python 3.8 support.
+* **Breaking change *(.state_store)*** Removed legacy SQLAlchemy state store
+  implementations.
+* **Mildly breaking change *(util.async_db)*** Changed `SQLiteDatabase` to not
+  remove prefix slashes from database paths.
+  * Library users should use `sqlite:path.db` instead of `sqlite:///path.db`
+    for relative paths, and `sqlite:/path.db` instead of `sqlite:////path.db`
+    for absolute paths.
+  * Bridge configs do this migration automatically.
+* *(util.async_db)* Added warning log if using SQLite database path that isn't
+  writable.
+* *(util.program)* Fixed `manual_stop` not working if it's called during startup.
+* *(client)* Stabilized support for asynchronous uploads.
+  * `unstable_create_msc` was renamed to `create_mxc`, and the `max_stall_ms`
+    parameters for downloading were renamed to `timeout_ms`.
+* *(crypto)* Added option to not rotate keys when devices change.
+* *(crypto)* Added option to remove all keys that were received before the
+  automatic ratcheting was implemented (in v0.19.10).
+* *(types)* Improved reply fallback removal to have a smaller chance of false
+  positives for messages that don't use reply fallbacks.
+
+## v0.19.16 (2023-05-26)
+
+* *(appservice)* Fixed Python 3.8 compatibility.
+
+## v0.19.15 (2023-05-24)
+
+* *(client)* Fixed dispatching room ephemeral events (i.e. typing notifications) in syncer.
+
+## v0.19.14 (2023-05-16)
+
+* *(bridge)* Implemented appservice pinging using MSC2659.
+* *(bridge)* Started reusing aiosqlite connection pool for crypto db.
+  * This fixes the crypto pool getting stuck if the bridge exits unexpectedly
+    (the default pool is closed automatically at any type of exit).
+
+## v0.19.13 (2023-04-24)
+
+* *(crypto)* Fixed bug with redacting megolm sessions when device is deleted.
+
+## v0.19.12 (2023-04-18)
+
+* *(bridge)* Fixed backwards-compatibility with new key deletion config options.
+
+## v0.19.11 (2023-04-14)
+
+* *(crypto)* Fixed bug in previous release which caused errors if the `max_age`
+  of a megolm session was not known.
+* *(crypto)* Changed key receiving handler to fetch encryption config from
+  server if it's not cached locally (to find `max_age` and `max_messages` more
+  reliably).
+
+## v0.19.10 (2023-04-13)
+
+* *(crypto, bridge)* Added options to automatically ratchet/delete megolm
+  sessions to minimize access to old messages.
+
+## v0.19.9 (2023-04-12)
+
+* *(crypto)* Fixed bug in crypto store migration when using outbound sessions
+  with max age higher than usual.
+
+## v0.19.8 (2023-04-06)
+
+* *(crypto)* Updated crypto store schema to match mautrix-go.
+* *(types)* Fixed `set_thread_parent` adding reply fallbacks to the message body.
+
+## v0.19.7 (2023-03-22)
+
+* *(bridge, crypto)* Fixed key sharing trust checker not resolving cross-signing
+  signatures when minimum trust level is set to cross-signed.
+
+## v0.19.6 (2023-03-13)
+
+* *(crypto)* Added cache checks to prevent invalidating group session when the
+  server sends a duplicate member event in /sync.
+* *(util.proxy)* Fixed `min_wait_seconds` behavior and added `max_wait_seconds`
+  and `multiply_wait_seconds` to `proxy_with_retry`.
+
+## v0.19.5 (2023-03-07)
+
+* *(util.proxy)* Added utility for dynamic proxies (from mautrix-instagram/facebook).
+* *(types)* Added default value for `upload_size` in `MediaRepoConfig` as the
+  field is optional in the spec.
+* *(bridge)* Changed ghost invite handling to only process one per room at a time
+  (thanks to [@maltee1] in [#132]).
+
+[#132]: https://github.com/mautrix/python/pull/132
+
 ## v0.19.4 (2023-02-12)
 
 * *(types)* Changed `set_thread_parent` to inherit the existing thread parent

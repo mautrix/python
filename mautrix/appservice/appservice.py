@@ -194,3 +194,6 @@ class AppService(AppServiceServerMixin):
 
     async def _readiness_probe(self, _: web.Request) -> web.Response:
         return web.Response(status=200 if self.ready else 500, text="{}")
+
+    async def ping_self(self, txn_id: str | None = None) -> int:
+        return await self.intent.appservice_ping(self.id, txn_id=txn_id)

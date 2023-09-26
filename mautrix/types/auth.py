@@ -26,6 +26,8 @@ class LoginType(ExtensibleEnum):
 
     UNSTABLE_JWT: "LoginType" = "org.matrix.login.jwt"
 
+    DEVTURE_SHARED_SECRET: "LoginType" = "com.devture.shared_secret_auth"
+
 
 @dataclass
 class LoginFlow(SerializableAttrs):

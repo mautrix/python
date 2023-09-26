@@ -34,6 +34,7 @@ from mautrix.types import (
     ToDeviceEvent,
     UserID,
 )
+from mautrix.util import background_task
 from mautrix.util.logging import TraceLogger
 
 from . import dispatcher
@@ -248,9 +249,10 @@ class Syncer(ABC):
             handlers = self.global_event_handlers + handlers
         tasks = []
         for handler, wait_sync in handlers:
-            task = asyncio.create_task(self._catch_errors(handler, data))
             if force_synchronous or wait_sync:
-                tasks.append(task)
+                tasks.append(asyncio.create_task(self._catch_errors(handler, data)))
+            else:
+                background_task.create(self._catch_errors(handler, data))
         return tasks
 
     async def run_internal_event(
@@ -339,6 +341,13 @@ class Syncer(ABC):
                 tasks += self.dispatch_event(
                     self._try_deserialize(Event, raw_event),
                     source=SyncStream.JOINED_ROOM | SyncStream.TIMELINE,
+                )
+
+            for raw_event in room_data.get("ephemeral", {}).get("events", []):
+                raw_event["room_id"] = room_id
+                tasks += self.dispatch_event(
+                    self._try_deserialize(EphemeralEvent, raw_event),
+                    source=SyncStream.JOINED_ROOM | SyncStream.EPHEMERAL,
                 )
         for room_id, room_data in rooms.get("invite", {}).items():
             events: list[dict[str, JSON]] = room_data.get("invite_state", {}).get("events", [])

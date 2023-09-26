@@ -386,7 +386,7 @@ class BasePortal(ABC):
             await self._do_disappear(msg.event_id)
             self.log.debug(f"Expired event {msg.event_id} disappeared successfully")
         except Exception as e:
-            self.log.warning(f"Failed to make expired event {msg.event_id} disappear: {e}", e)
+            self.log.warning(f"Failed to make expired event {msg.event_id} disappear: {e}")
 
     async def _do_disappear(self, event_id: EventID) -> None:
         await self.main_intent.redact(self.mxid, event_id)

@@ -5,6 +5,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
+from typing import Any
+
 from mautrix.api import Method, Path
 from mautrix.errors import MatrixResponseError, MNotFound
 from mautrix.types import ContentURI, Member, SerializerError, User, UserID, UserSearchResults
@@ -168,5 +170,18 @@ class UserDataMethods(BaseClientAPI):
             return Member.deserialize(content)
         except SerializerError as e:
             raise MatrixResponseError("Invalid member in response") from e
+
+    # endregion
+
+    # region Beeper Custom Fields API
+
+    async def beeper_update_profile(self, custom_fields: dict[str, Any]) -> None:
+        """
+        Set custom fields on the user's profile. Only works on Hungryserv.
+
+        Args:
+            custom_fields: A dictionary of fields to set in the custom content of the profile.
+        """
+        await self.api.request(Method.PATCH, Path.v3.profile[self.mxid], custom_fields)
 
     # endregion

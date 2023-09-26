@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
+from collections import defaultdict
 import asyncio
 import logging
 import sys
@@ -143,6 +144,7 @@ class BaseMatrixHandler:
     media_config: MediaRepoConfig
     versions: VersionsResponse
     minimum_spec_version: Version = SpecVersions.V11
+    room_locks: dict[str, asyncio.Lock]
 
     user_id_prefix: str
     user_id_suffix: str
@@ -159,6 +161,7 @@ class BaseMatrixHandler:
         self.media_config = MediaRepoConfig(upload_size=50 * 1024 * 1024)
         self.versions = VersionsResponse.deserialize({"versions": ["v1.3"]})
         self.az.matrix_event_handler(self.int_handle_event)
+        self.room_locks = defaultdict(asyncio.Lock)
 
         self.e2ee = None
         self.require_e2ee = False
@@ -218,34 +221,40 @@ class BaseMatrixHandler:
 
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")
-        errors = 0
-        tried_to_register = False
         while True:
             try:
                 self.versions = await self.az.intent.versions()
-                await self.check_versions()
-                await self.az.intent.whoami()
                 break
-            except (MUnknownToken, MExclusive):
-                # These are probably not going to resolve themselves by waiting
-                raise
-            except MForbidden:
-                if not tried_to_register:
-                    self.log.debug(
-                        "Whoami endpoint returned M_FORBIDDEN, "
-                        "trying to register bridge bot before retrying..."
-                    )
-                    await self.az.intent.ensure_registered()
-                    tried_to_register = True
-                else:
-                    raise
             except Exception:
-                errors += 1
-                if errors <= 6:
-                    self.log.exception("Connection to homeserver failed, retrying in 10 seconds")
-                    await asyncio.sleep(10)
-                else:
-                    raise
+                self.log.exception("Connection to homeserver failed, retrying in 10 seconds")
+                await asyncio.sleep(10)
+        await self.check_versions()
+        try:
+            await self.az.intent.whoami()
+        except MForbidden:
+            self.log.debug(
+                "Whoami endpoint returned M_FORBIDDEN, "
+                "trying to register bridge bot before retrying..."
+            )
+            await self.az.intent.ensure_registered()
+            await self.az.intent.whoami()
+        if self.versions.supports("fi.mau.msc2659.stable") or self.versions.supports_at_least(
+            SpecVersions.V17
+        ):
+            try:
+                txn_id = self.az.intent.api.get_txn_id()
+                duration = await self.az.ping_self(txn_id)
+                self.log.debug(
+                    "Homeserver->bridge connection works, "
+                    f"roundtrip time is {duration} ms (txn ID: {txn_id})"
+                )
+            except Exception:
+                self.log.exception("Error checking homeserver -> bridge connection")
+                sys.exit(16)
+        else:
+            self.log.debug(
+                "Homeserver does not support checking status of homeserver -> bridge connection"
+            )
         try:
             self.media_config = await self.az.intent.get_media_repo_config()
         except Exception:
@@ -268,6 +277,16 @@ class BaseMatrixHandler:
                 await self.az.intent.set_avatar_url(avatar if avatar != "remove" else "")
             except Exception:
                 self.log.exception("Failed to set bot avatar")
+
+        if self.bridge.homeserver_software.is_hungry and self.bridge.beeper_network_name:
+            self.log.debug("Setting contact info on the appservice bot")
+            await self.az.intent.beeper_update_profile(
+                {
+                    "com.beeper.bridge.service": self.bridge.beeper_service_name,
+                    "com.beeper.bridge.network": self.bridge.beeper_network_name,
+                    "com.beeper.bridge.is_bridge_bot": True,
+                }
+            )
 
     async def init_encryption(self) -> None:
         if self.e2ee:
@@ -400,19 +419,20 @@ class BaseMatrixHandler:
             await intent.leave_room(room_id, reason="You're not allowed to invite this ghost.")
             return
 
-        portal = await self.bridge.get_portal(room_id)
-        if portal:
-            try:
-                await portal.handle_matrix_invite(invited_by, puppet)
-            except br.RejectMatrixInvite as e:
-                await intent.leave_room(room_id, reason=e.message)
-            except br.IgnoreMatrixInvite:
-                pass
+        async with self.room_locks[room_id]:
+            portal = await self.bridge.get_portal(room_id)
+            if portal:
+                try:
+                    await portal.handle_matrix_invite(invited_by, puppet)
+                except br.RejectMatrixInvite as e:
+                    await intent.leave_room(room_id, reason=e.message)
+                except br.IgnoreMatrixInvite:
+                    pass
+                else:
+                    await intent.join_room(room_id)
+                return
             else:
-                await intent.join_room(room_id)
-            return
-        else:
-            await self.handle_puppet_nonportal_invite(room_id, puppet, invited_by, evt)
+                await self.handle_puppet_nonportal_invite(room_id, puppet, invited_by, evt)
 
     async def handle_invite(
         self, room_id: RoomID, user_id: UserID, invited_by: br.BaseUser, evt: StateEvent
@@ -537,6 +557,28 @@ class BaseMatrixHandler:
             text = text[len(prefix) + 1 :].lstrip()
         return is_command, text
 
+    async def _send_mss(
+        self,
+        evt: Event,
+        status: MessageStatus,
+        reason: MessageStatusReason | None = None,
+        error: str | None = None,
+        message: str | None = None,
+    ) -> None:
+        if not self.config.get("bridge.message_status_events", False):
+            return
+        status_content = BeeperMessageStatusEventContent(
+            network="",  # TODO set network properly
+            relates_to=RelatesTo(rel_type=RelationType.REFERENCE, event_id=evt.event_id),
+            status=status,
+            reason=reason,
+            error=error,
+            message=message,
+        )
+        await self.az.intent.send_message_event(
+            evt.room_id, EventType.BEEPER_MESSAGE_STATUS, status_content
+        )
+
     async def _send_crypto_status_error(
         self,
         evt: Event,
@@ -574,18 +616,13 @@ class BaseMatrixHandler:
                     "it by default on the bridge (bridge -> encryption -> default)."
                 )
 
-        if self.config.get("bridge.message_status_events", False):
-            status_content = BeeperMessageStatusEventContent(
-                network="",  # TODO set network properly
-                relates_to=RelatesTo(rel_type=RelationType.REFERENCE, event_id=evt.event_id),
-                status=MessageStatus.RETRIABLE if is_final else MessageStatus.PENDING,
-                reason=MessageStatusReason.UNDECRYPTABLE,
-                error=msg,
-                message=err.human_message if err else None,
-            )
-            await self.az.intent.send_message_event(
-                evt.room_id, EventType.BEEPER_MESSAGE_STATUS, status_content
-            )
+        await self._send_mss(
+            evt,
+            status=MessageStatus.RETRIABLE if is_final else MessageStatus.PENDING,
+            reason=MessageStatusReason.UNDECRYPTABLE,
+            error=str(err),
+            message=err.human_message if err else None,
+        )
 
         return event_id
 
@@ -677,6 +714,13 @@ class BaseMatrixHandler:
             except Exception as e:
                 self.log.debug(f"Error handling command {command} from {sender}: {e}")
                 self._send_message_checkpoint(evt, MessageSendCheckpointStep.COMMAND, e)
+                await self._send_mss(
+                    evt,
+                    status=MessageStatus.FAIL,
+                    reason=MessageStatusReason.GENERIC_ERROR,
+                    error="",
+                    message="Command execution failed",
+                )
             else:
                 await MessageSendCheckpoint(
                     event_id=event_id,
@@ -692,6 +736,7 @@ class BaseMatrixHandler:
                     self.az.as_token,
                     self.log,
                 )
+                await self._send_mss(evt, status=MessageStatus.SUCCESS)
         else:
             self.log.debug(
                 f"Ignoring event {event_id} from {sender.mxid}:"
@@ -699,6 +744,13 @@ class BaseMatrixHandler:
             )
             self._send_message_checkpoint(
                 evt, MessageSendCheckpointStep.COMMAND, "not a command and not a portal room"
+            )
+            await self._send_mss(
+                evt,
+                status=MessageStatus.FAIL,
+                reason=MessageStatusReason.UNSUPPORTED,
+                error="Unknown room",
+                message="Unknown room",
             )
 
     async def _is_direct_chat(self, room_id: RoomID) -> tuple[bool, bool]:

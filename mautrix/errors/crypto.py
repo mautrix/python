@@ -36,6 +36,12 @@ class MatchingSessionDecryptionError(DecryptionError):
     pass
 
 
+class GroupSessionWithheldError(DecryptionError):
+    def __init__(self, session_id: SessionID, withheld_code: str) -> None:
+        super().__init__(f"Session ID {session_id} was withheld ({withheld_code})")
+        self.withheld_code = withheld_code
+
+
 class SessionNotFound(DecryptionError):
     def __init__(self, session_id: SessionID, sender_key: IdentityKey | None = None) -> None:
         super().__init__(

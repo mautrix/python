@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Tulir Asokan
+# Copyright (c) 2023 Tulir Asokan
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any, Awaitable, Callable
 from json import JSONDecodeError
-import asyncio
 import json
 import logging
 
@@ -33,12 +32,12 @@ HandlerFunc = Callable[[Event], Awaitable]
 
 
 class AppServiceServerMixin:
-    loop: asyncio.AbstractEventLoop
     log: logging.Logger
 
     hs_token: str
     ephemeral_events: bool
     encryption_events: bool
+    synchronous_handlers: bool
 
     query_user: Callable[[UserID], JSON]
     query_alias: Callable[[RoomAlias], JSON]
@@ -49,7 +48,17 @@ class AppServiceServerMixin:
     otk_handler: Callable[[dict[UserID, dict[DeviceID, DeviceOTKCount]]], Awaitable] | None
     device_list_handler: Callable[[DeviceLists], Awaitable] | None
 
-    def __init__(self, ephemeral_events: bool = False, encryption_events: bool = False) -> None:
+    def __init__(
+        self,
+        ephemeral_events: bool = False,
+        encryption_events: bool = False,
+        log: logging.Logger | None = None,
+        hs_token: str | None = None,
+    ) -> None:
+        if log is not None:
+            self.log = log
+        if hs_token is not None:
+            self.hs_token = hs_token
         self.transactions = set()
         self.event_handlers = []
         self.to_device_handler = None
@@ -57,6 +66,7 @@ class AppServiceServerMixin:
         self.device_list_handler = None
         self.ephemeral_events = ephemeral_events
         self.encryption_events = encryption_events
+        self.synchronous_handlers = False
 
         async def default_query_handler(_):
             return None
@@ -75,6 +85,7 @@ class AppServiceServerMixin:
         )
         app.router.add_route("GET", "/_matrix/app/v1/rooms/{alias}", self._http_query_alias)
         app.router.add_route("GET", "/_matrix/app/v1/users/{user_id}", self._http_query_user)
+        app.router.add_route("POST", "/_matrix/app/v1/ping", self._http_ping)
 
     def _check_token(self, request: web.Request) -> bool:
         try:
@@ -82,10 +93,12 @@ class AppServiceServerMixin:
         except KeyError:
             try:
                 token = request.headers["Authorization"].removeprefix("Bearer ")
-            except (KeyError, AttributeError):
+            except KeyError:
+                self.log.debug("No access_token nor Authorization header in request")
                 return False
 
         if token != self.hs_token:
+            self.log.debug(f"Incorrect hs_token in request")
             return False
 
         return True
@@ -127,6 +140,23 @@ class AppServiceServerMixin:
         if not response:
             return web.json_response({}, status=404)
         return web.json_response(response)
+
+    async def _http_ping(self, request: web.Request) -> web.Response:
+        if not self._check_token(request):
+            raise web.HTTPUnauthorized(
+                content_type="application/json",
+                text=json.dumps({"error": "Invalid auth token", "errcode": "M_UNKNOWN_TOKEN"}),
+            )
+        try:
+            body = await request.json()
+        except JSONDecodeError:
+            raise web.HTTPBadRequest(
+                content_type="application/json",
+                text=json.dumps({"error": "Body is not JSON", "errcode": "M_NOT_JSON"}),
+            )
+        txn_id = body.get("transaction_id")
+        self.log.info(f"Received ping from homeserver with transaction ID {txn_id}")
+        return web.json_response({})
 
     @staticmethod
     def _get_with_fallback(
@@ -270,7 +300,7 @@ class AppServiceServerMixin:
             else:
                 try:
                     await self.to_device_handler(td)
-                except:
+                except Exception:
                     self.log.exception("Exception in Matrix to-device event handler")
         if device_lists and self.device_list_handler:
             try:
@@ -288,7 +318,7 @@ class AppServiceServerMixin:
             except SerializerError:
                 self.log.exception("Failed to deserialize ephemeral event %s", raw_edu)
             else:
-                self.handle_matrix_event(edu, ephemeral=True)
+                await self.handle_matrix_event(edu, ephemeral=True)
         for raw_event in events:
             try:
                 self._fix_prev_content(raw_event)
@@ -296,10 +326,10 @@ class AppServiceServerMixin:
             except SerializerError:
                 self.log.exception("Failed to deserialize event %s", raw_event)
             else:
-                self.handle_matrix_event(event)
+                await self.handle_matrix_event(event)
         return {}
 
-    def handle_matrix_event(self, event: Event, ephemeral: bool = False) -> None:
+    async def handle_matrix_event(self, event: Event, ephemeral: bool = False) -> None:
         if ephemeral:
             event.type = event.type.with_class(EventType.Class.EPHEMERAL)
         elif getattr(event, "state_key", None) is not None:
@@ -313,9 +343,12 @@ class AppServiceServerMixin:
             except Exception:
                 self.log.exception("Exception in Matrix event handler")
 
-        for handler in self.event_handlers:
-            # TODO add option to handle events synchronously
-            background_task.create(try_handle(handler))
+        if self.synchronous_handlers:
+            for handler in self.event_handlers:
+                await handler(event)
+        else:
+            for handler in self.event_handlers:
+                background_task.create(try_handle(handler))
 
     def matrix_event_handler(self, func: HandlerFunc) -> HandlerFunc:
         self.event_handlers.append(func)

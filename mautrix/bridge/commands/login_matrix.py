@@ -70,24 +70,3 @@ async def ping_matrix(evt: CommandEvent) -> EventID:
     except InvalidAccessToken:
         return await evt.reply("Your access token is invalid.")
     return await evt.reply("Your Matrix login is working.")
-
-
-@command_handler(
-    needs_auth=True,
-    help_section=SECTION_AUTH,
-    help_text="Clear the Matrix sync token stored for your double puppet.",
-)
-async def clear_cache_matrix(evt: CommandEvent) -> EventID:
-    try:
-        puppet = await evt.sender.get_puppet()
-    except NotImplementedError:
-        return await evt.reply("This bridge has not implemented the clear-cache-matrix command")
-    if not puppet.is_real_user:
-        return await evt.reply("You are not logged in with your Matrix account.")
-    try:
-        puppet.stop()
-        puppet.next_batch = None
-        await puppet.start()
-    except InvalidAccessToken:
-        return await evt.reply("Your access token is invalid.")
-    return await evt.reply("Cleared cache successfully.")

@@ -20,7 +20,7 @@ class MediaRepoConfig(SerializableAttrs):
         https://spec.matrix.org/v1.2/client-server-api/#get_matrixmediav3config
     """
 
-    upload_size: int = field(json="m.upload.size")
+    upload_size: int = field(default=50 * 1024 * 1024, json="m.upload.size")
 
 
 @dataclass
@@ -71,4 +71,4 @@ class MediaCreateResponse(SerializableAttrs):
 
     content_uri: ContentURI
     unused_expired_at: Optional[int] = None
-    upload_url: Optional[str] = None
+    unstable_upload_url: Optional[str] = field(default=None, json="com.beeper.msc3870.upload_url")

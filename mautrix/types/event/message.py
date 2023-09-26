@@ -119,7 +119,7 @@ class BaseMessageEventContentFuncs:
                 thread_parent.content.get_thread_parent() or self.relates_to.event_id
             )
         if not disable_reply_fallback:
-            self.set_reply(last_event_in_thread or thread_parent, **kwargs)
+            self.set_reply(last_event_in_thread or thread_parent, disable_fallback=True, **kwargs)
             self.relates_to.is_falling_back = True
 
     def set_edit(self, edits: Union[EventID, "MessageEvent"]) -> None:
@@ -315,12 +315,16 @@ class TextMessageEventContent(BaseMessageEventContent, SerializableAttrs):
     formatted_body: str = None
 
     def set_reply(
-        self, reply_to: Union["MessageEvent", EventID], *, displayname: Optional[str] = None
+        self,
+        reply_to: Union["MessageEvent", EventID],
+        *,
+        displayname: Optional[str] = None,
+        disable_fallback: bool = False,
     ) -> None:
         super().set_reply(reply_to)
         if isinstance(reply_to, str):
             return
-        if isinstance(reply_to, MessageEvent):
+        if isinstance(reply_to, MessageEvent) and not disable_fallback:
             self.ensure_has_html()
             if isinstance(reply_to.content, TextMessageEventContent):
                 reply_to.content.trim_reply_fallback()
@@ -346,14 +350,14 @@ class TextMessageEventContent(BaseMessageEventContent, SerializableAttrs):
             setattr(self, "__reply_fallback_trimmed", True)
 
     def _trim_reply_fallback_text(self) -> None:
-        if not self.body.startswith("> ") or "\n" not in self.body:
+        if (
+            not self.body.startswith("> <") and not self.body.startswith("> * <")
+        ) or "\n" not in self.body:
             return
         lines = self.body.split("\n")
         while len(lines) > 0 and lines[0].startswith("> "):
             lines.pop(0)
-        # Pop extra newline at end of fallback
-        lines.pop(0)
-        self.body = "\n".join(lines)
+        self.body = "\n".join(lines).strip()
 
     def _trim_reply_fallback_html(self) -> None:
         if self.formatted_body and self.format == Format.HTML:

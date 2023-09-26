@@ -68,6 +68,7 @@ class EventType(Serializable):
     ORG_MATRIX_ROOM_KEY_WITHHELD: "EventType"
     ROOM_KEY_REQUEST: "EventType"
     FORWARDED_ROOM_KEY: "EventType"
+    BEEPER_ROOM_KEY_ACK: "EventType"
 
     ALL: "EventType"
 

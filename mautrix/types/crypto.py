@@ -71,6 +71,8 @@ class CrossSigningKeys(SerializableAttrs):
         return self.first_key_with_algorithm(EncryptionKeyAlgorithm.ED25519)
 
     def first_key_with_algorithm(self, alg: EncryptionKeyAlgorithm) -> Optional[SigningKey]:
+        if not self.keys:
+            return None
         try:
             return next(key for key_id, key in self.keys.items() if key_id.algorithm == alg)
         except StopIteration:
