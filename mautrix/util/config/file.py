@@ -6,10 +6,10 @@
 from __future__ import annotations
 
 from abc import ABC
+from stat import S_IMODE
 import logging
 import os
 import pkgutil
-from stat import S_IMODE
 import tempfile
 
 from ruamel.yaml import YAML
