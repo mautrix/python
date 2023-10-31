@@ -25,6 +25,7 @@ from mautrix.types import (
     BatchSendEvent,
     BatchSendResponse,
     BatchSendStateEvent,
+    BeeperBatchSendResponse,
     ContentURI,
     EventContent,
     EventID,
@@ -40,7 +41,6 @@ from mautrix.types import (
     RoomNameStateEventContent,
     RoomPinnedEventsStateEventContent,
     RoomTopicStateEventContent,
-    SerializableAttrs,
     StateEventContent,
     UserID,
 )
@@ -161,6 +161,8 @@ class IntentAPI(StoreUpdatingAPI):
             user_id: The Matrix ID of the user whose intent API to get.
             token: The access token to use for the Matrix ID.
             base_url: An optional URL to use for API requests.
+            as_token: Whether the provided token is actually another as_token
+                (meaning the ``user_id`` query parameter needs to be used).
 
         Returns:
             The IntentAPI for the given user.
@@ -187,7 +189,7 @@ class IntentAPI(StoreUpdatingAPI):
         Args:
             presence: The online status of the user.
             status: The status message.
-            ignore_cache: Whether or not to set presence even if the cache says the presence is
+            ignore_cache: Whether to set presence even if the cache says the presence is
                 already set to that value.
         """
         await self.ensure_registered()
@@ -520,6 +522,9 @@ class IntentAPI(StoreUpdatingAPI):
 
         .. versionadded:: v0.12.5
 
+        .. deprecated:: v0.20.3
+            MSC2716 was abandoned by upstream and Beeper has forked the endpoint.
+
         Args:
             room_id: The room ID to send the events to.
             prev_event_id: The anchor event. The batch will be inserted immediately after this event.
@@ -553,6 +558,52 @@ class IntentAPI(StoreUpdatingAPI):
             },
         )
         return BatchSendResponse.deserialize(resp)
+
+    async def beeper_batch_send(
+        self,
+        room_id: RoomID,
+        events: Iterable[BatchSendEvent],
+        *,
+        forward: bool = False,
+        forward_if_no_messages: bool = False,
+        send_notification: bool = False,
+        mark_read_by: UserID | None = None,
+    ) -> BeeperBatchSendResponse:
+        """
+        Send a batch of events into a room. Only for Beeper/hungryserv.
+
+        .. versionadded:: v0.20.3
+
+        Args:
+            room_id: The room ID to send the events to.
+            events: The events to send.
+            forward: Send events to the end of the room instead of the beginning
+            forward_if_no_messages: Send events to the end of the room, but only if there are no
+                messages in the room. If there are messages, send the new messages to the beginning.
+            send_notification: Send a push notification for the new messages.
+                Only applies when sending to the end of the room.
+            mark_read_by: Send a read receipt from the given user ID atomically.
+
+        Returns:
+            All the event IDs generated.
+        """
+        body = {
+            "events": [evt.serialize() for evt in events],
+        }
+        if forward:
+            body["forward"] = forward
+        elif forward_if_no_messages:
+            body["forward_if_no_messages"] = forward_if_no_messages
+        if send_notification:
+            body["send_notification"] = send_notification
+        if mark_read_by:
+            body["mark_read_by"] = mark_read_by
+        resp = await self.api.request(
+            Method.POST,
+            Path.unstable["com.beeper.backfill"].rooms[room_id].batch_send,
+            content=body,
+        )
+        return BeeperBatchSendResponse.deserialize(resp)
 
     async def beeper_delete_room(self, room_id: RoomID) -> None:
         versions = await self.versions()

@@ -129,3 +129,8 @@ class BatchSendResponse(SerializableAttrs):
     batch_event_id: EventID
     next_batch_id: BatchID
     base_insertion_event_id: Optional[EventID] = None
+
+
+@dataclass
+class BeeperBatchSendResponse(SerializableAttrs):
+    event_ids: List[EventID]
