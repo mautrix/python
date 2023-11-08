@@ -87,7 +87,7 @@ class PublicRoomInfo(SerializableAttrs):
     num_joined_members: int
 
     world_readable: bool
-    guests_can_join: bool
+    guest_can_join: bool
 
     name: str = None
     topic: str = None
