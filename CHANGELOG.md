@@ -1,3 +1,14 @@
+## v0.20.3 (2023-11-10)
+
+* *(client)* Deprecated MSC2716 methods and added new Beeper-specific batch
+  send methods, as upstream MSC2716 support has been abandoned.
+* *(util.async_db)* Added `PRAGMA synchronous = NORMAL;` to default pragmas.
+* *(types)* Fixed `guest_can_join` field name in room directory response
+  (thanks to [@ashfame] in [#163]).
+
+[@ashfame]: https://github.com/ashfame
+[#163]: https://github.com/mautrix/python/pull/163
+
 ## v0.20.2 (2023-09-09)
 
 * *(crypto)* Changed `OlmMachine.share_keys` to make the OTK count parameter
