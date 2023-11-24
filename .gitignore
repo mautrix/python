@@ -6,3 +6,4 @@ dist/
 pip-selfcheck.json
 *.pyc
 __pycache__
+.idea
