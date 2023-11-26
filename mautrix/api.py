@@ -233,8 +233,8 @@ class HTTPAPI:
             self.session = client_session
         else:
             connector = None
-            if base_url.startswith('unix://'):
-                connector = UnixConnector(path=base_url.replace('unix://', ''))
+            if base_url.startswith("unix://"):
+                connector = UnixConnector(path=base_url.replace("unix://", ""))
             self.session = ClientSession(
                 loop=loop, headers={"User-Agent": self.default_ua}, connector=connector
             )

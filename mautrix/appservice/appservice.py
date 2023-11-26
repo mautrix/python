@@ -153,8 +153,8 @@ class AppService(AppServiceServerMixin):
         await self.state_store.open()
         self.log.debug(f"Starting appservice web server on {host}:{port}")
         if self.server.startswith("unix://"):
-            path = self.server.replace('unix://', '')
-            self.server = 'http://localhost'
+            path = self.server.replace("unix://", "")
+            self.server = "http://localhost"
             connector = aiohttp.UnixConnector(limit=self.connection_limit, path=path)
         elif self.server.startswith("https://") and not self.verify_ssl:
             connector = aiohttp.TCPConnector(limit=self.connection_limit, verify_ssl=False)
