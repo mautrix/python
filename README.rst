@@ -3,7 +3,7 @@ mautrix-python
 
 |PyPI| |Python versions| |License| |Docs| |Code style| |Imports|
 
-A Python 3.8+ asyncio Matrix framework.
+A Python 3.10+ asyncio Matrix framework.
 
 Matrix room: `#maunium:maunium.net`_
 
