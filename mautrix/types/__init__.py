@@ -149,6 +149,7 @@ from .media import (
 )
 from .misc import (
     BatchSendResponse,
+    BeeperBatchSendResponse,
     DeviceLists,
     DeviceOTKCount,
     DirectoryPaginationToken,

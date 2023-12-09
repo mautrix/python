@@ -117,6 +117,7 @@ class SQLiteDatabase(Database):
     def _add_missing_pragmas(init_commands: list[str]) -> list[str]:
         has_foreign_keys = False
         has_journal_mode = False
+        has_synchronous = False
         has_busy_timeout = False
         for cmd in init_commands:
             if "PRAGMA" not in cmd:
@@ -125,12 +126,16 @@ class SQLiteDatabase(Database):
                 has_foreign_keys = True
             elif "journal_mode" in cmd:
                 has_journal_mode = True
+            elif "synchronous" in cmd:
+                has_synchronous = True
             elif "busy_timeout" in cmd:
                 has_busy_timeout = True
         if not has_foreign_keys:
             init_commands.append("PRAGMA foreign_keys = ON")
         if not has_journal_mode:
             init_commands.append("PRAGMA journal_mode = WAL")
+        if not has_synchronous and "PRAGMA journal_mode = WAL" in init_commands:
+            init_commands.append("PRAGMA synchronous = NORMAL")
         if not has_busy_timeout:
             init_commands.append("PRAGMA busy_timeout = 5000")
         return init_commands
