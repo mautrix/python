@@ -1,5 +1,6 @@
 ## v0.20.4 (unreleased)
 
+* Dropped Python 3.9 support.
 * *(client)* Changed media download methods to log requests and to raise
   exceptions on non-successful status codes.
 

@@ -33,7 +33,7 @@ setuptools.setup(
         "encryption": encryption_dependencies,
     },
     tests_require=test_dependencies,
-    python_requires="~=3.9",
+    python_requires="~=3.10",
 
     classifiers=[
         "Development Status :: 4 - Beta",
