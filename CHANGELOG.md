@@ -1,4 +1,4 @@
-## v0.20.4 (unreleased)
+## v0.20.4 (2024-01-09)
 
 * Dropped Python 3.9 support.
 * *(client)* Changed media download methods to log requests and to raise
