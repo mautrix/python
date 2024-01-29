@@ -50,9 +50,11 @@ class FilteringMethods(BaseClientAPI):
         resp = await self.api.request(
             Method.POST,
             Path.v3.user[self.mxid].filter,
-            filter_params.serialize()
-            if isinstance(filter_params, Serializable)
-            else filter_params,
+            (
+                filter_params.serialize()
+                if isinstance(filter_params, Serializable)
+                else filter_params
+            ),
         )
         try:
             return resp["filter_id"]

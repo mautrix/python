@@ -95,9 +95,9 @@ class MegolmEncryptionMachine(OlmEncryptionMachine, DeviceListMachine):
                 {
                     "room_id": room_id,
                     "type": event_type.serialize(),
-                    "content": content.serialize()
-                    if isinstance(content, Serializable)
-                    else content,
+                    "content": (
+                        content.serialize() if isinstance(content, Serializable) else content
+                    ),
                 }
             )
         )

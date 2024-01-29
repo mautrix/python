@@ -18,6 +18,7 @@ class EventType(Serializable):
         ACCOUNT_DATA = "account_data"
         EPHEMERAL = "ephemeral"
         TO_DEVICE = "to_device"
+
     _by_event_type: ClassVar[dict[str, EventType]]
 
     ROOM_CANONICAL_ALIAS: "EventType"
