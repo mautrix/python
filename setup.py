@@ -1,6 +1,11 @@
+import importlib.util
 import setuptools
 
-from mautrix import __version__
+# get mautrix.__version__ in a way that's compatible with PEP517 isolation
+spec = importlib.util.spec_from_file_location("mautrix", "mautrix/__init__.py")
+mautrix = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mautrix)
+__version__ = mautrix.__version__
 
 encryption_dependencies = ["python-olm", "unpaddedbase64", "pycryptodome"]
 test_dependencies = ["aiosqlite", "asyncpg", "ruamel.yaml", *encryption_dependencies]
