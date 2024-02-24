@@ -292,7 +292,7 @@ class OlmMachine(
         ):
             self.log.debug("Checking OTK count on server")
             current_otk_count = (await self.client.upload_keys()).get(
-                EncryptionKeyAlgorithm.SIGNED_CURVE25519
+                EncryptionKeyAlgorithm.SIGNED_CURVE25519, 0
             )
         device_keys = (
             self.account.get_device_keys(self.client.mxid, self.client.device_id)
