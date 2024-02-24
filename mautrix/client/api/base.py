@@ -136,7 +136,7 @@ class BaseClientAPI:
             WellKnownError: for other errors
         """
         if session is None:
-            async with ClientSession(headers={"User-Agent": HTTPAPI.default_ua}) as sess:
+            async with ClientSession(headers={"User-Agent": HTTPAPI.default_ua}, trust_env=True) as sess:
                 return await cls._discover(domain, sess)
         else:
             return await cls._discover(domain, session)
