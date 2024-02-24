@@ -199,7 +199,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         width: int | None = None,
         height: int | None = None,
         resize_method: Literal["crop", "scale"] = None,
-        allow_remote: bool = True,
+        allow_remote: bool | None = None,
         timeout_ms: int | None = None,
     ):
         """
@@ -232,7 +232,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         if resize_method is not None:
             query_params["method"] = resize_method
         if allow_remote is not None:
-            query_params["allow_remote"] = allow_remote
+            query_params["allow_remote"] = str(allow_remote).lower()
         if timeout_ms is not None:
             query_params["timeout_ms"] = timeout_ms
         req_id = self.api.log_download_request(url, query_params)
