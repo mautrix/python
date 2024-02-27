@@ -115,9 +115,10 @@ class BridgeState(SerializableAttrs):
         self.send_attempts_ += 1
         headers = {"Authorization": f"Bearer {token}", "User-Agent": HTTPAPI.default_ua}
         try:
-            async with aiohttp.ClientSession() as sess, sess.post(
-                url, json=self.serialize(), headers=headers
-            ) as resp:
+            async with (
+                aiohttp.ClientSession() as sess,
+                sess.post(url, json=self.serialize(), headers=headers) as resp,
+            ):
                 if not 200 <= resp.status < 300:
                     text = await resp.text()
                     text = text.replace("\n", "\\n")

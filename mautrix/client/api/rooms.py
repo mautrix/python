@@ -354,9 +354,12 @@ class RoomMethods(EventMethods, BaseClientAPI):
         except KeyError:
             raise MatrixResponseError("`room_id` not in response.")
 
-    fill_member_event_callback: Callable[
-        [RoomID, UserID, MemberStateEventContent], Awaitable[MemberStateEventContent | None]
-    ] | None
+    fill_member_event_callback: (
+        Callable[
+            [RoomID, UserID, MemberStateEventContent], Awaitable[MemberStateEventContent | None]
+        ]
+        | None
+    )
 
     async def fill_member_event(
         self, room_id: RoomID, user_id: UserID, content: MemberStateEventContent

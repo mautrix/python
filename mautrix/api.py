@@ -275,7 +275,7 @@ class HTTPAPI:
         self,
         method: Method,
         url: URL,
-        content: str | bytes | bytearray | AsyncBody,
+        content: str | bytes | bytearray | AsyncBody | None,
         orig_content,
         query_params: dict[str, str],
         headers: dict[str, str],
@@ -314,7 +314,7 @@ class HTTPAPI:
         )
 
     def _log_request_done(
-        self, path: PathBuilder, req_id: int, duration: float, status: int
+        self, path: PathBuilder | str, req_id: int, duration: float, status: int
     ) -> None:
         level = 5 if path == Path.v3.sync else 10
         duration_str = f"{duration * 1000:.1f}ms" if duration < 1 else f"{duration:.3f}s"
@@ -333,6 +333,16 @@ class HTTPAPI:
         if base_path[-1] != "/":
             base_path += "/"
         return urllib_join(base_path, path)
+
+    def log_download_request(self, url: URL, query_params: dict[str, str]) -> int:
+        req_id = _next_global_req_id()
+        self._log_request(Method.GET, url, None, None, query_params, {}, req_id, False)
+        return req_id
+
+    def log_download_request_done(
+        self, url: URL, req_id: int, duration: float, status: int
+    ) -> None:
+        self._log_request_done(url.path.removeprefix("/_matrix/media/"), req_id, duration, status)
 
     async def request(
         self,

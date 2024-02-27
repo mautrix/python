@@ -16,9 +16,11 @@ def add(text: str) -> str:
         The text with surrogate pairs.
     """
     return "".join(
-        "".join(chr(y) for y in struct.unpack("<HH", x.encode("utf-16le")))
-        if (0x10000 <= ord(x) <= 0x10FFFF)
-        else x
+        (
+            "".join(chr(y) for y in struct.unpack("<HH", x.encode("utf-16le")))
+            if (0x10000 <= ord(x) <= 0x10FFFF)
+            else x
+        )
         for x in text
     )
 

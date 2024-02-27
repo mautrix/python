@@ -200,14 +200,18 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
                     "regex": re.escape(f"@{username_format}:{homeserver}").replace(regex_ph, ".*"),
                 }
             ],
-            "aliases": [
-                {
-                    "exclusive": True,
-                    "regex": re.escape(f"#{alias_format}:{homeserver}").replace(regex_ph, ".*"),
-                }
-            ]
-            if alias_format
-            else [],
+            "aliases": (
+                [
+                    {
+                        "exclusive": True,
+                        "regex": re.escape(f"#{alias_format}:{homeserver}").replace(
+                            regex_ph, ".*"
+                        ),
+                    }
+                ]
+                if alias_format
+                else []
+            ),
         }
 
     def generate_registration(self) -> None:

@@ -57,12 +57,15 @@ class MessageSendCheckpoint(SerializableAttrs):
             return
         try:
             headers = {"Authorization": f"Bearer {as_token}", "User-Agent": HTTPAPI.default_ua}
-            async with aiohttp.ClientSession() as sess, sess.post(
-                endpoint,
-                json={"checkpoints": [self.serialize()]},
-                headers=headers,
-                timeout=ClientTimeout(30),
-            ) as resp:
+            async with (
+                aiohttp.ClientSession() as sess,
+                sess.post(
+                    endpoint,
+                    json={"checkpoints": [self.serialize()]},
+                    headers=headers,
+                    timeout=ClientTimeout(30),
+                ) as resp,
+            ):
                 if not 200 <= resp.status < 300:
                     text = await resp.text()
                     text = text.replace("\n", "\\n")

@@ -1,3 +1,9 @@
+## v0.20.4 (2024-01-09)
+
+* Dropped Python 3.9 support.
+* *(client)* Changed media download methods to log requests and to raise
+  exceptions on non-successful status codes.
+
 ## v0.20.3 (2023-11-10)
 
 * *(client)* Deprecated MSC2716 methods and added new Beeper-specific batch

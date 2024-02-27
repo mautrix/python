@@ -182,8 +182,16 @@ class MediaRepositoryMethods(BaseClientAPI):
         query_params: dict[str, Any] = {"allow_redirect": "true"}
         if timeout_ms is not None:
             query_params["timeout_ms"] = timeout_ms
+        req_id = self.api.log_download_request(url, query_params)
+        start = time.monotonic()
         async with self.api.session.get(url, params=query_params) as response:
-            return await response.read()
+            try:
+                response.raise_for_status()
+                return await response.read()
+            finally:
+                self.api.log_download_request_done(
+                    url, req_id, time.monotonic() - start, response.status
+                )
 
     async def download_thumbnail(
         self,
@@ -191,7 +199,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         width: int | None = None,
         height: int | None = None,
         resize_method: Literal["crop", "scale"] = None,
-        allow_remote: bool = True,
+        allow_remote: bool | None = None,
         timeout_ms: int | None = None,
     ):
         """
@@ -224,11 +232,19 @@ class MediaRepositoryMethods(BaseClientAPI):
         if resize_method is not None:
             query_params["method"] = resize_method
         if allow_remote is not None:
-            query_params["allow_remote"] = allow_remote
+            query_params["allow_remote"] = str(allow_remote).lower()
         if timeout_ms is not None:
             query_params["timeout_ms"] = timeout_ms
+        req_id = self.api.log_download_request(url, query_params)
+        start = time.monotonic()
         async with self.api.session.get(url, params=query_params) as response:
-            return await response.read()
+            try:
+                response.raise_for_status()
+                return await response.read()
+            finally:
+                self.api.log_download_request_done(
+                    url, req_id, time.monotonic() - start, response.status
+                )
 
     async def get_url_preview(self, url: str, timestamp: int | None = None) -> MXOpenGraph:
         """
