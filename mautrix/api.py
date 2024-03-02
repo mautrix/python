@@ -16,7 +16,7 @@ import logging
 import platform
 import time
 
-from aiohttp import ClientResponse, ClientSession, __version__ as aiohttp_version
+from aiohttp import ClientResponse, ClientSession, UnixConnector, __version__ as aiohttp_version
 from aiohttp.client_exceptions import ClientError, ContentTypeError
 from yarl import URL
 
@@ -229,9 +229,15 @@ class HTTPAPI:
         self.base_url = URL(base_url)
         self.token = token
         self.log = log or logging.getLogger("mau.http")
-        self.session = client_session or ClientSession(
-            loop=loop, headers={"User-Agent": self.default_ua}
-        )
+        if client_session:
+            self.session = client_session
+        else:
+            connector = None
+            if base_url.startswith("unix://"):
+                connector = UnixConnector(path=base_url.replace("unix://", ""))
+            self.session = ClientSession(
+                loop=loop, headers={"User-Agent": self.default_ua}, connector=connector
+            )
         self.as_user_id = as_user_id
         self.as_device_id = as_device_id
         if txn_id is not None:
