@@ -272,33 +272,6 @@ class LocationInfo(SerializableAttrs):
 
 
 @dataclass
-class MediaMessageEventContent(BaseMessageEventContent, SerializableAttrs):
-    """The content of a media message event (m.image, m.audio, m.video, m.file)"""
-
-    url: Optional[ContentURI] = None
-    info: Optional[MediaInfo] = None
-    file: Optional[EncryptedFile] = None
-
-    @staticmethod
-    @deserializer(MediaInfo)
-    @deserializer(Optional[MediaInfo])
-    def deserialize_info(data: JSON) -> MediaInfo:
-        if not isinstance(data, dict):
-            return Obj()
-        msgtype = data.pop("__mautrix_msgtype", None)
-        if msgtype == "m.image" or msgtype == "m.sticker":
-            return ImageInfo.deserialize(data)
-        elif msgtype == "m.video":
-            return VideoInfo.deserialize(data)
-        elif msgtype == "m.audio":
-            return AudioInfo.deserialize(data)
-        elif msgtype == "m.file":
-            return FileInfo.deserialize(data)
-        else:
-            return Obj(**data)
-
-
-@dataclass
 class LocationMessageEventContent(BaseMessageEventContent, SerializableAttrs):
     geo_uri: str = None
     info: LocationInfo = None
@@ -362,6 +335,34 @@ class TextMessageEventContent(BaseMessageEventContent, SerializableAttrs):
     def _trim_reply_fallback_html(self) -> None:
         if self.formatted_body and self.format == Format.HTML:
             self.formatted_body = html_reply_fallback_regex.sub("", self.formatted_body)
+
+
+@dataclass
+class MediaMessageEventContent(TextMessageEventContent, SerializableAttrs):
+    """The content of a media message event (m.image, m.audio, m.video, m.file)"""
+
+    url: Optional[ContentURI] = None
+    info: Optional[MediaInfo] = None
+    file: Optional[EncryptedFile] = None
+    filename: Optional[str] = None
+
+    @staticmethod
+    @deserializer(MediaInfo)
+    @deserializer(Optional[MediaInfo])
+    def deserialize_info(data: JSON) -> MediaInfo:
+        if not isinstance(data, dict):
+            return Obj()
+        msgtype = data.pop("__mautrix_msgtype", None)
+        if msgtype == "m.image" or msgtype == "m.sticker":
+            return ImageInfo.deserialize(data)
+        elif msgtype == "m.video":
+            return VideoInfo.deserialize(data)
+        elif msgtype == "m.audio":
+            return AudioInfo.deserialize(data)
+        elif msgtype == "m.file":
+            return FileInfo.deserialize(data)
+        else:
+            return Obj(**data)
 
 
 MessageEventContent = Union[
