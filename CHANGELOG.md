@@ -1,3 +1,14 @@
+## v0.20.5 (2024-07-09)
+
+**Note:** The `bridge` module is deprecated as all bridges are being rewritten
+in Go. See <https://mau.fi/blog/2024-h1-mautrix-updates/> for more info.
+
+* *(client)* Added support for authenticated media downloads.
+* *(bridge)* Stopped using cached homeserver URLs for double puppeting if one
+  is set in the config file.
+* *(crypto)* Fixed error when checking OTK counts before uploading new keys.
+* *(types)* Added MSC2530 (captions) fields to `MediaMessageEventContent`.
+
 ## v0.20.4 (2024-01-09)
 
 * Dropped Python 3.9 support.
