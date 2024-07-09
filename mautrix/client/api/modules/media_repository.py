@@ -189,6 +189,8 @@ class MediaRepositoryMethods(BaseClientAPI):
         headers: dict[str, str] = {}
         if authenticated:
             headers["Authorization"] = f"Bearer {self.api.token}"
+            if self.api.as_user_id:
+                query_params["user_id"] = self.api.as_user_id
         req_id = self.api.log_download_request(url, query_params)
         start = time.monotonic()
         async with self.api.session.get(url, params=query_params, headers=headers) as response:
@@ -248,6 +250,8 @@ class MediaRepositoryMethods(BaseClientAPI):
         headers: dict[str, str] = {}
         if authenticated:
             headers["Authorization"] = f"Bearer {self.api.token}"
+            if self.api.as_user_id:
+                query_params["user_id"] = self.api.as_user_id
         req_id = self.api.log_download_request(url, query_params)
         start = time.monotonic()
         async with self.api.session.get(url, params=query_params, headers=headers) as response:
