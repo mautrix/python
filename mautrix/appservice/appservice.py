@@ -13,7 +13,7 @@ import logging
 from aiohttp import web
 import aiohttp
 
-from mautrix.types import JSON, RoomAlias, UserID
+from mautrix.types import JSON, RoomAlias, UserID, VersionsResponse
 from mautrix.util.logging import TraceLogger
 
 from ..api import HTTPAPI

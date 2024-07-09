@@ -462,6 +462,7 @@ class HTTPAPI:
         mxc_uri: str,
         download_type: Literal["download", "thumbnail"] = "download",
         file_name: str | None = None,
+        authenticated: bool = False,
     ) -> URL:
         """
         Get the full HTTP URL to download a ``mxc://`` URI.
@@ -470,6 +471,7 @@ class HTTPAPI:
             mxc_uri: The MXC URI whose full URL to get.
             download_type: The type of download ("download" or "thumbnail").
             file_name: Optionally, a file name to include in the download URL.
+            authenticated: Whether to use the new authenticated download endpoint in Matrix v1.11.
 
         Returns:
             The full HTTP URL.
@@ -485,7 +487,11 @@ class HTTPAPI:
             "https://matrix-client.matrix.org/_matrix/media/v3/download/matrix.org/pqjkOuKZ1ZKRULWXgz2IVZV6/hello.png"
         """
         server_name, media_id = self.parse_mxc_uri(mxc_uri)
-        url = self.base_url / str(APIPath.MEDIA) / "v3" / download_type / server_name / media_id
+        if authenticated:
+            url = self.base_url / str(APIPath.CLIENT) / "v1" / "media"
+        else:
+            url = self.base_url / str(APIPath.MEDIA) / "v3"
+        url = url / download_type / server_name / media_id
         if file_name:
             url /= file_name
         return url
