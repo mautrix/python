@@ -1,3 +1,7 @@
+## v0.20.6 (2024-07-12)
+
+* *(bridge)* Added `/register` call if `/versions` fails with `M_FORBIDDEN`.
+
 ## v0.20.5 (2024-07-09)
 
 **Note:** The `bridge` module is deprecated as all bridges are being rewritten
