@@ -225,6 +225,12 @@ class BaseMatrixHandler:
             try:
                 self.versions = await self.az.intent.versions()
                 break
+            except MForbidden:
+                self.log.debug(
+                    "/versions endpoint returned M_FORBIDDEN, "
+                    "trying to register bridge bot before retrying..."
+                )
+                await self.az.intent.ensure_registered()
             except Exception:
                 self.log.exception("Connection to homeserver failed, retrying in 10 seconds")
                 await asyncio.sleep(10)
