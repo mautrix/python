@@ -152,7 +152,11 @@ class AppService(AppServiceServerMixin):
     async def start(self, host: str = "127.0.0.1", port: int = 8080) -> None:
         await self.state_store.open()
         self.log.debug(f"Starting appservice web server on {host}:{port}")
-        if self.server.startswith("https://") and not self.verify_ssl:
+        if self.server.startswith("unix://"):
+            path = self.server.replace("unix://", "")
+            self.server = "http://localhost"
+            connector = aiohttp.UnixConnector(limit=self.connection_limit, path=path)
+        elif self.server.startswith("https://") and not self.verify_ssl:
             connector = aiohttp.TCPConnector(limit=self.connection_limit, verify_ssl=False)
         else:
             connector = aiohttp.TCPConnector(limit=self.connection_limit)
@@ -176,7 +180,10 @@ class AppService(AppServiceServerMixin):
             ssl_ctx.load_cert_chain(self.tls_cert, self.tls_key)
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
-        site = web.TCPSite(self.runner, host, port, ssl_context=ssl_ctx)
+        if host.startswith("/"):
+            site = web.UnixSite(self.runner, host)
+        else:
+            site = web.TCPSite(self.runner, host, port, ssl_context=ssl_ctx)
         await site.start()
 
     async def stop(self) -> None:
