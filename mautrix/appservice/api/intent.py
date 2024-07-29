@@ -118,6 +118,8 @@ class IntentAPI(StoreUpdatingAPI):
     ) -> None:
         super().__init__(mxid=mxid, api=api, state_store=state_store)
         self.bot = bot
+        if bot is not None:
+            self.versions_cache = bot.versions_cache
         self.log = api.base_log.getChild("intent")
 
         for method in ENSURE_REGISTERED_METHODS:

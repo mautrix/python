@@ -132,8 +132,14 @@ class CustomPuppetMixin(ABC):
         return bool(self.custom_mxid and self.access_token)
 
     def _fresh_intent(self) -> IntentAPI:
-        if self.access_token == "appservice-config" and self.custom_mxid:
+        if self.custom_mxid:
             _, server = self.az.intent.parse_user_id(self.custom_mxid)
+            try:
+                self.base_url = self.homeserver_url_map[server]
+            except KeyError:
+                if server == self.az.domain:
+                    self.base_url = self.az.intent.api.base_url
+        if self.access_token == "appservice-config" and self.custom_mxid:
             try:
                 secret = self.login_shared_secret_map[server]
             except KeyError:
