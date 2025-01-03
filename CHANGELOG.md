@@ -1,3 +1,10 @@
+## v0.20.7 (2025-01-03)
+
+* *(types)* Removed support for generating reply fallbacks to implement
+  [MSC2781]. Stripping fallbacks is still supported.
+
+[MSC2781]: https://github.com/matrix-org/matrix-spec-proposals/pull/2781
+
 ## v0.20.6 (2024-07-12)
 
 * *(bridge)* Added `/register` call if `/versions` fails with `M_FORBIDDEN`.
