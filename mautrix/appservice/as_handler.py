@@ -36,6 +36,7 @@ class AppServiceServerMixin:
 
     hs_token: str
     ephemeral_events: bool
+    msc4190: bool
     encryption_events: bool
     synchronous_handlers: bool
 
@@ -51,6 +52,7 @@ class AppServiceServerMixin:
     def __init__(
         self,
         ephemeral_events: bool = False,
+        msc4190: bool = False,
         encryption_events: bool = False,
         log: logging.Logger | None = None,
         hs_token: str | None = None,
@@ -65,6 +67,7 @@ class AppServiceServerMixin:
         self.otk_handler = None
         self.device_list_handler = None
         self.ephemeral_events = ephemeral_events
+        self.msc4190 = msc4190
         self.encryption_events = encryption_events
         self.synchronous_handlers = False
 

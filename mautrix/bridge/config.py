@@ -132,6 +132,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("appservice.hs_token")
 
         copy("appservice.ephemeral_events")
+        copy("appservice.msc4190")
 
         copy("bridge.management_room_text.welcome")
         copy("bridge.management_room_text.welcome_connected")
@@ -241,3 +242,6 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         if self["appservice.ephemeral_events"]:
             self._registration["de.sorunome.msc2409.push_ephemeral"] = True
             self._registration["push_ephemeral"] = True
+
+        if self["appservice.msc4190"]:
+            self._registration["io.element.msc4190"] = True

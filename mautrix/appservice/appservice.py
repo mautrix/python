@@ -80,12 +80,13 @@ class AppService(AppServiceServerMixin):
         state_store: ASStateStore = None,
         aiohttp_params: dict = None,
         ephemeral_events: bool = False,
+        msc4190: bool = False,
         encryption_events: bool = False,
         default_ua: str = HTTPAPI.default_ua,
         default_http_retry_count: int = 0,
         connection_limit: int | None = None,
     ) -> None:
-        super().__init__(ephemeral_events=ephemeral_events, encryption_events=encryption_events)
+        super().__init__(ephemeral_events=ephemeral_events, msc4190=msc4190, encryption_events=encryption_events)
         self.server = server
         self.domain = domain
         self.id = id
