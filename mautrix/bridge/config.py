@@ -132,7 +132,6 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("appservice.hs_token")
 
         copy("appservice.ephemeral_events")
-        copy("appservice.msc4190")
 
         copy("bridge.management_room_text.welcome")
         copy("bridge.management_room_text.welcome_connected")
@@ -144,6 +143,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
         copy("bridge.encryption.default")
         copy("bridge.encryption.require")
         copy("bridge.encryption.appservice")
+        copy("bridge.encryption.msc4190")
         copy("bridge.encryption.delete_keys.delete_outbound_on_ack")
         copy("bridge.encryption.delete_keys.dont_store_outbound")
         copy("bridge.encryption.delete_keys.ratchet_on_decrypt")
@@ -243,5 +243,5 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
             self._registration["de.sorunome.msc2409.push_ephemeral"] = True
             self._registration["push_ephemeral"] = True
 
-        if self["appservice.msc4190"]:
+        if self["bridge.encryption.msc4190"]:
             self._registration["io.element.msc4190"] = True
