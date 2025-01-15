@@ -241,7 +241,7 @@ class BaseBridgeConfig(BaseFileConfig, BaseValidatableConfig, ABC):
 
         if self["appservice.ephemeral_events"]:
             self._registration["de.sorunome.msc2409.push_ephemeral"] = True
-            self._registration["push_ephemeral"] = True
+            self._registration["receive_ephemeral"] = True
 
         if self["bridge.encryption.msc4190"]:
             self._registration["io.element.msc4190"] = True
