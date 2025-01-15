@@ -1,3 +1,13 @@
+## v0.20.8 (unreleased)
+
+* *(bridge)* Added support for [MSC4190] (thanks to [@surakin] in [#175]).
+* *(appservice)* Renamed `push_ephemeral` in generated registrations to
+  `receive_ephemeral` to match the accepted version of [MSC2409].
+
+[MSC4190]: https://github.com/matrix-org/matrix-spec-proposals/pull/2781
+[@surakin]: https://github.com/surakin
+[#175]: https://github.com/mautrix/python/pull/175
+
 ## v0.20.7 (2025-01-03)
 
 * *(types)* Removed support for generating reply fallbacks to implement
