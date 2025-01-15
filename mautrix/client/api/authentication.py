@@ -5,6 +5,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
+import secrets
+
 from mautrix.api import Method, Path
 from mautrix.errors import MatrixResponseError
 from mautrix.types import (
@@ -116,6 +118,19 @@ class ClientAuthenticationMethods(BaseClientAPI):
                 )
                 self.api.base_url = base_url.rstrip("/")
         return resp_data
+
+    async def create_device_msc4190(self, device_id: str, initial_display_name: str) -> None:
+        """
+        Create a Device for a user of the homeserver using appservice interface defined in MSC4190
+        """
+        if len(device_id) == 0:
+            device_id = DeviceID(secrets.token_urlsafe(10))
+        self.api.as_user_id = self.mxid
+        await self.api.request(
+            Method.PUT, Path.v3.devices[device_id], {"display_name": initial_display_name}
+        )
+        self.api.as_device_id = device_id
+        self.device_id = device_id
 
     async def logout(self, clear_access_token: bool = True) -> None:
         """

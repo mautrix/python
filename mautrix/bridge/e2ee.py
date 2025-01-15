@@ -57,6 +57,7 @@ class EncryptionManager:
     appservice_mode: bool
     periodically_delete_expired_keys: bool
     delete_outdated_inbound: bool
+    msc4190: bool
 
     bridge: br.Bridge
     az: AppService
@@ -108,6 +109,7 @@ class EncryptionManager:
         self.crypto.send_keys_min_trust = TrustState.parse(verification_levels["receive"])
         self.key_sharing_enabled = bridge.config["bridge.encryption.allow_key_sharing"]
         self.appservice_mode = bridge.config["bridge.encryption.appservice"]
+        self.msc4190 = bridge.config["bridge.encryption.msc4190"]
         if self.appservice_mode:
             self.az.otk_handler = self.crypto.handle_as_otk_counts
             self.az.device_list_handler = self.crypto.handle_as_device_lists
@@ -246,7 +248,7 @@ class EncryptionManager:
 
     async def start(self) -> None:
         flows = await self.client.get_login_flows()
-        if not flows.supports_type(LoginType.APPSERVICE):
+        if not self.msc4190 and not flows.supports_type(LoginType.APPSERVICE):
             self.log.critical(
                 "Encryption enabled in config, but homeserver does not support appservice login"
             )
@@ -261,16 +263,26 @@ class EncryptionManager:
         device_id = await self.crypto_store.get_device_id()
         if device_id:
             self.log.debug(f"Found device ID in database: {device_id}")
-        # We set the API token to the AS token here to authenticate the appservice login
-        # It'll get overridden after the login
-        self.client.api.token = self.az.as_token
-        await self.client.login(
-            login_type=LoginType.APPSERVICE,
-            device_name=self.device_name,
-            device_id=device_id,
-            store_access_token=True,
-            update_hs_url=False,
-        )
+
+        if self.msc4190:
+            if not device_id:
+                self.log.debug("Creating bot device with MSC4190")
+            self.client.api.token = self.az.as_token
+            await self.client.create_device_msc4190(
+                device_id=device_id, initial_display_name=self.device_name
+            )
+        else:
+            # We set the API token to the AS token here to authenticate the appservice login
+            # It'll get overridden after the login
+            self.client.api.token = self.az.as_token
+            await self.client.login(
+                login_type=LoginType.APPSERVICE,
+                device_name=self.device_name,
+                device_id=device_id,
+                store_access_token=True,
+                update_hs_url=False,
+            )
+
         await self.crypto.load()
         if not device_id:
             await self.crypto_store.put_device_id(self.client.device_id)
