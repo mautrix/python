@@ -1,8 +1,9 @@
-## v0.20.8 (unreleased)
+## v0.20.8 (2025-06-01)
 
 * *(bridge)* Added support for [MSC4190] (thanks to [@surakin] in [#175]).
 * *(appservice)* Renamed `push_ephemeral` in generated registrations to
   `receive_ephemeral` to match the accepted version of [MSC2409].
+* *(bridge)* Fixed compatibility with breaking change in aiohttp 3.12.6.
 
 [MSC4190]: https://github.com/matrix-org/matrix-spec-proposals/pull/2781
 [@surakin]: https://github.com/surakin
