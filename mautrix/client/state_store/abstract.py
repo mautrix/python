@@ -122,6 +122,18 @@ class StateStore(ABC):
         pass
 
     @abstractmethod
+    async def has_create_cached(self, room_id: RoomID) -> bool:
+        pass
+
+    @abstractmethod
+    async def get_create(self, room_id: RoomID) -> StateEvent | None:
+        pass
+
+    @abstractmethod
+    async def set_create(self, event: StateEvent) -> None:
+        pass
+
+    @abstractmethod
     async def has_encryption_info_cached(self, room_id: RoomID) -> bool:
         pass
 
@@ -135,7 +147,7 @@ class StateStore(ABC):
 
     @abstractmethod
     async def set_encryption_info(
-        self, room_id: RoomID, content: RoomEncryptionStateEventContent | dict[str, any]
+        self, room_id: RoomID, content: RoomEncryptionStateEventContent | dict[str, Any]
     ) -> None:
         pass
 
@@ -149,6 +161,8 @@ class StateStore(ABC):
             await self.set_member(evt.room_id, UserID(evt.state_key), evt.content)
         elif evt.type == EventType.ROOM_ENCRYPTION:
             await self.set_encryption_info(evt.room_id, evt.content)
+        elif evt.type == EventType.ROOM_CREATE and evt.sender:
+            await self.set_create(evt)
 
     async def get_membership(self, room_id: RoomID, user_id: UserID) -> Membership:
         member = await self.get_member(room_id, user_id)
@@ -172,4 +186,7 @@ class StateStore(ABC):
         room_levels = await self.get_power_levels(room_id)
         if not room_levels:
             return None
-        return room_levels.get_user_level(user_id) >= room_levels.get_event_level(event_type)
+        create_event = await self.get_create(room_id)
+        return room_levels.get_user_level(user_id, create_event) >= room_levels.get_event_level(
+            event_type
+        )
