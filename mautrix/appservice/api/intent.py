@@ -710,6 +710,8 @@ class IntentAPI(StoreUpdatingAPI):
         if not await self.state_store.has_power_levels_cached(room_id):
             # TODO add option to not try to fetch power levels from server
             await self.get_power_levels(room_id, ignore_cache=True, ensure_joined=False)
+        if not await self.state_store.has_create_cached(room_id):
+            await self.get_state_event(room_id, EventType.ROOM_CREATE, format="event")
         if not await self.state_store.has_power_level(room_id, self.mxid, event_type):
             # TODO implement something better
             raise IntentError(

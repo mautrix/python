@@ -41,7 +41,19 @@ class PowerLevelStateEventContent(SerializableAttrs):
     ban: int = 50
     redact: int = 50
 
-    def get_user_level(self, user_id: UserID) -> int:
+    def get_user_level(
+        self,
+        user_id: UserID,
+        create: Optional["StateEvent"] = None,
+    ) -> int:
+        if (
+            create
+            and create.content.supports_creator_power
+            and (user_id == create.sender or user_id in (create.content.additional_creators or []))
+        ):
+            # This is really meant to be infinity, but involving floats would be annoying,
+            # so we use an integer larger than the maximum power level (2^53-1) instead.
+            return 2**60 - 1
         return int(self.users.get(user_id, self.users_default))
 
     def set_user_level(self, user_id: UserID, level: int) -> None:
@@ -50,7 +62,16 @@ class PowerLevelStateEventContent(SerializableAttrs):
         else:
             self.users[user_id] = level
 
-    def ensure_user_level(self, user_id: UserID, level: int) -> bool:
+    def ensure_user_level(
+        self, user_id: UserID, level: int, create: Optional["StateEvent"] = None
+    ) -> bool:
+        if (
+            create
+            and create.content.supports_creator_power
+            and (user_id == create.sender or user_id in (create.content.additional_creators or []))
+        ):
+            # Don't try to set creator power levels
+            return False
         if self.get_user_level(user_id) != level:
             self.set_user_level(user_id, level)
             return True
@@ -193,6 +214,24 @@ class RoomCreateStateEventContent(SerializableAttrs):
     federate: bool = field(json="m.federate", omit_default=True, default=True)
     predecessor: Optional[RoomPredecessor] = None
     type: Optional[RoomType] = None
+    additional_creators: Optional[List[UserID]] = None
+
+    @property
+    def supports_creator_power(self) -> bool:
+        return self.room_version not in (
+            "",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+        )
 
 
 @dataclass

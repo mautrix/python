@@ -15,6 +15,7 @@ from mautrix.types import (
     PowerLevelStateEventContent,
     RoomEncryptionStateEventContent,
     RoomID,
+    StateEvent,
     UserID,
 )
 from mautrix.util.file_store import Filer, FileStore
@@ -64,4 +65,8 @@ class FileStateStore(MemoryStateStore, FileStore):
         self, room_id: RoomID, content: PowerLevelStateEventContent
     ) -> None:
         await super().set_power_levels(room_id, content)
+        self._time_limited_flush()
+
+    async def set_create(self, event: StateEvent) -> None:
+        await super().set_create(event)
         self._time_limited_flush()
