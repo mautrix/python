@@ -98,7 +98,7 @@ class Program:
 
         self.log.info(f"Initializing {self.name} {self.version}")
         try:
-            self.prepare()
+            self.loop.run_until_complete(self._async_prepare())
         except Exception:
             self.log.critical("Unexpected error in initialization", exc_info=True)
             sys.exit(1)
@@ -117,6 +117,7 @@ class Program:
         self.prepare_config()
         self.prepare_log()
         self.check_config()
+        self.init_loop()
 
     @property
     def base_config_path(self) -> str:
@@ -168,14 +169,16 @@ class Program:
         logging.config.dictConfig(copy.deepcopy(self.config["logging"]))
         self.log = cast(TraceLogger, logging.getLogger("mau.init"))
 
+    async def _async_prepare(self) -> None:
+        self.prepare()
+
     def prepare(self) -> None:
         """
         Lifecycle method where the primary program initialization happens.
         Use this to fill startup_actions with async startup tasks.
         """
-        self.prepare_loop()
 
-    def prepare_loop(self) -> None:
+    def init_loop(self) -> None:
         """Init lifecycle method where the asyncio event loop is created."""
         if uvloop is not None:
             uvloop.install()
