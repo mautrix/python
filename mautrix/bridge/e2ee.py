@@ -247,12 +247,13 @@ class EncryptionManager:
         return decrypted
 
     async def start(self) -> None:
-        flows = await self.client.get_login_flows()
-        if not self.msc4190 and not flows.supports_type(LoginType.APPSERVICE):
-            self.log.critical(
-                "Encryption enabled in config, but homeserver does not support appservice login"
-            )
-            sys.exit(30)
+        if not self.msc4190:
+            flows = await self.client.get_login_flows()
+            if not flows.supports_type(LoginType.APPSERVICE):
+                self.log.critical(
+                    "Encryption enabled in config, but homeserver does not support appservice login"
+                )
+                sys.exit(30)
         self.log.debug("Logging in with bridge bot user")
         if self.crypto_db:
             try:
