@@ -23,7 +23,7 @@ async def upgrade_blank_to_v4(conn: Connection, scheme: Scheme) -> None:
             has_full_member_list BOOLEAN,
             encryption           TEXT,
             power_levels         TEXT,
-            create_event         TEXT,
+            create_event         TEXT
         )"""
     )
     membership_check = ""
