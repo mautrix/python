@@ -1,3 +1,12 @@
+## v0.20.9 (unreleased)
+
+* *(event)* Added support for creator power in room v12+.
+* *(bridge)* Removed check for login flows when using MSC4190
+  (thanks to [@meson800] in [#178]).
+
+[@meson800]: https://github.com/meson800
+[#178]: https://github.com/mautrix/python/pull/178
+
 ## v0.20.8 (2025-06-01)
 
 * *(bridge)* Added support for [MSC4190] (thanks to [@surakin] in [#175]).
