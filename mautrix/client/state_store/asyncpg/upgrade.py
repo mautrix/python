@@ -74,4 +74,4 @@ async def upgrade_v3(conn: Connection) -> None:
 
 @upgrade_table.register(description="Add create event to room state cache")
 async def upgrade_v4(conn: Connection) -> None:
-    await conn.execute("ALTER TABLE mx_room_state ADD COLUMN create_event TYPE TEXT")
+    await conn.execute("ALTER TABLE mx_room_state ADD COLUMN create_event TEXT")
