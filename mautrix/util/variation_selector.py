@@ -59,11 +59,11 @@ VARIATION_SELECTOR_16 = "\ufe0f"
 ADD_VARIATION_TRANSLATION = str.maketrans(
     {ord(emoji): f"{emoji}{VARIATION_SELECTOR_16}" for emoji in read_data().values()}
 )
-SKIN_TONE_MODIFIERS = ("\U0001F3FB", "\U0001F3FC", "\U0001F3FD", "\U0001F3FE", "\U0001F3FF")
+SKIN_TONE_MODIFIERS = ("\U0001f3fb", "\U0001f3fc", "\U0001f3fd", "\U0001f3fe", "\U0001f3ff")
 SKIN_TONE_REPLACEMENTS = {f"{VARIATION_SELECTOR_16}{mod}": mod for mod in SKIN_TONE_MODIFIERS}
 VARIATION_SELECTOR_REPLACEMENTS = {
     **SKIN_TONE_REPLACEMENTS,
-    "\U0001F408\ufe0f\u200d\u2b1b\ufe0f": "\U0001F408\u200d\u2b1b",
+    "\U0001f408\ufe0f\u200d\u2b1b\ufe0f": "\U0001f408\u200d\u2b1b",
 }
 
 
