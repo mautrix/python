@@ -18,8 +18,9 @@ from mautrix.types import (
     UserID,
 )
 
-from .base import BaseOlmMachine, verify_signature_json
+from .base import BaseOlmMachine
 from .sessions import Session
+from .signature import verify_signature_json
 
 ClaimKeysList = Dict[UserID, Dict[DeviceID, DeviceIdentity]]
 

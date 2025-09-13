@@ -5,7 +5,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import hashlib
 import hmac
-import struct
 
 import base58
 import unpaddedbase64

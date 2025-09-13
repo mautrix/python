@@ -23,7 +23,8 @@ from mautrix.types import (
     UserID,
 )
 
-from .base import BaseOlmMachine, verify_signature_json
+from .base import BaseOlmMachine
+from .signature import verify_signature_json
 
 
 class DeviceListMachine(BaseOlmMachine):
