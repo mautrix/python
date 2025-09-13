@@ -36,6 +36,7 @@ from .decrypt_megolm import MegolmDecryptionMachine
 from .encrypt_megolm import MegolmEncryptionMachine
 from .key_request import KeyRequestingMachine
 from .key_share import KeySharingMachine
+from .ssss import Machine as SSSSMachine
 from .store import CryptoStore, StateStore
 from .unwedge import OlmUnwedgingMachine
 
@@ -58,6 +59,7 @@ class OlmMachine(
     log: TraceLogger
     crypto_store: CryptoStore
     state_store: StateStore
+    ssss: SSSSMachine
 
     account: Optional[OlmAccount]
 
@@ -70,6 +72,7 @@ class OlmMachine(
     ) -> None:
         super().__init__()
         self.client = client
+        self.ssss = SSSSMachine(client)
         self.log = log or logging.getLogger("mau.crypto")
         self.crypto_store = crypto_store
         self.state_store = state_store

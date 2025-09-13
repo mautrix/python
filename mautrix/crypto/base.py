@@ -31,6 +31,7 @@ from mautrix.types import (
 from mautrix.util.logging import TraceLogger
 
 from .. import client as cli, crypto
+from .ssss import Machine as SSSSMachine
 
 
 class SignedObject(TypedDict):
@@ -40,6 +41,7 @@ class SignedObject(TypedDict):
 
 class BaseOlmMachine:
     client: cli.Client
+    ssss: SSSSMachine
     log: TraceLogger
     crypto_store: crypto.CryptoStore
     state_store: crypto.StateStore
