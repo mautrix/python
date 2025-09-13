@@ -7,7 +7,7 @@ from typing import Any, TypedDict
 import functools
 import json
 
-import olm
+import unpaddedbase64
 
 from mautrix.types import DeviceID, EncryptionKeyAlgorithm, KeyID, SigningKey, UserID
 
@@ -37,11 +37,13 @@ def verify_signature_json(
     key_id = str(KeyID(EncryptionKeyAlgorithm.ED25519, key_name))
     try:
         signature = signatures[user_id][key_id]
-    except KeyError:
-        return False
-    signed_data = canonical_json(data_copy)
-    try:
-        olm.ed25519_verify(key, signed_data, signature)
+        decoded_key = unpaddedbase64.decode_base64(key)
+        # pycryptodome doesn't accept raw keys, so wrap it in a DER structure
+        der_key = b"\x30\x2a\x30\x05\x06\x03\x2b\x65\x70\x03\x21\x00" + decoded_key
+        decoded_signature = unpaddedbase64.decode_base64(signature)
+        parsed_key = ECC.import_key(der_key)
+        verifier = eddsa.new(parsed_key, "rfc8032")
+        verifier.verify(canonical_json(data_copy).encode("utf-8"), decoded_signature)
         return True
-    except olm.OlmVerifyError:
+    except (KeyError, ValueError):
         return False
