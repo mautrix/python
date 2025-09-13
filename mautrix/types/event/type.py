@@ -207,6 +207,11 @@ _standard_types = {
         "m.push_rules": "PUSH_RULES",
         "m.tag": "TAG",
         "m.ignored_user_list": "IGNORED_USER_LIST",
+        "m.secret_storage.default_key": "SECRET_STORAGE_DEFAULT_KEY",
+        "m.cross_signing.master": "CROSS_SIGNING_MASTER",
+        "m.cross_signing.self_signing": "CROSS_SIGNING_SELF_SIGNING",
+        "m.cross_signing.user_signing": "CROSS_SIGNING_USER_SIGNING",
+        "m.megolm_backup.v1": "MEGOLM_BACKUP_V1",
     },
     EventType.Class.TO_DEVICE: {
         "m.room.encrypted": "TO_DEVICE_ENCRYPTED",

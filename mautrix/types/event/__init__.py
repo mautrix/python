@@ -6,8 +6,10 @@
 from .account_data import (
     AccountDataEvent,
     AccountDataEventContent,
+    DirectAccountDataEventContent,
     RoomTagAccountDataEventContent,
     RoomTagInfo,
+    SecretStorageDefaultKeyEventContent,
 )
 from .base import BaseEvent, BaseRoomEvent, BaseUnsigned, GenericEvent
 from .batch import BatchSendEvent, BatchSendStateEvent
