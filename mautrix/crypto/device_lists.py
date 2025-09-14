@@ -28,6 +28,18 @@ from .signature import verify_signature_json
 
 
 class DeviceListMachine(BaseOlmMachine):
+    @property
+    def own_identity(self) -> DeviceIdentity:
+        return DeviceIdentity(
+            user_id=self.client.mxid,
+            device_id=self.client.device_id,
+            identity_key=self.account.identity_key,
+            signing_key=self.account.signing_key,
+            trust=TrustState.VERIFIED,
+            deleted=False,
+            name="",
+        )
+
     async def _fetch_keys(
         self, users: list[UserID], since: SyncToken = "", include_untracked: bool = False
     ) -> dict[UserID, dict[DeviceID, DeviceIdentity]]:
@@ -219,6 +231,12 @@ class DeviceListMachine(BaseOlmMachine):
                         )
                     else:
                         self.log.warning(f"Invalid signature from {signing_key_log} for {key_id}")
+
+    async def _get_full_device_keys(self, device: DeviceIdentity) -> DeviceKeys:
+        resp = await self.client.query_keys({device.user_id: [device.device_id]})
+        keys = resp.device_keys[device.user_id][device.device_id]
+        await self._validate_device(device.user_id, device.device_id, keys, device)
+        return keys
 
     async def get_or_fetch_device(
         self, user_id: UserID, device_id: DeviceID

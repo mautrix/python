@@ -32,6 +32,7 @@ from mautrix.util import background_task
 from mautrix.util.logging import TraceLogger
 
 from .account import OlmAccount
+from .cross_signing import CrossSigningMachine
 from .decrypt_megolm import MegolmDecryptionMachine
 from .encrypt_megolm import MegolmEncryptionMachine
 from .key_request import KeyRequestingMachine
@@ -47,6 +48,7 @@ class OlmMachine(
     OlmUnwedgingMachine,
     KeySharingMachine,
     KeyRequestingMachine,
+    CrossSigningMachine,
 ):
     """
     OlmMachine is the main class for handling things related to Matrix end-to-end encryption with
@@ -98,6 +100,10 @@ class OlmMachine(
         self._inbound_session_waiters = {}
         self._prev_unwedge = {}
         self._cs_fetch_attempted = set()
+
+        self._cross_signing_public_keys = None
+        self._cross_signing_public_keys_fetched = False
+        self._cross_signing_private_keys = None
 
         self.client.add_event_handler(
             cli.InternalEventType.DEVICE_OTK_COUNT, self.handle_otk_count, wait_sync=True
