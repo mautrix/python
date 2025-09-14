@@ -5,13 +5,15 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Union
 
 from mautrix.api import Method, Path
 from mautrix.errors import MatrixResponseError
 from mautrix.types import (
+    JSON,
     ClaimKeysResponse,
     DeviceID,
+    DeviceKeys,
     EncryptionKeyAlgorithm,
     EventType,
     QueryKeysResponse,
@@ -82,7 +84,7 @@ class CryptoMethods(BaseClientAPI):
     async def upload_keys(
         self,
         one_time_keys: dict[str, Any] | None = None,
-        device_keys: dict[str, Any] | None = None,
+        device_keys: DeviceKeys | dict[str, Any] | None = None,
     ) -> dict[EncryptionKeyAlgorithm, int]:
         """
         Publishes end-to-end encryption keys for the device.
@@ -102,8 +104,12 @@ class CryptoMethods(BaseClientAPI):
         """
         data = {}
         if device_keys:
+            if isinstance(device_keys, Serializable):
+                device_keys = device_keys.serialize()
             data["device_keys"] = device_keys
         if one_time_keys:
+            if isinstance(one_time_keys, Serializable):
+                one_time_keys = one_time_keys.serialize()
             data["one_time_keys"] = one_time_keys
         resp = await self.api.request(Method.POST, Path.v3.keys.upload, data)
         try:

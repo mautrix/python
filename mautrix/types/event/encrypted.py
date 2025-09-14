@@ -9,7 +9,7 @@ import warnings
 
 from attr import dataclass
 
-from ..primitive import JSON, DeviceID, IdentityKey, SessionID
+from ..primitive import JSON, DeviceID, IdentityKey, SessionID, SigningKey
 from ..util import ExtensibleEnum, Obj, Serializable, SerializableAttrs, deserializer, field
 from .base import BaseRoomEvent, BaseUnsigned
 from .message import RelatesTo
@@ -42,6 +42,18 @@ class KeyID(Serializable):
 
     def __str__(self) -> str:
         return f"{self.algorithm.value}:{self.key_id}"
+
+    @classmethod
+    def ed25519(cls, key_id: SigningKey | DeviceID) -> "KeyID":
+        return cls(EncryptionKeyAlgorithm.ED25519, key_id)
+
+    @classmethod
+    def curve25519(cls, key_id: IdentityKey) -> "KeyID":
+        return cls(EncryptionKeyAlgorithm.CURVE25519, key_id)
+
+    @classmethod
+    def signed_curve25519(cls, key_id: IdentityKey) -> "KeyID":
+        return cls(EncryptionKeyAlgorithm.SIGNED_CURVE25519, key_id)
 
 
 class OlmMsgType(Serializable, IntEnum):

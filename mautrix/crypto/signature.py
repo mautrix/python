@@ -7,9 +7,19 @@ from typing import Any, TypedDict
 import functools
 import json
 
+import olm
 import unpaddedbase64
 
-from mautrix.types import DeviceID, EncryptionKeyAlgorithm, KeyID, SigningKey, UserID
+from mautrix.types import (
+    JSON,
+    DeviceID,
+    EncryptionKeyAlgorithm,
+    KeyID,
+    Serializable,
+    Signature,
+    SigningKey,
+    UserID,
+)
 
 try:
     from Crypto.PublicKey import ECC
@@ -26,6 +36,14 @@ canonical_json = functools.partial(
 class SignedObject(TypedDict):
     signatures: dict[UserID, dict[str, str]]
     unsigned: Any
+
+
+def sign_olm(data: dict[str, JSON] | Serializable, key: olm.PkSigning | olm.Account) -> Signature:
+    if isinstance(data, Serializable):
+        data = data.serialize()
+    data.pop("signatures", None)
+    data.pop("unsigned", None)
+    return Signature(key.sign(canonical_json(data)))
 
 
 def verify_signature_json(

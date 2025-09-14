@@ -313,6 +313,7 @@ class OlmMachine(
         self.log.debug(f"Uploading {len(one_time_keys)} one-time keys")
         resp = await self.client.upload_keys(one_time_keys=one_time_keys, device_keys=device_keys)
         self.account.shared = True
+        self.account.mark_keys_as_published()
         self._last_key_share = time.monotonic()
         await self.crypto_store.put_account(self.account)
         self.log.debug(f"Shared keys and saved account, new keys: {resp}")
