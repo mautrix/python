@@ -9,7 +9,7 @@ yarl
 # that aren't used for anything that's in the docs
 python-magic
 ruamel.yaml
-SQLAlchemy
+SQLAlchemy<2
 commonmark
 asyncpg
 aiosqlite
