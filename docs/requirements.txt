@@ -17,3 +17,4 @@ prometheus_client
 python-olm
 unpaddedbase64
 pycryptodome
+base58
