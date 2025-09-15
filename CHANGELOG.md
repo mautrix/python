@@ -1,6 +1,8 @@
-## v0.20.9 (unreleased)
+## v0.21.0 (unreleased)
 
 * *(event)* Added support for creator power in room v12+.
+* *(crypto)* Added support for generating and using recovery keys for verifying
+  the active device.
 * *(bridge)* Removed check for login flows when using MSC4190
   (thanks to [@meson800] in [#178]).
 
