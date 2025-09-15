@@ -66,7 +66,10 @@ class KeyMetadata(SerializableAttrs):
         return self.verify_raw_key(key_id, self.passphrase.get_key(phrase))
 
     def verify_recovery_key(self, key_id: str, recovery_key: str) -> "Key":
-        return self.verify_raw_key(key_id, decode_base58_recovery_key(recovery_key))
+        decoded_key = decode_base58_recovery_key(recovery_key)
+        if not decoded_key:
+            raise ValueError("Invalid recovery key syntax")
+        return self.verify_raw_key(key_id, decoded_key)
 
     def verify_raw_key(self, key_id: str, key: bytes) -> "Key":
         if self.mac.rstrip("=") != calculate_hash(key, self.iv):
