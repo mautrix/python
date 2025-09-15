@@ -2,7 +2,7 @@ import setuptools
 
 from mautrix import __version__
 
-encryption_dependencies = ["python-olm", "unpaddedbase64", "pycryptodome"]
+encryption_dependencies = ["python-olm", "unpaddedbase64", "pycryptodome", "base58"]
 test_dependencies = ["aiosqlite", "asyncpg", "ruamel.yaml", *encryption_dependencies]
 
 setuptools.setup(
