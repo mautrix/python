@@ -82,7 +82,7 @@ class OlmAccount(olm.Account):
             device_id=device_id,
             algorithms=[EncryptionAlgorithm.OLM_V1, EncryptionAlgorithm.MEGOLM_V1],
             keys={
-                KeyID(algorithm=EncryptionKeyAlgorithm(algorithm), key_id=key): key
+                KeyID(algorithm=EncryptionKeyAlgorithm(algorithm), key_id=device_id): key
                 for algorithm, key in self.identity_keys.items()
             },
             signatures={},
