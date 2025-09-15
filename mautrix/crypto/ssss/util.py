@@ -67,7 +67,7 @@ def prepare_aes(key: bytes, iv: str | bytes) -> AES:
         iv = unpaddedbase64.decode_base64(iv)
     # initial_value = struct.unpack(">Q", iv[8:])[0]
     # counter = Counter.new(64, prefix=iv[:8], initial_value=initial_value)
-    counter = Counter.new(128, initial_value=int.from_bytes(iv))
+    counter = Counter.new(128, initial_value=int.from_bytes(iv, byteorder="big"))
     return AES.new(key=key, mode=AES.MODE_CTR, counter=counter)
 
 
