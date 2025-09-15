@@ -85,8 +85,12 @@ class CrossSigningMachine(DeviceListMachine):
         self, user_id: UserID
     ) -> CrossSigningPublicKeys | None:
         db_keys = await self.crypto_store.get_cross_signing_keys(user_id)
-        if CrossSigningUsage.MASTER not in db_keys:
-            await self._fetch_keys([user_id], include_untracked=True)
+        if CrossSigningUsage.MASTER not in db_keys and user_id not in self._cs_fetch_attempted:
+            self.log.debug(f"Didn't find any cross-signing keys for {user_id}, fetching...")
+            async with self._fetch_keys_lock:
+                if user_id not in self._cs_fetch_attempted:
+                    self._cs_fetch_attempted.add(user_id)
+                    await self._fetch_keys([user_id], include_untracked=True)
             db_keys = await self.crypto_store.get_cross_signing_keys(user_id)
         if CrossSigningUsage.MASTER not in db_keys:
             return None

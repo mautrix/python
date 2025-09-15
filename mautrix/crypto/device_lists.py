@@ -315,18 +315,23 @@ class DeviceListMachine(BaseOlmMachine):
             deleted=False,
         )
 
-    async def resolve_trust(self, device: DeviceIdentity) -> TrustState:
+    async def resolve_trust(self, device: DeviceIdentity, allow_fetch: bool = True) -> TrustState:
         try:
-            return await self._try_resolve_trust(device)
+            return await self._try_resolve_trust(device, allow_fetch)
         except Exception:
             self.log.exception(f"Failed to resolve trust of {device.user_id}/{device.device_id}")
             return TrustState.UNVERIFIED
 
-    async def _try_resolve_trust(self, device: DeviceIdentity) -> TrustState:
-        if device.trust in (TrustState.VERIFIED, TrustState.BLACKLISTED):
+    async def _try_resolve_trust(
+        self, device: DeviceIdentity, allow_fetch: bool = True
+    ) -> TrustState:
+        if device.device_id != self.client.device_id and device.trust in (
+            TrustState.VERIFIED,
+            TrustState.BLACKLISTED,
+        ):
             return device.trust
         their_keys = await self.crypto_store.get_cross_signing_keys(device.user_id)
-        if len(their_keys) == 0 and device.user_id not in self._cs_fetch_attempted:
+        if len(their_keys) == 0 and allow_fetch and device.user_id not in self._cs_fetch_attempted:
             self.log.debug(f"Didn't find any cross-signing keys for {device.user_id}, fetching...")
             async with self._fetch_keys_lock:
                 if device.user_id not in self._cs_fetch_attempted:
@@ -337,7 +342,8 @@ class DeviceListMachine(BaseOlmMachine):
             msk = their_keys[CrossSigningUsage.MASTER]
             ssk = their_keys[CrossSigningUsage.SELF]
         except KeyError as e:
-            self.log.error(f"Didn't find cross-signing key {e.args[0]} of {device.user_id}")
+            if allow_fetch:
+                self.log.error(f"Didn't find cross-signing key {e.args[0]} of {device.user_id}")
             return TrustState.UNVERIFIED
         ssk_signed = await self.crypto_store.is_key_signed_by(
             target=CrossSigner(device.user_id, ssk.key),
