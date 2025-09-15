@@ -206,7 +206,7 @@ class DeviceListMachine(BaseOlmMachine):
                             signing_key = device.ed25519
                         except KeyError:
                             pass
-                    if len(signing_key) != 43:
+                    if not signing_key or len(signing_key) != 43:
                         self.log.debug(
                             f"Cross-signing key {user_id}/{actual_key} has a signature from "
                             f"an unknown key {key_id}"

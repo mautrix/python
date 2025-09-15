@@ -25,6 +25,8 @@ class CrossSigningMachine(DeviceListMachine):
     _cross_signing_private_keys: CrossSigningPrivateKeys | None
 
     async def verify_with_recovery_key(self, recovery_key: str) -> None:
+        if not self.account.shared:
+            raise ValueError("Device keys must be shared before verifying with recovery key")
         key_id, key_data = await self.ssss.get_default_key_data()
         ssss_key = key_data.verify_recovery_key(key_id, recovery_key)
         seeds = await self._fetch_cross_signing_keys_from_ssss(ssss_key)
@@ -38,6 +40,8 @@ class CrossSigningMachine(DeviceListMachine):
     async def generate_recovery_key(
         self, passphrase: str | None = None, seeds: CrossSigningSeeds | None = None
     ) -> str:
+        if not self.account.shared:
+            raise ValueError("Device keys must be shared before generating recovery key")
         seeds = seeds or CrossSigningSeeds.generate()
         ssss_key = await self.ssss.generate_and_upload_key(passphrase)
         await self._upload_cross_signing_keys_to_ssss(ssss_key, seeds)
