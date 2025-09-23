@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any, AsyncContextManager, Type
 from abc import ABC, abstractmethod
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
 import logging
 
 from yarl import URL
@@ -22,6 +24,8 @@ from .upgrade import UpgradeTable, upgrade_tables
 if __optional_imports__:
     from aiosqlite import Cursor
     from asyncpg import Record
+
+conn_var: ContextVar[LoggingConnection | None] = ContextVar("db_connection", default=None)
 
 
 class Database(ABC):
@@ -128,8 +132,21 @@ class Database(ABC):
         pass
 
     @abstractmethod
-    def acquire(self) -> AsyncContextManager[LoggingConnection]:
+    def acquire_direct(self) -> AsyncContextManager[LoggingConnection]:
         pass
+
+    @asynccontextmanager
+    async def acquire(self) -> LoggingConnection:
+        conn = conn_var.get(None)
+        if conn is not None:
+            yield conn
+            return
+        async with self.acquire_direct() as conn:
+            token = conn_var.set(conn)
+            try:
+                yield conn
+            finally:
+                conn_var.reset(token)
 
     async def execute(self, query: str, *args: Any, timeout: float | None = None) -> str | Cursor:
         async with self.acquire() as conn:

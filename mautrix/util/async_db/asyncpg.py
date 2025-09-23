@@ -96,7 +96,7 @@ class PostgresDatabase(Database):
             sys.exit(26)
 
     @asynccontextmanager
-    async def acquire(self) -> LoggingConnection:
+    async def acquire_direct(self) -> LoggingConnection:
         async with self.pool.acquire() as conn:
             yield LoggingConnection(
                 self.scheme, conn, self.log, handle_exception=self._handle_exception

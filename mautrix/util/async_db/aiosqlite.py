@@ -181,7 +181,7 @@ class SQLiteDatabase(Database):
             self._conns -= 1
             await conn.close()
 
-    def acquire(self) -> AsyncContextManager[LoggingConnection]:
+    def acquire_direct(self) -> AsyncContextManager[LoggingConnection]:
         if self._parent:
             return self._parent.acquire()
         return self._acquire()
