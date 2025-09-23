@@ -59,60 +59,66 @@ class DeviceListMachine(BaseOlmMachine):
         data = {}
         for user_id, devices in resp.device_keys.items():
             missing_users.remove(user_id)
-
-            new_devices = {}
-            existing_devices = (await self.crypto_store.get_devices(user_id)) or {}
-
-            self.log.trace(
-                f"Updating devices for {user_id}, got {len(devices)}, "
-                f"have {len(existing_devices)} in store"
-            )
-            changed = False
-            ssks = resp.self_signing_keys.get(user_id)
-            ssk = ssks.first_ed25519_key if ssks else None
-            for device_id, device_keys in devices.items():
-                try:
-                    existing = existing_devices[device_id]
-                except KeyError:
-                    existing = None
-                    changed = True
-                self.log.trace(f"Validating device {device_keys} of {user_id}")
-                try:
-                    new_device = await self._validate_device(
-                        user_id, device_id, device_keys, existing
-                    )
-                except DeviceValidationError as e:
-                    self.log.warning(f"Failed to validate device {device_id} of {user_id}: {e}")
-                else:
-                    if new_device:
-                        new_devices[device_id] = new_device
-                        await self._store_device_self_signatures(device_keys, ssk)
-            self.log.debug(
-                f"Storing new device list for {user_id} containing {len(new_devices)} devices"
-            )
-            await self.crypto_store.put_devices(user_id, new_devices)
-            data[user_id] = new_devices
-
-            if changed or len(new_devices) != len(existing_devices):
-                if self.delete_keys_on_device_delete:
-                    for device_id in existing_devices.keys() - new_devices.keys():
-                        device = existing_devices[device_id]
-                        removed_ids = await self.crypto_store.redact_group_sessions(
-                            room_id=None, sender_key=device.identity_key, reason="device removed"
-                        )
-                        self.log.info(
-                            "Redacted megolm sessions sent by removed device "
-                            f"{device.user_id}/{device.device_id}: {removed_ids}"
-                        )
-                await self.on_devices_changed(user_id)
+            async with self.crypto_store.transaction():
+                data[user_id] = await self._process_fetched_keys(user_id, devices, resp)
 
         for user_id in missing_users:
             self.log.warning(f"Didn't get any devices for user {user_id}")
 
-        for user_id in users:
-            await self._store_cross_signing_keys(resp, user_id)
-
         return data
+
+    async def _process_fetched_keys(
+        self,
+        user_id: UserID,
+        devices: dict[DeviceID, DeviceKeys],
+        resp: QueryKeysResponse,
+    ) -> dict[DeviceID, DeviceIdentity]:
+        new_devices = {}
+        existing_devices = (await self.crypto_store.get_devices(user_id)) or {}
+
+        self.log.trace(
+            f"Updating devices for {user_id}, got {len(devices)}, "
+            f"have {len(existing_devices)} in store"
+        )
+        changed = False
+        ssks = resp.self_signing_keys.get(user_id)
+        ssk = ssks.first_ed25519_key if ssks else None
+        for device_id, device_keys in devices.items():
+            try:
+                existing = existing_devices[device_id]
+            except KeyError:
+                existing = None
+                changed = True
+            self.log.trace(f"Validating device {device_keys} of {user_id}")
+            try:
+                new_device = await self._validate_device(user_id, device_id, device_keys, existing)
+            except DeviceValidationError as e:
+                self.log.warning(f"Failed to validate device {device_id} of {user_id}: {e}")
+            else:
+                if new_device:
+                    new_devices[device_id] = new_device
+                    await self._store_device_self_signatures(device_keys, ssk)
+        self.log.debug(
+            f"Storing new device list for {user_id} containing {len(new_devices)} devices"
+        )
+        await self.crypto_store.put_devices(user_id, new_devices)
+
+        if changed or len(new_devices) != len(existing_devices):
+            if self.delete_keys_on_device_delete:
+                for device_id in existing_devices.keys() - new_devices.keys():
+                    device = existing_devices[device_id]
+                    removed_ids = await self.crypto_store.redact_group_sessions(
+                        room_id=None, sender_key=device.identity_key, reason="device removed"
+                    )
+                    self.log.info(
+                        "Redacted megolm sessions sent by removed device "
+                        f"{device.user_id}/{device.device_id}: {removed_ids}"
+                    )
+            await self.on_devices_changed(user_id)
+
+        await self._store_cross_signing_keys(resp, user_id)
+
+        return new_devices
 
     async def _store_device_self_signatures(
         self, device_keys: DeviceKeys, self_signing_key: SigningKey | None
@@ -343,7 +349,7 @@ class DeviceListMachine(BaseOlmMachine):
             ssk = their_keys[CrossSigningUsage.SELF]
         except KeyError as e:
             if allow_fetch:
-                self.log.error(f"Didn't find cross-signing key {e.args[0]} of {device.user_id}")
+                self.log.warning(f"Didn't find cross-signing key {e.args[0]} of {device.user_id}")
             return TrustState.UNVERIFIED
         ssk_signed = await self.crypto_store.is_key_signed_by(
             target=CrossSigner(device.user_id, ssk.key),
