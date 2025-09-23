@@ -1,6 +1,6 @@
 build docs builder:
   stage: build
-  image: docker:stable
+  image: docker:latest
   tags:
   - amd64
   only:
