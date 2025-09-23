@@ -123,7 +123,9 @@ class Database(ABC):
         )
         owner = await self.fetchval("SELECT owner FROM database_owner WHERE key=0")
         if not owner:
-            await self.execute("INSERT INTO database_owner (owner) VALUES ($1)", self.owner_name)
+            await self.execute(
+                "INSERT INTO database_owner (key, owner) VALUES (0, $1)", self.owner_name
+            )
         elif owner != self.owner_name:
             raise DatabaseNotOwned(owner)
 
