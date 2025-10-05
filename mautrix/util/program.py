@@ -191,6 +191,7 @@ class Program:
         try:
             enabled = self.config["metrics.enabled"]
             listen_port = self.config["metrics.listen_port"]
+            hostname = self.config.get("metrics.hostname", "0.0.0.0")
         except KeyError:
             return
         if not enabled:
@@ -200,7 +201,7 @@ class Program:
                 "Metrics are enabled in config, but prometheus_client is not installed"
             )
             return
-        prometheus.start_http_server(listen_port)
+        prometheus.start_http_server(listen_port, addr=hostname)
 
     def _run(self) -> None:
         signal.signal(signal.SIGINT, signal.default_int_handler)
