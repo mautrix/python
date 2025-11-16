@@ -43,11 +43,12 @@ async def fetch_data() -> dict[str, str]:
 
 if __name__ == "__main__":
     import asyncio
+    import importlib.resources
+    import pathlib
     import sys
 
-    import pkg_resources
-
-    path = pkg_resources.resource_filename("mautrix.util", "variation_selector.json")
+    path = importlib.resources.files("mautrix.util").joinpath("variation_selector.json")
+    assert isinstance(path, pathlib.Path)
     emojis = asyncio.run(fetch_data())
     with open(path, "w") as file:
         json.dump(emojis, file, indent="    ", ensure_ascii=False)
