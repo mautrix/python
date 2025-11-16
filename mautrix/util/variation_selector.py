@@ -10,7 +10,7 @@ import pkgutil
 
 import aiohttp
 
-EMOJI_VAR_URL = "https://www.unicode.org/Public/14.0.0/ucd/emoji/emoji-variation-sequences.txt"
+EMOJI_VAR_URL = "https://www.unicode.org/Public/17.0.0/ucd/emoji/emoji-variation-sequences.txt"
 
 
 def read_data() -> dict[str, str]:
