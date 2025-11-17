@@ -1,12 +1,17 @@
-## v0.21.0 (unreleased)
+## v0.21.0 (2025-11-17)
 
 * *(event)* Added support for creator power in room v12+.
 * *(crypto)* Added support for generating and using recovery keys for verifying
   the active device.
+* *(bridge)* Added config option for self-signing bot device.
 * *(bridge)* Removed check for login flows when using MSC4190
   (thanks to [@meson800] in [#178]).
+* *(client)* Changed `set_displayname` and `set_avatar_url` to avoid setting
+  empty strings if the value is already unset (thanks to [@frebib] in [#171]).
 
+[@frebib]: https://github.com/frebib
 [@meson800]: https://github.com/meson800
+[#171]: https://github.com/mautrix/python/pull/171
 [#178]: https://github.com/mautrix/python/pull/178
 
 ## v0.20.8 (2025-06-01)
