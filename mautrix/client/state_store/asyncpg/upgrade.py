@@ -14,15 +14,16 @@ upgrade_table = UpgradeTable(
 )
 
 
-@upgrade_table.register(description="Latest revision", upgrades_to=3)
-async def upgrade_blank_to_v3(conn: Connection, scheme: Scheme) -> None:
+@upgrade_table.register(description="Latest revision", upgrades_to=4)
+async def upgrade_blank_to_v4(conn: Connection, scheme: Scheme) -> None:
     await conn.execute(
         """CREATE TABLE mx_room_state (
             room_id              TEXT PRIMARY KEY,
             is_encrypted         BOOLEAN,
             has_full_member_list BOOLEAN,
             encryption           TEXT,
-            power_levels         TEXT
+            power_levels         TEXT,
+            create_event         TEXT
         )"""
     )
     membership_check = ""
@@ -69,3 +70,8 @@ async def upgrade_v3(conn: Connection) -> None:
                 WHERE mx_room_state.encryption IS NULL
             """
         )
+
+
+@upgrade_table.register(description="Add create event to room state cache")
+async def upgrade_v4(conn: Connection) -> None:
+    await conn.execute("ALTER TABLE mx_room_state ADD COLUMN create_event TEXT")

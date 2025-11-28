@@ -1,4 +1,4 @@
-__version__ = "0.20.8"
+__version__ = "0.21.0"
 __author__ = "Tulir Asokan <tulir@maunium.net>"
 __all__ = [
     "api",

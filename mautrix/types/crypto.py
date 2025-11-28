@@ -47,9 +47,9 @@ class DeviceKeys(SerializableAttrs):
 
 
 class CrossSigningUsage(ExtensibleEnum):
-    MASTER = "master"
-    SELF = "self_signing"
-    USER = "user_signing"
+    MASTER: "CrossSigningUsage" = "master"
+    SELF: "CrossSigningUsage" = "self_signing"
+    USER: "CrossSigningUsage" = "user_signing"
 
 
 @dataclass

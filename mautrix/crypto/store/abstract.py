@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import AsyncContextManager, NamedTuple
 from abc import ABC, abstractmethod
 
 from mautrix.types import (
@@ -86,6 +86,10 @@ class CryptoStore(ABC):
 
     async def flush(self) -> None:
         """Flush the store. If all the methods persist data immediately, this can be a no-op."""
+
+    async def transaction(self) -> AsyncContextManager[None]:
+        """Run a database transaction. If the store doesn't support transactions, this can be a no-op."""
+        pass
 
     @abstractmethod
     async def delete(self) -> None:

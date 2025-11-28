@@ -71,7 +71,7 @@ class UserDataMethods(BaseClientAPI):
     # region 10.2 Profiles
     # API reference: https://matrix.org/docs/spec/client_server/r0.4.0.html#profiles
 
-    async def set_displayname(self, displayname: str, check_current: bool = True) -> None:
+    async def set_displayname(self, displayname: str | None, check_current: bool = True) -> None:
         """
         Set the display name of the current user.
 
@@ -81,7 +81,9 @@ class UserDataMethods(BaseClientAPI):
             displayname: The new display name for the user.
             check_current: Whether or not to check if the displayname is already set.
         """
-        if check_current and await self.get_displayname(self.mxid) == displayname:
+        if check_current and str_or_none(await self.get_displayname(self.mxid)) == str_or_none(
+            displayname
+        ):
             return
         await self.api.request(
             Method.PUT,
@@ -112,7 +114,9 @@ class UserDataMethods(BaseClientAPI):
         except KeyError:
             return None
 
-    async def set_avatar_url(self, avatar_url: ContentURI, check_current: bool = True) -> None:
+    async def set_avatar_url(
+        self, avatar_url: ContentURI | None, check_current: bool = True
+    ) -> None:
         """
         Set the avatar of the current user.
 
@@ -122,7 +126,9 @@ class UserDataMethods(BaseClientAPI):
             avatar_url: The ``mxc://`` URI to the new avatar.
             check_current: Whether or not to check if the avatar is already set.
         """
-        if check_current and await self.get_avatar_url(self.mxid) == avatar_url:
+        if check_current and str_or_none(await self.get_avatar_url(self.mxid)) == str_or_none(
+            avatar_url
+        ):
             return
         await self.api.request(
             Method.PUT,
@@ -185,3 +191,10 @@ class UserDataMethods(BaseClientAPI):
         await self.api.request(Method.PATCH, Path.v3.profile[self.mxid], custom_fields)
 
     # endregion
+
+
+def str_or_none(v: str | None) -> str | None:
+    """
+    str_or_none empty string values to None
+    """
+    return None if v == "" else v

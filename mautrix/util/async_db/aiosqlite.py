@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any, AsyncContextManager
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 import asyncio
 import logging
 import os
@@ -24,6 +25,9 @@ from .upgrade import UpgradeTable
 POSITIONAL_PARAM_PATTERN = re.compile(r"\$(\d+)")
 
 
+in_transaction = ContextVar("in_transaction", default=False)
+
+
 class TxnConnection(aiosqlite.Connection):
     def __init__(self, path: str, **kwargs) -> None:
         def connector() -> sqlite3.Connection:
@@ -35,7 +39,11 @@ class TxnConnection(aiosqlite.Connection):
 
     @asynccontextmanager
     async def transaction(self) -> None:
+        if in_transaction.get():
+            yield
+            return
         await self.execute("BEGIN TRANSACTION")
+        token = in_transaction.set(True)
         try:
             yield
         except Exception:
@@ -43,6 +51,8 @@ class TxnConnection(aiosqlite.Connection):
             raise
         else:
             await self.commit()
+        finally:
+            in_transaction.reset(token)
 
     def __execute(self, query: str, *args: Any):
         query = POSITIONAL_PARAM_PATTERN.sub(r"?\1", query)
@@ -181,7 +191,7 @@ class SQLiteDatabase(Database):
             self._conns -= 1
             await conn.close()
 
-    def acquire(self) -> AsyncContextManager[LoggingConnection]:
+    def acquire_direct(self) -> AsyncContextManager[LoggingConnection]:
         if self._parent:
             return self._parent.acquire()
         return self._acquire()

@@ -23,10 +23,23 @@ from mautrix.types import (
     UserID,
 )
 
-from .base import BaseOlmMachine, verify_signature_json
+from .base import BaseOlmMachine
+from .signature import verify_signature_json
 
 
 class DeviceListMachine(BaseOlmMachine):
+    @property
+    def own_identity(self) -> DeviceIdentity:
+        return DeviceIdentity(
+            user_id=self.client.mxid,
+            device_id=self.client.device_id,
+            identity_key=self.account.identity_key,
+            signing_key=self.account.signing_key,
+            trust=TrustState.VERIFIED,
+            deleted=False,
+            name="",
+        )
+
     async def _fetch_keys(
         self, users: list[UserID], since: SyncToken = "", include_untracked: bool = False
     ) -> dict[UserID, dict[DeviceID, DeviceIdentity]]:
@@ -46,60 +59,66 @@ class DeviceListMachine(BaseOlmMachine):
         data = {}
         for user_id, devices in resp.device_keys.items():
             missing_users.remove(user_id)
-
-            new_devices = {}
-            existing_devices = (await self.crypto_store.get_devices(user_id)) or {}
-
-            self.log.trace(
-                f"Updating devices for {user_id}, got {len(devices)}, "
-                f"have {len(existing_devices)} in store"
-            )
-            changed = False
-            ssks = resp.self_signing_keys.get(user_id)
-            ssk = ssks.first_ed25519_key if ssks else None
-            for device_id, device_keys in devices.items():
-                try:
-                    existing = existing_devices[device_id]
-                except KeyError:
-                    existing = None
-                    changed = True
-                self.log.trace(f"Validating device {device_keys} of {user_id}")
-                try:
-                    new_device = await self._validate_device(
-                        user_id, device_id, device_keys, existing
-                    )
-                except DeviceValidationError as e:
-                    self.log.warning(f"Failed to validate device {device_id} of {user_id}: {e}")
-                else:
-                    if new_device:
-                        new_devices[device_id] = new_device
-                        await self._store_device_self_signatures(device_keys, ssk)
-            self.log.debug(
-                f"Storing new device list for {user_id} containing {len(new_devices)} devices"
-            )
-            await self.crypto_store.put_devices(user_id, new_devices)
-            data[user_id] = new_devices
-
-            if changed or len(new_devices) != len(existing_devices):
-                if self.delete_keys_on_device_delete:
-                    for device_id in existing_devices.keys() - new_devices.keys():
-                        device = existing_devices[device_id]
-                        removed_ids = await self.crypto_store.redact_group_sessions(
-                            room_id=None, sender_key=device.identity_key, reason="device removed"
-                        )
-                        self.log.info(
-                            "Redacted megolm sessions sent by removed device "
-                            f"{device.user_id}/{device.device_id}: {removed_ids}"
-                        )
-                await self.on_devices_changed(user_id)
+            async with self.crypto_store.transaction():
+                data[user_id] = await self._process_fetched_keys(user_id, devices, resp)
 
         for user_id in missing_users:
             self.log.warning(f"Didn't get any devices for user {user_id}")
 
-        for user_id in users:
-            await self._store_cross_signing_keys(resp, user_id)
-
         return data
+
+    async def _process_fetched_keys(
+        self,
+        user_id: UserID,
+        devices: dict[DeviceID, DeviceKeys],
+        resp: QueryKeysResponse,
+    ) -> dict[DeviceID, DeviceIdentity]:
+        new_devices = {}
+        existing_devices = (await self.crypto_store.get_devices(user_id)) or {}
+
+        self.log.trace(
+            f"Updating devices for {user_id}, got {len(devices)}, "
+            f"have {len(existing_devices)} in store"
+        )
+        changed = False
+        ssks = resp.self_signing_keys.get(user_id)
+        ssk = ssks.first_ed25519_key if ssks else None
+        for device_id, device_keys in devices.items():
+            try:
+                existing = existing_devices[device_id]
+            except KeyError:
+                existing = None
+                changed = True
+            self.log.trace(f"Validating device {device_keys} of {user_id}")
+            try:
+                new_device = await self._validate_device(user_id, device_id, device_keys, existing)
+            except DeviceValidationError as e:
+                self.log.warning(f"Failed to validate device {device_id} of {user_id}: {e}")
+            else:
+                if new_device:
+                    new_devices[device_id] = new_device
+                    await self._store_device_self_signatures(device_keys, ssk)
+        self.log.debug(
+            f"Storing new device list for {user_id} containing {len(new_devices)} devices"
+        )
+        await self.crypto_store.put_devices(user_id, new_devices)
+
+        if changed or len(new_devices) != len(existing_devices):
+            if self.delete_keys_on_device_delete:
+                for device_id in existing_devices.keys() - new_devices.keys():
+                    device = existing_devices[device_id]
+                    removed_ids = await self.crypto_store.redact_group_sessions(
+                        room_id=None, sender_key=device.identity_key, reason="device removed"
+                    )
+                    self.log.info(
+                        "Redacted megolm sessions sent by removed device "
+                        f"{device.user_id}/{device.device_id}: {removed_ids}"
+                    )
+            await self.on_devices_changed(user_id)
+
+        await self._store_cross_signing_keys(resp, user_id)
+
+        return new_devices
 
     async def _store_device_self_signatures(
         self, device_keys: DeviceKeys, self_signing_key: SigningKey | None
@@ -193,7 +212,7 @@ class DeviceListMachine(BaseOlmMachine):
                             signing_key = device.ed25519
                         except KeyError:
                             pass
-                    if len(signing_key) != 43:
+                    if not signing_key or len(signing_key) != 43:
                         self.log.debug(
                             f"Cross-signing key {user_id}/{actual_key} has a signature from "
                             f"an unknown key {key_id}"
@@ -218,6 +237,12 @@ class DeviceListMachine(BaseOlmMachine):
                         )
                     else:
                         self.log.warning(f"Invalid signature from {signing_key_log} for {key_id}")
+
+    async def _get_full_device_keys(self, device: DeviceIdentity) -> DeviceKeys:
+        resp = await self.client.query_keys({device.user_id: [device.device_id]})
+        keys = resp.device_keys[device.user_id][device.device_id]
+        await self._validate_device(device.user_id, device.device_id, keys, device)
+        return keys
 
     async def get_or_fetch_device(
         self, user_id: UserID, device_id: DeviceID
@@ -296,18 +321,23 @@ class DeviceListMachine(BaseOlmMachine):
             deleted=False,
         )
 
-    async def resolve_trust(self, device: DeviceIdentity) -> TrustState:
+    async def resolve_trust(self, device: DeviceIdentity, allow_fetch: bool = True) -> TrustState:
         try:
-            return await self._try_resolve_trust(device)
+            return await self._try_resolve_trust(device, allow_fetch)
         except Exception:
             self.log.exception(f"Failed to resolve trust of {device.user_id}/{device.device_id}")
             return TrustState.UNVERIFIED
 
-    async def _try_resolve_trust(self, device: DeviceIdentity) -> TrustState:
-        if device.trust in (TrustState.VERIFIED, TrustState.BLACKLISTED):
+    async def _try_resolve_trust(
+        self, device: DeviceIdentity, allow_fetch: bool = True
+    ) -> TrustState:
+        if device.device_id != self.client.device_id and device.trust in (
+            TrustState.VERIFIED,
+            TrustState.BLACKLISTED,
+        ):
             return device.trust
         their_keys = await self.crypto_store.get_cross_signing_keys(device.user_id)
-        if len(their_keys) == 0 and device.user_id not in self._cs_fetch_attempted:
+        if len(their_keys) == 0 and allow_fetch and device.user_id not in self._cs_fetch_attempted:
             self.log.debug(f"Didn't find any cross-signing keys for {device.user_id}, fetching...")
             async with self._fetch_keys_lock:
                 if device.user_id not in self._cs_fetch_attempted:
@@ -318,7 +348,8 @@ class DeviceListMachine(BaseOlmMachine):
             msk = their_keys[CrossSigningUsage.MASTER]
             ssk = their_keys[CrossSigningUsage.SELF]
         except KeyError as e:
-            self.log.error(f"Didn't find cross-signing key {e.args[0]} of {device.user_id}")
+            if allow_fetch:
+                self.log.warning(f"Didn't find cross-signing key {e.args[0]} of {device.user_id}")
             return TrustState.UNVERIFIED
         ssk_signed = await self.crypto_store.is_key_signed_by(
             target=CrossSigner(device.user_id, ssk.key),

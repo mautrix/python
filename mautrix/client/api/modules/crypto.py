@@ -5,13 +5,17 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Union
 
 from mautrix.api import Method, Path
 from mautrix.errors import MatrixResponseError
 from mautrix.types import (
+    JSON,
     ClaimKeysResponse,
+    CrossSigningKeys,
+    CrossSigningUsage,
     DeviceID,
+    DeviceKeys,
     EncryptionKeyAlgorithm,
     EventType,
     QueryKeysResponse,
@@ -82,7 +86,7 @@ class CryptoMethods(BaseClientAPI):
     async def upload_keys(
         self,
         one_time_keys: dict[str, Any] | None = None,
-        device_keys: dict[str, Any] | None = None,
+        device_keys: DeviceKeys | dict[str, Any] | None = None,
     ) -> dict[EncryptionKeyAlgorithm, int]:
         """
         Publishes end-to-end encryption keys for the device.
@@ -102,8 +106,12 @@ class CryptoMethods(BaseClientAPI):
         """
         data = {}
         if device_keys:
+            if isinstance(device_keys, Serializable):
+                device_keys = device_keys.serialize()
             data["device_keys"] = device_keys
         if one_time_keys:
+            if isinstance(one_time_keys, Serializable):
+                one_time_keys = one_time_keys.serialize()
             data["one_time_keys"] = one_time_keys
         resp = await self.api.request(Method.POST, Path.v3.keys.upload, data)
         try:
@@ -115,6 +123,43 @@ class CryptoMethods(BaseClientAPI):
             raise MatrixResponseError("`one_time_key_counts` not in response.") from e
         except AttributeError as e:
             raise MatrixResponseError("Invalid `one_time_key_counts` field in response.") from e
+
+    async def upload_cross_signing_keys(
+        self,
+        keys: dict[CrossSigningUsage, CrossSigningKeys],
+        auth: dict[str, JSON] | None = None,
+    ) -> None:
+        await self.api.request(
+            Method.POST,
+            Path.v3.keys.device_signing.upload,
+            {f"{usage}_key": key.serialize() for usage, key in keys.items()}
+            | ({"auth": auth} if auth else {}),
+        )
+
+    async def upload_one_signature(
+        self,
+        user_id: UserID,
+        device_id: DeviceID,
+        keys: Union[DeviceKeys, CrossSigningKeys],
+    ) -> None:
+        await self.api.request(
+            Method.POST, Path.v3.keys.signatures.upload, {user_id: {device_id: keys.serialize()}}
+        )
+        # TODO check failures
+
+    async def upload_many_signatures(
+        self,
+        signatures: dict[UserID, dict[DeviceID, Union[DeviceKeys, CrossSigningKeys]]],
+    ) -> None:
+        await self.api.request(
+            Method.POST,
+            Path.v3.keys.signatures.upload,
+            {
+                user_id: {device_id: keys.serialize() for device_id, keys in devices.items()}
+                for user_id, devices in signatures.items()
+            },
+        )
+        # TODO check failures
 
     async def query_keys(
         self,

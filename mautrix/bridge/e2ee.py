@@ -58,6 +58,7 @@ class EncryptionManager:
     periodically_delete_expired_keys: bool
     delete_outdated_inbound: bool
     msc4190: bool
+    self_sign: bool
 
     bridge: br.Bridge
     az: AppService
@@ -110,6 +111,7 @@ class EncryptionManager:
         self.key_sharing_enabled = bridge.config["bridge.encryption.allow_key_sharing"]
         self.appservice_mode = bridge.config["bridge.encryption.appservice"]
         self.msc4190 = bridge.config["bridge.encryption.msc4190"]
+        self.self_sign = bridge.config["bridge.encryption.self_sign"]
         if self.appservice_mode:
             self.az.otk_handler = self.crypto.handle_as_otk_counts
             self.az.device_list_handler = self.crypto.handle_as_device_lists
@@ -247,12 +249,13 @@ class EncryptionManager:
         return decrypted
 
     async def start(self) -> None:
-        flows = await self.client.get_login_flows()
-        if not self.msc4190 and not flows.supports_type(LoginType.APPSERVICE):
-            self.log.critical(
-                "Encryption enabled in config, but homeserver does not support appservice login"
-            )
-            sys.exit(30)
+        if not self.msc4190:
+            flows = await self.client.get_login_flows()
+            if not flows.supports_type(LoginType.APPSERVICE):
+                self.log.critical(
+                    "Encryption enabled in config, but homeserver does not support appservice login"
+                )
+                sys.exit(30)
         self.log.debug("Logging in with bridge bot user")
         if self.crypto_db:
             try:
@@ -287,8 +290,18 @@ class EncryptionManager:
         if not device_id:
             await self.crypto_store.put_device_id(self.client.device_id)
             self.log.debug(f"Logged in with new device ID {self.client.device_id}")
+            await self.crypto.share_keys()
         elif self.crypto.account.shared:
             await self._verify_keys_are_on_server()
+        else:
+            await self.crypto.share_keys()
+        if self.self_sign:
+            trust_state = await self.crypto.resolve_trust(self.crypto.own_identity)
+            if trust_state < TrustState.CROSS_SIGNED_UNTRUSTED:
+                recovery_key = await self.crypto.generate_recovery_key()
+                self.log.info(f"Generated recovery key and signed own device: {recovery_key}")
+            else:
+                self.log.debug(f"Own device is already verified ({trust_state})")
         if self.appservice_mode:
             self.log.info("End-to-bridge encryption support is enabled (appservice mode)")
         else:

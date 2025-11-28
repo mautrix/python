@@ -61,6 +61,11 @@ class EventType(Serializable):
     PUSH_RULES: "EventType"
     TAG: "EventType"
     IGNORED_USER_LIST: "EventType"
+    SECRET_STORAGE_DEFAULT_KEY: "EventType"
+    CROSS_SIGNING_MASTER: "EventType"
+    CROSS_SIGNING_SELF_SIGNING: "EventType"
+    CROSS_SIGNING_USER_SIGNING: "EventType"
+    MEGOLM_BACKUP_V1: "EventType"
 
     TO_DEVICE_ENCRYPTED: "EventType"
     TO_DEVICE_DUMMY: "EventType"

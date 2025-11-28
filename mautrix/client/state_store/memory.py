@@ -14,6 +14,7 @@ from mautrix.types import (
     PowerLevelStateEventContent,
     RoomEncryptionStateEventContent,
     RoomID,
+    StateEvent,
     UserID,
 )
 
@@ -25,6 +26,7 @@ class SerializedStateStore(TypedDict):
     full_member_list: dict[RoomID, bool]
     power_levels: dict[RoomID, Any]
     encryption: dict[RoomID, Any]
+    create: dict[RoomID, Any]
 
 
 class MemoryStateStore(StateStore):
@@ -32,12 +34,14 @@ class MemoryStateStore(StateStore):
     full_member_list: dict[RoomID, bool]
     power_levels: dict[RoomID, PowerLevelStateEventContent]
     encryption: dict[RoomID, RoomEncryptionStateEventContent | None]
+    create: dict[RoomID, StateEvent]
 
     def __init__(self) -> None:
         self.members = {}
         self.full_member_list = {}
         self.power_levels = {}
         self.encryption = {}
+        self.create = {}
 
     def serialize(self) -> SerializedStateStore:
         """
@@ -58,6 +62,7 @@ class MemoryStateStore(StateStore):
                 room_id: (content.serialize() if content is not None else None)
                 for room_id, content in self.encryption.items()
             },
+            "create": {room_id: evt.serialize() for room_id, evt in self.create.items()},
         }
 
     def deserialize(self, data: SerializedStateStore) -> None:
@@ -83,6 +88,9 @@ class MemoryStateStore(StateStore):
                 else None
             )
             for room_id, content in data["encryption"].items()
+        }
+        self.create = {
+            room_id: StateEvent.deserialize(evt) for room_id, evt in data["create"].items()
         }
 
     async def get_member(self, room_id: RoomID, user_id: UserID) -> Member | None:
@@ -175,6 +183,17 @@ class MemoryStateStore(StateStore):
         if not isinstance(content, PowerLevelStateEventContent):
             content = PowerLevelStateEventContent.deserialize(content)
         self.power_levels[room_id] = content
+
+    async def has_create_cached(self, room_id: RoomID) -> bool:
+        return room_id in self.create
+
+    async def get_create(self, room_id: RoomID) -> StateEvent | None:
+        return self.create.get(room_id)
+
+    async def set_create(self, event: StateEvent | dict[str, Any]) -> None:
+        if not isinstance(event, StateEvent):
+            event = StateEvent.deserialize(event)
+        self.create[event.room_id] = event
 
     async def has_encryption_info_cached(self, room_id: RoomID) -> bool:
         return room_id in self.encryption

@@ -49,7 +49,7 @@ Components
 
 .. _#maunium:maunium.net: https://matrix.to/#/#maunium:maunium.net
 .. _python-appservice-framework: https://github.com/Cadair/python-appservice-framework/
-.. _Client API: https://matrix.org/docs/spec/client_server/r0.6.1.html
+.. _Client API: https://spec.matrix.org/latest/client-server-api/
 
 .. _mautrix.api: https://docs.mau.fi/python/latest/api/mautrix.api.html
 .. _mautrix.client.api: https://docs.mau.fi/python/latest/api/mautrix.client.api.html

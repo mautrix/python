@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Dict, List, Union
+from typing import TYPE_CHECKING, Dict, List, Union
 
 from attr import dataclass
 import attr
@@ -11,6 +11,9 @@ import attr
 from ..primitive import JSON, RoomID, UserID
 from ..util import Obj, SerializableAttrs, deserializer
 from .base import BaseEvent, EventType
+
+if TYPE_CHECKING:
+    from mautrix.crypto.ssss import EncryptedAccountDataEventContent, KeyMetadata
 
 
 @dataclass
@@ -23,11 +26,24 @@ class RoomTagAccountDataEventContent(SerializableAttrs):
     tags: Dict[str, RoomTagInfo] = attr.ib(default=None, metadata={"json": "tags"})
 
 
+@dataclass
+class SecretStorageDefaultKeyEventContent(SerializableAttrs):
+    key: str
+
+
 DirectAccountDataEventContent = Dict[UserID, List[RoomID]]
 
-AccountDataEventContent = Union[RoomTagAccountDataEventContent, DirectAccountDataEventContent, Obj]
+AccountDataEventContent = Union[
+    RoomTagAccountDataEventContent,
+    DirectAccountDataEventContent,
+    SecretStorageDefaultKeyEventContent,
+    "EncryptedAccountDataEventContent",
+    "KeyMetadata",
+    Obj,
+]
 account_data_event_content_map = {
     EventType.TAG: RoomTagAccountDataEventContent,
+    EventType.SECRET_STORAGE_DEFAULT_KEY: SecretStorageDefaultKeyEventContent,
     # m.direct doesn't really need deserializing
     # EventType.DIRECT: DirectAccountDataEventContent,
 }

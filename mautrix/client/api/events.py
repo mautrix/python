@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Awaitable
+from typing import Awaitable, Literal, overload
 import json
 
 from mautrix.api import Method, Path
@@ -168,12 +168,41 @@ class EventMethods(BaseClientAPI):
         )
         return EventContext.deserialize(resp)
 
+    @overload
     async def get_state_event(
         self,
         room_id: RoomID,
         event_type: EventType,
         state_key: str = "",
-    ) -> StateEventContent:
+        *,
+        format: Literal["content"] = "content",
+    ) -> StateEventContent: ...
+    @overload
+    async def get_state_event(
+        self,
+        room_id: RoomID,
+        event_type: EventType,
+        state_key: str = "",
+        *,
+        format: Literal["event"],
+    ) -> StateEvent: ...
+    @overload
+    async def get_state_event(
+        self,
+        room_id: RoomID,
+        event_type: EventType,
+        state_key: str = "",
+        *,
+        format: str = "content",
+    ) -> StateEventContent | StateEvent: ...
+    async def get_state_event(
+        self,
+        room_id: RoomID,
+        event_type: EventType,
+        state_key: str = "",
+        *,
+        format: str = "content",
+    ) -> StateEventContent | StateEvent:
         """
         Looks up the contents of a state event in a room. If the user is joined to the room then the
         state is taken from the current state of the room. If the user has left the room then the
@@ -185,6 +214,9 @@ class EventMethods(BaseClientAPI):
             room_id: The ID of the room to look up the state in.
             event_type: The type of state to look up.
             state_key: The key of the state to look up. Defaults to empty string.
+            format: The format of the state event to return. Defaults to "content", which only returns
+                the content of the state event. If set to "event", the full event is returned.
+                See https://github.com/matrix-org/matrix-spec/issues/1047 for more info.
 
         Returns:
             The state event.
@@ -192,11 +224,17 @@ class EventMethods(BaseClientAPI):
         content = await self.api.request(
             Method.GET,
             Path.v3.rooms[room_id].state[event_type][state_key],
+            query_params={"format": format} if format != "content" else None,
             metrics_method="getStateEvent",
         )
-        content["__mautrix_event_type"] = event_type
         try:
-            return StateEvent.deserialize_content(content)
+            if format == "content":
+                content["__mautrix_event_type"] = event_type
+                return StateEvent.deserialize_content(content)
+            elif format == "event":
+                return StateEvent.deserialize(content)
+            else:
+                return content
         except SerializerError as e:
             raise MatrixResponseError("Invalid state event in response") from e
 

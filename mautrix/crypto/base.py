@@ -5,41 +5,30 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, TypedDict
+from typing import Awaitable, Callable
 import asyncio
-import functools
-import json
-
-import olm
 
 from mautrix.errors import MForbidden, MNotFound
 from mautrix.types import (
-    DeviceID,
-    EncryptionKeyAlgorithm,
     EventType,
     IdentityKey,
-    KeyID,
     RequestedKeyInfo,
     RoomEncryptionStateEventContent,
     RoomID,
     RoomKeyEventContent,
     SessionID,
-    SigningKey,
     TrustState,
     UserID,
 )
 from mautrix.util.logging import TraceLogger
 
 from .. import client as cli, crypto
-
-
-class SignedObject(TypedDict):
-    signatures: dict[UserID, dict[str, str]]
-    unsigned: Any
+from .ssss import Machine as SSSSMachine
 
 
 class BaseOlmMachine:
     client: cli.Client
+    ssss: SSSSMachine
     log: TraceLogger
     crypto_store: crypto.CryptoStore
     state_store: crypto.StateStore
@@ -116,27 +105,3 @@ class BaseOlmMachine:
             evt.beeper_max_age_ms = encryption_info.rotation_period_ms
         if not evt.beeper_max_messages:
             evt.beeper_max_messages = encryption_info.rotation_period_msgs
-
-
-canonical_json = functools.partial(
-    json.dumps, ensure_ascii=False, separators=(",", ":"), sort_keys=True
-)
-
-
-def verify_signature_json(
-    data: "SignedObject", user_id: UserID, key_name: DeviceID | str, key: SigningKey
-) -> bool:
-    data_copy = {**data}
-    data_copy.pop("unsigned", None)
-    signatures = data_copy.pop("signatures")
-    key_id = str(KeyID(EncryptionKeyAlgorithm.ED25519, key_name))
-    try:
-        signature = signatures[user_id][key_id]
-    except KeyError:
-        return False
-    signed_data = canonical_json(data_copy)
-    try:
-        olm.ed25519_verify(key, signed_data, signature)
-        return True
-    except olm.OlmVerifyError:
-        return False

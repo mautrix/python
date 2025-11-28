@@ -5,11 +5,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Type, TypeVar
+from typing import Any, Awaitable, Callable, NamedTuple, Optional, Type, TypeVar
 from abc import ABC, abstractmethod
-from contextlib import suppress
 from enum import Enum, Flag, auto
 import asyncio
+import itertools
 import time
 
 from mautrix.errors import MUnknownToken
@@ -25,7 +25,6 @@ from mautrix.types import (
     Filter,
     FilterID,
     GenericEvent,
-    MessageEvent,
     PresenceState,
     SerializerError,
     StateEvent,
@@ -79,13 +78,18 @@ class InternalEventType(Enum):
     DEVICE_OTK_COUNT = auto()
 
 
+class EventHandlerProps(NamedTuple):
+    wait_sync: bool
+    sync_stream: Optional[SyncStream]
+
+
 class Syncer(ABC):
     loop: asyncio.AbstractEventLoop
     log: TraceLogger
     mxid: UserID
 
-    global_event_handlers: list[tuple[EventHandler, bool]]
-    event_handlers: dict[EventType | InternalEventType, list[tuple[EventHandler, bool]]]
+    global_event_handlers: dict[EventHandler, EventHandlerProps]
+    event_handlers: dict[EventType | InternalEventType, dict[EventHandler, EventHandlerProps]]
     dispatchers: dict[Type[dispatcher.Dispatcher], dispatcher.Dispatcher]
     syncing_task: asyncio.Task | None
     ignore_initial_sync: bool
@@ -95,7 +99,7 @@ class Syncer(ABC):
     sync_store: SyncStore
 
     def __init__(self, sync_store: SyncStore) -> None:
-        self.global_event_handlers = []
+        self.global_event_handlers = {}
         self.event_handlers = {}
         self.dispatchers = {}
         self.syncing_task = None
@@ -158,6 +162,7 @@ class Syncer(ABC):
         event_type: InternalEventType | EventType,
         handler: EventHandler,
         wait_sync: bool = False,
+        sync_stream: Optional[SyncStream] = None,
     ) -> None:
         """
         Add a new event handler.
@@ -167,13 +172,15 @@ class Syncer(ABC):
                 event types.
             handler: The handler function to add.
             wait_sync: Whether or not the handler should be awaited before the next sync request.
+            sync_stream: The sync streams to listen to. Defaults to all.
         """
         if not isinstance(event_type, (EventType, InternalEventType)):
             raise ValueError("Invalid event type")
+        props = EventHandlerProps(wait_sync=wait_sync, sync_stream=sync_stream)
         if event_type == EventType.ALL:
-            self.global_event_handlers.append((handler, wait_sync))
+            self.global_event_handlers[handler] = props
         else:
-            self.event_handlers.setdefault(event_type, []).append((handler, wait_sync))
+            self.event_handlers.setdefault(event_type, {})[handler] = props
 
     def remove_event_handler(
         self, event_type: EventType | InternalEventType, handler: EventHandler
@@ -197,11 +204,7 @@ class Syncer(ABC):
             # No handlers for this event type registered
             return
 
-        # FIXME this is a bit hacky
-        with suppress(ValueError):
-            handler_list.remove((handler, True))
-        with suppress(ValueError):
-            handler_list.remove((handler, False))
+        handler_list.pop(handler, None)
 
         if len(handler_list) == 0 and event_type != EventType.ALL:
             del self.event_handlers[event_type]
@@ -229,7 +232,9 @@ class Syncer(ABC):
         else:
             event.type = event.type.with_class(EventType.Class.MESSAGE)
         setattr(event, "source", source)
-        return self.dispatch_manual_event(event.type, event, include_global_handlers=True)
+        return self.dispatch_manual_event(
+            event.type, event, include_global_handlers=True, source=source
+        )
 
     async def _catch_errors(self, handler: EventHandler, data: Any) -> None:
         try:
@@ -243,13 +248,22 @@ class Syncer(ABC):
         data: Any,
         include_global_handlers: bool = False,
         force_synchronous: bool = False,
+        source: Optional[SyncStream] = None,
     ) -> list[asyncio.Task]:
-        handlers = self.event_handlers.get(event_type, [])
+        handlers = self.event_handlers.get(event_type, {}).items()
         if include_global_handlers:
-            handlers = self.global_event_handlers + handlers
+            handlers = itertools.chain(self.global_event_handlers.items(), handlers)
         tasks = []
-        for handler, wait_sync in handlers:
-            if force_synchronous or wait_sync:
+        if source is None:
+            source = getattr(data, "source", None)
+        for handler, props in handlers:
+            if (
+                props.sync_stream is not None
+                and source is not None
+                and not props.sync_stream & source
+            ):
+                continue
+            if force_synchronous or props.wait_sync:
                 tasks.append(asyncio.create_task(self._catch_errors(handler, data)))
             else:
                 background_task.create(self._catch_errors(handler, data))
@@ -263,6 +277,7 @@ class Syncer(ABC):
             event_type,
             custom_type if custom_type is not None else kwargs,
             include_global_handlers=False,
+            source=SyncStream.INTERNAL,
         )
         await asyncio.gather(*tasks)
 
@@ -274,6 +289,7 @@ class Syncer(ABC):
             event_type,
             custom_type if custom_type is not None else kwargs,
             include_global_handlers=False,
+            source=SyncStream.INTERNAL,
         )
 
     def _try_deserialize(self, type: Type[T], data: JSON) -> T | GenericEvent:

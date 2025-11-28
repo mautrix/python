@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from datetime import timedelta
 
 from asyncpg import UniqueViolationError
@@ -78,6 +79,11 @@ class PgCryptoStore(CryptoStore, SyncStore):
         self._device_id = DeviceID("")
         self._account = None
         self._olm_cache = defaultdict(lambda: {})
+
+    @asynccontextmanager
+    async def transaction(self) -> None:
+        async with self.db.acquire() as conn, conn.transaction():
+            yield
 
     async def delete(self) -> None:
         tables = ("crypto_account", "crypto_olm_session", "crypto_megolm_outbound_session")

@@ -32,10 +32,12 @@ from mautrix.util import background_task
 from mautrix.util.logging import TraceLogger
 
 from .account import OlmAccount
+from .cross_signing import CrossSigningMachine
 from .decrypt_megolm import MegolmDecryptionMachine
 from .encrypt_megolm import MegolmEncryptionMachine
 from .key_request import KeyRequestingMachine
 from .key_share import KeySharingMachine
+from .ssss import Machine as SSSSMachine
 from .store import CryptoStore, StateStore
 from .unwedge import OlmUnwedgingMachine
 
@@ -46,6 +48,7 @@ class OlmMachine(
     OlmUnwedgingMachine,
     KeySharingMachine,
     KeyRequestingMachine,
+    CrossSigningMachine,
 ):
     """
     OlmMachine is the main class for handling things related to Matrix end-to-end encryption with
@@ -58,6 +61,7 @@ class OlmMachine(
     log: TraceLogger
     crypto_store: CryptoStore
     state_store: StateStore
+    ssss: SSSSMachine
 
     account: Optional[OlmAccount]
 
@@ -70,6 +74,7 @@ class OlmMachine(
     ) -> None:
         super().__init__()
         self.client = client
+        self.ssss = SSSSMachine(client)
         self.log = log or logging.getLogger("mau.crypto")
         self.crypto_store = crypto_store
         self.state_store = state_store
@@ -95,6 +100,10 @@ class OlmMachine(
         self._inbound_session_waiters = {}
         self._prev_unwedge = {}
         self._cs_fetch_attempted = set()
+
+        self._cross_signing_public_keys = None
+        self._cross_signing_public_keys_fetched = False
+        self._cross_signing_private_keys = None
 
         self.client.add_event_handler(
             cli.InternalEventType.DEVICE_OTK_COUNT, self.handle_otk_count, wait_sync=True
@@ -310,6 +319,7 @@ class OlmMachine(
         self.log.debug(f"Uploading {len(one_time_keys)} one-time keys")
         resp = await self.client.upload_keys(one_time_keys=one_time_keys, device_keys=device_keys)
         self.account.shared = True
+        self.account.mark_keys_as_published()
         self._last_key_share = time.monotonic()
         await self.crypto_store.put_account(self.account)
         self.log.debug(f"Shared keys and saved account, new keys: {resp}")

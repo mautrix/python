@@ -16,6 +16,7 @@ from mautrix.types import (
     RoomEncryptionStateEventContent,
     RoomID,
     Serializable,
+    StateEvent,
     UserID,
 )
 from mautrix.util.async_db import Database, Scheme
@@ -221,6 +222,29 @@ class PgStateStore(StateStore):
             "ON CONFLICT (room_id) DO UPDATE SET power_levels=$2",
             room_id,
             json.dumps(content.serialize() if isinstance(content, Serializable) else content),
+        )
+
+    async def has_create_cached(self, room_id: RoomID) -> bool:
+        return bool(
+            await self.db.fetchval(
+                "SELECT create_event IS NOT NULL FROM mx_room_state WHERE room_id=$1", room_id
+            )
+        )
+
+    async def get_create(self, room_id: RoomID) -> StateEvent | None:
+        create_event_json = await self.db.fetchval(
+            "SELECT create_event FROM mx_room_state WHERE room_id=$1", room_id
+        )
+        if create_event_json is None:
+            return None
+        return StateEvent.parse_json(create_event_json)
+
+    async def set_create(self, event: StateEvent) -> None:
+        await self.db.execute(
+            "INSERT INTO mx_room_state (room_id, create_event) VALUES ($1, $2) "
+            "ON CONFLICT (room_id) DO UPDATE SET create_event=$2",
+            event.room_id,
+            json.dumps(event.serialize() if isinstance(event, Serializable) else event),
         )
 
     async def has_encryption_info_cached(self, room_id: RoomID) -> bool:
