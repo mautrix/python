@@ -222,6 +222,11 @@ class OlmMachine(
         passed to the OlmMachine is syncing. You shouldn't need to call this yourself unless you
         do syncing in some manual way.
         """
+        if isinstance(evt, DecryptedOlmEvent):
+            self.log.warning(
+                f"Dropping unexpected nested encrypted to-device event from {evt.sender}"
+            )
+            return
         self.log.trace(
             f"Handling encrypted to-device event from {evt.content.sender_key} ({evt.sender})"
         )
@@ -230,6 +235,8 @@ class OlmMachine(
             await self._receive_room_key(decrypted_evt)
         elif decrypted_evt.type == EventType.FORWARDED_ROOM_KEY:
             await self._receive_forwarded_room_key(decrypted_evt)
+        else:
+            self.client.dispatch_event(decrypted_evt, source=evt.source)
 
     async def _receive_room_key(self, evt: DecryptedOlmEvent) -> None:
         # TODO nio had a comment saying "handle this better"
