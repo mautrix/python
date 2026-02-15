@@ -369,12 +369,18 @@ class Syncer(ABC):
             events: list[dict[str, JSON]] = room_data.get("invite_state", {}).get("events", [])
             for raw_event in events:
                 raw_event["room_id"] = room_id
-            raw_invite = next(
-                raw_event
-                for raw_event in events
-                if raw_event.get("type", "") == "m.room.member"
-                and raw_event.get("state_key", "") == self.mxid
-            )
+            try:
+                raw_invite = next(
+                    raw_event
+                    for raw_event in events
+                    if raw_event.get("type", "") == "m.room.member"
+                    and raw_event.get("state_key", "") == self.mxid
+                )
+            except StopIteration:
+                self.log.warning(
+                    f"Corrupted invite section in sync: no invite event present for {room_id}"
+                )
+                continue
             # These aren't required by the spec, so make sure they're set
             raw_invite.setdefault("event_id", None)
             raw_invite.setdefault("origin_server_ts", int(time.time() * 1000))
