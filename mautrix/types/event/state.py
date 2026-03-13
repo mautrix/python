@@ -9,7 +9,7 @@ from attr import dataclass
 import attr
 
 from ..primitive import JSON, ContentURI, EventID, RoomAlias, RoomID, UserID
-from ..util import Obj, SerializableAttrs, SerializableEnum, deserializer, field
+from ..util import Obj, SerializableAttrs, SerializableEnum, ExtensibleEnum, deserializer, field
 from .base import BaseRoomEvent, BaseUnsigned
 from .encrypted import EncryptionAlgorithm
 from .type import EventType, RoomType
@@ -168,7 +168,7 @@ class JoinRule(SerializableEnum):
     KNOCK_RESTRICTED = "knock_restricted"
 
 
-class JoinRestrictionType(SerializableEnum):
+class JoinRestrictionType(ExtensibleEnum):
     ROOM_MEMBERSHIP = "m.room_membership"
 
 
