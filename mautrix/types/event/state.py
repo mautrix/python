@@ -9,7 +9,7 @@ from attr import dataclass
 import attr
 
 from ..primitive import JSON, ContentURI, EventID, RoomAlias, RoomID, UserID
-from ..util import Obj, SerializableAttrs, SerializableEnum, deserializer, field
+from ..util import ExtensibleEnum, Obj, SerializableAttrs, SerializableEnum, deserializer, field
 from .base import BaseRoomEvent, BaseUnsigned
 from .encrypted import EncryptionAlgorithm
 from .type import EventType, RoomType
@@ -159,16 +159,15 @@ class RoomAvatarStateEventContent(SerializableAttrs):
     url: Optional[ContentURI] = None
 
 
-class JoinRule(SerializableEnum):
+class JoinRule(ExtensibleEnum):
     PUBLIC = "public"
     KNOCK = "knock"
     RESTRICTED = "restricted"
     INVITE = "invite"
-    PRIVATE = "private"
     KNOCK_RESTRICTED = "knock_restricted"
 
 
-class JoinRestrictionType(SerializableEnum):
+class JoinRestrictionType(ExtensibleEnum):
     ROOM_MEMBERSHIP = "m.room_membership"
 
 
