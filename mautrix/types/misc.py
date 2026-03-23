@@ -106,7 +106,7 @@ class RoomDirectoryResponse(SerializableAttrs):
 
 
 PaginatedMessages = NamedTuple(
-    "PaginatedMessages", start=SyncToken, end=SyncToken, events=List[Event]
+    "PaginatedMessages", start=SyncToken, end=Optional[SyncToken], events=List[Event]
 )
 
 

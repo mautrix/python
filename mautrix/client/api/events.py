@@ -395,15 +395,13 @@ class EventMethods(BaseClientAPI):
         try:
             return PaginatedMessages(
                 content["start"],
-                content["end"],
+                content.get("end"),
                 [Event.deserialize(event) for event in content["chunk"]],
             )
         except KeyError:
             if "start" not in content:
                 raise MatrixResponseError("`start` not in response.")
-            elif "end" not in content:
-                raise MatrixResponseError("`start` not in response.")
-            raise MatrixResponseError("`content` not in response.")
+            raise MatrixResponseError("`chunk` not in response.")
         except SerializerError as e:
             raise MatrixResponseError("Invalid events in response") from e
 
