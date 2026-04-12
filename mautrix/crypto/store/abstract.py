@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import AsyncContextManager, NamedTuple
 from abc import ABC, abstractmethod
+from contextlib import asynccontextmanager
 
 from mautrix.types import (
     CrossSigner,
@@ -87,9 +88,10 @@ class CryptoStore(ABC):
     async def flush(self) -> None:
         """Flush the store. If all the methods persist data immediately, this can be a no-op."""
 
-    async def transaction(self) -> AsyncContextManager[None]:
+    @asynccontextmanager
+    async def transaction(self) -> None:
         """Run a database transaction. If the store doesn't support transactions, this can be a no-op."""
-        pass
+        yield
 
     @abstractmethod
     async def delete(self) -> None:
