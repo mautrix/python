@@ -115,12 +115,12 @@ class Database(ABC):
             raise ForeignTablesFound("found roomserver_rooms likely belonging to Dendrite")
 
     async def _check_owner(self) -> None:
-        await self.execute(
-            """CREATE TABLE IF NOT EXISTS database_owner (
+        await self.execute("""
+            CREATE TABLE IF NOT EXISTS database_owner (
                 key   INTEGER PRIMARY KEY DEFAULT 0,
                 owner TEXT NOT NULL
-            )"""
-        )
+            )
+        """)
         owner = await self.fetchval("SELECT owner FROM database_owner WHERE key=0")
         if not owner:
             await self.execute(

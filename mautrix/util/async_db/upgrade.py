@@ -97,11 +97,11 @@ class UpgradeTable:
         await conn.execute(f"INSERT INTO {self.version_table_name} (version) VALUES ($1)", version)
 
     async def upgrade(self, db: async_db.Database) -> None:
-        await db.execute(
-            f"""CREATE TABLE IF NOT EXISTS {self.version_table_name} (
+        await db.execute(f"""
+            CREATE TABLE IF NOT EXISTS {self.version_table_name} (
                 version INTEGER PRIMARY KEY
-            )"""
-        )
+            )
+        """)
         row = await db.fetchrow(f"SELECT version FROM {self.version_table_name} LIMIT 1")
         version = row["version"] if row else 0
 

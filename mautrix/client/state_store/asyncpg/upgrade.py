@@ -16,16 +16,16 @@ upgrade_table = UpgradeTable(
 
 @upgrade_table.register(description="Latest revision", upgrades_to=4)
 async def upgrade_blank_to_v4(conn: Connection, scheme: Scheme) -> None:
-    await conn.execute(
-        """CREATE TABLE mx_room_state (
+    await conn.execute("""
+        CREATE TABLE mx_room_state (
             room_id              TEXT PRIMARY KEY,
             is_encrypted         BOOLEAN,
             has_full_member_list BOOLEAN,
             encryption           TEXT,
             power_levels         TEXT,
             create_event         TEXT
-        )"""
-    )
+        )
+    """)
     membership_check = ""
     if scheme != Scheme.SQLITE:
         await conn.execute(
@@ -33,16 +33,16 @@ async def upgrade_blank_to_v4(conn: Connection, scheme: Scheme) -> None:
         )
     else:
         membership_check = "CHECK (membership IN ('join', 'leave', 'invite', 'ban', 'knock'))"
-    await conn.execute(
-        f"""CREATE TABLE mx_user_profile (
+    await conn.execute(f"""
+        CREATE TABLE mx_user_profile (
             room_id     TEXT,
             user_id     TEXT,
             membership  membership NOT NULL {membership_check},
             displayname TEXT,
             avatar_url  TEXT,
             PRIMARY KEY (room_id, user_id)
-        )"""
-    )
+        )
+    """)
 
 
 @upgrade_table.register(description="Stop using size-limited string fields")
@@ -60,16 +60,14 @@ async def upgrade_v2(conn: Connection, scheme: Scheme) -> None:
 @upgrade_table.register(description="Mark rooms that need crypto state event resynced")
 async def upgrade_v3(conn: Connection) -> None:
     if await conn.table_exists("portal"):
-        await conn.execute(
-            """
+        await conn.execute("""
             INSERT INTO mx_room_state (room_id, encryption)
             SELECT portal.mxid, '{"resync":true}' FROM portal
                 WHERE portal.encrypted=true AND portal.mxid IS NOT NULL
             ON CONFLICT (room_id) DO UPDATE
                 SET encryption=excluded.encryption
                 WHERE mx_room_state.encryption IS NULL
-            """
-        )
+        """)
 
 
 @upgrade_table.register(description="Add create event to room state cache")
