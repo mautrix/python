@@ -1,3 +1,12 @@
+## v0.21.1 (2026-07-05)
+
+* *(client)* Added synchronous middlewares for sync event handling.
+* *(client)* Added safety for handling corrupted invites sent by server.
+* *(crypto)* Started dispatching unrecognized decrypted olm events to event
+  listeners.
+* *(types)* Changed join rule enums to allow custom values.
+* *(client)* Fixed parsing /messages responses.
+
 ## v0.21.0 (2025-11-17)
 
 * *(event)* Added support for creator power in room v12+.
