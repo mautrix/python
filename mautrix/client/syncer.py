@@ -40,6 +40,7 @@ from . import dispatcher
 from .state_store import MemorySyncStore, SyncStore
 
 EventHandler = Callable[[Event], Awaitable[None]]
+EventMiddleware = Callable[[Event], Awaitable[bool]]
 
 T = TypeVar("T", bound=Event)
 
@@ -90,6 +91,7 @@ class Syncer(ABC):
 
     global_event_handlers: dict[EventHandler, EventHandlerProps]
     event_handlers: dict[EventType | InternalEventType, dict[EventHandler, EventHandlerProps]]
+    event_middlewares: dict[EventType | InternalEventType, list[EventMiddleware]]
     dispatchers: dict[Type[dispatcher.Dispatcher], dispatcher.Dispatcher]
     syncing_task: asyncio.Task | None
     ignore_initial_sync: bool
@@ -101,6 +103,7 @@ class Syncer(ABC):
     def __init__(self, sync_store: SyncStore) -> None:
         self.global_event_handlers = {}
         self.event_handlers = {}
+        self.event_middlewares = {}
         self.dispatchers = {}
         self.syncing_task = None
         self.ignore_initial_sync = False
@@ -182,6 +185,27 @@ class Syncer(ABC):
         else:
             self.event_handlers.setdefault(event_type, {})[handler] = props
 
+    def add_event_middleware(
+        self,
+        event_type: InternalEventType | EventType,
+        handler: EventMiddleware,
+    ) -> None:
+        if not isinstance(event_type, (EventType, InternalEventType)):
+            raise ValueError("Invalid event type")
+        self.event_middlewares.setdefault(event_type, []).append(handler)
+
+    def remove_event_middleware(
+        self,
+        event_type: InternalEventType | EventType,
+        handler: EventMiddleware,
+    ) -> None:
+        if not isinstance(event_type, (EventType, InternalEventType)):
+            raise ValueError("Invalid event type")
+        middlewares = self.event_middlewares.get(event_type, [])
+        if not middlewares:
+            return
+        self.event_middlewares[event_type] = [m for m in middlewares if m != handler]
+
     def remove_event_handler(
         self, event_type: EventType | InternalEventType, handler: EventHandler
     ) -> None:
@@ -249,6 +273,31 @@ class Syncer(ABC):
         include_global_handlers: bool = False,
         force_synchronous: bool = False,
         source: Optional[SyncStream] = None,
+    ) -> list[asyncio.Task]:
+        params = (event_type, data, include_global_handlers, force_synchronous, source)
+        middlewares = self.event_middlewares.get(event_type, [])
+        if middlewares:
+
+            async def run_middlewares() -> None:
+                for m in middlewares:
+                    try:
+                        if not await m(data):
+                            return
+                    except Exception:
+                        self.log.exception("Failed to run middleware")
+                        return
+                await asyncio.gather(*self._dispatch_manual_event(*params))
+
+            return [asyncio.create_task(run_middlewares())]
+        return self._dispatch_manual_event(*params)
+
+    def _dispatch_manual_event(
+        self,
+        event_type: EventType | InternalEventType,
+        data: Any,
+        include_global_handlers: bool,
+        force_synchronous: bool,
+        source: Optional[SyncStream],
     ) -> list[asyncio.Task]:
         handlers = self.event_handlers.get(event_type, {}).items()
         if include_global_handlers:
