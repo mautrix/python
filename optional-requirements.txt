@@ -1,4 +1,4 @@
-python-magic
+puremagic
 ruamel.yaml
 SQLAlchemy<2
 commonmark
