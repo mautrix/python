@@ -47,7 +47,6 @@ class TxnConnection(aiosqlite.Connection):
         try:
             yield
         except BaseException:
-            # Also roll back on cancellation, or the pooled connection stays in the transaction.
             await self.rollback()
             raise
         else:
