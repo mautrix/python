@@ -105,9 +105,10 @@ class RoomDirectoryResponse(SerializableAttrs):
     total_room_count_estimate: int = None
 
 
-PaginatedMessages = NamedTuple(
-    "PaginatedMessages", start=SyncToken, end=Optional[SyncToken], events=List[Event]
-)
+class PaginatedMessages(NamedTuple):
+    start: SyncToken
+    end: Optional[SyncToken]
+    events: List[Event]
 
 
 @dataclass

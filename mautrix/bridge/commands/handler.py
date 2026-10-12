@@ -22,10 +22,19 @@ from ... import bridge as br
 command_handlers: dict[str, CommandHandler] = {}
 command_aliases: dict[str, CommandHandler] = {}
 
-HelpSection = NamedTuple("HelpSection", name=str, order=int, description=str)
-HelpCacheKey = NamedTuple(
-    "HelpCacheKey", is_management=bool, is_portal=bool, is_admin=bool, is_logged_in=bool
-)
+
+class HelpSection(NamedTuple):
+    name: str
+    order: int
+    description: str
+
+
+class HelpCacheKey(NamedTuple):
+    is_management: bool
+    is_portal: bool
+    is_admin: bool
+    is_logged_in: bool
+
 
 SECTION_GENERAL = HelpSection("General", 0, "")
 SECTION_AUTH = HelpSection("Authentication", 10, "")
