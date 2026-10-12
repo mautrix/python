@@ -46,7 +46,7 @@ class TxnConnection(aiosqlite.Connection):
         token = in_transaction.set(True)
         try:
             yield
-        except Exception:
+        except BaseException:
             await self.rollback()
             raise
         else:
