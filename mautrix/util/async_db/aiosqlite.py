@@ -46,7 +46,8 @@ class TxnConnection(aiosqlite.Connection):
         token = in_transaction.set(True)
         try:
             yield
-        except Exception:
+        except BaseException:
+            # Also roll back on cancellation, or the pooled connection stays in the transaction.
             await self.rollback()
             raise
         else:
