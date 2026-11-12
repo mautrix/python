@@ -64,7 +64,10 @@ class OlmAccount(olm.Account):
         return account
 
     def new_inbound_session(self, sender_key: IdentityKey, ciphertext: str) -> Session:
-        session = olm.InboundSession(self, olm.OlmPreKeyMessage(ciphertext), sender_key)
+        message = olm.OlmPreKeyMessage(ciphertext)
+        session = olm.InboundSession(self, message)
+        if not session.matches(message, sender_key):
+            raise olm.OlmSessionError("prekey message identity key doesn't match sender key")
         self.remove_one_time_keys(session)
         return Session.from_pickle(
             session.pickle("roundtrip"), passphrase="roundtrip", creation_time=datetime.now()
