@@ -1,3 +1,10 @@
+## v0.21.2 (2026-11-20)
+
+* *(types)* Fixed Python 3.15 compatibility in NamedTuples.
+* *(util.async_db)* Fixed SQLite transactions getting stuck if the asyncio task
+  is cancelled.
+* *(crypto)* Fixed bugs in Olm session creation.
+
 ## v0.21.1 (2026-07-05)
 
 * *(client)* Added synchronous middlewares for sync event handling.
