@@ -230,7 +230,7 @@ class HTTPAPI:
         self.token = token
         self.log = log or logging.getLogger("mau.http")
         self.session = client_session or ClientSession(
-            loop=loop, headers={"User-Agent": self.default_ua}
+            loop=loop, headers={"User-Agent": self.default_ua}, trust_env=True
         )
         self.as_user_id = as_user_id
         self.as_device_id = as_device_id
