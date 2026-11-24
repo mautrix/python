@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from abc import ABC
+from stat import S_IMODE
 import logging
 import os
 import pkgutil
@@ -54,6 +55,16 @@ class BaseFileConfig(BaseConfig, ABC):
             )
         except OSError as e:
             log.warning(f"Failed to create tempfile to write updated config to disk: {e}")
+            return
+        try:
+            mode = S_IMODE(os.stat(self.path).st_mode)
+            os.chmod(tf.name, mode)
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            log.warning(f"Failed to copy permissions to tempfile: {e}")
+            tf.file.close()
+            os.remove(tf.name)
             return
         try:
             yaml.dump(self._data, tf)
