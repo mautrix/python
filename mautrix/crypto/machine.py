@@ -199,6 +199,13 @@ class OlmMachine(
         if prev == cur or ignored_changes.get(prev) == cur:
             return
         src = getattr(evt, "source", None)
+        if "mautrix_prev_membership" not in evt.unsigned:
+            self.log.debug(
+                f"Ignoring membership state event in {evt.room_id} changing {evt.state_key} "
+                f"from {prev} to {cur} because it didn't go through the state store "
+                f"(event ID: {evt.event_id}, sync source: {src})"
+            )
+            return
         prev_cache = evt.unsigned.get("mautrix_prev_membership")
         if isinstance(prev_cache, Member) and prev_cache.membership == cur:
             self.log.debug(
