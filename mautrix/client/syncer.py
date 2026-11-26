@@ -275,11 +275,12 @@ class Syncer(ABC):
         source: Optional[SyncStream] = None,
     ) -> list[asyncio.Task]:
         params = (event_type, data, include_global_handlers, force_synchronous, source)
-        middlewares = self.event_middlewares.get(event_type, [])
-        if middlewares:
+        global_middlewares = self.event_middlewares.get(EventType.ALL, [])
+        local_middlewares = self.event_middlewares.get(event_type, [])
+        if global_middlewares or local_middlewares:
 
             async def run_middlewares() -> None:
-                for m in middlewares:
+                for m in itertools.chain(global_middlewares, local_middlewares):
                     try:
                         if not await m(data):
                             return

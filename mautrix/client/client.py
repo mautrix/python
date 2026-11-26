@@ -28,12 +28,13 @@ class Client(EncryptingAPI, Syncer):
     ) -> None:
         EncryptingAPI.__init__(self, *args, state_store=state_store, **kwargs)
         Syncer.__init__(self, sync_store)
-        self.add_event_handler(EventType.ALL, self._update_state)
+        self.add_event_middleware(EventType.ALL, self._update_state)
 
-    async def _update_state(self, evt: Event) -> None:
+    async def _update_state(self, evt: Event) -> bool:
         if not isinstance(evt, StateEvent) or not self.state_store:
-            return
+            return True
         await self.state_store.update_state(evt)
+        return True
 
     @EncryptingAPI.crypto.setter
     def crypto(self, crypto: crypt.OlmMachine | None) -> None:
