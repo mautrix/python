@@ -11,7 +11,7 @@ Matrix room: `#maunium:maunium.net`_
 Components
 ----------
 
-* Basic HTTP request sender (mautrix.api_)
+* Basic HTTP request sender (mautrix.api_), which sends requests through mautrix-go
 
 * `Client API`_ endpoints as functions (mautrix.client.api_)
 
@@ -21,17 +21,7 @@ Components
   * Basic room state storage
   * Intent wrapper around the client API functions (design based on matrix-appservice-bridge)
 
-* Medium-level end-to-end encryption framework (mautrix.crypto_)
-
-  * Handles all the complicated e2ee key exchange
-  * Uses libolm through python-olm for the low-level crypto
-
-* High-level bridging utility framework (mautrix.bridge_)
-
-  * Base class for bridges
-  * Common bridge configuration and appservice registration generation things
-  * Double-puppeting helper
-  * End-to-bridge encryption helper
+* End-to-end encryption (mautrix.crypto_) using the mautrix-go crypto module
 
 * High-level client framework (mautrix.client_)
 
@@ -54,7 +44,6 @@ Components
 .. _mautrix.api: https://docs.mau.fi/python/latest/api/mautrix.api.html
 .. _mautrix.client.api: https://docs.mau.fi/python/latest/api/mautrix.client.api.html
 .. _mautrix.appservice: https://docs.mau.fi/python/latest/api/mautrix.appservice/index.html
-.. _mautrix.bridge: https://docs.mau.fi/python/latest/api/mautrix.bridge/index.html
 .. _mautrix.client: https://docs.mau.fi/python/latest/api/mautrix.client.html
 .. _mautrix.crypto: https://docs.mau.fi/python/latest/api/mautrix.crypto.html
 .. _mautrix.util: https://docs.mau.fi/python/latest/api/mautrix.util/index.html

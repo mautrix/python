@@ -5,7 +5,6 @@ mautrix.util
    :maxdepth: 4
 
    async_db
-   bridge_state
    config
    db
    ffmpeg

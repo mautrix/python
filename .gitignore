@@ -1,6 +1,8 @@
 build/
 dist/
 *.egg-info
+mautrix/libgothon.so
+mautrix/libgothon.h
 
 .venv
 pip-selfcheck.json

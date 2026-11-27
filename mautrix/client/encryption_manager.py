@@ -5,11 +5,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from mautrix import __optional_imports__
-from mautrix.errors import DecryptionError, EncryptionError, MNotFound
+from mautrix.errors import DecryptionError, MNotFound
 from mautrix.types import (
     EncryptedEvent,
     EncryptedMegolmEventContent,
@@ -38,14 +37,12 @@ class EncryptingAPI(store_updater.StoreUpdatingAPI):
     """A set of event types which shouldn't be encrypted even in encrypted rooms."""
     crypto_log: TraceLogger = logging.getLogger("mau.client.crypto")
     """The logger to use for crypto-related things."""
-    _share_session_events: dict[RoomID, asyncio.Event]
 
     def __init__(self, *args, crypto_log: TraceLogger | None = None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         if crypto_log:
             self.crypto_log = crypto_log
         self._crypto = None
-        self._share_session_events = {}
 
     @property
     def crypto(self) -> crypt.OlmMachine | None:
@@ -85,48 +82,7 @@ class EncryptingAPI(store_updater.StoreUpdatingAPI):
         Returns:
             The content of the encrypted event.
         """
-        try:
-            return await self.crypto.encrypt_megolm_event(room_id, event_type, content)
-        except EncryptionError:
-            self.crypto_log.debug("Got EncryptionError, sharing group session and trying again")
-            await self.share_group_session(room_id)
-            self.crypto_log.trace(
-                f"Shared group session, now trying to encrypt in {room_id} again"
-            )
-            return await self.crypto.encrypt_megolm_event(room_id, event_type, content)
-
-    async def _share_session_lock(self, room_id: RoomID) -> bool:
-        try:
-            event = self._share_session_events[room_id]
-        except KeyError:
-            self._share_session_events[room_id] = asyncio.Event()
-            return True
-        else:
-            await event.wait()
-            return False
-
-    async def share_group_session(self, room_id: RoomID) -> None:
-        """
-        Create and share a Megolm session for the given room.
-
-        Args:
-            room_id: The room to share the session for.
-        """
-        if not await self._share_session_lock(room_id):
-            self.log.silly("Group session was already being shared, so didn't share new one")
-            return
-        try:
-            if not await self.state_store.has_full_member_list(room_id):
-                self.crypto_log.trace(
-                    f"Don't have full member list for {room_id}, fetching from server"
-                )
-                members = list((await self.get_joined_members(room_id)).keys())
-            else:
-                self.crypto_log.trace(f"Fetching member list for {room_id} from state store")
-                members = await self.state_store.get_members(room_id)
-            await self.crypto.share_group_session(room_id, members)
-        finally:
-            self._share_session_events.pop(room_id).set()
+        return await self.crypto.encrypt_megolm_event(room_id, event_type, content)
 
     async def send_message_event(
         self,
@@ -179,7 +135,7 @@ class DecryptionDispatcher(dispatcher.SimpleDispatcher):
     async def handle(self, evt: EncryptedEvent) -> None:
         try:
             self.client.crypto_log.trace(f"Decrypting {evt.event_id} in {evt.room_id}...")
-            decrypted = await self.client.crypto.decrypt_megolm_event(evt)
+            decrypted = await self.client.crypto.decrypt_megolm_event(evt, wait_for_session=True)
         except DecryptionError as e:
             self.client.crypto_log.warning(f"Failed to decrypt {evt.event_id}: {e}")
             return

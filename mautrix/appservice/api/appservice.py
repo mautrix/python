@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from typing import Any, Awaitable
 from datetime import datetime, timezone
-import asyncio
 
 from aiohttp import ClientSession
 from yarl import URL
@@ -54,7 +53,6 @@ class AppServiceAPI(HTTPAPI):
         real_user_as_token: bool = False,
         bridge_name: str | None = None,
         default_retry_count: int = None,
-        loop: asyncio.AbstractEventLoop | None = None,
     ) -> None:
         """
         Args:
@@ -76,7 +74,6 @@ class AppServiceAPI(HTTPAPI):
         super().__init__(
             base_url=base_url,
             token=token,
-            loop=loop,
             log=api_log,
             client_session=client_session,
             txn_id=0 if not child else None,
@@ -216,7 +213,6 @@ class AppServiceAPI(HTTPAPI):
         query_params: dict[str, Any] | None = None,
         retry_count: int | None = None,
         metrics_method: str | None = "",
-        min_iter_size: int = 25 * 1024 * 1024,
     ) -> Awaitable[dict]:
         """
         Make a raw Matrix API request, acting as the appservice user assigned to this AppServiceAPI
@@ -235,9 +231,6 @@ class AppServiceAPI(HTTPAPI):
             retry_count: Number of times to retry if the homeserver isn't reachable.
                          Defaults to :attr:`default_retry_count`.
             metrics_method: Name of the method to include in Prometheus timing metrics.
-            min_iter_size: If the request body is larger than this value, it will be passed to
-                           aiohttp as an async iterable to stop it from copying the whole thing
-                           in memory.
 
         Returns:
             The parsed response JSON.

@@ -7,7 +7,7 @@ from types import FunctionType, ModuleType
 
 import aiohttp
 
-from . import appservice, bridge, client, crypto, errors, types
+from . import appservice, client, crypto, errors, types
 from .crypto import attachments
 from .util import async_db, config, db, formatter, logging
 
@@ -16,7 +16,7 @@ def _fix(obj: ModuleType) -> None:
     for item_name in getattr(obj, "__all__", None) or dir(obj):
         item = getattr(obj, item_name)
         if isinstance(item, (type, FunctionType, NewType)):
-            # Ignore backwards-compatibility imports like the BridgeState import in mautrix.bridge
+            # Ignore re-exports from other modules
             if item.__module__.startswith("mautrix") and not item.__module__.startswith(
                 obj.__name__
             ):
@@ -34,7 +34,6 @@ def _fix(obj: ModuleType) -> None:
 
 _things_to_fix = [
     types,
-    bridge,
     client,
     crypto,
     attachments,

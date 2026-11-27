@@ -97,7 +97,12 @@ class EventMethods(BaseClientAPI):
         if set_presence:
             request["set_presence"] = str(set_presence)
         return self.api.request(
-            Method.GET, Path.v3.sync, query_params=request, retry_count=0, metrics_method="sync"
+            Method.GET,
+            Path.v3.sync,
+            query_params=request,
+            retry_count=0,
+            metrics_method="sync",
+            is_sync=True,
         )
 
     # endregion

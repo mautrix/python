@@ -7,22 +7,20 @@ from __future__ import annotations
 
 from typing import ClassVar, Literal, Mapping
 from enum import Enum
-from json.decoder import JSONDecodeError
 from urllib.parse import quote as urllib_quote, urljoin as urllib_join
-import asyncio
 import inspect
 import json
 import logging
 import platform
 import time
+import weakref
 
-from aiohttp import ClientResponse, ClientSession, __version__ as aiohttp_version
-from aiohttp.client_exceptions import ClientError, ContentTypeError
+from aiohttp import ClientSession
 from yarl import URL
 
-from mautrix import __optional_imports__, __version__ as mautrix_version
-from mautrix.errors import MatrixConnectionError, MatrixRequestError, make_request_error
-from mautrix.util.async_body import AsyncBody, async_iter_bytes
+from mautrix import __optional_imports__, __version__ as mautrix_version, gothon
+from mautrix.errors import MatrixRequestError
+from mautrix.util.async_body import AsyncBody
 from mautrix.util.logging import TraceLogger
 from mautrix.util.opt_prometheus import Counter
 
@@ -168,8 +166,7 @@ class HTTPAPI:
     """HTTPAPI is a simple asyncio Matrix API request sender."""
 
     default_ua: ClassVar[str] = (
-        f"mautrix-python/{mautrix_version} aiohttp/{aiohttp_version} "
-        f"Python/{platform.python_version()}"
+        f"mautrix-python/{mautrix_version} Python/{platform.python_version()}"
     )
     """
     The default value for the ``User-Agent`` header.
@@ -186,8 +183,13 @@ class HTTPAPI:
     """The access token to use in requests."""
     log: TraceLogger
     """The :class:`logging.Logger` instance to log requests with."""
-    session: ClientSession
-    """The aiohttp ClientSession instance to make requests with."""
+    session: ClientSession | None
+    """
+    The aiohttp ClientSession passed to the constructor. Matrix requests don't use it, it's only
+    kept for code that makes other HTTP requests through ``api.session``.
+    """
+    client_id: int
+    """The ID of the corresponding client in libgothon."""
     txn_id: int | None
     """A counter used for generating transaction IDs."""
     default_retry_count: int
@@ -205,11 +207,10 @@ class HTTPAPI:
         base_url: URL | str,
         token: str = "",
         *,
-        client_session: ClientSession = None,
+        client_session: ClientSession | None = None,
         default_retry_count: int = None,
         txn_id: int = 0,
         log: TraceLogger | None = None,
-        loop: asyncio.AbstractEventLoop | None = None,
         as_user_id: UserID | None = None,
         as_device_id: UserID | None = None,
     ) -> None:
@@ -217,7 +218,7 @@ class HTTPAPI:
         Args:
             base_url: The base URL of the homeserver's client-server API to use.
             token: The access token to use.
-            client_session: The aiohttp client session to use.
+            client_session: An aiohttp client session to expose as :attr:`session`.
             txn_id: The outgoing transaction ID to start with.
             log: The :class:`logging.Logger` instance to log requests with.
             default_retry_count: Default number of retries to do when encountering network errors.
@@ -229,9 +230,7 @@ class HTTPAPI:
         self.base_url = URL(base_url)
         self.token = token
         self.log = log or logging.getLogger("mau.http")
-        self.session = client_session or ClientSession(
-            loop=loop, headers={"User-Agent": self.default_ua}
-        )
+        self.session = client_session
         self.as_user_id = as_user_id
         self.as_device_id = as_device_id
         if txn_id is not None:
@@ -240,36 +239,16 @@ class HTTPAPI:
             self.default_retry_count = default_retry_count
         else:
             self.default_retry_count = self.global_default_retry_count
-
-    async def _send(
-        self,
-        method: Method,
-        url: URL,
-        content: bytes | bytearray | str | AsyncBody,
-        query_params: dict[str, str],
-        headers: dict[str, str],
-    ) -> tuple[JSON, ClientResponse]:
-        request = self.session.request(
-            str(method), url, data=content, params=query_params, headers=headers
-        )
-        async with request as response:
-            if response.status < 200 or response.status >= 300:
-                errcode = unstable_errcode = message = None
-                try:
-                    response_data = await response.json()
-                    errcode = response_data["errcode"]
-                    message = response_data["error"]
-                    unstable_errcode = response_data.get("org.matrix.msc3848.unstable.errcode")
-                except (JSONDecodeError, ContentTypeError, KeyError):
-                    pass
-                raise make_request_error(
-                    http_status=response.status,
-                    text=await response.text(),
-                    errcode=errcode,
-                    message=message,
-                    unstable_errcode=unstable_errcode,
-                )
-            return await response.json(), response
+        runtime = gothon.get_runtime()
+        self.client_id = runtime.call_sync(
+            "client.new",
+            {
+                "base_url": str(self.base_url),
+                "user_agent": self.default_ua,
+                "log": gothon.log_params(self.log),
+            },
+        )["client_id"]
+        weakref.finalize(self, runtime.call_sync, "client.free", {"client_id": self.client_id})
 
     def _log_request(
         self,
@@ -344,6 +323,55 @@ class HTTPAPI:
     ) -> None:
         self._log_request_done(url.path.removeprefix("/_matrix/media/"), req_id, duration, status)
 
+    async def request_raw(
+        self,
+        method: Method,
+        url: URL,
+        content: bytes | bytearray | str | AsyncBody | None = None,
+        headers: dict[str, str] | None = None,
+        retry_count: int | None = None,
+        is_sync: bool = False,
+    ) -> tuple[int, bytes]:
+        """
+        Make a HTTP request without adding authentication or parsing the response.
+
+        Args:
+            method: The HTTP method to use.
+            url: The full URL to request, including query parameters.
+            content: The request body.
+            headers: A dict of HTTP headers to send.
+            retry_count: Number of times to retry if the server isn't reachable.
+                         Defaults to :attr:`default_retry_count`.
+            is_sync: Whether the response is a /sync response that should be passed to the
+                     end-to-end encryption machine.
+
+        Returns:
+            The HTTP status code and the response body.
+
+        Raises:
+            MatrixRequestError: If the server responds with a non-2xx status code.
+            MatrixConnectionError: If the request fails for other reasons.
+        """
+        if isinstance(content, str):
+            content = content.encode("utf-8")
+        elif inspect.isasyncgen(content):
+            content = b"".join([chunk async for chunk in content])
+        elif content is not None:
+            content = bytes(content)
+        result, body = await gothon.get_runtime().call(
+            "request",
+            {
+                "client_id": self.client_id,
+                "method": str(method),
+                "url": str(url),
+                "headers": headers or {},
+                "retry_count": self.default_retry_count if retry_count is None else retry_count,
+                "is_sync": is_sync,
+            },
+            content or b"",
+        )
+        return result["status"], body
+
     async def request(
         self,
         method: Method,
@@ -353,8 +381,8 @@ class HTTPAPI:
         query_params: Mapping[str, str] | None = None,
         retry_count: int | None = None,
         metrics_method: str = "",
-        min_iter_size: int = 25 * 1024 * 1024,
         sensitive: bool = False,
+        is_sync: bool = False,
     ) -> JSON:
         """
         Make a raw Matrix API request.
@@ -371,10 +399,9 @@ class HTTPAPI:
             retry_count: Number of times to retry if the homeserver isn't reachable.
                          Defaults to :attr:`default_retry_count`.
             metrics_method: Name of the method to include in Prometheus timing metrics.
-            min_iter_size: If the request body is larger than this value, it will be passed to
-                           aiohttp as an async iterable to stop it from copying the whole thing
-                           in memory.
             sensitive: If True, the request content will not be logged.
+            is_sync: Whether this is a /sync request whose response should be passed to the
+                     end-to-end encryption machine.
 
         Returns:
             The parsed response JSON.
@@ -402,55 +429,26 @@ class HTTPAPI:
         else:
             orig_content = content = None
         full_url = self.base_url.with_path(self._full_path(path), encoded=True)
+        url = full_url.with_query(query_params)
         req_id = _next_global_req_id()
-
-        if retry_count is None:
-            retry_count = self.default_retry_count
-        if inspect.isasyncgen(content):
-            # Can't retry with non-static body
-            retry_count = 0
-        do_fake_iter = content and hasattr(content, "__len__") and len(content) > min_iter_size
-        if do_fake_iter:
-            headers["Content-Length"] = str(len(content))
-        backoff = 4
-        log_url = full_url.with_query(query_params)
-        while True:
-            self._log_request(
-                method, log_url, content, orig_content, query_params, headers, req_id, sensitive
+        self._log_request(
+            method, url, content, orig_content, query_params, headers, req_id, sensitive
+        )
+        API_CALLS.labels(method=metrics_method).inc()
+        start = time.monotonic()
+        try:
+            status, body = await self.request_raw(
+                method, url, content, headers, retry_count, is_sync=is_sync
             )
-            API_CALLS.labels(method=metrics_method).inc()
-            req_content = async_iter_bytes(content) if do_fake_iter else content
-            start = time.monotonic()
-            try:
-                resp_data, resp = await self._send(
-                    method, full_url, req_content, query_params, headers or {}
-                )
-                self._log_request_done(path, req_id, time.monotonic() - start, resp.status)
-                return resp_data
-            except MatrixRequestError as e:
-                API_CALLS_FAILED.labels(method=metrics_method).inc()
-                if retry_count > 0 and e.http_status in (502, 503, 504):
-                    self.log.warning(
-                        f"Request #{req_id} failed with HTTP {e.http_status}, "
-                        f"retrying in {backoff} seconds"
-                    )
-                else:
-                    self._log_request_done(path, req_id, time.monotonic() - start, e.http_status)
-                    raise
-            except ClientError as e:
-                API_CALLS_FAILED.labels(method=metrics_method).inc()
-                if retry_count > 0:
-                    self.log.warning(
-                        f"Request #{req_id} failed with {e}, retrying in {backoff} seconds"
-                    )
-                else:
-                    raise MatrixConnectionError(str(e)) from e
-            except Exception:
-                API_CALLS_FAILED.labels(method=metrics_method).inc()
-                raise
-            await asyncio.sleep(backoff)
-            backoff *= 2
-            retry_count -= 1
+        except MatrixRequestError as e:
+            API_CALLS_FAILED.labels(method=metrics_method).inc()
+            self._log_request_done(path, req_id, time.monotonic() - start, e.http_status)
+            raise
+        except Exception:
+            API_CALLS_FAILED.labels(method=metrics_method).inc()
+            raise
+        self._log_request_done(path, req_id, time.monotonic() - start, status)
+        return json.loads(body)
 
     def get_txn_id(self) -> str:
         """Get a new unique transaction ID."""

@@ -1,9 +1,35 @@
+import os
+import subprocess
+
+from setuptools.command.bdist_wheel import bdist_wheel
+from setuptools.command.build_py import build_py
 import setuptools
 
 from mautrix import __version__
 
-encryption_dependencies = ["python-olm", "unpaddedbase64", "pycryptodome", "base58"]
+encryption_dependencies = ["unpaddedbase64", "pycryptodome"]
 test_dependencies = ["aiosqlite", "asyncpg", "ruamel.yaml", *encryption_dependencies]
+
+
+class BuildPyWithGo(build_py):
+    def run(self) -> None:
+        subprocess.run(
+            ["go", "build", "-buildmode=c-shared", "-o", os.path.abspath("mautrix/libgothon.so")],
+            cwd="gothon",
+            check=True,
+        )
+        super().run()
+
+
+class PlatformWheel(bdist_wheel):
+    def finalize_options(self) -> None:
+        super().finalize_options()
+        self.root_is_pure = False
+
+    def get_tag(self) -> tuple[str, str, str]:
+        _, _, platform = super().get_tag()
+        return "py3", "none", platform
+
 
 setuptools.setup(
     name="mautrix",
@@ -50,9 +76,10 @@ setuptools.setup(
     ],
 
     package_data={
-        "mautrix": ["py.typed"],
+        "mautrix": ["py.typed", "libgothon.so"],
         "mautrix.types.event": ["type.pyi"],
         "mautrix.util": ["opt_prometheus.pyi", "variation_selector.json"],
         "mautrix.util.formatter": ["html_reader.pyi"],
     },
+    cmdclass={"build_py": BuildPyWithGo, "bdist_wheel": PlatformWheel},
 )

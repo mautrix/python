@@ -7,14 +7,18 @@ from __future__ import annotations
 
 from typing import Any, AsyncIterable, Literal
 from contextlib import contextmanager
-import asyncio
 import time
 
 from yarl import URL
 
 from mautrix import __optional_imports__
 from mautrix.api import MediaPath, Method
-from mautrix.errors import MatrixResponseError, make_request_error
+from mautrix.errors import (
+    MatrixConnectionError,
+    MatrixRequestError,
+    MatrixResponseError,
+    make_request_error,
+)
 from mautrix.types import (
     ContentURI,
     MediaCreateResponse,
@@ -24,7 +28,6 @@ from mautrix.types import (
     SpecVersions,
 )
 from mautrix.util import background_task
-from mautrix.util.async_body import async_iter_bytes
 from mautrix.util.opt_prometheus import Histogram
 
 from ..base import BaseClientAPI
@@ -186,21 +189,7 @@ class MediaRepositoryMethods(BaseClientAPI):
         query_params: dict[str, Any] = {"allow_redirect": "true"}
         if timeout_ms is not None:
             query_params["timeout_ms"] = timeout_ms
-        headers: dict[str, str] = {}
-        if authenticated:
-            headers["Authorization"] = f"Bearer {self.api.token}"
-            if self.api.as_user_id:
-                query_params["user_id"] = self.api.as_user_id
-        req_id = self.api.log_download_request(url, query_params)
-        start = time.monotonic()
-        async with self.api.session.get(url, params=query_params, headers=headers) as response:
-            try:
-                response.raise_for_status()
-                return await response.read()
-            finally:
-                self.api.log_download_request_done(
-                    url, req_id, time.monotonic() - start, response.status
-                )
+        return await self._download(url, query_params, authenticated)
 
     async def download_thumbnail(
         self,
@@ -247,6 +236,11 @@ class MediaRepositoryMethods(BaseClientAPI):
             query_params["allow_remote"] = str(allow_remote).lower()
         if timeout_ms is not None:
             query_params["timeout_ms"] = timeout_ms
+        return await self._download(url, query_params, authenticated)
+
+    async def _download(
+        self, url: URL, query_params: dict[str, Any], authenticated: bool
+    ) -> bytes:
         headers: dict[str, str] = {}
         if authenticated:
             headers["Authorization"] = f"Bearer {self.api.token}"
@@ -254,14 +248,17 @@ class MediaRepositoryMethods(BaseClientAPI):
                 query_params["user_id"] = self.api.as_user_id
         req_id = self.api.log_download_request(url, query_params)
         start = time.monotonic()
-        async with self.api.session.get(url, params=query_params, headers=headers) as response:
-            try:
-                response.raise_for_status()
-                return await response.read()
-            finally:
-                self.api.log_download_request_done(
-                    url, req_id, time.monotonic() - start, response.status
-                )
+        status = -1
+        try:
+            status, data = await self.api.request_raw(
+                Method.GET, url.with_query(query_params), headers=headers
+            )
+            return data
+        except MatrixRequestError as e:
+            status = e.http_status
+            raise
+        finally:
+            self.api.log_download_request_done(url, req_id, time.monotonic() - start, status)
 
     async def get_url_preview(self, url: str, timestamp: int | None = None) -> MXOpenGraph:
         """
@@ -315,38 +312,15 @@ class MediaRepositoryMethods(BaseClientAPI):
         headers: dict[str, str],
         data: bytes | bytearray | AsyncIterable[bytes],
         post_upload_query: dict[str, str],
-        min_iter_size: int = 25 * 1024 * 1024,
     ) -> None:
-        retry_count = self.api.default_retry_count
-        backoff = 2
-        do_fake_iter = data and hasattr(data, "__len__") and len(data) > min_iter_size
-        if do_fake_iter:
-            headers["Content-Length"] = str(len(data))
-        while True:
-            self.log.debug("Uploading media to external URL %s", upload_url)
-            upload_response = None
-            try:
-                req_data = async_iter_bytes(data) if do_fake_iter else data
-                upload_response = await self.api.session.put(
-                    upload_url, data=req_data, headers=headers
-                )
-                upload_response.raise_for_status()
-            except Exception as e:
-                if retry_count <= 0:
-                    raise make_request_error(
-                        http_status=upload_response.status if upload_response else -1,
-                        text=(await upload_response.text()) if upload_response else "",
-                        errcode="COM.BEEPER.EXTERNAL_UPLOAD_ERROR",
-                        message=None,
-                    )
-                self.log.warning(
-                    f"Uploading media to external URL {upload_url} failed: {e}, "
-                    f"retrying in {backoff} seconds",
-                )
-                await asyncio.sleep(backoff)
-                backoff *= 2
-                retry_count -= 1
-            else:
-                break
-
+        self.log.debug("Uploading media to external URL %s", upload_url)
+        try:
+            await self.api.request_raw(Method.PUT, URL(upload_url), data, headers)
+        except (MatrixRequestError, MatrixConnectionError) as e:
+            raise make_request_error(
+                http_status=getattr(e, "http_status", -1),
+                text=str(e),
+                errcode="COM.BEEPER.EXTERNAL_UPLOAD_ERROR",
+                message=None,
+            ) from e
         await self.api.request(Method.POST, post_upload_path, query_params=post_upload_query)

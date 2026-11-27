@@ -3,3 +3,5 @@ include CHANGELOG.md
 include LICENSE
 include requirements.txt
 include optional-requirements.txt
+include gothon/go.mod gothon/go.sum
+recursive-include gothon *.go

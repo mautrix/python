@@ -1,3 +1,19 @@
+## Unreleased
+
+* **Breaking change** All Matrix HTTP requests and end-to-end encryption now go
+  through libgothon, a shared library built from mautrix-go. Building mautrix
+  from source requires Go 1.27.
+* **Breaking change** *(crypto)* Replaced the python-olm based implementation
+  with a mautrix-go based `OlmMachine`. Existing crypto databases are upgraded
+  to the mautrix-go schema. The crypto stores and SSSS modules were removed.
+* **Breaking change** Removed the `mautrix.bridge` and `mautrix.util.bridge_state`
+  modules.
+* **Breaking change** *(api)* Removed the `loop` parameter of `HTTPAPI` and the
+  `min_iter_size` parameter of `HTTPAPI.request`. The `client_session` is no
+  longer used for Matrix requests.
+* *(client)* Media downloads now raise `MatrixRequestError` instead of aiohttp
+  errors.
+
 ## v0.21.2 (2026-11-20)
 
 * *(types)* Fixed Python 3.15 compatibility in NamedTuples.
