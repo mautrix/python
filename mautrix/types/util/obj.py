@@ -16,6 +16,14 @@ class Obj(AbstractSerializable):
         }
 
     def __getattr__(self, name):
+        # Refuse to auto-vivify dunder (__name__) and sunder (_name_)
+        # attributes. Python tooling that probes for them (e.g.
+        # ``inspect.unwrap`` looking for ``__wrapped__``, or IPython's
+        # ``_ipython_canary_method_should_not_exist``) would otherwise
+        # cause ``Obj`` to grow recursive children and serialize() to
+        # raise RecursionError. See issue #176.
+        if name.startswith("_") and name.endswith("_"):
+            raise AttributeError(name)
         name = name.rstrip("_")
         obj = self.__dict__.get(name)
         if obj is None:
